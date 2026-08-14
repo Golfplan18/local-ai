@@ -1,0 +1,431 @@
+diff --git a/orchestrator/execution_review.py b/orchestrator/execution_review.py
+new file mode 100644
+index 00000000..f98c20d1
+--- /dev/null
++++ b/orchestrator/execution_review.py
+@@ -0,0 +1,181 @@
++"""Execution Review Phase 8 Chunk D — the programmatic (non-terminal) packet record.
++
++`record_program_run` runs the SAME packet-build + declared-lane fill + redaction +
++persistence gauntlet that the live gear terminal (`boot._execution_review_terminal`)
++runs, but for a programmatic run that never flows through `run_pipeline`/`server`
++(e.g. MSI's `invoke_real_gear4` → `boot.run_gear4`).
++
++The load-bearing invariants (spec §16, design §5, ⚖ Rev-3):
++- **Signals are FOLDED from the run's OWN tool-event log, never caller-narrated**
++  (§16-3). The caller routes the run's events to a per-run trace dir
++  (`tool_events.set_turn_context(trace_dir=…)`) and passes that `trace_dir`; the
++  fold reads `<trace_dir>/tool-events.jsonl` whole-file via the landed
++  `risk_gate.record_route_observed` (the exact terminal path).
++- **Evidence lanes are filled ONLY by the registered fillers** — the target repo's
++  `standing:true` deploy_probe/render_inspect recipes are routed onto the packet via
++  the landed Chunk-C seam (`evidence_contract['lanes']` → `route_lanes` in
++  `build_execution_packet`), then `execution_loop.fill_declared_lanes` runs them.
++  Never accepts lane verdicts as caller data.
++- **`enforcement_model` is caller-MANDATORY, validated, no default** — the honest
++  exception the design names (the regime is the integrator's knowledge, not
++  derivable from the log); a missing/invalid value REFUSES rather than inheriting a
++  false `in_harness` (the P6 TODO in `execution_packet.build_execution_packet`).
++- **Caller free-text → `producer_claim`**, rendered last, labeled unverified (§12).
++- **Trace-local packet is always written** (`persist_packet` decides the durable
++  tier; `write_packet` writes `execution-packet.json`) — a `git_only` /
++  `instrumentation:none` run still leaves the trace-local record.
++
++Never raises (returns None on any failure); stealth → no record.
++"""
++from __future__ import annotations
++
++from typing import Any
++
++try:
++    import tool_events as _te
++except ImportError:  # pragma: no cover
++    from orchestrator import tool_events as _te
++try:
++    import risk_gate as _rgate
++except ImportError:  # pragma: no cover
++    from orchestrator import risk_gate as _rgate
++try:
++    import execution_packet as _ep
++except ImportError:  # pragma: no cover
++    from orchestrator import execution_packet as _ep
++try:
++    import execution_persistence as _epersist
++except ImportError:  # pragma: no cover
++    from orchestrator import execution_persistence as _epersist
++try:
++    import evidence_runner as _er
++except ImportError:  # pragma: no cover
++    from orchestrator import evidence_runner as _er
++
++
++def _mark_failure(err: Exception, where: str) -> None:
++    try:
++        _te._note_failure(err, f"execution_review_{where}")
++    except Exception:
++        pass
++
++
++def _standing_declared_lanes(repo_root: str | None, runner: Any) -> list:
++    """The target repo's `standing:true` declared lanes, built from
++    `catalog.recipes` directly (`lanes_from_catalog` DROPS `standing`, so its
++    output cannot be filtered — judge P3). Empty when no catalog / no standing
++    recipe. Never raises."""
++    if not repo_root:
++        return []
++    try:
++        cat_path = runner.discover_catalog(repo_root)
++        if not cat_path:
++            return []
++        catalog = runner.parse_catalog(cat_path)
++    except Exception as e:
++        _mark_failure(e, "catalog")
++        return []
++    out: list = []
++    for name, r in (getattr(catalog, "recipes", None) or {}).items():
++        if getattr(r, "standing", False) and getattr(r, "lane", None) \
++                and getattr(r, "target", None):
++            out.append({"lane": r.lane, "target": r.target, "recipe": name})
++    return out
++
++
++def record_program_run(*, trace_dir: str, output_text: str,
++                       enforcement_model: str,
++                       repo_root: str | None = None,
++                       risk_tier: str | None = None,
++                       output_type: str = "execution",
++                       producer_claim: str | None = None,
++                       stealth: bool = False,
++                       runner: Any = None,
++                       now_iso: str | None = None) -> str | None:
++    """Record a programmatic run's ExecutionPacket. Returns the trace-local packet
++    path (or None on stealth / refusal / failure). The run's events MUST already be
++    in `<trace_dir>/tool-events.jsonl` (the caller sets a per-run turn context so
++    they route there). Never raises."""
++    runner = runner or _er
++    try:
++        if stealth or not trace_dir:
++            return None
++        # enforcement_model caller-MANDATORY, no default — validated (§7/§5). A
++        # missing/invalid value REFUSES rather than inheriting a false in_harness.
++        if enforcement_model not in _te.ENFORCEMENT:
++            _mark_failure(ValueError(
++                f"enforcement_model {enforcement_model!r} not in {sorted(_te.ENFORCEMENT)}"),
++                "enforcement_model")
++            return None
++
++        # 1. Signals FOLDED from the run's OWN event log (§16-3) — the terminal's
++        # exact path: record_route_observed(trace_dir) folds <dir>/tool-events.jsonl
++        # whole-file and returns {signals, consistency, output_type, divergence}.
++        ro = _rgate.record_route_observed(
++            str(trace_dir), risk_tier=risk_tier, output_text=output_text,
++            declared_output_type=output_type) or {}
++        signals = ro.get("signals") or {}
++        # An empty log = disclosed instrumentation blindness (not a caller green).
++        instrumentation = "none" if not signals.get("events_scanned") else "observed"
++
++        # 2. The target repo's standing declared lanes → the Chunk-C attach seam
++        # (evidence_contract['lanes'] → route_lanes inside build_execution_packet).
++        context_pkg: dict = {}
++        if repo_root:
++            context_pkg["repo_root"] = repo_root
++        declared = _standing_declared_lanes(repo_root, runner)
++        if declared:
++            context_pkg["evidence_contract"] = {"lanes": declared}
++
++        # 3. Build the packet from the folded signals (never terminal-specific).
++        packet = _ep.build_execution_packet(
++            signals=signals, context_pkg=context_pkg, output_text=output_text,
++            risk_tier=risk_tier,
++            declared_output_type=ro.get("output_type", output_type),
++            consistency=ro.get("consistency"),
++            trace_ref=str(trace_dir), now_iso=now_iso)
++        if packet is None:
++            return None
++
++        # 4. Correct the hardcoded in_harness enforcement_model via the whitelisted
++        # override seam; stamp instrumentation + the caller's producer note.
++        _ep.populate_loop_fields(
++            packet, execution={"enforcement_model": enforcement_model},
++            now_iso=now_iso)
++        try:
++            if isinstance(packet.execution, dict):
++                packet.execution["instrumentation"] = instrumentation
++                if producer_claim:
++                    # Caller free-text → producer_claim.known_limitations (the
++                    # summary already carries the shipped prose); rendered last,
++                    # labeled unverified (§12). Never a signal, never a lane.
++                    pc = dict(packet.execution.get("producer_claim") or {})
++                    pc["known_limitations"] = str(producer_claim)[:2000]
++                    packet.execution["producer_claim"] = pc
++        except Exception as e:
++            _mark_failure(e, "stamp")
++
++        # 5. Fill the declared lanes (deploy_probe / render_inspect) — registered
++        # fillers only, against the matching standing recipe. No recipe → owed.
++        try:
++            import execution_loop as _el
++        except ImportError:  # pragma: no cover
++            from orchestrator import execution_loop as _el
++        _el.fill_declared_lanes(packet, context_pkg=context_pkg,
++                                trace_dir=trace_dir, stealth=stealth, runner=runner)
++
++        # 6. Persist (durable tier) THEN write the trace-local packet — persist_packet
++        # only writes the ledger/note WHEN promoted, so write_packet is what leaves
++        # the trace-local execution-packet.json on a git_only / instrumentation:none
++        # run (judge P2). set_turn_context (the caller's per-run context) supplies
++        # persist's conversation_id.
++        try:
++            _epersist.persist_packet(
++                packet, sig={"max_sensitivity": signals.get("max_sensitivity")},
++                trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
++        except Exception as e:
++            _mark_failure(e, "persist")
++        return _ep.write_packet(packet, trace_dir)
++    except Exception as e:
++        _mark_failure(e, "record")
++        return None
+diff --git a/orchestrator/tests/test_execution_review.py b/orchestrator/tests/test_execution_review.py
+new file mode 100644
+index 00000000..e8ee786a
+--- /dev/null
++++ b/orchestrator/tests/test_execution_review.py
+@@ -0,0 +1,191 @@
++"""Execution Review Phase 8 Chunk D — record_program_run (the programmatic record).
++
++Covers the judge conditions + the Rev-3 folds:
++  * signals FOLDED from the run's OWN per-run event log (NOT caller args) — §16-3;
++  * an empty log → no-signals + `instrumentation: none`, AND the trace-local packet
++    is STILL written (judge P2 — persist_packet then write_packet);
++  * `enforcement_model` caller-mandatory (missing/invalid → refuse, no packet);
++  * caller free-text → `producer_claim.known_limitations` (unverified);
++  * `standing:true` declared-lane routing → deploy_probe lane attached + filled
++    (via evidence_contract['lanes'] → route_lanes → fill_declared_lanes, judge P3),
++    and a `standing:false` recipe does NOT route;
++  * stealth no-op;
++  * the set_turn_context/reset_turn_context per-run-context primitive (judge P2).
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parent.parent
++if str(_ROOT) not in sys.path:
++    sys.path.insert(0, str(_ROOT))
++
++import tool_events as te                       # noqa: E402
++import execution_review as erv                 # noqa: E402
++import execution_packet as ep                  # noqa: E402
++import evidence_runner as er                   # noqa: E402
++
++
++def _write_events(trace_dir, events):
++    with open(os.path.join(trace_dir, "tool-events.jsonl"), "w", encoding="utf-8") as f:
++        for e in events:
++            f.write(json.dumps(e) + "\n")
++
++
++def _read_packet(trace_dir):
++    p = os.path.join(trace_dir, "execution-packet.json")
++    if not os.path.exists(p):
++        return None
++    return json.loads(Path(p).read_text())
++
++
++class _Base(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.trace = os.path.join(self.tmp.name, "run-1")
++        os.makedirs(self.trace)
++        self._prev_events = os.environ.pop("ORA_TOOL_EVENTS", None)  # enable recording
++
++    def tearDown(self):
++        te.set_turn_context()
++        if self._prev_events is not None:
++            os.environ["ORA_TOOL_EVENTS"] = self._prev_events
++        self.tmp.cleanup()
++
++
++class TestFoldFromOwnLog(_Base):
++    def test_signals_folded_from_log_not_caller(self):
++        # A mutation event in the run's own sink → the packet observes any_mutation,
++        # even though the caller passes no signal booleans (§16-3).
++        _write_events(self.trace, [
++            {"event": "file_write", "action": "file_edit", "mutated": True,
++             "mutability": "reversible_write", "sensitivity": "private",
++             "egress": "none"},
++        ])
++        out = erv.record_program_run(
++            trace_dir=self.trace, output_text="the shipped prose",
++            enforcement_model="boundary_only", risk_tier="standard")
++        self.assertIsNotNone(out)
++        pkt = _read_packet(self.trace)
++        self.assertTrue(pkt["observed"]["any_mutation"])
++        self.assertEqual(pkt["execution"]["enforcement_model"], "boundary_only")
++        self.assertEqual(pkt["execution"]["instrumentation"], "observed")
++
++    def test_empty_log_instrumentation_none_but_packet_written(self):
++        # judge P2: an empty log → no signals + instrumentation:none, but the
++        # trace-local execution-packet.json IS still written (git_only run).
++        out = erv.record_program_run(
++            trace_dir=self.trace, output_text="prose",
++            enforcement_model="boundary_only")
++        self.assertIsNotNone(out)
++        pkt = _read_packet(self.trace)
++        self.assertIsNotNone(pkt, "trace-local packet must be written")
++        self.assertEqual(pkt["execution"]["instrumentation"], "none")
++        self.assertFalse(pkt["observed"]["any_mutation"])
++
++
++class TestEnforcementModelMandatory(_Base):
++    def test_invalid_enforcement_refuses(self):
++        out = erv.record_program_run(
++            trace_dir=self.trace, output_text="p", enforcement_model="in-harness")  # bad
++        self.assertIsNone(out)
++        self.assertIsNone(_read_packet(self.trace))  # no packet on refusal
++
++    def test_missing_enforcement_refuses(self):
++        with self.assertRaises(TypeError):
++            erv.record_program_run(trace_dir=self.trace, output_text="p")  # no kwarg
++
++
++class TestProducerClaim(_Base):
++    def test_caller_freetext_lands_in_known_limitations(self):
++        erv.record_program_run(
++            trace_dir=self.trace, output_text="the article prose",
++            enforcement_model="boundary_only",
++            producer_claim="dispatch: openrouter-forced monkey-patch")
++        pkt = _read_packet(self.trace)
++        pc = pkt["execution"]["producer_claim"]
++        self.assertEqual(pc["summary"][:11], "the article")   # shipped prose
++        self.assertIn("openrouter-forced", pc["known_limitations"])
++
++
++class TestStealth(_Base):
++    def test_stealth_no_record(self):
++        out = erv.record_program_run(
++            trace_dir=self.trace, output_text="p",
++            enforcement_model="boundary_only", stealth=True)
++        self.assertIsNone(out)
++        self.assertIsNone(_read_packet(self.trace))
++
++
++class TestStandingLaneRouting(_Base):
++    """A standing:true deploy_probe recipe routes onto the packet + fills; a
++    standing:false one does not (judge P3 — filter on catalog.recipes)."""
++
++    def _make_repo(self, standing: bool):
++        repo = os.path.join(self.tmp.name, "repo")
++        os.makedirs(os.path.join(repo, ".ora"))
++        subprocess.run(["git", "-C", repo, "init", "-q"], check=True)
++        subprocess.run(["git", "-C", repo, "config", "user.email", "t@t"], check=True)
++        subprocess.run(["git", "-C", repo, "config", "user.name", "t"], check=True)
++        (Path(repo) / "x.md").write_text("# x\n")
++        subprocess.run(["git", "-C", repo, "add", "-A"], check=True)
++        subprocess.run(["git", "-C", repo, "commit", "-qm",
++                        "publish: harvest live content (+1 ~0 -0)"], check=True)
++        (Path(repo) / ".ora" / "evidence.yaml").write_text(
++            "checks: {}\n"
++            "recipes:\n"
++            "  deploy:\n"
++            f"    lane: deploy_probe\n    target: published\n"
++            f"    standing: {'true' if standing else 'false'}\n"
++            "    probes: [{kind: git_heartbeat, ref: HEAD, match: 'harvest live',"
++            " max_age_s: 999999999}]\n"
++            "    rollback: 'none: next FULL build'\n"
++            "runner: {working_dir: r, redact: x}\n", encoding="utf-8")
++        return repo
++
++    def test_standing_true_routes_and_fills(self):
++        repo = self._make_repo(standing=True)
++        erv.record_program_run(
++            trace_dir=self.trace, output_text="prose", repo_root=repo,
++            enforcement_model="boundary_only")
++        pkt = _read_packet(self.trace)
++        lanes = {l["lane"]: l for l in pkt["evidence_lanes"]}
++        self.assertIn("deploy_probe", lanes)
++        # the git_heartbeat probe PASSed (HEAD matches, not stale) → sufficient
++        self.assertTrue(lanes["deploy_probe"]["sufficient"])
++        self.assertEqual(
++            lanes["deploy_probe"]["result"]["deploy_probe"]["verdict_counts"]["PASS"], 1)
++
++    def test_standing_false_not_routed(self):
++        repo = self._make_repo(standing=False)
++        erv.record_program_run(
++            trace_dir=self.trace, output_text="prose", repo_root=repo,
++            enforcement_model="boundary_only")
++        pkt = _read_packet(self.trace)
++        lanes = [l["lane"] for l in pkt["evidence_lanes"]]
++        self.assertNotIn("deploy_probe", lanes)  # standing:false → not a program-run lane
++
++
++class TestTurnContextPrimitive(unittest.TestCase):
++    def test_set_returns_token_reset_restores(self):
++        # judge P2 primitive: capture prior, set per-run, restore exactly.
++        te.set_turn_context()  # baseline: unset-ish
++        prior = te.get_turn_context()["trace_dir"]
++        tok = te.set_turn_context(trace_dir="/run-a", conversation_id="run-a")
++        self.assertEqual(te.get_turn_context()["trace_dir"], "/run-a")
++        te.reset_turn_context(tok)
++        self.assertEqual(te.get_turn_context()["trace_dir"], prior)
++
++    def test_reset_none_is_noop(self):
++        te.reset_turn_context(None)  # must not raise
++        te.set_turn_context()
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tool_events.py b/orchestrator/tool_events.py
+index 49c13732..031443a9 100644
+--- a/orchestrator/tool_events.py
++++ b/orchestrator/tool_events.py
+@@ -433,7 +433,7 @@ def set_turn_context(trace_dir: str | None = None,
+                      conversation_id: str | None = None,
+                      stealth: bool = False,
+                      surface: str = "unknown",
+-                     risk_tier: str | None = None) -> None:
++                     risk_tier: str | None = None):
+     """Set by the pipeline (step 2), the server (_direct_stream head), and
+     daemons at their entry seams. Propagates to Gear-4 workers via
+     boot._submit_with_context (contextvars.copy_context).
+@@ -441,10 +441,29 @@ def set_turn_context(trace_dir: str | None = None,
+     ``risk_tier`` (Execution Review Phase 2) rides here so the per-call gate
+     and every recorded event can see the turn's upfront risk tier with no
+     dispatcher signature change; child processes inherit it via the
+-    ORA_RISK_TIER env var (get_turn_context fallback)."""
+-    _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
+-                   "stealth": bool(stealth), "surface": surface,
+-                   "risk_tier": risk_tier})
++    ORA_RISK_TIER env var (get_turn_context fallback).
++
++    Execution Review Phase 8 Chunk D: RETURNS the ContextVar reset token (was
++    None). A caller that seeds a PER-RUN context (a programmatic MSI run) can
++    ``reset_turn_context(token)`` in a finally to RESTORE the prior context
++    exactly — including the "unset" state — so a later run's between-run events
++    can't leak into the prior run's per-run sink (`_sink_path` prefers the
++    context trace_dir). Existing callers that ignore the return are unaffected."""
++    return _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
++                          "stealth": bool(stealth), "surface": surface,
++                          "risk_tier": risk_tier})
++
++
++def reset_turn_context(token) -> None:
++    """Restore the turn context to the state captured by a ``set_turn_context``
++    token (Phase 8 Chunk D). Never raises — a bad/None token is a no-op (the
++    caller's finally must not become a new failure mode)."""
++    if token is None:
++        return
++    try:
++        _TURN_CTX.reset(token)
++    except Exception:
++        pass
+ 
+ 
+ def update_turn_risk_tier(risk_tier: str | None) -> None:

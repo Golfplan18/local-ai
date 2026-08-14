@@ -1,0 +1,4 @@
+# Execution Review Phase 8 Chunk C — tolerated wikilink targets (one per line).
+# Pre-seeded with the known-broken legacy [[Library/Imports/...]] links in Resources/
+# (the Library/ directory predates the current vault structure and no longer exists).
+# A resolvable-name OR the raw target text matches. Lines starting with # are ignored.

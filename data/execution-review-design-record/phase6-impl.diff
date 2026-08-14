@@ -1,0 +1,2392 @@
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index 582b1fec..6e3076fd 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -9050,6 +9050,70 @@ def _make_criteria_invoker(config: dict, config_name: str | None):
+     return _invoke
+ 
+ 
++def _make_execution_verify_invoker(config: dict, config_name: str | None):
++    """Execution Review Phase 6: the verify-slot model-call callback
++    ``(system, user, endpoint) -> str`` for the different-family execution-review
++    verify. Calls the SELECTED endpoint (chosen by the loop's family selector), never
++    a fixed slot — so the diversity requirement is honoured. None-safe: returns "" on
++    a missing endpoint / failed call so the verify degrades rather than raising."""
++    def _invoke(system: str, user: str, endpoint: dict | None) -> str:
++        try:
++            if endpoint is None:
++                return ""
++            return call_model([{"role": "system", "content": system},
++                               {"role": "user", "content": user}], endpoint)
++        except Exception:
++            return ""
++    return _invoke
++
++
++def _execution_review_terminal(ro: dict | None, response: str, context_pkg: dict,
++                               trace_dir: str | None, stealth: bool,
++                               config: dict, config_name: str | None) -> str:
++    """Execution Review terminal dispatch (shared by ``run_pipeline`` +
++    ``server._run_pipeline_from_step2``). When the Phase-6 loop is enabled
++    (``ORA_EXECUTION_LOOP``) AND the turn is non-self-evidencing (a §6 signal fired),
++    build the packet and run the loop (Capture → dual-family verify → stop/escalate),
++    returning the (possibly revised) response. Otherwise build the Phase-4 record
++    packet exactly as before — byte-identical, zero regression. NEVER raises."""
++    try:
++        try:
++            import execution_loop as _el
++        except ImportError:  # pragma: no cover
++            from orchestrator import execution_loop as _el
++        if _el.loop_enabled() and _el.should_engage(ro):
++            try:
++                from execution_packet import build_execution_packet as _bep
++            except ImportError:  # pragma: no cover
++                from orchestrator.execution_packet import build_execution_packet as _bep
++            pkt = _bep(
++                signals=(ro or {}).get("signals"), context_pkg=context_pkg,
++                output_text=response, risk_tier=context_pkg.get("risk_tier"),
++                declared_output_type=context_pkg.get("output_type", "unknown"),
++                consistency=(ro or {}).get("consistency"),
++                trace_ref=str(trace_dir) if trace_dir else None)
++            revised = _el.run_loop(
++                packet=pkt, context_pkg=context_pkg, response=response, ro=ro,
++                risk_tier=context_pkg.get("risk_tier"), trace_dir=trace_dir,
++                stealth=stealth, config=config, config_name=config_name,
++                verify_invoker=_make_execution_verify_invoker(config, config_name),
++                actuator=None)   # first landing: no live gear re-invocation (OQ1)
++            return revised if revised is not None else response
++        # Phase-4 record path — unchanged (byte-identical on every turn when the loop
++        # is disabled OR the turn is self-evidencing).
++        try:
++            from execution_packet import construct_and_write as _cw
++        except ImportError:  # pragma: no cover
++            from orchestrator.execution_packet import construct_and_write as _cw
++        _cw(signals=(ro or {}).get("signals"), context_pkg=context_pkg,
++            output_text=response, risk_tier=context_pkg.get("risk_tier"),
++            declared_output_type=context_pkg.get("output_type", "unknown"),
++            consistency=(ro or {}).get("consistency"), trace_dir=trace_dir)
++        return response
++    except Exception:
++        return response
++
++
+ def run_pipeline(user_input: str, history: list = None,
+                  output_target: str = "screen",
+                  execution_context: str = "interactive",
+@@ -9330,6 +9394,19 @@ def run_pipeline(user_input: str, history: list = None,
+             from orchestrator.evidence_runner import apply_evidence_contract as _aec
+         _aec(context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
+              invoker=_make_criteria_invoker(config, config_name))
++        # Execution Review Phase 6: PLANNING-STAGE pre-execution state seam (⚖ Rev-1
++        # judge P0). Capture the TRUE pre-execution git state BEFORE the gear/actuator
++        # runs (a terminal-time read would be POST-execution) — the exact base for
++        # execution.state_before AND the escalation-branch base. TIER-INDEPENDENT
++        # (⚖ Rev-2 P2: light included, decoupled from the standard+ Contract seam).
++        # Cheap git read, additive, never-raises; only fires when the loop is enabled
++        # (flag OFF → zero new runtime behaviour, parity preserved).
++        try:
++            import execution_loop as _el6
++        except ImportError:  # pragma: no cover
++            from orchestrator import execution_loop as _el6
++        if not stealth and _el6.loop_enabled():
++            _el6.snapshot_pre_execution(context_pkg)
+     except Exception as _rge2:
+         print(f"[risk-gate] tier/hold skipped: {_rge2}")
+         _risk_warn = ""
+@@ -9432,20 +9509,16 @@ def run_pipeline(user_input: str, history: list = None,
+             risk_tier=context_pkg.get("risk_tier"),
+             output_text=response,  # Phase 3: drives the source-read signal
+             declared_output_type=context_pkg.get("output_type", "unknown"))
+-        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket
+-        # SEPARATELY from the already-folded signals (single fold; no packet ref on
+-        # route_observed) and write it TRACE-LOCAL only. Guarded to a real
+-        # deliverable + a trace dir + non-stealth turns (stealth inherits the
++        # Execution Review Phase 4/6: build the ExecutionPacket SEPARATELY from the
++        # already-folded signals (single fold; no packet ref on route_observed). On a
++        # self-evidencing turn (or when the loop is disabled) this is the Phase-4
++        # trace-local record, byte-identical. On a non-self-evidencing turn with the
++        # loop enabled it runs the Phase-6 Capture→verify→stop/escalate loop and may
++        # return a revised deliverable. Guarded to non-stealth (stealth inherits the
+         # no-packet model). Never raises.
+         if not stealth:
+-            try:
+-                from execution_packet import construct_and_write as _cw
+-            except ImportError:  # pragma: no cover
+-                from orchestrator.execution_packet import construct_and_write as _cw
+-            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
+-                output_text=response, risk_tier=context_pkg.get("risk_tier"),
+-                declared_output_type=context_pkg.get("output_type", "unknown"),
+-                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
++            response = _execution_review_terminal(
++                _ro, response, context_pkg, trace_dir, stealth, config, config_name)
+     except Exception:
+         pass
+ 
+diff --git a/orchestrator/evidence_runner.py b/orchestrator/evidence_runner.py
+index 12092cc3..6dead169 100644
+--- a/orchestrator/evidence_runner.py
++++ b/orchestrator/evidence_runner.py
+@@ -924,12 +924,15 @@ def _rgate_tier_at_least(tier: str, floor: str) -> bool:
+ 
+ 
+ # ── Dirty-state modes + git state snapshots (§9/§11) ──────────────────────────
+-def _git(repo: str, args: list[str]) -> tuple[int, str]:
++def _git(repo: str, args: list[str], *, env: dict | None = None) -> tuple[int, str]:
+     """``git -C <repo> <args>`` (mirrors ``engram_promotion._git``). Returns
+-    (exit, stdout). Never raises."""
++    (exit, stdout). Never raises. Optional ``env`` overrides the child environment
++    (``None`` = inherit, identical to before) — the Phase-6 escalation-branch
++    primitive uses it to redirect ``GIT_INDEX_FILE`` so a tree snapshot is committed
++    onto an isolated branch WITHOUT touching the user's real index or HEAD."""
+     try:
+         r = subprocess.run(["git", "-C", repo, *args],
+-                           capture_output=True, text=True, timeout=30)
++                           capture_output=True, text=True, timeout=30, env=env)
+         return r.returncode, (r.stdout or "").strip()
+     except Exception as e:
+         return 1, str(e)
+diff --git a/orchestrator/execution_loop.py b/orchestrator/execution_loop.py
+new file mode 100644
+index 00000000..779db569
+--- /dev/null
++++ b/orchestrator/execution_loop.py
+@@ -0,0 +1,1070 @@
++"""orchestrator/execution_loop.py — Execution Review Phase 6 (wire the loop).
++
++The execution-review LOOP CONTROLLER (spec §15 Phase 6), assembled ENTIRELY from
++parts already present (§4 "same downstream machinery, NOT a second pipeline"):
++
++    plan (apply_criteria + apply_evidence_contract, already live at planning)
++      → execute (the gear run — the single-writer actuator, §3)
++        → Capture (drive the Phase-5 evidence_runner over the real delta)
++          → Verify (dual, DIFFERENT model family; single-family graceful degrade, §12)
++            → revision router (findings tagged plan_level vs execution_level, §12)
++              → stop rule (converge OR escalate — never churn, §13)
++                → escalation to an inspectable, UNMERGED branch the packet links to
++
++This module is a CONTROLLER anchored at the pipeline terminal (``boot.py`` /
++``server.py``), engaging ONLY on non-self-evidencing turns (a §6 signal fired). The
++common analytical-prose turn is self-evidencing and stays byte-identical to Phase 4
++(the gear's own text review WAS the review; the terminal builds the record packet
++exactly as before). Two live sub-cases on a reality-contact turn:
++  * a **mutation** turn (``any_mutation``) drives the full converge/escalate loop over
++    the adapted ``diff_validate`` lane;
++  * a **source-read-only** turn (``source_read_suspected`` and NOT ``any_mutation``)
++    records the packet with an owed ``collect_provenance`` lane + a LOUD deferred
++    marker and does NOT enter the converge/escalate cycle (its fill is Phase-8 — so
++    escalating it would churn, ⚖ Rev-1 judge P1).
++
++Held-live invariants (§16): criteria set by a step separate from + prior to execution
++(§16-1, via ``apply_criteria``); the evidence recipe declared independently of the
++executor (§16-2, the write-protected ``.ora/evidence.yaml`` + the planning Contract);
++reality contact observed not narrated (§16-3, the runner records an ``evidence_check``
++event per outcome). Escalation lands the abandoned attempt on an inspectable, unmerged
++branch (§13) and hands a REFERENCE (not inlined ``producer_claim``) to the durable
++Paused queue.
++
++ROLLOUT (house rule — flag provisional, validate then default-ON, mirroring
++``ORA_DELIVERABLE_SCRUB`` / the RAG fit-gate / the MSI newsworthiness gate): the LIVE
++firing at the terminal is gated behind ``ORA_EXECUTION_LOOP`` (default OFF). Flag OFF
++→ the terminal is byte-identical to Phase 4 and this controller never runs at runtime
++(parity is trivially preserved); the whole controller + Capture + selector + verify +
++fork + stop/escalate + escalation-branch are BUILT and unit-tested regardless. The
++flag only governs whether the terminal fires the loop on a reality-contact turn. The
++loop introduces NEW live model calls (verify) + a possible gear re-invocation
++(actuator) + a git branch on escalation, so a validate-then-default-ON rollout is the
++responsible first landing; the flip is one env var once validated live.
++
++Nothing here raises into the pipeline: every entry point is best-effort and a caught
++failure stamps an observable marker (``tool_events._note_failure``), never a silent
++swallow that could read as "no reality contact."
++"""
++
++from __future__ import annotations
++
++import os
++from dataclasses import dataclass, field
++from typing import Any, Callable
++
++try:  # runtime import shape mirrors the rest of orchestrator/
++    import execution_packet as _ep
++except ImportError:  # pragma: no cover
++    from orchestrator import execution_packet as _ep
++
++try:
++    import evidence_runner as _er
++except ImportError:  # pragma: no cover
++    from orchestrator import evidence_runner as _er
++
++
++# ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
++MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
++SINGLE_FAMILY_CONFIDENCE_PENALTY = 0.3   # lowered confidence when verify is same-family
++_DEFAULT_CONFIDENCE = 0.7        # assumed baseline when the verifier omits CONFIDENCE
++# Severities that block convergence (any class). The verify prompt asks for
++# high|medium|low, but a real model may emit critical/blocker/severe/major for the
++# worst issues — treat ANY of those as ≥ high so a critical finding can never slip
++# past the stop rule as a mere non-"high" token (adversarial-precheck fold).
++HIGH_SEVERITY = "high"
++_BLOCKING_SEVERITIES = frozenset({"high", "critical", "blocker", "severe", "major", "fatal"})
++_DEFAULT_MODE = "review_dirty_diff"       # non-mutating capture over the live tree
++_ENV_FLAG = "ORA_EXECUTION_LOOP"          # LIVE-firing gate (default OFF)
++_ESCALATION_BRANCH_PREFIX = "execution-review/escalation-"
++_REDACTED_SUMMARY_CAP = 4_000
++
++
++def loop_enabled() -> bool:
++    """True when the LIVE terminal firing is enabled (``ORA_EXECUTION_LOOP`` truthy).
++    Default OFF — flag-OFF makes the terminal byte-identical to Phase 4."""
++    return str(os.environ.get(_ENV_FLAG, "")).strip().lower() in ("1", "true", "on", "yes")
++
++
++def _mark_failure(err: Exception, where: str) -> None:
++    """Observable marker for a caught failure (never re-raises)."""
++    try:
++        try:
++            import tool_events as _te
++        except ImportError:  # pragma: no cover
++            from orchestrator import tool_events as _te
++        _te._note_failure(err, where)
++    except Exception:
++        pass
++
++
++# ── The self-evidencing GATE (§6) — reads only ALREADY-folded signals ──────────
++def engage_signals(ro: dict | None) -> dict:
++    """Return the two folded §6 signals from the in-scope ``record_route_observed``
++    result — NO new observation, NO re-fold (condition 1)."""
++    sig = (ro or {}).get("signals") or {}
++    return {
++        "any_mutation": bool(sig.get("any_mutation")),
++        "source_read_suspected": bool(sig.get("source_read_suspected")),
++    }
++
++
++def should_engage(ro: dict | None) -> bool:
++    """Engage the loop only on a non-self-evidencing turn (a §6 signal fired). The
++    common self-evidencing turn returns False → the terminal degrades to the
++    Phase-4 record packet, byte-identical, zero regression."""
++    s = engage_signals(ro)
++    return bool(s["any_mutation"] or s["source_read_suspected"])
++
++
++# ── Capture (§3/§7/§10/§11) — drive the Phase-5 runner over the real delta ─────
++@dataclass
++class CaptureResult:
++    """The mechanical Capture outcome for the ``diff_validate`` lane."""
++
++    mode: str = _DEFAULT_MODE
++    repo_root: str | None = None
++    state_before: dict | None = None
++    state_after: dict | None = None
++    delta_ref: str | None = None
++    results: list = field(default_factory=list)      # list[CheckResult]
++    deferred_mutating: list = field(default_factory=list)   # check names deferred to Phase 8
++    sufficient: bool = False
++    no_repo: bool = False            # no discoverable repo → diff+validate lane owed
++    no_checks: bool = False          # repo-less / no declared checks → owed, degrade
++    base_unknown: bool = False       # no pre-execution snapshot → base-unknown, lane owed
++    enforcement_model: str = "in_harness"
++
++    def ran_and_failed(self) -> bool:
++        """A check that RAN and returned a negative verdict (evidence exists and is
++        negative) — the ONLY check-side condition that warrants escalation (§13/P4).
++        A skipped/refused/deferred check is NOT a ran-and-failed check.
++
++        When the base is UNKNOWN (no pre-execution snapshot), a check outcome is NOT
++        attributable to this turn (the working tree may have carried a pre-existing
++        failure the executor never touched) — so it is OWED, not a real ran-and-failed
++        signal, and does NOT drive escalation (judge P1 fold: base-unknown stays owed).
++        Without a base, no §13 abandoned-attempt branch can be created anyway."""
++        if self.base_unknown:
++            return False
++        for r in self.results or []:
++            if not getattr(r, "skipped", False) and not getattr(r, "passed", False):
++                return True
++        return False
++
++
++def _capture_mode(context_pkg: dict | None) -> str:
++    """Phase 6 runs Capture NON-MUTATINGLY over the live repo — ``review_dirty_diff``
++    by default, or ``continue_user_changes`` when the caller declares the user owns
++    the tree. It NEVER passes ``clean_worktree`` against the user's live checkout
++    (⚖ Rev-2 P1): a ``clean_worktree``-isolated mutating run is the Phase-8 actuator."""
++    m = (context_pkg or {}).get("exec_review_mode")
++    if m in ("review_dirty_diff", "continue_user_changes"):
++        return m
++    return _DEFAULT_MODE
++
++
++def discover_repo_root(context_pkg: dict | None = None, *, runner: Any = None) -> str | None:
++    """Discover the repo root for Capture / the pre-execution snapshot: explicit
++    ``context_pkg['repo_root']`` → ``ORA_PROJECT_ROOT`` → the discoverable catalog's
++    grandparent (the dir that holds ``.ora/``) → cwd — each accepted only if it is a
++    git repo. Returns the root or None. Never raises."""
++    runner = runner or _er
++    ctx = context_pkg or {}
++    try:
++        for cand in (ctx.get("repo_root"), os.environ.get("ORA_PROJECT_ROOT")):
++            if cand and _is_git_repo(cand, runner):
++                return str(cand)
++        cat = None
++        try:
++            cat = runner.discover_catalog(ctx.get("repo_root"))
++        except Exception:
++            cat = None
++        if cat:
++            grand = os.path.dirname(os.path.dirname(str(cat)))
++            if grand and _is_git_repo(grand, runner):
++                return grand
++        try:
++            cwd = os.getcwd()
++        except Exception:
++            cwd = None
++        if cwd and _is_git_repo(cwd, runner):
++            return cwd
++        return None
++    except Exception as e:
++        _mark_failure(e, "execution_loop_discover_repo")
++        return None
++
++
++def _is_git_repo(path: str, runner: Any = None) -> bool:
++    runner = runner or _er
++    try:
++        rc, out = runner._git(str(path), ["rev-parse", "--is-inside-work-tree"])
++        return rc == 0 and out.strip() == "true"
++    except Exception:
++        return False
++
++
++def snapshot_pre_execution(context_pkg: dict, *, repo_root: str | None = None,
++                           runner: Any = None) -> dict | None:
++    """PLANNING-STAGE pre-execution state seam (⚖ Rev-1 judge P0). Capture the TRUE
++    pre-execution git state (HEAD SHA + dirty snapshot) BEFORE any mutation-capable
++    actuator runs, and stash it on ``context_pkg['exec_review_state_before']`` — the
++    exact base for ``execution.state_before`` AND the escalation-branch base (a
++    terminal-time read would be POST-execution, ``evidence_runner.py`` ``_git_state``
++    reads *current* HEAD). TIER-INDEPENDENT (⚖ Rev-2 P2: ``light`` included — decoupled
++    from the ``standard+`` Contract seam). Cheap (``git rev-parse`` + ``status``),
++    additive, never-raises. Returns the snapshot or None (no repo / no stash)."""
++    runner = runner or _er
++    try:
++        rr = repo_root or discover_repo_root(context_pkg, runner=runner)
++        if not rr:
++            return None
++        mode = _capture_mode(context_pkg)
++        before = runner.snapshot_before(rr, mode)
++        # A snapshot with no HEAD (an explicit repo_root that is not a git repo, or a
++        # git read that failed) is NOT a valid base — return None rather than stash a
++        # FALSE state_before (§P1: never a false state_before; the lane stays owed).
++        if not (before and before.get("head")):
++            return None
++        if context_pkg is not None:
++            context_pkg["exec_review_state_before"] = before
++            context_pkg.setdefault("repo_root", rr)
++        return before
++    except Exception as e:
++        _mark_failure(e, "execution_loop_snapshot_before")
++        return None
++
++
++def _required_check_names(contract: dict | None, catalog: Any) -> list:
++    """The checks Capture must run: at ``standard+`` the Contract's
++    ``required_standard_checks`` VERBATIM (a task-specific subset); at ``light`` (no
++    bespoke Contract) the repo catalog's own checks directly (§8/§10 "basic evidence =
++    the repo catalog checks only"). The Contract set is returned UNFILTERED so a
++    required check absent from the catalog is OBSERVED as a refused ``evidence_check``
++    event by ``run_contract`` (§16-3 observed-not-narrated), never silently dropped —
++    the executor still cannot invent a check (an absent one is recorded as a refusal
++    and counts as NOT sufficient, §16-2). The contract producer already restricts
++    required to catalog checks upstream, so this is defensive fidelity."""
++    if contract and contract.get("required_standard_checks"):
++        return list(contract["required_standard_checks"])
++    return sorted((getattr(catalog, "checks", None) or {}).keys())
++
++
++def _record_deferred_mutating(name: str, runner: Any) -> Any:
++    """Record a ``mutates:true`` required check as DEFERRED to the Phase-8 isolated
++    actuator — a LOUD owed marker + an OBSERVED ``evidence_check`` event with a
++    skip_reason (never a silent skip, §16-3). NOT escalate-forcing (P4). Returns the
++    CheckResult so it rides the packet's lane."""
++    reason = ("mutating check deferred — the isolated actuator (git worktree add → "
++              "apply delta → run → remove) is Phase 8; never run against the live checkout")
++    res = _er.CheckResult(name=name, skipped=True, skip_reason=reason)
++    try:
++        _er._record_check_event(_er.Check(name=name, mutates=True), res)
++    except Exception:
++        pass
++    _mark_failure(RuntimeError(f"deferred mutating check '{name}': {reason}"),
++                  "execution_loop_deferred_mutating")
++    return res
++
++
++def run_capture(packet: Any, *, context_pkg: dict | None = None,
++                trace_dir: str | None = None, runner: Any = None,
++                repo_root: str | None = None) -> CaptureResult:
++    """Drive the Phase-5 runner AFTER the actuator, over whatever the turn actually
++    mutated, using the STASHED pre-execution base (never a terminal-time read). Runs
++    ONLY non-mutating catalog checks live (mutating ones are recorded DEFERRED to
++    Phase 8, ⚖ Rev-2). Fills the packet's ``diff_validate`` lane. Never raises —
++    returns a CaptureResult describing what happened (including honest owed states)."""
++    runner = runner or _er
++    ctx = context_pkg or {}
++    mode = _capture_mode(ctx)
++    before = ctx.get("exec_review_state_before")
++    cr = CaptureResult(mode=mode, state_before=before)
++    # No true pre-execution base (the planning-stage snapshot did not fire, or had no
++    # HEAD) → the diff+validate lane is BASE-UNKNOWN: the before/after delta cannot be
++    # trusted, so the lane stays OWED and is NEVER marked sufficient — even if the
++    # checks pass on the current tree (design P1: never a false state_before /
++    # sufficiency). [judge P1 fold]
++    cr.base_unknown = not (isinstance(before, dict) and before.get("head"))
++    try:
++        rr = repo_root or ctx.get("repo_root") or discover_repo_root(ctx, runner=runner)
++        cr.repo_root = rr
++        if not rr:
++            # No discoverable repo → no diff+validate checks to run; the lane stays
++            # owed (not sufficient). Degrade to text review, never escalate (P4).
++            cr.no_repo = True
++            return cr
++
++        catalog = None
++        try:
++            cat_path = runner.discover_catalog(rr)
++            if cat_path:
++                catalog = runner.parse_catalog(cat_path)
++        except Exception as e:
++            _mark_failure(e, "execution_loop_capture_parse")
++            catalog = None
++
++        contract = ctx.get("evidence_contract")
++        required = _required_check_names(contract, catalog) if catalog else []
++        if not required:
++            # repo-less / no-catalog / no declared checks → owed lane, degrade
++            # (never a false "sufficient", never escalate-churn — ⚖ Rev-1 OQ6).
++            cr.no_checks = True
++
++        # Split mutating (deferred to Phase 8) from the non-mutating live checks.
++        results: list = []
++        runnable: list = []
++        for name in required:
++            chk = (getattr(catalog, "checks", None) or {}).get(name)
++            if chk is not None and getattr(chk, "mutates", False):
++                cr.deferred_mutating.append(name)
++                results.append(_record_deferred_mutating(name, runner))
++            else:
++                runnable.append(name)
++
++        if runnable and catalog is not None:
++            filtered = {"required_standard_checks": runnable}
++            results.extend(runner.run_contract(catalog, filtered, rr, mode=mode))
++        cr.results = results
++
++        # state_after + a delta REFERENCE (diff written trace-local, never inlined).
++        try:
++            after, delta_ref = runner.snapshot_after(rr, mode, trace_dir, before)
++            cr.state_after = after
++            cr.delta_ref = delta_ref
++        except Exception as e:
++            _mark_failure(e, "execution_loop_capture_after")
++
++        # Fill the packet's diff_validate lane + judge sufficiency against the FULL
++        # required set — the ORIGINAL contract (standard+) OR every catalog check
++        # (light). It must include the DEFERRED mutating checks: a deferred required
++        # check is skipped → contract_sufficient counts it NOT sufficient → honest
++        # degrade, never a false "sufficient" (⚖ Rev-2 P1; §16-2 absence ≠ pass). Using
++        # `runnable` here would silently drop the deferred mutating check at light tier
++        # and falsely converge — precisely the tier ⚖ Rev-2 P2 brought into scope.
++        fill_contract = contract or {"required_standard_checks": required}
++        try:
++            runner.fill_evidence_lanes(packet, results, fill_contract, cr.delta_ref)
++            cr.sufficient = runner.contract_sufficient(results, fill_contract)
++        except Exception as e:
++            _mark_failure(e, "execution_loop_capture_fill")
++
++        # Base-unknown → the diff+validate lane is OWED regardless of check outcomes:
++        # force sufficiency False and mark the lane owed (None) so the packet + stop
++        # rule never read a base-less run as sufficient (judge P1 fold). A check that
++        # RAN and FAILED still surfaces (ran_and_failed) — only the false SUFFICIENCY
++        # is suppressed.
++        if cr.base_unknown and cr.sufficient:
++            cr.sufficient = False
++            for lane in (getattr(packet, "evidence_lanes", None) or []):
++                if getattr(lane, "lane", None) == "diff_validate":
++                    lane.sufficient = None   # owed (not sufficient)
++            _mark_failure(RuntimeError(
++                "diff+validate base unknown — no pre-execution snapshot; lane owed, "
++                "not sufficient"), "execution_loop_base_unknown")
++
++        # Honest enforcement_model: the strongest backend that actually RAN a check
++        # (orchestrated / declared-sandbox), else in_harness (no orchestrated capture).
++        for r in results:
++            enf = getattr(r, "enforcement_model", None)
++            if enf and enf != "in_harness" and not getattr(r, "skipped", False):
++                cr.enforcement_model = enf
++                break
++        return cr
++    except Exception as e:
++        _mark_failure(e, "execution_loop_capture")
++        return cr
++
++
++# ── Verify (§12) — dual DIFFERENT-family; single-family graceful degrade ───────
++def executor_family(config: dict | None, config_name: str | None,
++                    router_obj: Any = None) -> str | None:
++    """The executor's training family = the resolved analyst/``depth`` endpoint's
++    ``training_family``. None/unknown → the caller degrades to single-family (an
++    unconfirmed difference is never presented as cross-family assurance, §12)."""
++    try:
++        if router_obj is None:
++            try:
++                import boot as _boot
++            except ImportError:  # pragma: no cover
++                from orchestrator import boot as _boot
++            ep = _boot.get_slot_endpoint(config or {}, "depth", config_name=config_name)
++        else:
++            ep = router_obj.resolve_endpoint("depth", 4, "interactive", config_name=config_name)
++            if ep is None:
++                ep = router_obj.resolve_endpoint("depth", 3, "interactive", config_name=config_name)
++            ep = router_obj._to_v1_endpoint(ep) if ep else None
++        fam = (ep or {}).get("training_family") if isinstance(ep, dict) else None
++        return (fam or None)
++    except Exception:
++        return None
++
++
++def select_verify_endpoint(*, executor_fam: str | None, config: dict | None = None,
++                           config_name: str | None = None, router_obj: Any = None
++                           ) -> tuple[dict | None, bool]:
++    """Select the verify endpoint. Returns ``(endpoint, same_family)``:
++      * a CONFIRMED different-family endpoint → ``(endpoint, False)``;
++      * else the default ``verification`` endpoint under the single-family
++        graceful-degrade path → ``(endpoint_or_None, True)``.
++    NEVER silently substitutes ``breadth`` for the exec-review verify (that fallback
++    would defeat the different-family requirement, §12). Never raises."""
++    try:
++        router_obj = router_obj or _get_router()
++        if router_obj is not None:
++            diff = router_obj.resolve_different_family(
++                "verification", executor_fam, config_name=config_name)
++            if diff:
++                return diff, False
++            # No cross-family endpoint → single-family degrade over the default slot.
++            same = router_obj.resolve_post_analysis_slot("verification", config_name=config_name)
++            same_v1 = router_obj._to_v1_endpoint(same) if same else None
++            return same_v1, True
++    except Exception as e:
++        _mark_failure(e, "execution_loop_select_verify")
++    return None, True
++
++
++def _get_router():
++    try:
++        try:
++            import boot as _boot
++        except ImportError:  # pragma: no cover
++            from orchestrator import boot as _boot
++        return _boot._get_router()
++    except Exception:
++        return None
++
++
++_VERIFY_SYSTEM = (
++    "You are the EXECUTION-REVIEW verifier (spec §12). You are reviewing a rendered "
++    "packet whose MECHANICAL EVIDENCE is presented FIRST and whose PRODUCER CLAIM is "
++    "LAST and explicitly UNVERIFIED — weigh the evidence, never let a fluent claim "
++    "out-argue a failing or absent check. Judge whether the evidence lanes are "
++    "SUFFICIENT against the declared acceptance criteria + evidence contract. Emit "
++    "EXACTLY this structure and nothing else:\n"
++    "VERDICT: PASS | FAIL\n"
++    "CONFIDENCE: <0.0-1.0>\n"
++    "FINDING: severity=<high|medium|low>; class=<plan_level|execution_level>; <one-line description>\n"
++    "  (repeat FINDING per issue; a PLAN_LEVEL finding = the acceptance criteria / "
++    "contract themselves are wrong; an EXECUTION_LEVEL finding = the implementation "
++    "does not meet a correct criterion)\n"
++    "INVENTED_TEST: kind=<acceptance|regression|diagnostic|exploratory>; <name>\n"
++    "  (only an ACCEPTANCE-kind invented test obligates the executor)\n"
++)
++_SINGLE_FAMILY_ADDENDUM = (
++    "\n\nNOTE: no different-family verifier is available, so you share the executor's "
++    "training lineage. Compensate by being MAXIMALLY ADVERSARIAL in a distinct "
++    "skeptic's role — actively hunt the failure modes an aligned reviewer would wave "
++    "through. Your review carries LOWERED confidence and does not substitute for "
++    "cross-family assurance."
++)
++
++
++def parse_verify_output(text: str | None) -> dict:
++    """Parse the verifier's structured output into
++    ``{verdict, confidence, findings[], invented_tests[]}``. Line-anchored + tolerant
++    (case-insensitive keys, missing fields default safely). Never raises."""
++    out: dict = {"verdict": None, "confidence": None, "findings": [], "invented_tests": []}
++    try:
++        for raw in (text or "").splitlines():
++            line = raw.strip()
++            low = line.lower()
++            if low.startswith("verdict:"):
++                v = line.split(":", 1)[1].strip().upper()
++                out["verdict"] = ("PASS" if v.startswith("PASS")
++                                  else "FAIL" if v.startswith("FAIL")
++                                  else (v or None))
++            elif low.startswith("confidence:"):
++                try:
++                    out["confidence"] = float(line.split(":", 1)[1].strip().split()[0])
++                except Exception:
++                    pass
++            elif low.startswith("finding:"):
++                out["findings"].append(_parse_finding(line.split(":", 1)[1]))
++            elif low.startswith("invented_test:") or low.startswith("invented test:"):
++                out["invented_tests"].append(_parse_invented(line.split(":", 1)[1]))
++    except Exception as e:
++        _mark_failure(e, "execution_loop_parse_verify")
++    return out
++
++
++def _kv(body: str) -> tuple[dict, str]:
++    """Split a ``k=v; k=v; free text`` body into (kv-dict, trailing free text)."""
++    kv: dict = {}
++    rest_parts: list[str] = []
++    for seg in body.split(";"):
++        seg = seg.strip()
++        if "=" in seg and " " not in seg.split("=", 1)[0].strip():
++            k, v = seg.split("=", 1)
++            kv[k.strip().lower()] = v.strip()
++        elif seg:
++            rest_parts.append(seg)
++    return kv, "; ".join(rest_parts).strip()
++
++
++def _parse_finding(body: str) -> dict:
++    kv, rest = _kv(body)
++    sev = (kv.get("severity") or "medium").strip().lower()
++    cls = (kv.get("class") or "execution_level").strip().lower()
++    if cls not in ("plan_level", "execution_level"):
++        cls = "execution_level"
++    return {"severity": sev, "class": cls, "description": rest or body.strip()}
++
++
++def _parse_invented(body: str) -> dict:
++    kv, rest = _kv(body)
++    kind = (kv.get("kind") or "diagnostic").strip().lower()
++    if kind not in ("acceptance", "regression", "diagnostic", "exploratory"):
++        kind = "diagnostic"
++    return {"kind": kind, "name": rest or body.strip()}
++
++
++def run_verify(review_text: str, *, verify_invoker: Callable | None,
++               endpoint: dict | None = None, same_family: bool = False,
++               risk_tier: str | None = None) -> dict:
++    """Run the §3 execution-review verify over ``render_for_review`` output. The
++    ``verify_invoker(system, user, endpoint) -> str`` callback isolates the model call
++    over the SELECTED verify endpoint (injected for tests). On the single-family path,
++    lower the recorded confidence and stamp a ``fallback_reason`` (§12). Returns a
++    structured verify record; never raises."""
++    rec: dict = {"reviewer": _endpoint_ref(endpoint), "same_family": bool(same_family),
++                 "verdict": None, "confidence": None, "findings": [], "invented_tests": [],
++                 "fallback_reason": None, "escalate_human": False, "ran": False}
++    if verify_invoker is None:
++        rec["fallback_reason"] = "no verify invoker available"
++        _mark_unverified(rec, risk_tier)
++        return rec
++    try:
++        system = _VERIFY_SYSTEM + (_SINGLE_FAMILY_ADDENDUM if same_family else "")
++        raw = verify_invoker(system, review_text, endpoint)
++        parsed = parse_verify_output(raw or "")
++        conf = parsed["confidence"]
++        if same_family:
++            base = conf if conf is not None else _DEFAULT_CONFIDENCE
++            conf = max(0.0, round(base - SINGLE_FAMILY_CONFIDENCE_PENALTY, 4))
++            rec["fallback_reason"] = "single-family verify — no cross-family endpoint available"
++            # For high-risk / irreversible, single-family review must ESCALATE to a
++            # human rather than pass as cross-family assurance (§12).
++            if _tier_at_least(risk_tier, "high-risk"):
++                rec["escalate_human"] = True
++        rec.update(verdict=parsed["verdict"], confidence=conf,
++                   findings=parsed["findings"], invented_tests=parsed["invented_tests"])
++        # The §3 Verify RAN only if it produced a usable result — a recognizable
++        # VERDICT (PASS/FAIL) or at least one finding. An empty / unparseable / broken
++        # response (a missing endpoint, a failed call, garbage with no VERDICT line)
++        # gives NO assurance and must NOT be allowed to converge as criteria_met — that
++        # would be "grading your own homework" with no reviewer (judge P1 fold).
++        rec["ran"] = (rec["verdict"] in ("PASS", "FAIL")) or bool(rec["findings"])
++        if not rec["ran"]:
++            _mark_unverified(rec, risk_tier)
++        return rec
++    except Exception as e:
++        _mark_failure(e, "execution_loop_run_verify")
++        _mark_unverified(rec, risk_tier)
++        return rec
++
++
++def _mark_unverified(rec: dict, risk_tier: str | None) -> None:
++    """The §3 verify could not produce a usable verdict (no invoker / empty / broken).
++    Record it, lower confidence, and — for high-risk/irreversible — escalate to a human
++    (shipping high-risk work with NO verification is worse than degrading)."""
++    rec["ran"] = False
++    rec["confidence"] = 0.0
++    rec["fallback_reason"] = rec.get("fallback_reason") or "verify produced no usable verdict (empty/broken)"
++    if _tier_at_least(risk_tier, "high-risk"):
++        rec["escalate_human"] = True
++
++
++def _endpoint_ref(ep: dict | None) -> dict | None:
++    if not isinstance(ep, dict):
++        return None
++    return {"endpoint": ep.get("id") or ep.get("name"),
++            "family": ep.get("training_family")}
++
++
++def _tier_at_least(tier: str | None, floor: str) -> bool:
++    try:
++        try:
++            import risk_gate as _rg
++        except ImportError:  # pragma: no cover
++            from orchestrator import risk_gate as _rg
++        return _rg.tier_at_least(tier or "standard", floor)
++    except Exception:
++        # Conservative: treat an unknown tier as at-least-high-risk for the escalate
++        # decision only if the floor is high-risk (fail toward more human oversight).
++        return floor in ("high-risk", "irreversible")
++
++
++# ── Revision router (§12) — plan-level vs execution-level fork ─────────────────
++def route_findings(findings: list) -> tuple[list, list]:
++    """Fork findings by their reviewer-assigned ``class`` (no separate classification
++    pass — §12): execution-level → back to the executor; plan-level → back to the
++    planners (else you 'converge on a better implementation of a wrong plan')."""
++    execution_level, plan_level = [], []
++    for f in findings or []:
++        if (f or {}).get("class") == "plan_level":
++            plan_level.append(f)
++        else:
++            execution_level.append(f)
++    return execution_level, plan_level
++
++
++def has_high_severity(findings: list) -> bool:
++    """True if ANY finding of ANY class is high-severity-or-worse (⚖ Rev-1 judge P1:
++    spec §364 'no high-severity finding remains' — NOT narrowed to execution_level,
++    else a high-severity plan-level wrong-problem finding could coexist with
++    criteria_met). Matches high AND critical/blocker/severe/major/fatal (a verifier
++    that emits 'critical' must not slip past the stop rule)."""
++    return any(str((f or {}).get("severity", "")).strip().lower() in _BLOCKING_SEVERITIES
++               for f in (findings or []))
++
++
++def obligating_invented_tests(invented_tests: list) -> list:
++    """Only ``acceptance``-kind invented tests obligate the executor (§12) — genuine
++    missing acceptance criteria. diagnostic / exploratory / preference do not, so the
++    executor is not trapped chasing every invented objection."""
++    return [t for t in (invented_tests or []) if (t or {}).get("kind") == "acceptance"]
++
++
++# ── Stop rule (§13) — converge OR escalate, never churn ────────────────────────
++def converged(capture: CaptureResult, findings: list, verdict: str | None = None,
++              verify_ran: bool = True) -> bool:
++    """Converge when the evidence is sufficient AND no high-severity finding of ANY
++    class remains (§13/⚖ Rev-1) AND the verify actually RAN AND did not explicitly
++    FAIL. Sufficiency is the runner's Contract judgment (empty / owed lanes are NOT
++    sufficient — absence ≠ pass, §16-2).
++
++    - An explicit ``VERDICT: FAIL`` from the different-family verifier BLOCKS
++      convergence even when the mechanical evidence is sufficient and no finding parsed
++      as high-severity (a reviewer-failed deliverable must never be ``criteria_met``).
++    - A verify that did NOT run (empty / broken / no invoker — ``verify_ran=False``)
++      BLOCKS convergence: with no §3 reviewer, ``criteria_met`` would be
++      grading-your-own-homework (judge P1 fold)."""
++    if verdict == "FAIL" or not verify_ran:
++        return False
++    return bool(capture and capture.sufficient) and not has_high_severity(findings)
++
++
++def escalation_warranted(capture: CaptureResult, findings: list,
++                         verdict: str | None = None) -> bool:
++    """Escalate ONLY on real negative evidence — a RAN-and-FAILED check, a persistent
++    high-severity finding, OR an explicit ``VERDICT: FAIL`` from the different-family
++    verifier (a reviewer rejection with nothing left to revise is a genuine unresolved
++    failure a human must adjudicate). NEVER on an owed / deferred / empty lane (⚖ Rev-1
++    + Rev-2: a source-read owed provenance lane, a repo-less no-catalog contract, a
++    deferred mutating check, or a no-sandbox refusal are honest 'can't verify here',
++    not test failures — escalating them would churn every such turn, and a human can't
++    fix an environment limit mid-loop)."""
++    if verdict == "FAIL":
++        return True
++    if capture and capture.ran_and_failed():
++        return True
++    return has_high_severity(findings)
++
++
++# ── Escalation branch (§13) — inspectable, UNMERGED, never discarded ───────────
++def _safe_ref(task_id: Any) -> str:
++    s = "".join(c if (c.isalnum() or c in "-_") else "-" for c in str(task_id or "task"))
++    return s.strip("-") or "task"
++
++
++def _looks_like_sha(s: Any) -> bool:
++    return bool(s) and isinstance(s, str) and 7 <= len(s) <= 64 and all(
++        c in "0123456789abcdefABCDEF" for c in s)
++
++
++def create_escalation_branch(repo_root: str | None, base_sha: str | None,
++                             task_id: Any, *, trace_dir: str | None = None,
++                             git: Callable | None = None) -> str | None:
++    """Create + KEEP an inspectable, UNMERGED branch (§13) at the STASHED
++    pre-execution ``base_sha`` (⚖ Rev-1 P0 — never a terminal-time HEAD), holding the
++    abandoned attempt. The working-tree delta is committed onto the branch via a
++    THROWAWAY index (``GIT_INDEX_FILE``) + ``commit-tree`` — the user's real index and
++    HEAD are left EXACTLY as the executor left them (Phase 6 never resets/rewrites the
++    user's working branch to manufacture an unmerged branch, ⚖ Rev-1 P4). The branch
++    is unmerged by construction (it diverges from the base the user is on). Respects
++    ``.gitignore`` (``add -A`` skips ignored/secret files). Returns the branch ref or
++    None. Never raises."""
++    git = git or _er._git
++    if not (repo_root and _looks_like_sha(base_sha)):
++        return None
++    try:
++        branch = _ESCALATION_BRANCH_PREFIX + _safe_ref(task_id)
++        # 1. Create/point the branch at the pre-execution base — does NOT touch the
++        #    working tree, the index, or HEAD (a ref write only).
++        rc, _ = git(repo_root, ["branch", "-f", branch, base_sha])
++        if rc != 0:
++            return None
++        # 2. Snapshot the CURRENT working tree (the abandoned attempt) onto the branch
++        #    via a throwaway index so the user's .git/index + HEAD are untouched.
++        import tempfile
++        fd, idx_path = tempfile.mkstemp(prefix="er-escal-idx-")
++        os.close(fd)
++        try:
++            os.unlink(idx_path)   # git wants to create the index fresh
++        except OSError:
++            pass
++        env = dict(os.environ)
++        env["GIT_INDEX_FILE"] = idx_path
++        try:
++            git(repo_root, ["read-tree", base_sha], env=env)
++            git(repo_root, ["add", "-A"], env=env)
++            rc_wt, tree = git(repo_root, ["write-tree"], env=env)
++            if rc_wt == 0 and _looks_like_sha(tree):
++                rc_c, commit = git(
++                    repo_root,
++                    ["commit-tree", tree, "-p", base_sha, "-m",
++                     f"execution-review: abandoned attempt (escalated) — task {task_id}"],
++                    env=env)
++                if rc_c == 0 and _looks_like_sha(commit):
++                    git(repo_root, ["update-ref", f"refs/heads/{branch}", commit])
++        finally:
++            try:
++                os.unlink(idx_path)
++            except OSError:
++                pass
++        return branch
++    except Exception as e:
++        _mark_failure(e, "execution_loop_escalation_branch")
++        return None
++
++
++# ── Handback (§7/§13) — a REFERENCE to the durable queue, never inlined content ─
++def redacted_review_summary(packet: Any) -> str:
++    """A REDACTED render_for_review for the durable handback: evidence + verdict, with
++    the UNVERIFIED PRODUCER CLAIM fence DROPPED (the claim may be private/sensitive and
++    the durable queue is more durable than the trace-local packet — §7). Capped."""
++    try:
++        text = _ep.render_for_review(packet)
++    except Exception:
++        return ""
++    marker = "=== UNVERIFIED PRODUCER CLAIM"
++    idx = text.find(marker)
++    if idx != -1:
++        text = text[:idx].rstrip() + "\n=== PRODUCER CLAIM REDACTED (see trace-local packet) ==="
++    return text[:_REDACTED_SUMMARY_CAP]
++
++
++def handback_reference(*, packet: Any, packet_path: str | None, branch_ref: str | None,
++                       reason: str, context_pkg: dict | None = None) -> dict:
++    """Build the Paused-queue handback as a REFERENCE (⚖ folded): the trace-local
++    packet path + the abandoned-attempt branch ref + the reason + a REDACTED
++    render_for_review summary — NOT the inlined ``producer_claim``. Shaped for
++    ``oversight_queue.PausedEntry.context_summary``."""
++    ctx = context_pkg or {}
++    cid = ctx.get("conversation_id", "")
++    return {
++        "queued_at": _now_iso(),
++        # Top-level conversation_id so the conversation_closeout stealth-purge backstop
++        # (Layer 9) can scrub this entry if a conversation is later stealth-purged —
++        # oversight_queue.add_entry does NOT re-derive it the way _append_human_queue does.
++        "conversation_id": cid,
++        "event": {"event_type": "ExecutionReviewEscalation",
++                  "project_nexus": ctx.get("project_nexus", ""),
++                  "conversation_id": cid},
++        "verdict": {"decision": "ESCALATE", "reasoning": reason},
++        "context_summary": {
++            "kind": "execution_review_escalation",
++            "packet_ref": packet_path,
++            "abandoned_attempt_branch": branch_ref,
++            "reason": reason,
++            "summary": redacted_review_summary(packet),
++        },
++    }
++
++
++def push_handback(entry: dict) -> bool:
++    """Best-effort push of the handback reference to the durable Paused queue. Never
++    raises; returns True on a successful hand-off (or a deliberate stealth skip).
++
++    Defense in depth: ``run_loop`` already gates on non-stealth, but the design relies
++    on the handback INHERITING the human-queue's stealth-skip — and the PRIMARY path
++    ``oversight_queue.add_entry`` writes straight to the durable JSONL with NO stealth
++    guard (only the ``_append_human_queue`` fallback stealth-skips). So check the
++    stealth context HERE first, before either backend, so a stealth escalation leaves
++    no durable residue regardless of which backend runs."""
++    try:
++        try:
++            from oversight_events import _is_stealth_context as _isc
++        except ImportError:  # pragma: no cover
++            from orchestrator.oversight_events import _is_stealth_context as _isc
++        if _isc():
++            return False   # stealth: no durable queue residue
++    except Exception:
++        pass
++    try:
++        try:
++            from oversight_queue import add_entry as _add
++        except ImportError:  # pragma: no cover
++            from orchestrator.oversight_queue import add_entry as _add
++        _add(entry)
++        return True
++    except Exception:
++        try:
++            try:
++                from oversight_actions import _append_human_queue as _aq
++            except ImportError:  # pragma: no cover
++                from orchestrator.oversight_actions import _append_human_queue as _aq
++            _aq(entry)
++            return True
++        except Exception as e:
++            _mark_failure(e, "execution_loop_push_handback")
++            return False
++
++
++def _now_iso() -> str:
++    return _ep._now_iso()
++
++
++# ── The controller (§3/§4) — assemble the loop from the parts above ────────────
++def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
++             ro: dict | None = None, signals: dict | None = None,
++             risk_tier: str | None = None, trace_dir: str | None = None,
++             stealth: bool = False, config: dict | None = None,
++             config_name: str | None = None,
++             verify_invoker: Callable | None = None,
++             actuator: Callable | None = None,
++             runner: Any = None, router_obj: Any = None,
++             queue_push: Callable | None = None,
++             branch_creator: Callable | None = None,
++             now_iso: str | None = None) -> str | None:
++    """The terminal-anchored controller. Assembles plan → (already-run) execute →
++    Capture → dual-family Verify → revision router → stop/escalate over the ALREADY-
++    produced ``response`` on a non-self-evidencing turn. Populates the §9 packet
++    blocks and writes the packet trace-local. Returns a POSSIBLY-REVISED response (the
++    actuator re-invoked the gear) or None when the response is unchanged. NEVER raises
++    — every failure degrades to the Phase-4 record behaviour.
++
++    Callbacks are injected for testability: ``verify_invoker(system,user,endpoint)->str``,
++    ``actuator(exec_findings, plan_findings, iteration)->str|None`` (re-invokes the
++    gear), ``queue_push(entry)->bool`` (durable handback). ``runner``/``router_obj``
++    default to the live modules."""
++    try:
++        if stealth or packet is None:
++            return None
++        runner = runner or _er
++        sig = signals if signals is not None else engage_signals(ro)
++        any_mut = bool(sig.get("any_mutation"))
++        src_read = bool(sig.get("source_read_suspected"))
++
++        # Thread the planning-stage acceptance criteria + contract into the packet so
++        # the renderer shows them (or fires its LOUD absence fence). At light there is
++        # no planning block (§9 tier-optional) — leave planning None.
++        planning = None
++        if risk_tier and risk_tier != "light":
++            planning = _ep.planning_block_from_context(context_pkg)
++            # Attach it to the packet NOW — BEFORE any render_for_review — so the
++            # different-family verifier sees the real acceptance criteria, not the LOUD
++            # "NO ACCEPTANCE CRITERIA DECLARED" absence fence. The verifier renders the
++            # packet inside the loop below, which runs BEFORE the final
++            # populate_loop_fields; without this the criteria were populated too late
++            # and every verify judged against a false absence (judge P1 fold).
++            packet.planning = planning
++
++        # ── Source-read-ONLY turn: record + owed provenance marker, NO loop (P1). ──
++        if src_read and not any_mut:
++            _ep.populate_loop_fields(
++                packet, planning=planning,
++                loop={"iteration": 0, "stop_condition": None,
++                      "note": "source-read-only — collect_provenance owed (Phase 8); "
++                              "not entered into the converge/escalate cycle (⚖ Rev-1)"},
++                now_iso=now_iso)
++            _mark_failure(RuntimeError(
++                "provenance evidence owed — the claim-to-source map is Phase 8"),
++                "execution_loop_owed_provenance")
++            _ep.write_packet(packet, trace_dir)
++            return None
++
++        if not any_mut:
++            return None   # defensive — the caller gates on should_engage
++
++        # ── Mutation turn: the full converge/escalate loop over diff_validate. ──
++        exec_fam = executor_family(config, config_name, router_obj)
++        verify_ep, same_family = select_verify_endpoint(
++            executor_fam=exec_fam, config=config, config_name=config_name,
++            router_obj=router_obj)
++
++        current_response = response
++        iteration = 0
++        loop_state: dict = {"iteration": 0, "stop_condition": None}
++        verify_rec: dict = {}
++        capture = run_capture(packet, context_pkg=context_pkg, trace_dir=trace_dir,
++                              runner=runner)
++
++        while True:
++            review_text = _ep.render_for_review(packet)
++            verify_rec = run_verify(review_text, verify_invoker=verify_invoker,
++                                    endpoint=verify_ep, same_family=same_family,
++                                    risk_tier=risk_tier)
++            findings = verify_rec.get("findings") or []
++            verdict = verify_rec.get("verdict")
++            verify_ran = bool(verify_rec.get("ran"))
++            loop_state["iteration"] = iteration
++
++            # Converge? (sufficient + no high-severity finding of any class + the verify
++            # actually RAN + did not explicitly FAIL).
++            if (converged(capture, findings, verdict, verify_ran)
++                    and not verify_rec.get("escalate_human")):
++                loop_state["stop_condition"] = "criteria_met"
++                break
++
++            # Decide escalate-vs-degrade when we are out of revisions — the cap is
++            # reached, no actuator is wired, single-family high-risk forces a human,
++            # OR the remaining insufficiency is structurally UNFIXABLE by a revision
++            # (no finding to route and no ran-and-failed check — a purely owed/deferred
++            # lane). Re-invoking the gear on an owed lane is futile churn (P4).
++            exec_findings, plan_findings = route_findings(findings)
++            actionable = bool(exec_findings or plan_findings) or (capture and capture.ran_and_failed())
++            if (iteration >= MAX_LOOP_ITERATIONS or actuator is None
++                    or verify_rec.get("escalate_human") or not actionable):
++                if escalation_warranted(capture, findings, verdict) or verify_rec.get("escalate_human"):
++                    loop_state["stop_condition"] = "max_iterations_escalated"
++                else:
++                    # Owed/deferred/empty lanes only (or a verify that could not run on
++                    # a non-high-risk turn) → degrade to the text review, loudly marked,
++                    # WITHOUT escalating (P4).
++                    loop_state["stop_condition"] = None
++                    loop_state["note"] = (
++                        "degraded to text review — the different-family verify could not "
++                        "produce a usable verdict (unverified)"
++                        if not verify_ran else
++                        "degraded to text review — evidence owed/deferred (no "
++                        "ran-and-failed check, no persistent high-severity finding, "
++                        "verifier did not fail)")
++                break
++
++            # Revise — fork the findings, re-invoke the gear as the actuator.
++            iteration += 1
++            try:
++                new_resp = actuator(exec_findings, plan_findings, iteration)
++            except Exception as e:
++                _mark_failure(e, "execution_loop_actuator")
++                new_resp = None
++            if new_resp:
++                current_response = new_resp
++                # Update the packet's producer claim to the revised deliverable so the
++                # next render reviews the current attempt.
++                try:
++                    ex = dict(packet.execution or {})
++                    pc = dict(ex.get("producer_claim") or {})
++                    pc["summary"] = str(new_resp)[:_ep._PRODUCER_CLAIM_CAP]
++                    ex["producer_claim"] = pc
++                    packet.execution = ex
++                except Exception:
++                    pass
++            capture = run_capture(packet, context_pkg=context_pkg, trace_dir=trace_dir,
++                                  runner=runner)
++
++        # ── Escalation side effects (branch + handback) ──
++        # Two KINDS of escalation with different branch requirements:
++        #   * EVIDENCE / abandoned-attempt escalation (a check RAN-and-FAILED, a
++        #     high-severity finding, or a VERDICT: FAIL) — its value is that a human can
++        #     INSPECT the abandoned attempt, so §13 requires an inspectable branch. If
++        #     none can be built (base-unknown / no repo / git failure) → base-unknown
++        #     stays owed → DEGRADE (no dangling branchless evidence escalation, judge P1).
++        #   * POLICY / human-review escalation (§12 `escalate_human`: single-family or
++        #     unverified review on high-risk / irreversible work) — a branch-INDEPENDENT
++        #     safety obligation: a human must review because high-risk work shipped
++        #     without cross-family assurance, NOT because there is an abandoned diff to
++        #     inspect. This MUST reach the human queue even when no branch exists
++        #     (silently degrading it would defeat §12 — adversarial re-check fold).
++        escalation = None
++        if loop_state.get("stop_condition") == "max_iterations_escalated":
++            base_sha = ((context_pkg or {}).get("exec_review_state_before") or {}).get("head")
++            task_id = ((context_pkg or {}).get("task_id")
++                       or (context_pkg or {}).get("conversation_id") or "task")
++            branch_ref = (branch_creator or create_escalation_branch)(
++                capture.repo_root, base_sha, task_id, trace_dir=trace_dir)
++            policy_escalation = bool(verify_rec.get("escalate_human"))
++            if branch_ref or policy_escalation:
++                reason = ("execution-review did not converge: "
++                          + ("a declared check ran and failed" if capture.ran_and_failed()
++                             else "a persistent high-severity finding remains"
++                             if has_high_severity(verify_rec.get("findings") or [])
++                             # Attribute a FAIL to the verifier that ACTUALLY ran — never
++                             # claim a different-family reviewer failed the work when only a
++                             # same-family (lowered-assurance) one did (would overstate the
++                             # evidence to the human adjudicator; adversarial re-check fold).
++                             else "the different-family verifier returned VERDICT: FAIL"
++                             if verify_rec.get("verdict") == "FAIL" and not same_family
++                             else "the single-family verifier returned VERDICT: FAIL "
++                                  "(lowered assurance) on high-risk work"
++                             if verify_rec.get("verdict") == "FAIL"
++                             else "the execution-review verify could not run (unverified) on high-risk work"
++                             if not verify_rec.get("ran")
++                             else "single-family verify on high-risk work — human review required"))
++                escalation = {"reason": reason, "abandoned_attempt_branch": branch_ref}
++                if not branch_ref:
++                    # A §12 policy escalation reaches the human WITHOUT an inspectable
++                    # branch: there is no abandoned attempt to link (the deliverable
++                    # shipped; the issue is inadequate cross-family verification), so this
++                    # is NOT a §13 abandoned-attempt escalation. Record that honestly.
++                    escalation["kind"] = "policy_human_review"
++                    escalation["no_branch_reason"] = (
++                        "no inspectable abandoned-attempt branch — base-unknown / no repo; "
++                        "this is a §12 verification-gap human-review escalation, not a §13 "
++                        "abandoned-attempt escalation")
++                # ⚖ Rev-1 P4 / OQ4 honesty: if the executor COMMITTED in place (HEAD
++                # advanced past the pre-execution base), the branch isolates the
++                # working-tree delta but the committed work stays on the user's branch —
++                # the FULL §13 unmerged guarantee requires clean_worktree isolation from
++                # the start (Phase 8). Record that honestly rather than resetting the
++                # user's branch to fake an unmerged branch (Phase 6 never does that).
++                after_head = (capture.state_after or {}).get("head")
++                if branch_ref and base_sha and after_head and after_head != base_sha:
++                    escalation["unmerged_guarantee"] = (
++                        "PARTIAL — executor committed in place (HEAD advanced); the branch "
++                        "isolates the working-tree delta only. Full §13 isolation of a "
++                        "committing run requires clean_worktree from the start (Phase 8).")
++                loop_state["escalation"] = escalation
++            else:
++                # Evidence escalation with NO creatable branch → base-unknown stays owed
++                # → DEGRADE (never a dangling branchless evidence escalation, judge P1).
++                # The packet is recorded trace-local (never silently discarded).
++                loop_state["stop_condition"] = None
++                loop_state["escalation"] = None
++                loop_state["note"] = (
++                    "escalation WITHHELD — evidence escalation but no inspectable §13 "
++                    "abandoned-attempt branch could be created (base-unknown / no repo / "
++                    "git failure); degraded to text review, packet recorded trace-local")
++                _mark_failure(RuntimeError(
++                    "evidence escalation withheld — no §13 branch (base-unknown/no-repo)"),
++                    "execution_loop_escalation_no_branch")
++
++        # ── Populate the §9 packet blocks + write trace-local. ──
++        reviewer_a = verify_rec.get("reviewer")
++        if reviewer_a is not None:
++            reviewer_a = dict(reviewer_a)
++            if same_family:
++                reviewer_a["same_family"] = True
++                reviewer_a["fallback_reason"] = verify_rec.get("fallback_reason")
++        verification = {
++            "reviewer_a": reviewer_a,
++            "reviewer_b": None,
++            "confidence": verify_rec.get("confidence"),
++            "findings": verify_rec.get("findings") or [],
++            "invented_tests": verify_rec.get("invented_tests") or [],
++        }
++        execution = {
++            "mode": capture.mode,
++            "state_before": capture.state_before,
++            "state_after": capture.state_after,
++            "enforcement_model": capture.enforcement_model,
++        }
++        _ep.populate_loop_fields(packet, planning=planning, verification=verification,
++                                 execution=execution, loop=loop_state, now_iso=now_iso)
++        packet_path = _ep.write_packet(packet, trace_dir)
++
++        if escalation is not None:
++            entry = handback_reference(
++                packet=packet, packet_path=packet_path,
++                branch_ref=escalation["abandoned_attempt_branch"],
++                reason=escalation["reason"], context_pkg=context_pkg)
++            (queue_push or push_handback)(entry)
++
++        return current_response if current_response != response else None
++    except Exception as e:
++        _mark_failure(e, "execution_loop_run")
++        return None
+diff --git a/orchestrator/execution_packet.py b/orchestrator/execution_packet.py
+index 573428b8..b28e0947 100644
+--- a/orchestrator/execution_packet.py
++++ b/orchestrator/execution_packet.py
+@@ -433,6 +433,88 @@ def write_packet(packet: ExecutionPacket | None, trace_dir: str | None) -> str |
+         return None
+ 
+ 
++# ── Phase 6: fill the reserved §9 loop / verification / execution blocks ───────
++def planning_block_from_context(context_pkg: dict | None, *,
++                                planner_a: Any = None, planner_b: Any = None,
++                                approach: str | None = None) -> dict:
++    """Thread the planning-stage acceptance criteria + Evidence Contract from
++    ``context_pkg`` (set by ``risk_gate.apply_criteria`` +
++    ``evidence_runner.apply_evidence_contract`` at the live planning seam) into the
++    §9 ``planning`` block the renderer reads (``converged_brief.acceptance_criteria``,
++    ``evidence_contract``). ``planner_a``/``planner_b`` are references (dual at
++    high-risk/irreversible — §8). Returns a dict; NEVER None — at ``light`` the
++    caller passes ``planning=None`` to ``populate_loop_fields`` instead (§9 tier-
++    optional: a light packet legitimately has no planning block)."""
++    context_pkg = context_pkg or {}
++    return {
++        "planner_a": planner_a,
++        "planner_b": planner_b,
++        "converged_brief": {
++            "approach": approach,
++            "acceptance_criteria": context_pkg.get("acceptance_criteria"),
++            "known_risks": None,
++            "review_questions": None,
++        },
++        "evidence_contract": context_pkg.get("evidence_contract"),
++    }
++
++
++def populate_loop_fields(packet: ExecutionPacket | None, *,
++                         planning: dict | None = None,
++                         verification: dict | None = None,
++                         execution: dict | None = None,
++                         loop: dict | None = None,
++                         now_iso: str | None = None) -> ExecutionPacket | None:
++    """Phase 6: FILL (not retrofit) the §9 blocks Phase 4 reserved on a packet
++    already built by ``build_execution_packet`` — ``planning``,
++    ``verification.reviewer_a``/``reviewer_b``/``findings``/``invented_tests``/
++    ``confidence``, ``execution.mode``/``state_before``/``state_after``/
++    ``enforcement_model``, and ``loop.*``. It runs ONLY on the non-self-evidencing
++    loop path, so ``build_execution_packet`` stays byte-compatible for the common
++    self-evidencing turn. Additive + merge-in-place; NEVER raises; returns the packet.
++
++    Invariants held here (do NOT weaken):
++    - The ``reversible`` frontmatter flag is NOT recomputed — it is the §6 tier-
++      boundary gate set at build time (high-risk == ``reversible: true`` is spec-
++      correct; §8 gives high-risk a rollback check, not irreversibility).
++    - The Phase-4 scoped ``text_review_verdict``/``scope``/``status`` on
++      ``verification`` are PRESERVED (the judgment-lane review, §5) — the Phase-6
++      execution-review verify fields layer ON TOP, never clobber them.
++    - The Phase-4 ``execution.delta``/``source_reads``/``producer_claim`` are
++      PRESERVED — Phase 6 owns only ``mode``/``state_*``/``enforcement_model`` (§11/§7).
++    - ``planning`` stays ``None`` at ``light`` (§9 tier-optional — correct, not
++      incomplete); the renderer then fires its LOUD absence fence."""
++    if packet is None:
++        return None
++    try:
++        if planning is not None:
++            packet.planning = planning
++        if verification:
++            merged_v = dict(packet.verification or {})
++            merged_v.update(verification)   # layer P6 fields over the P4 text-review scope
++            packet.verification = merged_v
++        if execution:
++            merged_e = dict(packet.execution or {})
++            # ONLY the §11/§7 fields Phase 6 owns — never touch the Phase-4
++            # delta / source_reads / producer_claim built from the observed signals.
++            for k in ("mode", "state_before", "state_after", "enforcement_model"):
++                if k in execution:
++                    merged_e[k] = execution[k]
++            packet.execution = merged_e
++        if loop is not None:
++            packet.loop = loop
++            sc = (loop or {}).get("stop_condition")
++            if sc == "criteria_met":
++                packet.status = "converged"
++            elif sc == "max_iterations_escalated":
++                packet.status = "escalated"
++        packet.modified = now_iso or _now_iso()
++        return packet
++    except Exception as e:
++        _mark_failure(e, "execution_packet_populate_loop")
++        return packet
++
++
+ def construct_and_write(*, signals: dict | None, context_pkg: dict | None,
+                         output_text: str | None, risk_tier: str | None,
+                         declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
+diff --git a/orchestrator/router.py b/orchestrator/router.py
+index fae3fabe..930751a4 100644
+--- a/orchestrator/router.py
++++ b/orchestrator/router.py
+@@ -612,6 +612,70 @@ class Router:
+ 
+         return None
+ 
++    def _post_analysis_candidate_ids(self, slot: str, context: str = "interactive",
++                                     config_name: str | None = None,
++                                     gear: int = 4) -> list:
++        """Ordered endpoint-id candidates for a post-analysis slot, WITHOUT
++        resolving (no mutex / circuit-breaker side effects): the cell's primary +
++        fallback[] for a named configuration, else the legacy bucket-walk order.
++        The family selector filters these; a pure config read."""
++        effective_config = self._resolve_config_name(config_name, context)
++        if effective_config is not None:
++            return self.get_slot_chain(slot, gear, config_name=effective_config)
++        pipeline = self.config.get("pipelines", {}).get(context, {})
++        post = pipeline.get("post_analysis", {})
++        cells = post.get("cells", {})
++        cell_config = cells.get(slot) if cells else None
++        bucket_order = (cell_config.get("buckets", [])
++                        if isinstance(cell_config, dict) else post.get("buckets", []))
++        ids: list = []
++        for bucket_name in bucket_order:
++            if bucket_name == "STOP":
++                break
++            for ep_id in self._buckets.get(bucket_name, []):
++                ids.append(ep_id)
++        return ids
++
++    def resolve_different_family(self, slot: str, exclude_family: str | None,
++                                 context: str = "interactive",
++                                 config_name: str | None = None,
++                                 gear: int = 4) -> dict | None:
++        """§12 different-family verify SELECTOR (Execution Review Phase 6).
++
++        Resolve a post-analysis slot (typically ``verification``) to an endpoint
++        whose ``training_family`` DIFFERS from ``exclude_family`` (the executor's
++        family) — the model-diversity governance rule: the lift comes from
++        *uncorrelated blind spots*, so a verifier that shares the executor's family
++        rubber-stamps it. Walks the slot's configured candidate chain (primary +
++        fallbacks for a named config; the bucket-walk order otherwise), skipping
++        ineligible (disabled / non-active) endpoints AND every candidate that is NOT
++        a CONFIRMED different family.
++
++        Returns a v1 endpoint dict, or ``None`` when no cross-family endpoint is
++        configured/available — ``None`` is the signal for the caller's single-family
++        graceful-degrade path (§12), never a silent breadth fallback (that fallback
++        would defeat the requirement). An UNKNOWN executor family (empty) or an
++        UNKNOWN candidate family yields ``None`` too: an unconfirmed difference must
++        not be presented as cross-family assurance. Pure config read; never raises."""
++        try:
++            exclude = (exclude_family or "").strip().lower()
++            for ep_id in self._post_analysis_candidate_ids(slot, context, config_name, gear):
++                if not ep_id:
++                    continue
++                resolved = self._resolve_endpoint_id(ep_id)
++                ep = self._endpoints.get(resolved)
++                if not ep or not ep.get("enabled", False) or ep.get("status") != "active":
++                    continue
++                fam = (ep.get("training_family") or "").strip().lower()
++                # Only a KNOWN family that differs from a KNOWN executor family
++                # counts as confirmed cross-family (§12 uncorrelated blind spots).
++                if not exclude or not fam or fam == exclude:
++                    continue
++                return self._to_v1_endpoint(ep)
++            return None
++        except Exception:
++            return None
++
+     def resolve_full_pipeline(self, requested_gear: int,
+                               context: str = "interactive",
+                               config_name: str | None = None) -> dict:
+diff --git a/orchestrator/tests/test_evidence_runner.py b/orchestrator/tests/test_evidence_runner.py
+index d491414a..2a2feae6 100644
+--- a/orchestrator/tests/test_evidence_runner.py
++++ b/orchestrator/tests/test_evidence_runner.py
+@@ -658,5 +658,48 @@ class TestNoHardcodedPaths(unittest.TestCase):
+         self.assertIn("right problem", src)
+ 
+ 
++# ── Phase 6: _git gained an optional env= (the escalation-branch GIT_INDEX_FILE) ──
++class TestGitEnvParam(unittest.TestCase):
++    def _repo(self):
++        d = tempfile.mkdtemp(prefix="er-gitenv-")
++        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
++        subprocess.run(["git", "-C", d, "config", "user.email", "t@t"], check=True)
++        subprocess.run(["git", "-C", d, "config", "user.name", "t"], check=True)
++        (Path(d) / "a.txt").write_text("x\n")
++        subprocess.run(["git", "-C", d, "add", "-A"], check=True)
++        subprocess.run(["git", "-C", d, "commit", "-qm", "base"], check=True)
++        return d
++
++    def test_git_env_none_is_inherit(self):
++        d = self._repo()
++        rc, out = er._git(d, ["rev-parse", "--is-inside-work-tree"])
++        self.assertEqual(rc, 0)
++        self.assertEqual(out, "true")
++
++    def test_git_index_file_redirect_leaves_real_index_untouched(self):
++        d = self._repo()
++        # Stage a change into a THROWAWAY index; the real .git/index must stay clean —
++        # this is the isolation the Phase-6 escalation-branch primitive relies on.
++        (Path(d) / "b.txt").write_text("new\n")
++        fd, idx = tempfile.mkstemp(prefix="er-idx-")
++        os.close(fd)
++        os.unlink(idx)
++        env = dict(os.environ)
++        env["GIT_INDEX_FILE"] = idx
++        er._git(d, ["read-tree", "HEAD"], env=env)
++        er._git(d, ["add", "-A"], env=env)
++        rc, tree = er._git(d, ["write-tree"], env=env)
++        self.assertEqual(rc, 0)
++        try:
++            os.unlink(idx)
++        except OSError:
++            pass
++        # The user's REAL index is unaffected: b.txt still shows as untracked
++        # (never staged into .git/index), proving the redirect isolated it.
++        status = subprocess.run(["git", "-C", d, "status", "--porcelain"],
++                                capture_output=True, text=True).stdout
++        self.assertIn("?? b.txt", status)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/orchestrator/tests/test_execution_loop.py b/orchestrator/tests/test_execution_loop.py
+new file mode 100644
+index 00000000..ecd900f9
+--- /dev/null
++++ b/orchestrator/tests/test_execution_loop.py
+@@ -0,0 +1,779 @@
++"""Execution Review Phase 6 — the loop controller (gate + Capture driver +
++different-family verify selector + single-family degrade + plan/exec revision router
+++ stop rule + escalation-branch primitive + handback), per the design packet §5 test
++plan. Mocked gear actuator + mocked runner (no live model); a REAL temp git repo only
++for the escalation-branch + snapshot primitives (git is a hard dependency)."""
++
++from __future__ import annotations
++
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import execution_loop as el  # noqa: E402
++import execution_packet as ep  # noqa: E402
++import evidence_runner as er  # noqa: E402
++
++
++# ── Fakes ─────────────────────────────────────────────────────────────────────
++class FakeRouter:
++    """A pure-config router double: one cross-family verify endpoint by default."""
++
++    def __init__(self, *, different=None, same=None, exec_ep=None):
++        self._different = different if different is not None else {
++            "id": "verifier-x", "name": "verifier-x", "training_family": "gpt"}
++        self._same = same if same is not None else {
++            "id": "same-fam", "name": "same-fam", "training_family": "llama"}
++        # The executor endpoint the loop resolves to derive the executor family.
++        self._exec = exec_ep if exec_ep is not None else {
++            "id": "exec", "name": "exec", "training_family": "llama"}
++
++    def resolve_different_family(self, slot, exclude_family, context="interactive",
++                                config_name=None, gear=4):
++        if not exclude_family:
++            return None
++        fam = (self._different or {}).get("training_family")
++        return self._different if (fam and fam != exclude_family) else None
++
++    def resolve_post_analysis_slot(self, slot, context="interactive", config_name=None):
++        return self._same
++
++    def resolve_endpoint(self, slot, gear, context, config_name=None):
++        return self._exec
++
++    def _to_v1_endpoint(self, ep):
++        return ep
++
++
++class FakeRunner:
++    """A deterministic evidence-runner double — no subprocess, no sandbox."""
++
++    CheckResult = er.CheckResult
++    Check = er.Check
++
++    def __init__(self, *, sufficient=False, results=None, catalog=None,
++                 after=None, delta_ref=None):
++        self._suff = sufficient
++        self._results = results if results is not None else []
++        self._catalog = catalog
++        self._after = after or {"head": "aaaaaaaa", "mode": "review_dirty_diff"}
++        self._delta_ref = delta_ref
++
++    def discover_catalog(self, repo_root):
++        return "cat" if self._catalog is not None else None
++
++    def parse_catalog(self, path):
++        return self._catalog
++
++    def snapshot_before(self, repo_root, mode):
++        return {"head": "b" * 40, "tree": "t", "dirty_hash": None, "mode": mode}
++
++    def snapshot_after(self, repo_root, mode, trace_dir, before):
++        return dict(self._after), self._delta_ref
++
++    def run_contract(self, catalog, contract, repo_root, worktree=None, mode=None):
++        return list(self._results)
++
++    def fill_evidence_lanes(self, packet, results, contract, delta_ref):
++        return packet
++
++    def contract_sufficient(self, results, contract):
++        return self._suff
++
++    def _git(self, repo, args, env=None):
++        if args[:1] == ["rev-parse"] and "--is-inside-work-tree" in args:
++            return 0, "true"
++        return 0, "true"
++
++    def _record_check_event(self, check, result):
++        pass
++
++
++def _pkt(sig, **kw):
++    ctx = kw.pop("context_pkg", {"acceptance_criteria": "AC-1", "conversation_id": "c1",
++                                 "task_id": "c1"})
++    return ep.build_execution_packet(signals=sig, context_pkg=ctx,
++                                     output_text=kw.pop("output_text", "did the thing"),
++                                     risk_tier=kw.pop("risk_tier", "standard"), **kw)
++
++
++V_PASS = "VERDICT: PASS\nCONFIDENCE: 0.9\n"
++V_FAIL_HIGH = ("VERDICT: FAIL\nCONFIDENCE: 0.4\n"
++               "FINDING: severity=high; class=execution_level; broke the build\n")
++V_FAIL_PLAN_HIGH = ("VERDICT: FAIL\nCONFIDENCE: 0.5\n"
++                    "FINDING: severity=high; class=plan_level; wrong problem\n")
++# The exact confirmed-bug shapes: a FAIL with a NON-"high" severity, and a prose-only
++# FAIL with zero parsed findings — both previously converged as criteria_met.
++V_FAIL_CRITICAL = ("VERDICT: FAIL\nCONFIDENCE: 0.2\n"
++                   "FINDING: severity=critical; class=execution_level; deletes prod db\n")
++V_FAIL_PROSE = "VERDICT: FAIL\nCONFIDENCE: 0.2\nThe deliverable is unacceptable.\n"
++
++
++def _verify(text):
++    return lambda system, user, endpoint: text
++
++
++# ── The self-evidencing GATE (§6) ──────────────────────────────────────────────
++class TestGate(unittest.TestCase):
++    def test_self_evidencing_turn_does_not_engage(self):
++        self.assertFalse(el.should_engage({"signals": {}}))
++        self.assertFalse(el.should_engage(None))
++        self.assertFalse(el.should_engage({"signals": {"any_mutation": False,
++                                                       "source_read_suspected": False}}))
++
++    def test_mutation_or_source_read_engages(self):
++        self.assertTrue(el.should_engage({"signals": {"any_mutation": True}}))
++        self.assertTrue(el.should_engage({"signals": {"source_read_suspected": True}}))
++
++    def test_engage_signals_reads_only_folded_data(self):
++        s = el.engage_signals({"signals": {"any_mutation": True, "source_read_suspected": False}})
++        self.assertEqual(s, {"any_mutation": True, "source_read_suspected": False})
++
++    def test_loop_disabled_by_default(self):
++        os.environ.pop(el._ENV_FLAG, None)
++        self.assertFalse(el.loop_enabled())
++
++    def test_loop_enabled_flag(self):
++        try:
++            os.environ[el._ENV_FLAG] = "1"
++            self.assertTrue(el.loop_enabled())
++            os.environ[el._ENV_FLAG] = "false"
++            self.assertFalse(el.loop_enabled())
++        finally:
++            os.environ.pop(el._ENV_FLAG, None)
++
++
++# ── Different-family verify selector (§12) ─────────────────────────────────────
++class TestFamilySelector(unittest.TestCase):
++    def test_picks_cross_family(self):
++        ep_, same = el.select_verify_endpoint(executor_fam="llama", router_obj=FakeRouter())
++        self.assertEqual(ep_["training_family"], "gpt")
++        self.assertFalse(same)
++
++    def test_single_family_when_no_cross_family(self):
++        # different_family returns None → single-family degrade over the default slot.
++        r = FakeRouter(different={"id": "x", "training_family": "llama"})
++        ep_, same = el.select_verify_endpoint(executor_fam="llama", router_obj=r)
++        self.assertTrue(same)
++        self.assertEqual(ep_["id"], "same-fam")
++
++    def test_unknown_executor_family_degrades(self):
++        ep_, same = el.select_verify_endpoint(executor_fam=None, router_obj=FakeRouter())
++        self.assertTrue(same)
++
++    def test_router_method_skips_same_and_unknown_family(self):
++        # Exercise the REAL Router.resolve_different_family candidate filter directly.
++        import router as rt
++        r = object.__new__(rt.Router)
++        r.config = {"pipelines": {"interactive": {"post_analysis": {
++            "buckets": ["b"], "cells": {}}}}}
++        r._buckets = {"b": ["same", "nofam", "cross"]}
++        r._endpoints = {
++            "same": {"id": "same", "enabled": True, "status": "active", "training_family": "llama"},
++            "nofam": {"id": "nofam", "enabled": True, "status": "active"},
++            "cross": {"id": "cross", "enabled": True, "status": "active", "training_family": "qwen"},
++        }
++        r._resolve_endpoint_id = lambda x: x
++        r._resolve_config_name = lambda cn, ctx: None
++        r._to_v1_endpoint = lambda e: e
++        got = r.resolve_different_family("verification", "llama")
++        self.assertEqual(got["id"], "cross")
++        # unknown executor family → None
++        self.assertIsNone(r.resolve_different_family("verification", None))
++        # if only same-family available → None
++        r._buckets = {"b": ["same"]}
++        self.assertIsNone(r.resolve_different_family("verification", "llama"))
++
++
++# ── Verify + single-family degrade (§12) ───────────────────────────────────────
++class TestVerify(unittest.TestCase):
++    def test_parse_output(self):
++        p = el.parse_verify_output(
++            "VERDICT: FAIL\nCONFIDENCE: 0.75\n"
++            "FINDING: severity=high; class=plan_level; the plan is wrong\n"
++            "FINDING: severity=low; class=execution_level; a nit\n"
++            "INVENTED_TEST: kind=acceptance; handles empty input\n"
++            "INVENTED_TEST: kind=diagnostic; prints timing\n")
++        self.assertEqual(p["verdict"], "FAIL")
++        self.assertEqual(p["confidence"], 0.75)
++        self.assertEqual(len(p["findings"]), 2)
++        self.assertEqual(p["findings"][0]["class"], "plan_level")
++        self.assertEqual(p["findings"][0]["severity"], "high")
++        self.assertEqual([t["kind"] for t in p["invented_tests"]], ["acceptance", "diagnostic"])
++
++    def test_parse_defaults(self):
++        p = el.parse_verify_output("FINDING: just a description with no fields\n")
++        self.assertEqual(p["findings"][0]["class"], "execution_level")
++        self.assertEqual(p["findings"][0]["severity"], "medium")
++
++    def test_single_family_lowers_confidence(self):
++        rec = el.run_verify("review", verify_invoker=_verify(V_PASS),
++                            endpoint={"id": "v"}, same_family=True, risk_tier="standard")
++        self.assertTrue(rec["same_family"])
++        self.assertIsNotNone(rec["fallback_reason"])
++        # 0.9 baseline − 0.3 penalty = 0.6
++        self.assertAlmostEqual(rec["confidence"], 0.6, places=4)
++
++    def test_single_family_high_risk_escalates_to_human(self):
++        rec = el.run_verify("review", verify_invoker=_verify(V_PASS),
++                            endpoint={"id": "v"}, same_family=True, risk_tier="irreversible")
++        self.assertTrue(rec["escalate_human"])
++
++    def test_cross_family_no_penalty(self):
++        rec = el.run_verify("review", verify_invoker=_verify(V_PASS),
++                            endpoint={"id": "v"}, same_family=False, risk_tier="standard")
++        self.assertFalse(rec["same_family"])
++        self.assertEqual(rec["confidence"], 0.9)
++        self.assertFalse(rec["escalate_human"])
++
++    def test_no_invoker_is_safe(self):
++        rec = el.run_verify("review", verify_invoker=None)
++        self.assertEqual(rec["findings"], [])
++        self.assertIsNotNone(rec["fallback_reason"])
++        self.assertFalse(rec["ran"])   # no invoker → verify did not run
++
++    def test_empty_or_broken_output_marks_not_ran(self):
++        # judge P1 fold: an empty / no-VERDICT response is NOT a usable verify.
++        for out in ("", "   ", "I could not complete the review.", "blah blah no verdict"):
++            rec = el.run_verify("review", verify_invoker=_verify(out), endpoint={"id": "v"})
++            self.assertFalse(rec["ran"], repr(out))
++            self.assertIsNotNone(rec["fallback_reason"])
++        # a PASS or a lone FINDING IS usable → ran.
++        self.assertTrue(el.run_verify("review", verify_invoker=_verify(V_PASS),
++                                      endpoint={"id": "v"})["ran"])
++        self.assertTrue(el.run_verify(
++            "review", verify_invoker=_verify("FINDING: severity=low; class=execution_level; nit"),
++            endpoint={"id": "v"})["ran"])
++
++    def test_broken_verify_high_risk_escalates_to_human(self):
++        rec = el.run_verify("review", verify_invoker=_verify(""), endpoint={"id": "v"},
++                            risk_tier="irreversible")
++        self.assertTrue(rec["escalate_human"])
++
++
++# ── Revision router (§12) ──────────────────────────────────────────────────────
++class TestRouterAndSeverity(unittest.TestCase):
++    def test_fork_plan_vs_execution(self):
++        f = [{"class": "plan_level", "severity": "high", "description": "a"},
++             {"class": "execution_level", "severity": "low", "description": "b"},
++             {"severity": "medium", "description": "c"}]  # default → execution
++        ex, pl = el.route_findings(f)
++        self.assertEqual(len(pl), 1)
++        self.assertEqual(len(ex), 2)
++
++    def test_high_severity_any_class_blocks(self):
++        self.assertTrue(el.has_high_severity([{"class": "plan_level", "severity": "high"}]))
++        self.assertTrue(el.has_high_severity([{"class": "execution_level", "severity": "high"}]))
++        self.assertFalse(el.has_high_severity([{"severity": "medium"}]))
++
++    def test_critical_and_blocker_severity_also_block(self):
++        # Adversarial-precheck fold: a verifier that emits critical/blocker/severe/major
++        # must not slip past the stop rule as a mere non-"high" token.
++        for sev in ("critical", "blocker", "severe", "major", "fatal", "CRITICAL"):
++            self.assertTrue(el.has_high_severity([{"severity": sev}]), sev)
++        self.assertFalse(el.has_high_severity([{"severity": "low"}]))
++
++    def test_only_acceptance_invented_tests_obligate(self):
++        tests = [{"kind": "acceptance", "name": "x"}, {"kind": "diagnostic", "name": "y"},
++                 {"kind": "exploratory", "name": "z"}]
++        self.assertEqual(len(el.obligating_invented_tests(tests)), 1)
++
++
++# ── Stop rule (§13) ────────────────────────────────────────────────────────────
++class TestStopRule(unittest.TestCase):
++    def _cap(self, **kw):
++        return el.CaptureResult(**kw)
++
++    def test_converge_requires_sufficient_and_no_high_severity(self):
++        self.assertTrue(el.converged(self._cap(sufficient=True), []))
++        self.assertFalse(el.converged(self._cap(sufficient=False), []))
++        # sufficient but a high-severity PLAN-level finding remains → not converged
++        self.assertFalse(el.converged(self._cap(sufficient=True),
++                                      [{"class": "plan_level", "severity": "high"}]))
++
++    def test_fail_verdict_blocks_convergence(self):
++        # Adversarial-precheck fold: an explicit VERDICT: FAIL never reads as converged,
++        # even with sufficient evidence and no high-severity finding parsed.
++        self.assertFalse(el.converged(self._cap(sufficient=True), [], "FAIL"))
++        self.assertTrue(el.converged(self._cap(sufficient=True), [], "PASS"))
++        self.assertTrue(el.converged(self._cap(sufficient=True), [], None))
++        # and a FAIL verdict warrants escalation (not a silent degrade).
++        self.assertTrue(el.escalation_warranted(self._cap(sufficient=True), [], "FAIL"))
++
++    def test_unverified_blocks_convergence(self):
++        # judge P1 fold: a verify that did NOT run (empty/broken) cannot converge —
++        # criteria_met with no reviewer is grading-your-own-homework.
++        self.assertFalse(el.converged(self._cap(sufficient=True), [], "PASS", verify_ran=False))
++        self.assertFalse(el.converged(self._cap(sufficient=True), [], None, verify_ran=False))
++        self.assertTrue(el.converged(self._cap(sufficient=True), [], "PASS", verify_ran=True))
++
++    def test_escalate_only_on_ran_and_failed_or_high_severity(self):
++        ran_failed = self._cap(results=[er.CheckResult(name="t", skipped=False, passed=False)])
++        self.assertTrue(el.escalation_warranted(ran_failed, []))
++        self.assertTrue(el.escalation_warranted(self._cap(),
++                                                [{"class": "execution_level", "severity": "high"}]))
++
++    def test_owed_deferred_empty_lane_never_escalates(self):
++        # A DEFERRED / REFUSED / owed check (skipped=True) is NOT ran-and-failed.
++        deferred = self._cap(results=[er.CheckResult(name="mut", skipped=True,
++                                                     skip_reason="deferred to Phase 8")])
++        self.assertFalse(el.escalation_warranted(deferred, []))
++        # no repo / no checks / no findings → no escalation
++        self.assertFalse(el.escalation_warranted(self._cap(no_repo=True), []))
++        self.assertFalse(el.escalation_warranted(self._cap(no_checks=True), []))
++        # a non-high finding does not force escalation either
++        self.assertFalse(el.escalation_warranted(self._cap(), [{"severity": "medium"}]))
++
++
++# ── Capture driver (§3/§10/§11) ────────────────────────────────────────────────
++class TestCaptureDriver(unittest.TestCase):
++    def test_no_repo_owes_lane(self):
++        pkt = _pkt({"any_mutation": True})
++        cap = el.run_capture(pkt, context_pkg={}, runner=FakeRunner(),
++                             repo_root=None)
++        # FakeRunner._git says every path is a work tree, so discover would find cwd;
++        # force no repo by making discover fail.
++        r = FakeRunner()
++        r._git = lambda repo, args, env=None: (1, "")
++        cap = el.run_capture(pkt, context_pkg={}, runner=r, repo_root=None)
++        self.assertTrue(cap.no_repo)
++        self.assertFalse(cap.sufficient)
++
++    def test_mutating_required_check_is_deferred_not_run(self):
++        cat = er.Catalog(checks={
++            "build": er.Check(name="build", argv=["true"], mutates=False),
++            "mig": er.Check(name="mig", argv=["true"], mutates=True)})
++        runner = FakeRunner(catalog=cat, sufficient=False,
++                            results=[er.CheckResult(name="build", skipped=False, passed=True)])
++        pkt = _pkt({"any_mutation": True},
++                   context_pkg={"repo_root": "/x", "evidence_contract":
++                                {"required_standard_checks": ["build", "mig"]}})
++        cap = el.run_capture(pkt, context_pkg={"repo_root": "/x", "evidence_contract":
++                             {"required_standard_checks": ["build", "mig"]}},
++                             runner=runner, repo_root="/x")
++        self.assertIn("mig", cap.deferred_mutating)
++        # a deferred mutating required check → not a ran-and-failed check
++        self.assertFalse(cap.ran_and_failed())
++
++    _BASE = {"repo_root": "/x", "exec_review_state_before": {"head": "b" * 40}}
++
++    def test_light_runs_catalog_checks_directly(self):
++        cat = er.Catalog(checks={"build": er.Check(name="build", argv=["true"], mutates=False)})
++        runner = FakeRunner(catalog=cat, sufficient=True,
++                            results=[er.CheckResult(name="build", skipped=False, passed=True)])
++        pkt = _pkt({"any_mutation": True}, context_pkg=dict(self._BASE))
++        cap = el.run_capture(pkt, context_pkg=dict(self._BASE), runner=runner, repo_root="/x")
++        # no contract (light) → runs the catalog's own checks; sufficiency via runner
++        self.assertFalse(cap.base_unknown)
++        self.assertTrue(cap.sufficient)
++
++    def test_base_unknown_forces_diff_lane_owed(self):
++        # judge P1 fold: no pre-execution snapshot → base-unknown → NEVER sufficient,
++        # even if the checks pass on the current tree.
++        cat = er.Catalog(checks={"build": er.Check(name="build", argv=["true"], mutates=False)})
++        runner = FakeRunner(catalog=cat, sufficient=True,
++                            results=[er.CheckResult(name="build", skipped=False, passed=True)])
++        pkt = _pkt({"any_mutation": True}, context_pkg={"repo_root": "/x"})   # no base stashed
++        cap = el.run_capture(pkt, context_pkg={"repo_root": "/x"}, runner=runner, repo_root="/x")
++        self.assertTrue(cap.base_unknown)
++        self.assertFalse(cap.sufficient)   # owed, not a false convergence
++        lane = next(l for l in pkt.evidence_lanes if l.lane == "diff_validate")
++        self.assertIsNone(lane.sufficient)   # lane marked owed
++
++    def test_light_tier_deferred_mutating_is_not_sufficient(self):
++        # Adversarial-precheck fold: at LIGHT tier (no contract) a deferred mutating
++        # catalog check must count as NOT sufficient — using the REAL sufficiency logic.
++        cat = er.Catalog(checks={
++            "build": er.Check(name="build", argv=["true"], mutates=False),
++            "migrate": er.Check(name="migrate", argv=["true"], mutates=True)})
++
++        class RealSuff(FakeRunner):
++            def contract_sufficient(self, results, contract):
++                return er.contract_sufficient(results, contract)
++
++            def run_contract(self, catalog, contract, repo_root, worktree=None, mode=None):
++                return [er.CheckResult(name=n, skipped=False, passed=True)
++                        for n in contract.get("required_standard_checks", [])]
++
++        pkt = _pkt({"any_mutation": True}, context_pkg=dict(self._BASE))
++        cap = el.run_capture(pkt, context_pkg=dict(self._BASE),
++                             runner=RealSuff(catalog=cat), repo_root="/x")
++        self.assertFalse(cap.base_unknown)   # a base IS stashed — isolate the deferral
++        self.assertIn("migrate", cap.deferred_mutating)
++        self.assertFalse(cap.sufficient)   # deferred required check → NOT sufficient
++        self.assertFalse(cap.ran_and_failed())   # deferred is not ran-and-failed
++
++
++# ── Escalation branch primitive (§13) — REAL temp git repo ─────────────────────
++class TestEscalationBranch(unittest.TestCase):
++    def setUp(self):
++        self.d = tempfile.mkdtemp(prefix="er-escal-")
++        self._git("init", "-q")
++        self._git("config", "user.email", "t@t")
++        self._git("config", "user.name", "t")
++        (Path(self.d) / "a.txt").write_text("base\n")
++        self._git("add", "-A")
++        self._git("commit", "-qm", "base")
++        self.base = self._git("rev-parse", "HEAD").stdout.strip()
++
++    def _git(self, *a):
++        return subprocess.run(["git", "-C", self.d, *a], capture_output=True, text=True)
++
++    def test_branch_is_unmerged_and_leaves_user_state_untouched(self):
++        (Path(self.d) / "a.txt").write_text("CHANGED\n")
++        (Path(self.d) / "new.txt").write_text("added\n")
++        branch = el.create_escalation_branch(self.d, self.base, "task-1", trace_dir=self.d)
++        self.assertTrue(branch)
++        self.assertEqual(self._git("rev-parse", "--verify", branch).returncode, 0)
++        # user HEAD + working tree untouched
++        self.assertEqual(self._git("rev-parse", "HEAD").stdout.strip(), self.base)
++        self.assertEqual((Path(self.d) / "a.txt").read_text(), "CHANGED\n")
++        # abandoned attempt captured on the branch
++        tree = self._git("ls-tree", "-r", "--name-only", branch).stdout
++        self.assertIn("new.txt", tree)
++        # branch is unmerged relative to HEAD
++        self.assertNotIn(branch, self._git("branch", "--merged", "HEAD").stdout)
++
++    def test_bad_base_returns_none(self):
++        self.assertIsNone(el.create_escalation_branch(self.d, "not-a-sha", "t"))
++        self.assertIsNone(el.create_escalation_branch(None, self.base, "t"))
++
++    def test_gitignored_files_excluded(self):
++        (Path(self.d) / ".gitignore").write_text("secret.env\n")
++        self._git("add", "-A")
++        self._git("commit", "-qm", "ignore")
++        base = self._git("rev-parse", "HEAD").stdout.strip()
++        (Path(self.d) / "secret.env").write_text("API_KEY=xyz\n")
++        (Path(self.d) / "ok.txt").write_text("ok\n")
++        branch = el.create_escalation_branch(self.d, base, "t2")
++        tree = self._git("ls-tree", "-r", "--name-only", branch).stdout
++        self.assertIn("ok.txt", tree)
++        self.assertNotIn("secret.env", tree)   # secret file gated out by .gitignore
++
++
++# ── snapshot_pre_execution (planning seam) — REAL temp git repo ────────────────
++class TestSnapshotBefore(unittest.TestCase):
++    def test_captures_pre_execution_head(self):
++        d = tempfile.mkdtemp(prefix="er-snap-")
++        subprocess.run(["git", "-C", d, "init", "-q"])
++        subprocess.run(["git", "-C", d, "config", "user.email", "t@t"])
++        subprocess.run(["git", "-C", d, "config", "user.name", "t"])
++        (Path(d) / "a.txt").write_text("x\n")
++        subprocess.run(["git", "-C", d, "add", "-A"])
++        subprocess.run(["git", "-C", d, "commit", "-qm", "base"])
++        head = subprocess.run(["git", "-C", d, "rev-parse", "HEAD"],
++                              capture_output=True, text=True).stdout.strip()
++        ctx = {"repo_root": d}
++        before = el.snapshot_pre_execution(ctx, repo_root=d)
++        self.assertEqual(before["head"], head)
++        self.assertEqual(ctx["exec_review_state_before"]["head"], head)
++
++    def test_no_repo_returns_none(self):
++        d = tempfile.mkdtemp(prefix="er-norepo-")
++        self.assertIsNone(el.snapshot_pre_execution({"repo_root": d}, repo_root=d))
++
++
++# ── run_loop end-to-end (mocked runner + verify) ───────────────────────────────
++class TestRunLoop(unittest.TestCase):
++    _OK_BRANCH = staticmethod(lambda *a, **k: "execution-review/escalation-test")
++
++    def _run(self, sig, verify_text, runner, *, risk_tier="standard", actuator=None,
++             ctx=None, branch_creator="__ok__"):
++        pushes = []
++        ctx = ctx or {"acceptance_criteria": "AC", "conversation_id": "c1", "task_id": "c1",
++                      "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
++        # Inject a working branch creator by default so escalation tests exercise a
++        # real §13 branch ref (create_escalation_branch itself is covered by the real-
++        # git TestEscalationBranch); pass branch_creator=... to test the no-branch path.
++        if branch_creator == "__ok__":
++            branch_creator = self._OK_BRANCH
++        pkt = ep.build_execution_packet(signals=sig, context_pkg=ctx, output_text="x",
++                                        risk_tier=risk_tier)
++        revised = el.run_loop(packet=pkt, context_pkg=ctx, response="x", signals=sig,
++                              risk_tier=risk_tier, trace_dir=None, config={}, config_name=None,
++                              verify_invoker=_verify(verify_text), actuator=actuator,
++                              runner=runner, router_obj=FakeRouter(),
++                              queue_push=lambda e: pushes.append(e),
++                              branch_creator=branch_creator)
++        return pkt, revised, pushes
++
++    def test_converge(self):
++        pkt, revised, pushes = self._run({"any_mutation": True}, V_PASS,
++                                         FakeRunner(sufficient=True))
++        self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
++        self.assertEqual(pkt.status, "converged")
++        self.assertEqual(pkt.verification["reviewer_a"]["family"], "gpt")
++        self.assertIsNone(revised)
++        self.assertEqual(pushes, [])
++
++    def test_escalate_on_high_severity(self):
++        pkt, revised, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
++                                         FakeRunner(sufficient=False))
++        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
++        self.assertEqual(pkt.status, "escalated")
++        self.assertEqual(len(pushes), 1)
++        self.assertEqual(pushes[0]["context_summary"]["kind"], "execution_review_escalation")
++
++    def test_high_severity_plan_level_also_escalates(self):
++        # ⚖ Rev-1 P1: a high-severity PLAN-level finding must block convergence too.
++        pkt, _, pushes = self._run({"any_mutation": True}, V_FAIL_PLAN_HIGH,
++                                   FakeRunner(sufficient=True))
++        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
++        self.assertEqual(len(pushes), 1)
++
++    def test_owed_lane_degrades_not_escalates(self):
++        # insufficient + verifier did NOT fail + NO ran-and-failed check + NO
++        # high-severity finding → degrade (the owed/deferred lane, not a failure).
++        pkt, _, pushes = self._run({"any_mutation": True}, V_PASS,
++                                   FakeRunner(sufficient=False))
++        self.assertIsNone(pkt.loop["stop_condition"])
++        self.assertIn("degraded to text review", pkt.loop["note"])
++        self.assertEqual(pushes, [])
++
++    def test_source_read_only_records_owed_provenance(self):
++        pkt, revised, pushes = self._run(
++            {"source_read_suspected": True, "any_mutation": False}, V_FAIL_HIGH,
++            FakeRunner(sufficient=False))
++        self.assertIsNone(pkt.loop["stop_condition"])
++        self.assertIn("collect_provenance owed", pkt.loop["note"])
++        self.assertEqual(pushes, [])   # never escalates
++
++    def test_stealth_is_dormant(self):
++        pkt = ep.build_execution_packet(signals={"any_mutation": True},
++                                        context_pkg={}, output_text="x", risk_tier="standard")
++        out = el.run_loop(packet=pkt, context_pkg={}, response="x",
++                          signals={"any_mutation": True}, stealth=True)
++        self.assertIsNone(out)
++        self.assertIsNone(pkt.loop)   # untouched
++
++    def test_fail_verdict_with_sufficient_evidence_escalates_not_converges(self):
++        # The confirmed bug: sufficient=True + VERDICT: FAIL (critical severity, or a
++        # prose-only FAIL with no parsed findings) previously converged as criteria_met.
++        # Both must now ESCALATE, never converge.
++        for vtext in (V_FAIL_CRITICAL, V_FAIL_PROSE):
++            pkt, _, pushes = self._run({"any_mutation": True}, vtext,
++                                       FakeRunner(sufficient=True))
++            self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated", vtext)
++            self.assertEqual(pkt.status, "escalated", vtext)
++            self.assertEqual(len(pushes), 1, vtext)
++        # The prose-only FAIL (no findings) escalates specifically on the FAIL verdict.
++        pkt, _, _ = self._run({"any_mutation": True}, V_FAIL_PROSE, FakeRunner(sufficient=True))
++        self.assertIn("VERDICT: FAIL", pkt.loop["escalation"]["reason"])
++        # The critical-severity FAIL escalates on the (now-blocking) high-severity finding.
++        pkt2, _, _ = self._run({"any_mutation": True}, V_FAIL_CRITICAL, FakeRunner(sufficient=True))
++        self.assertIn("high-severity", pkt2.loop["escalation"]["reason"])
++
++    def test_owed_lane_with_pass_verdict_and_actuator_does_not_churn(self):
++        # actuator wired, but insufficiency is a purely owed lane (no findings, no
++        # ran-and-failed): the loop must DEGRADE without ever re-invoking the actuator.
++        calls = []
++
++        def actuator(ex, pl, it):
++            calls.append(it)
++            return "should never be produced"
++
++        ctx = {"acceptance_criteria": "AC", "task_id": "c1",
++               "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
++        pkt = ep.build_execution_packet(signals={"any_mutation": True}, context_pkg=ctx,
++                                        output_text="x", risk_tier="standard")
++        revised = el.run_loop(packet=pkt, context_pkg=ctx, response="x",
++                              signals={"any_mutation": True}, risk_tier="standard",
++                              config={}, verify_invoker=_verify(V_PASS), actuator=actuator,
++                              runner=FakeRunner(sufficient=False), router_obj=FakeRouter())
++        self.assertEqual(calls, [])   # actuator never called — no futile churn
++        self.assertIsNone(pkt.loop["stop_condition"])
++        self.assertIn("degraded to text review", pkt.loop["note"])
++        self.assertIsNone(revised)
++
++    def test_broken_verify_does_not_converge(self):
++        # judge P1 fold: an empty verifier response + sufficient evidence must NOT
++        # converge as criteria_met — it degrades (standard tier), unverified.
++        pkt, _, pushes = self._run({"any_mutation": True}, "", FakeRunner(sufficient=True))
++        self.assertIsNone(pkt.loop["stop_condition"])
++        self.assertIn("unverified", pkt.loop["note"])
++        self.assertEqual(pushes, [])
++
++    def test_broken_verify_high_risk_escalates(self):
++        pkt, _, pushes = self._run({"any_mutation": True}, "", FakeRunner(sufficient=True),
++                                   risk_tier="irreversible")
++        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
++        self.assertEqual(len(pushes), 1)
++        self.assertIn("unverified", pkt.loop["escalation"]["reason"])
++
++    def test_base_unknown_failed_check_degrades_no_null_branch(self):
++        # judge Rev-2 P1: base-unknown (no snapshot) + a FAILED check must NOT escalate
++        # with a null branch — the check outcome is owed (not attributable), so it
++        # degrades. Reproduces the judge's exact probe.
++        cat = er.Catalog(checks={"build": er.Check(name="build", argv=["true"], mutates=False)})
++        runner = FakeRunner(catalog=cat, sufficient=False,
++                            results=[er.CheckResult(name="build", skipped=False, passed=False)])
++        ctx = {"acceptance_criteria": "AC", "task_id": "c1", "repo_root": "/x"}  # NO snapshot
++        pkt, _, pushes = self._run({"any_mutation": True}, V_PASS, runner, ctx=ctx)
++        self.assertIsNone(pkt.loop["stop_condition"])   # degraded, not escalated
++        self.assertEqual(pushes, [])                    # NO null-branch handback
++        self.assertIsNone(pkt.loop.get("escalation"))
++
++    def test_evidence_escalation_without_creatable_branch_downgrades_to_degrade(self):
++        # An EVIDENCE escalation (high-severity finding, standard tier → not
++        # escalate_human) with NO creatable §13 branch must DOWNGRADE to a loud degrade
++        # rather than queue a branchless handback — its value is the inspectable attempt.
++        pkt, _, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
++                                   FakeRunner(sufficient=False),
++                                   branch_creator=lambda *a, **k: None)
++        self.assertIsNone(pkt.loop["stop_condition"])
++        self.assertIn("escalation WITHHELD", pkt.loop["note"])
++        self.assertEqual(pushes, [])   # never a null-branch evidence escalation
++
++    def test_same_family_fail_reason_does_not_claim_different_family(self):
++        # Adversarial re-check fold: a same-family VERDICT:FAIL escalation reason must
++        # NOT claim "the different-family verifier" (would overstate assurance). Router
++        # returns no cross-family endpoint → single-family degrade → same_family=True.
++        same_router = FakeRouter(different={"id": "x", "training_family": "llama"})
++        ctx = {"acceptance_criteria": "AC", "task_id": "c1",
++               "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
++        pkt = ep.build_execution_packet(signals={"any_mutation": True}, context_pkg=ctx,
++                                        output_text="x", risk_tier="high-risk")
++        pushes = []
++        el.run_loop(packet=pkt, context_pkg=ctx, response="x", signals={"any_mutation": True},
++                    risk_tier="high-risk", config={},
++                    verify_invoker=_verify("VERDICT: FAIL\nCONFIDENCE: 0.5\n"
++                                           "FINDING: severity=medium; class=execution_level; concern\n"),
++                    actuator=None, runner=FakeRunner(sufficient=False), router_obj=same_router,
++                    branch_creator=self._OK_BRANCH, queue_push=lambda e: pushes.append(e))
++        reason = pkt.loop["escalation"]["reason"]
++        self.assertNotIn("different-family verifier returned", reason)
++        self.assertIn("single-family verifier returned VERDICT: FAIL", reason)
++
++    def test_policy_escalation_reaches_human_without_branch(self):
++        # Adversarial re-check fold: a §12 POLICY escalation (single-family / unverified
++        # verify on HIGH-RISK work → escalate_human) is branch-INDEPENDENT — it MUST
++        # reach the human queue even when no §13 branch can be created (base-unknown),
++        # NOT be silently degraded. Reproduces the re-check's exact scenario.
++        pkt, _, pushes = self._run({"any_mutation": True}, "",   # empty → unverified
++                                   FakeRunner(sufficient=True), risk_tier="irreversible",
++                                   branch_creator=lambda *a, **k: None)   # no branch possible
++        self.assertEqual(pkt.loop["stop_condition"], "max_iterations_escalated")
++        self.assertEqual(len(pushes), 1)                    # human IS reached
++        esc = pkt.loop["escalation"]
++        self.assertEqual(esc["kind"], "policy_human_review")
++        self.assertIsNone(esc["abandoned_attempt_branch"])   # honestly no branch
++        self.assertIn("unverified", esc["reason"])
++
++    def test_verifier_renders_with_acceptance_criteria_not_absence_fence(self):
++        # judge P1 fold: the packet must carry the criteria BEFORE the verify render,
++        # so the verifier never judges against a false "NO ACCEPTANCE CRITERIA" fence.
++        seen = {}
++
++        def capturing_verify(system, user, endpoint):
++            seen["review"] = user
++            return V_PASS
++
++        ctx = {"acceptance_criteria": "AC-42: must not delete prod", "task_id": "c1",
++               "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
++        pkt = ep.build_execution_packet(signals={"any_mutation": True}, context_pkg=ctx,
++                                        output_text="x", risk_tier="standard")
++        el.run_loop(packet=pkt, context_pkg=ctx, response="x", signals={"any_mutation": True},
++                    risk_tier="standard", config={}, verify_invoker=capturing_verify,
++                    actuator=None, runner=FakeRunner(sufficient=True), router_obj=FakeRouter())
++        self.assertIn("AC-42: must not delete prod", seen["review"])
++        self.assertNotIn("NO ACCEPTANCE CRITERIA DECLARED", seen["review"])
++
++    def test_actuator_revises_then_converges(self):
++        # First verify FAILs high-sev → revise via actuator → second verify PASSes.
++        calls = {"n": 0}
++
++        def verify(system, user, endpoint):
++            calls["n"] += 1
++            return V_FAIL_HIGH if calls["n"] == 1 else V_PASS
++
++        # runner becomes sufficient after the revision (simulate the fix landing)
++        state = {"suff": False}
++
++        class R(FakeRunner):
++            def contract_sufficient(self, results, contract):
++                return state["suff"]
++
++        def actuator(exec_findings, plan_findings, iteration):
++            state["suff"] = True
++            return "revised deliverable"
++
++        ctx = {"acceptance_criteria": "AC", "task_id": "c1",
++               "exec_review_state_before": {"head": "a" * 40, "mode": "review_dirty_diff"}}
++        pkt = ep.build_execution_packet(signals={"any_mutation": True}, context_pkg=ctx,
++                                        output_text="x", risk_tier="standard")
++        revised = el.run_loop(packet=pkt, context_pkg=ctx, response="x",
++                              signals={"any_mutation": True}, risk_tier="standard",
++                              config={}, verify_invoker=verify, actuator=actuator,
++                              runner=R(sufficient=False), router_obj=FakeRouter())
++        self.assertEqual(pkt.loop["stop_condition"], "criteria_met")
++        self.assertEqual(revised, "revised deliverable")
++        self.assertEqual(pkt.loop["iteration"], 1)
++
++
++# ── Handback (§7/§13) — reference-only + stealth defense-in-depth ──────────────
++class TestHandback(unittest.TestCase):
++    def _ref(self):
++        pkt = ep.build_execution_packet(signals={"any_mutation": True},
++                                        context_pkg={"raw_prompt": "do x", "conversation_id": "c9"},
++                                        output_text="SECRET producer claim text",
++                                        risk_tier="standard")
++        return el.handback_reference(packet=pkt, packet_path="/trace/p.json",
++                                     branch_ref="execution-review/escalation-c9",
++                                     reason="did not converge",
++                                     context_pkg={"conversation_id": "c9"})
++
++    def test_reference_has_top_level_conversation_id(self):
++        ref = self._ref()
++        self.assertEqual(ref["conversation_id"], "c9")            # top-level for purge backstop
++        self.assertEqual(ref["event"]["conversation_id"], "c9")
++
++    def test_summary_is_redacted_reference_not_inlined_claim(self):
++        ref = self._ref()
++        summ = ref["context_summary"]["summary"]
++        self.assertNotIn("SECRET producer claim text", summ)      # producer claim NOT inlined
++        self.assertIn("PRODUCER CLAIM REDACTED", summ)
++        self.assertEqual(ref["context_summary"]["packet_ref"], "/trace/p.json")
++        self.assertEqual(ref["context_summary"]["abandoned_attempt_branch"],
++                         "execution-review/escalation-c9")
++
++    def test_push_handback_stealth_skips_durable_write(self):
++        # Even though run_loop gates on non-stealth, push_handback itself must skip the
++        # durable write under a stealth context (defense in depth) — regardless of which
++        # backend it would use.
++        import oversight_events as oe
++        from unittest import mock
++        with mock.patch.object(oe, "_is_stealth_context", return_value=True):
++            self.assertFalse(el.push_handback(self._ref()))
++
++
++# ── Portability (Windows-sim pure logic) ───────────────────────────────────────
++class TestPortability(unittest.TestCase):
++    def test_branch_name_is_git_ref_safe(self):
++        # Windows-style path chars + spaces must not leak into a git ref name.
++        for tid in ("C:\\Users\\x\\conv 1", "a/b\\c:d*e", "conv\t1", ""):
++            name = el._safe_ref(tid)
++            for bad in ("\\", ":", "*", " ", "\t"):
++                self.assertNotIn(bad, name)
++            self.assertTrue(name)   # never empty
++
++    def test_family_selector_is_pure_config_read(self):
++        # The selector never touches the OS / filesystem — pure config double.
++        ep_, same = el.select_verify_endpoint(executor_fam="qwen", router_obj=FakeRouter())
++        self.assertEqual(ep_["training_family"], "gpt")
++        self.assertFalse(same)
++
++    def test_looks_like_sha(self):
++        self.assertTrue(el._looks_like_sha("a" * 40))
++        self.assertFalse(el._looks_like_sha("nothex-zz"))
++        self.assertFalse(el._looks_like_sha(None))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tests/test_execution_packet.py b/orchestrator/tests/test_execution_packet.py
+index f274a7ad..2dcbdd63 100644
+--- a/orchestrator/tests/test_execution_packet.py
++++ b/orchestrator/tests/test_execution_packet.py
+@@ -436,5 +436,104 @@ class TestKeepSetSurvival(unittest.TestCase):
+         self.assertIn('"consistency"', src)
+ 
+ 
++# ── Phase 6: populate_loop_fields fills the reserved §9 blocks (fill, not retrofit) ──
++class TestPopulateLoopFields(unittest.TestCase):
++    def _pkt(self, tier="standard"):
++        return ep.build_execution_packet(
++            signals=_sig(any_mutation=True), output_text="the deliverable",
++            context_pkg={"raw_prompt": "do x", "acceptance_criteria": "AC-1",
++                         "evidence_contract": {"required_standard_checks": ["build"]}},
++            risk_tier=tier)
++
++    def test_planning_block_from_context_threads_criteria_and_contract(self):
++        plan = ep.planning_block_from_context(
++            {"acceptance_criteria": "AC-1", "evidence_contract": {"x": 1}})
++        self.assertEqual(plan["converged_brief"]["acceptance_criteria"], "AC-1")
++        self.assertEqual(plan["evidence_contract"], {"x": 1})
++
++    def test_fills_each_reserved_block(self):
++        p = self._pkt()
++        self.assertIsNone(p.planning)          # reserved-empty before Phase 6
++        ep.populate_loop_fields(
++            p,
++            planning=ep.planning_block_from_context(
++                {"acceptance_criteria": "AC-1", "evidence_contract": {"required_standard_checks": ["build"]}}),
++            verification={"reviewer_a": {"endpoint": "v", "family": "gpt"},
++                          "confidence": 0.6,
++                          "findings": [{"severity": "low", "class": "execution_level", "description": "n"}],
++                          "invented_tests": [{"kind": "acceptance", "name": "t"}]},
++            execution={"mode": "review_dirty_diff", "state_before": {"head": "abc"},
++                       "state_after": {"head": "def"}, "enforcement_model": "orchestrated"},
++            loop={"iteration": 0, "stop_condition": "criteria_met"})
++        self.assertEqual(p.planning["converged_brief"]["acceptance_criteria"], "AC-1")
++        self.assertEqual(p.verification["reviewer_a"]["family"], "gpt")
++        self.assertEqual(p.verification["confidence"], 0.6)
++        self.assertEqual(p.execution["mode"], "review_dirty_diff")
++        self.assertEqual(p.execution["enforcement_model"], "orchestrated")
++        self.assertEqual(p.loop["stop_condition"], "criteria_met")
++        self.assertEqual(p.status, "converged")
++
++    def test_preserves_phase4_verification_and_execution_fields(self):
++        # Thread a text-review verdict via context_pkg['execution_review'] (Phase 4).
++        p = ep.build_execution_packet(
++            signals=_sig(any_mutation=True), output_text="deliverable",
++            context_pkg={"raw_prompt": "x",
++                         "execution_review": {"verdict": "PASS", "scope": "text_review"}},
++            risk_tier="standard")
++        pre_claim = p.execution["producer_claim"]["summary"]
++        ep.populate_loop_fields(p, verification={"reviewer_a": {"endpoint": "v"}, "confidence": 0.5},
++                                execution={"mode": "review_dirty_diff",
++                                           "enforcement_model": "orchestrated"})
++        # Phase-4 text-review verdict/scope preserved (the judgment-lane review, §5).
++        self.assertEqual(p.verification["text_review_verdict"], "PASS")
++        self.assertTrue(p.verification["scope"].startswith("text_review"))
++        # Phase-6 fields layered on top.
++        self.assertEqual(p.verification["reviewer_a"]["endpoint"], "v")
++        # Phase-4 producer_claim + delta preserved (Phase 6 owns only mode/state_*/enforcement).
++        self.assertEqual(p.execution["producer_claim"]["summary"], pre_claim)
++        self.assertIn("delta", p.execution)
++        self.assertEqual(p.execution["enforcement_model"], "orchestrated")
++
++    def test_reversible_flag_is_not_recomputed(self):
++        # high-risk == reversible:true is the §6 tier-boundary gate — NOT recomputed.
++        p = ep.build_execution_packet(signals=_sig(any_mutation=True), output_text="x",
++                                      context_pkg={"raw_prompt": "x"}, risk_tier="high-risk")
++        self.assertTrue(p.reversible)
++        ep.populate_loop_fields(p, loop={"iteration": 0, "stop_condition": "criteria_met"})
++        self.assertTrue(p.reversible)   # untouched
++
++    def test_light_planning_stays_none(self):
++        p = self._pkt(tier="light")
++        ep.populate_loop_fields(p, planning=None,
++                                loop={"iteration": 0, "stop_condition": None})
++        self.assertIsNone(p.planning)   # §9 tier-optional — correct, not incomplete
++        # renderer then fires the LOUD absence fence.
++        self.assertIn("NO ACCEPTANCE CRITERIA DECLARED", ep.render_for_review(p))
++
++    def test_render_shows_populated_criteria(self):
++        p = self._pkt()
++        ep.populate_loop_fields(p, planning=ep.planning_block_from_context(
++            {"acceptance_criteria": "AC-1"}))
++        r = ep.render_for_review(p)
++        self.assertIn("ACCEPTANCE CRITERIA", r)
++        self.assertIn("AC-1", r)
++        self.assertNotIn("NO ACCEPTANCE CRITERIA DECLARED", r)
++
++    def test_escalated_status_from_loop(self):
++        p = self._pkt()
++        ep.populate_loop_fields(p, loop={"iteration": 2,
++                                         "stop_condition": "max_iterations_escalated"})
++        self.assertEqual(p.status, "escalated")
++
++    def test_owed_evidence_lane_is_not_sufficient(self):
++        # an unfilled (owed) diff_validate lane must never read as sufficient (§16-2).
++        p = self._pkt()
++        self.assertTrue(any(l.lane == "diff_validate" for l in p.evidence_lanes))
++        self.assertFalse(ep.all_evidence_sufficient(p.evidence_lanes))
++
++    def test_none_packet_is_safe(self):
++        self.assertIsNone(ep.populate_loop_fields(None, loop={"iteration": 0}))
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/server/server.py b/server/server.py
+index cfc05e3a..2089d399 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -2879,6 +2879,17 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+             from orchestrator.evidence_runner import apply_evidence_contract as _aec
+         _aec(context_pkg, _enriched, _tier,
+              invoker=_make_server_criteria_invoker(config, config_name))
++        # Execution Review Phase 6: PLANNING-STAGE pre-execution state seam (⚖ Rev-1
++        # judge P0) — the server twin of run_pipeline's. Capture the TRUE pre-execution
++        # git state BEFORE the gear runs (a terminal-time read would be POST-execution).
++        # TIER-INDEPENDENT (⚖ Rev-2 P2). Additive + never-raises; only when the loop is
++        # enabled + non-stealth (flag OFF → zero new runtime behaviour).
++        try:
++            import execution_loop as _el6
++        except ImportError:  # pragma: no cover
++            from orchestrator import execution_loop as _el6
++        if conversation_tag != "stealth" and _el6.loop_enabled():
++            _el6.snapshot_pre_execution(context_pkg)
+     except Exception as _rge_srv:
+         print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
+ 
+@@ -2982,19 +2993,21 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+             risk_tier=context_pkg.get("risk_tier"),
+             output_text=response,  # Phase 3: drives the source-read signal
+             declared_output_type=context_pkg.get("output_type", "unknown"))
+-        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket from
+-        # the already-folded signals (single fold; no packet ref on route_observed)
+-        # and write it TRACE-LOCAL only. Guarded to a real deliverable + trace dir +
+-        # non-stealth. Never raises.
++        # Execution Review Phase 4/6: build the ExecutionPacket from the already-folded
++        # signals (single fold; no packet ref on route_observed). Self-evidencing turn
++        # (or loop disabled) → the Phase-4 trace-local record, byte-identical. Non-self-
++        # evidencing turn with the loop enabled → the Phase-6 Capture→verify→stop/
++        # escalate loop (records the packet + escalates). The response was already
++        # streamed on this path, so a revised deliverable cannot replace it; with
++        # actuator=None (first landing) the loop never revises anyway, so the return is
++        # ignored. Guarded to non-stealth. Never raises.
+         if conversation_tag != "stealth":
+             try:
+-                from execution_packet import construct_and_write as _cw
++                from boot import _execution_review_terminal as _ert
+             except ImportError:  # pragma: no cover
+-                from orchestrator.execution_packet import construct_and_write as _cw
+-            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
+-                output_text=response, risk_tier=context_pkg.get("risk_tier"),
+-                declared_output_type=context_pkg.get("output_type", "unknown"),
+-                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
++                from orchestrator.boot import _execution_review_terminal as _ert
++            _ert(_ro, response, context_pkg, trace_dir,
++                 conversation_tag == "stealth", config, config_name)
+     except Exception:
+         pass
+ 

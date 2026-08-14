@@ -1,0 +1,2639 @@
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index a182825d..c4128d34 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -8918,6 +8918,18 @@ def build_system_prompt_for_gear(
+         if annot_text:
+             parts.append(f"\n{annot_text}")
+ 
++    # Execution Review Phase 2: acceptance criteria set by the criteria pass
++    # BEFORE execution (spec §16-1) ride read-only into the executor prompt
++    # so the executor implements against criteria it did not author. Analyst
++    # step only (the executing stream); other steps ignore them.
++    _criteria = context_package.get("acceptance_criteria")
++    if _criteria and step == "analyst":
++        parts.append(
++            "\n## PRE-SET ACCEPTANCE CRITERIA (do not renegotiate)\n"
++            "These were set before execution, separate from you. Treat them "
++            "as fixed requirements for a correct result:\n"
++            f"{_criteria}\n")
++
+     return "\n".join(parts)
+ 
+ 
+@@ -9019,6 +9031,25 @@ def route_output(response: str, output_target: str = "screen",
+     return response
+ 
+ 
++def _make_criteria_invoker(config: dict, config_name: str | None):
++    """Return a sidebar-slot model-call callback for the Phase 2 criteria
++    pass, or None when no endpoint is available (offline / tests) — in which
++    case the criteria pass records absence rather than failing (condition 6
++    distinguishes 'no model' from 'model failed')."""
++    try:
++        endpoint = (get_slot_endpoint(config, "sidebar", config_name=config_name)
++                    or get_active_endpoint(config))
++    except Exception:
++        endpoint = None
++    if endpoint is None:
++        return None
++
++    def _invoke(system: str, user: str) -> str:
++        return call_model([{"role": "system", "content": system},
++                           {"role": "user", "content": user}], endpoint)
++    return _invoke
++
++
+ def run_pipeline(user_input: str, history: list = None,
+                  output_target: str = "screen",
+                  execution_context: str = "interactive",
+@@ -9076,6 +9107,27 @@ def run_pipeline(user_input: str, history: list = None,
+             stealth=stealth,
+         )
+ 
++    # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
++    # Handled BEFORE any slash dispatch (condition 5): a bare `/risk <tier>`
++    # / `/risk auto` sets the per-conversation sticky and short-circuits; a
++    # "1"/"2" reply to a prior irreversible-tier hold approves/cancels it;
++    # an inline `/risk <tier> <task>` override is lifted off the input.
++    _risk_override = None
++    try:
++        import risk_gate as _rgate
++        _sticky_reply = _rgate.handle_risk_command(user_input, conversation_id)
++        if _sticky_reply is not None:
++            return _sticky_reply
++        _tg_marker = _rgate.is_task_gate_continuation(history or [])
++        if _tg_marker is not None:
++            _tg_reply = _rgate.handle_task_gate_reply(
++                _tg_marker, user_input, conversation_id)
++            if _tg_reply is not None:
++                return _tg_reply
++        user_input, _risk_override = _rgate.strip_risk_prefix(user_input)
++    except Exception as _rge:
++        print(f"[risk-gate] turn-head skipped: {_rge}")
++
+     # --- Runtime slash-command short-circuit ---
+     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+     # meta-layer runtime operations. No model endpoint or pipeline state
+@@ -9095,6 +9147,7 @@ def run_pipeline(user_input: str, history: list = None,
+         return framework_elicitation.continue_elicitation(
+             continuation_ctx, history or [], config,
+             latest_user_text=user_input,
++            conversation_id=conversation_id,
+         )
+ 
+     # --- Framework slash-command short-circuit ---
+@@ -9106,7 +9159,43 @@ def run_pipeline(user_input: str, history: list = None,
+     )
+     if is_framework_command(user_input):
+         if framework_command_has_query(user_input):
+-            return run_framework_command(user_input, config)
++            # Execution Review Phase 2 (condition 4): the /framework one-shot
++            # runs the gear pipeline with tools — hold before it if the query
++            # classifies irreversible. Fail-safe.
++            _fw_tier, _fw_ts = None, None
++            try:
++                _fw_ts = _rgate.now_ts()
++                _fr = _rgate.assign_tier(user_input, conversation_id,
++                                         surface="framework")
++                _fw_tier = _fr["risk_tier"]
++                _fhold, _ = _rgate.evaluate_hold(
++                    _fw_tier, conversation_id=conversation_id,
++                    prompt=user_input, surface="framework",
++                    description=user_input)
++                if _fhold is not None:
++                    return _fhold
++            except Exception as _frge:
++                print(f"[risk-gate] framework one-shot hold skipped: {_frge}")
++            # Seed the turn context so the framework's tool events carry this
++            # conversation_id (framework path bypasses step-2 seeding) + tier.
++            try:
++                import tool_events as _te_fw
++                _te_fw.set_turn_context(conversation_id=conversation_id,
++                                        trace_dir=trace_dir, stealth=stealth,
++                                        surface="terminal", risk_tier=_fw_tier)
++            except Exception:
++                pass
++            # Finding 3: record route_observed on this framework terminal
++            # path (try/finally so a failed run still records).
++            try:
++                return run_framework_command(user_input, config)
++            finally:
++                try:
++                    _rgate.record_route_observed(
++                        trace_dir or (conversation_id, _fw_ts or ""),
++                        risk_tier=_fw_tier)
++                except Exception:
++                    pass
+         try:
+             framework_name, _, _ = parse_framework_command(user_input)
+         except ValueError as exc:
+@@ -9173,6 +9262,61 @@ def run_pipeline(user_input: str, history: list = None,
+             context_pkg["gear"] = gear
+         degradation_signal = format_degradation_signal(deg_state)
+ 
++    # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
++    # The before-clock's final step: Stage-B mode floor + sticky, tier stamped
++    # into the turn context so the per-call gate sees it, an irreversible-tier
++    # hold BEFORE the executor (spec §6 hard boundary), and the criteria pass
++    # for standard+ (condition 6 — failure never silently runs as light).
++    # All fail-safe: a risk-gate error must never break a normal turn.
++    _route_turn_ts = None
++    try:
++        _route_turn_ts = _rgate.now_ts()
++        context_pkg["_route_turn_ts"] = _route_turn_ts
++        _risk = _rgate.assign_tier(
++            context_pkg.get("raw_prompt", user_input), conversation_id,
++            mode_text=context_pkg.get("mode_text"),
++            is_trivial_text=(gear <= 2), override=_risk_override,
++            surface="terminal")
++        _tier = _risk["risk_tier"]
++        context_pkg["risk_tier"] = _tier
++        # The hold is evaluated FIRST (before any other fallible step) and
++        # evaluate_hold itself never raises + fails closed — so an
++        # irreversible task can never slip past it via an exception below.
++        _hold_reply, _fp = _rgate.evaluate_hold(
++            _tier, conversation_id=conversation_id,
++            prompt=context_pkg.get("raw_prompt", user_input), surface="terminal",
++            mode_id=context_pkg.get("mode_name", ""), output_target=output_target,
++            config_name=config_name or "", stealth=stealth,
++            description=context_pkg.get("raw_prompt", user_input))
++        if _hold_reply is not None:
++            _rgate.record_route_observed(
++                trace_dir or (conversation_id, _route_turn_ts), risk_tier=_tier)
++            return _hold_reply
++        try:
++            import tool_events as _te_tier
++        except ImportError:
++            from orchestrator import tool_events as _te_tier
++        _te_tier.update_turn_risk_tier(_tier)
++        _crit = _rgate.apply_criteria(
++            context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
++            invoker=_make_criteria_invoker(config, config_name))
++        if _crit and _crit.startswith("HOLD:"):
++            _hr, _ = _rgate.evaluate_hold(
++                "irreversible", conversation_id=conversation_id,
++                prompt=context_pkg.get("raw_prompt", user_input),
++                surface="terminal", mode_id=context_pkg.get("mode_name", ""),
++                output_target=output_target, config_name=config_name or "",
++                stealth=stealth, description=_crit[5:])
++            if _hr is not None:
++                return _hr
++        elif _crit and _crit.startswith("WARN:"):
++            _risk_warn = _crit[5:]
++        else:
++            _risk_warn = ""
++    except Exception as _rge2:
++        print(f"[risk-gate] tier/hold skipped: {_rge2}")
++        _risk_warn = ""
++
+     # --- Gear-appropriate execution ---
+     # 2026-05-24 gear-architecture redesign:
+     #   Gear 1 — small model, no review, no RAG-heavy path. Sidebar / classification
+@@ -9249,6 +9393,11 @@ def run_pipeline(user_input: str, history: list = None,
+     if degradation_signal:
+         response = f"{degradation_signal}\n\n---\n\n{response}"
+ 
++    # Execution Review Phase 2: surface a criteria-pass warning (condition 6 —
++    # never a silent light execution) ahead of the response.
++    if locals().get("_risk_warn"):
++        response = f"⚠️ {_risk_warn}\n\n---\n\n{response}"
++
+     # WP-1.6 — server-side validation + adversarial review of ora-visual
+     # fenced blocks. No-op when no such blocks are present; blocks with
+     # Critical findings are suppressed (replaced with a marker) while prose
+@@ -9256,6 +9405,17 @@ def run_pipeline(user_input: str, history: list = None,
+     # SSE layer to surface.
+     response = _run_visual_hook(response, context_pkg)
+ 
++    # Execution Review Phase 2: after-clock — record what the turn observed
++    # (condition 7, best-effort on the terminal terminal path). Scoped by the
++    # exact trace dir when present, else (conversation_id, turn window).
++    try:
++        _rgate.record_route_observed(
++            trace_dir or (conversation_id,
++                          context_pkg.get("_route_turn_ts") or ""),
++            risk_tier=context_pkg.get("risk_tier"))
++    except Exception:
++        pass
++
+     return route_output(response, output_target, context_pkg)
+ 
+ 
+diff --git a/orchestrator/conversation_closeout.py b/orchestrator/conversation_closeout.py
+index 966ec092..40feed5b 100644
+--- a/orchestrator/conversation_closeout.py
++++ b/orchestrator/conversation_closeout.py
+@@ -451,6 +451,34 @@ def _purge_stealth(
+                 deleted["tool_event_entries"] = removed
+     except Exception as e:
+         errors.append(f"tool_events purge: {e}")
++
++    # --- Layer 6b: task-approval tokens (Execution Review Phase 2) ---------
++    # A stealth conversation's tier=irreversible hold mints a task_execute
++    # token in data/execution-approvals.json carrying the conversation_id.
++    # Scrub any token bound to the purged conversation so the stealth
++    # zero-residue promise covers the approval store too (condition 9).
++    try:
++        import json as _json_tok
++        from . import tool_events as _te_tok
++        _appr = Path(_te_tok.APPROVALS_PATH)
++        deleted["task_tokens"] = 0
++        if _appr.exists():
++            with open(_appr) as f:
++                data = _json_tok.load(f)
++            toks = data.get("tokens", [])
++            kept_toks = [t for t in toks
++                         if t.get("conversation_id") != conversation_id]
++            dropped = len(toks) - len(kept_toks)
++            if dropped:
++                data["tokens"] = kept_toks
++                tmp = _appr.with_suffix(_appr.suffix + ".tmp")
++                with open(tmp, "w") as f:
++                    _json_tok.dump(data, f)
++                tmp.replace(_appr)
++                deleted["task_tokens"] = dropped
++    except Exception as e:
++        errors.append(f"task_tokens purge: {e}")
++
+     try:
+         import json as _json_ov
+         for log_name in ("events.jsonl", "actions.jsonl", "human-queue.jsonl"):
+diff --git a/orchestrator/framework_elicitation.py b/orchestrator/framework_elicitation.py
+index 4ab4dde0..7af45c23 100644
+--- a/orchestrator/framework_elicitation.py
++++ b/orchestrator/framework_elicitation.py
+@@ -56,6 +56,10 @@ MARKER_PATTERN = re.compile(
+ MARKER_TEMPLATE = "<!-- ora-framework: {framework_id}/{mode}/{state} -->"
+ ELICITING_STATE = "eliciting"
+ 
++# Execution Review Phase 2: a hold reply carries this marker; such a turn is
++# risk-gate scaffolding, not elicited content, so the summarizer skips it.
++_TASK_GATE_MARKER_RE = re.compile(r"<!--\s*ora-task-gate:.*?-->", re.DOTALL)
++
+ 
+ @dataclass
+ class ContinuationContext:
+@@ -137,11 +141,16 @@ def continue_elicitation(
+     history: list,
+     config: dict,
+     latest_user_text: str = "",
++    conversation_id: str | None = None,
+ ) -> str:
+     """Advance an in-progress framework execution by one turn.
+ 
+     Reads the conversation, summarizes what's been elicited, and either asks
+     the next question or produces the final deliverable.
++
++    ``conversation_id`` (Execution Review Phase 2): binds the irreversible-
++    deliverable approval token to THIS conversation, so an approval in one
++    conversation can't admit the same framework/mode deliverable in another.
+     """
+     fw_filename = (
+         ctx.framework_id if ctx.framework_id.endswith(".md") else ctx.framework_id + ".md"
+@@ -163,6 +172,7 @@ def continue_elicitation(
+     return _run_elicitation_turn(
+         fw, ctx.mode, milestone, history, config,
+         latest_user_text=latest_user_text,
++        conversation_id=conversation_id,
+     )
+ 
+ 
+@@ -175,6 +185,7 @@ def _run_elicitation_turn(
+     history: list,
+     config: dict,
+     latest_user_text: str,
++    conversation_id: str | None = None,
+ ) -> str:
+     """One elicitation turn: summarize state, decide next step, emit response."""
+     summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
+@@ -191,7 +202,9 @@ def _run_elicitation_turn(
+         return _wrap_with_marker(question, fw.name, mode)
+ 
+     if summary.action == "PRODUCE_DELIVERABLE":
+-        return _produce_deliverable(fw, mode, milestone, summary, history, latest_user_text, config)
++        return _produce_deliverable(fw, mode, milestone, summary, history,
++                                    latest_user_text, config,
++                                    conversation_id=conversation_id)
+ 
+     # ASK_NEXT path
+     question = summary.next_question or (
+@@ -216,6 +229,7 @@ def _produce_deliverable(
+     history: list,
+     latest_user_text: str,
+     config: dict,
++    conversation_id: str | None = None,
+ ) -> str:
+     """Hand control to the existing milestone executor with the elicited facts
+     as the user input. The result is rendered with format_execution_result.
+@@ -233,10 +247,84 @@ def _produce_deliverable(
+     )
+ 
+     fw_filename = fw.name if fw.name.endswith(".md") else fw.name + ".md"
++
++    # Execution Review Phase 2 (judge condition 4): the interactive
++    # final-deliverable path calls execute_framework() DIRECTLY, bypassing
++    # the server/boot framework branches — so the irreversible-tier hold must
++    # fire here too, before the executor runs. Fail-safe: a risk-gate error
++    # never blocks a legitimate deliverable.
++    try:
++        import risk_gate as _rgate
++    except ImportError:
++        from orchestrator import risk_gate as _rgate
++    try:
++        # Classify the tier from the ACTUAL deliverable content (a "publish
++        # to all subscribers" deliverable is irreversible). The fingerprint
++        # binds: conversation (conversation_id), framework+mode, AND a CONTENT
++        # NONCE identifying THIS held instance. The nonce is a hash of the
++        # normalized WORD MULTISET of the deliverable content (all word tokens,
++        # lowercased, sorted) — recomputed every turn, NOT carried:
++        #   * summarizer drift that only REORDERS bullets or words (the common
++        #     nondeterminism) → identical nonce, so an approved deliverable
++        #     still produces on resume (no re-hold);
++        #   * a MATERIALLY different later deliverable (different words) → a
++        #     distinct nonce → a distinct token → it CANNOT reuse an earlier
++        #     hold's approval, even a still-live one (no carried nonce to
++        #     inherit — this closes the approve-then-pivot reuse). Genuine
++        #     word-substitution drift falls to a SAFE re-hold (re-approve), not
++        #     reuse. Hashing the whole deliverable text (not just the bullets)
++        #     means an empty-fact deliverable is not a constant nonce — it
++        #     still carries the mode + boilerplate words, so two empty-fact
++        #     deliverables collide only when they are genuinely identical.
++        import hashlib as _hl
++        import re as _re
++        _facts = " ".join(sorted(
++            _re.findall(r"\w+", (deliverable_input or "").lower())))
++        _hnonce = _hl.sha1(_facts.encode("utf-8", "replace")).hexdigest()[:12]
++        _stable_id = f"framework-deliverable::{fw.name}::{mode or ''}::{_hnonce}"
++        _r = _rgate.assign_tier(deliverable_input, conversation_id,
++                                surface="framework")
++        _hold, _ = _rgate.evaluate_hold(
++            _r["risk_tier"], conversation_id=conversation_id, prompt=_stable_id,
++            surface="framework", mode_id=(fw.name + "/" + (mode or "")),
++            description=f"Framework deliverable: {fw.name} {mode}".strip(),
++            # Keep the elicitation flow alive across the hold: the approval
++            # re-attaches the framework marker so the next turn re-produces
++            # the deliverable (now with a valid token).
++            resume={"fw": fw.name, "mode": mode or ""})
++        if _hold is not None:
++            return _hold
++    except Exception as _rge:
++        print(f"[risk-gate] framework-deliverable hold skipped: {_rge}")
++
++    # Execution Review Phase 2 (judge finding 3): record route_observed on
++    # this framework terminal path too — turn_ts captured BEFORE execution so
++    # the fold counts this run's events; in a finally so a failed execution
++    # still records what it did before dying.
++    try:
++        _dl_turn_ts = _rgate.now_ts()
++        _dl_tier = _r.get("risk_tier") if isinstance(_r, dict) else None
++    except Exception:
++        _dl_turn_ts, _dl_tier = None, None
++    # Seed the turn context so the deliverable's tool events carry this
++    # conversation_id (the elicitation path bypasses step-2 seeding); without
++    # it the route_observed fold below finds zero events on the server surface.
++    try:
++        import tool_events as _te_dl
++        _te_dl.set_turn_context(conversation_id=conversation_id,
++                                surface="framework", risk_tier=_dl_tier)
++    except Exception:
++        pass
+     try:
+         result = execute_framework(fw_filename, deliverable_input, config=config)
+     except Exception as exc:
+         return f"[Final deliverable production failed: {exc}]"
++    finally:
++        try:
++            _rgate.record_route_observed((conversation_id, _dl_turn_ts or ""),
++                                         risk_tier=_dl_tier)
++        except Exception:
++            pass
+ 
+     return format_execution_result(result)
+ 
+@@ -451,11 +539,21 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
+         if role not in ("user", "assistant"):
+             continue
+         content = msg.get("content", "") or ""
+-        # Strip any embedded markers from prior assistant turns so the
+-        # summarizer doesn't see its own scaffolding
++        # A risk-gate hold reply is pure scaffolding (the ⚠️ approve/cancel
++        # prose + the ora-task-gate marker), NOT elicited facts — skip it
++        # wholesale so it can't pollute the summarizer's fact extraction.
++        if _TASK_GATE_MARKER_RE.search(content):
++            continue
++        # Strip any embedded framework markers from prior assistant turns so
++        # the summarizer doesn't see its own scaffolding
+         content = MARKER_PATTERN.sub("", content).strip()
+         if not content:
+             continue
++        # Risk-gate approval / cancellation / resume replies are also
++        # scaffolding (not facts) — skip them so they don't accumulate in the
++        # summarizer's context across re-hold cycles.
++        if role == "assistant" and content[:1] in ("✅", "❌"):
++            continue
+         if len(content) > 1500:
+             content = content[:1500] + "…"
+         lines.append(f"{role.upper()}: {content}")
+@@ -466,7 +564,13 @@ def _format_conversation(history: list, latest_user_text: str) -> str:
+ 
+ def _wrap_with_marker(body: str, framework_id: str, mode: str) -> str:
+     """Append the eliciting marker on its own line at the end of the message."""
+-    marker = MARKER_TEMPLATE.format(
+-        framework_id=framework_id, mode=mode, state=ELICITING_STATE,
+-    )
+-    return f"{body.rstrip()}\n\n{marker}"
++    return f"{body.rstrip()}\n\n{elicitation_marker(framework_id, mode)}"
++
++
++def elicitation_marker(framework_id: str, mode: str) -> str:
++    """The eliciting-state marker for a framework/mode. Public so the Phase 2
++    task gate can re-attach it to an approval reply and keep the elicitation
++    flow alive across an irreversible-deliverable hold."""
++    fw_id = framework_id[:-3] if framework_id.endswith(".md") else framework_id
++    return MARKER_TEMPLATE.format(
++        framework_id=fw_id, mode=mode or "", state=ELICITING_STATE)
+diff --git a/orchestrator/project_registry.py b/orchestrator/project_registry.py
+index 1d4ddbfa..22a89e6a 100644
+--- a/orchestrator/project_registry.py
++++ b/orchestrator/project_registry.py
+@@ -930,6 +930,10 @@ def _build_subprocess_env(project: Project, extra_env: Optional[dict] = None) ->
+             env["ORA_STEALTH_CONTEXT"] = "1"
+         if _ctx.get("conversation_id"):
+             env["ORA_CONVERSATION_ID"] = str(_ctx["conversation_id"])
++        # Execution Review Phase 2: children inherit the turn's risk tier so
++        # a project tool's gate sees the same tier the parent assigned.
++        if _ctx.get("risk_tier"):
++            env["ORA_RISK_TIER"] = str(_ctx["risk_tier"])
+     except Exception:
+         pass
+     if extra_env:
+diff --git a/orchestrator/resolution_chain.py b/orchestrator/resolution_chain.py
+index 0c93752a..c6e49e49 100644
+--- a/orchestrator/resolution_chain.py
++++ b/orchestrator/resolution_chain.py
+@@ -301,16 +301,25 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
+     from oversight_queue import find_paused_by_id, remove_by_id
+ 
+     entry = find_paused_by_id(queue_id)
+-    if entry is None or entry.kind != "execution_gate":
++    if entry is None or entry.kind not in ("execution_gate", "task_gate"):
+         return None
+-    try:
+-        import tool_events
+-    except ImportError:
+-        from orchestrator import tool_events
+     record = {"kind": entry.kind, "event": entry.event,
+               "conversation_id": (entry.event or {}).get("conversation_id")}
+-    message = tool_events.resolve_gate_entry(record, approve=approve,
+-                                             reason=reason)
++    if entry.kind == "task_gate":
++        # Execution Review Phase 2: an irreversible-tier task hold.
++        try:
++            import risk_gate
++        except ImportError:
++            from orchestrator import risk_gate
++        message = risk_gate.resolve_task_gate_entry(record, approve=approve,
++                                                    reason=reason)
++    else:
++        try:
++            import tool_events
++        except ImportError:
++            from orchestrator import tool_events
++        message = tool_events.resolve_gate_entry(record, approve=approve,
++                                                 reason=reason)
+     remove_by_id(entry.id)
+     _mark_conversation_resolved(conversation_id)
+     return message
+@@ -346,8 +355,8 @@ def _commit_apply_alternative(ctx: ContinuationContext, conversation_id: str) ->
+     """User typed 3 — apply the alternative content from the marker."""
+     from oversight_queue import find_paused_by_id as _fpbi
+     _entry = _fpbi(ctx.queue_id)
+-    if _entry is not None and _entry.kind == "execution_gate":
+-        return ("[Execution-gate entries have no alternative to apply — "
++    if _entry is not None and _entry.kind in ("execution_gate", "task_gate"):
++        return ("[Gate entries have no alternative to apply — "
+                 "type 1 to approve or 2 to deny.]")
+     if not (ctx.last_alternative or "").strip():
+         return (
+diff --git a/orchestrator/risk_gate.py b/orchestrator/risk_gate.py
+new file mode 100644
+index 00000000..4b729d65
+--- /dev/null
++++ b/orchestrator/risk_gate.py
+@@ -0,0 +1,849 @@
++"""Execution Review Phase 2 — risk gate + two clocks.
++
++Two decisions on two clocks (spec §6):
++
++  * BEFORE the run — a conservative, user-overridable ``risk_tier``
++    (light | standard | high-risk | irreversible). Deterministic: a
++    turn-head pattern table over the raw input (Stage A) plus an optional
++    ``## RISK TIER`` mode heading (Stage B). No model call.
++  * AFTER the run — ``route_observed`` signals folded from the Phase 1
++    tool-event log (what the turn mutated / read), recorded for the Phase 4
++    lane router. Post-hoc routing is permitted only in reversible tiers;
++    ``irreversible`` is held BEFORE the executor runs (the hard boundary).
++
++This module is the single home for the tier vocabulary, the classifier, the
++inline ``/risk`` parse, the task-approval fingerprint + token helpers, the
++task-gate conversation-as-state marker, and the after-clock fold. It leans
++on Phase 1's ``tool_events`` for the approval-token store and the max-fold
++ordering helpers (no parallel machinery).
++
++PROVISIONAL tuning surfaces (flagged, not empirically calibrated): the
++Stage-A pattern table, the default tier, the fingerprint normalization, and
++the task-token TTL.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import re
++from datetime import datetime, timezone
++
++
++def now_ts() -> str:
++    """A turn-start timestamp comparable to tool_events event ``ts`` (both
++    ``datetime.now(timezone.utc).isoformat()``). Used to scope the
++    route_observed fold to THIS turn's events on the global sink."""
++    return datetime.now(timezone.utc).isoformat()
++
++try:
++    import tool_events as _te
++    import runtime_paths as _rp
++except ImportError:  # pragma: no cover
++    from orchestrator import tool_events as _te
++    from orchestrator import runtime_paths as _rp
++
++
++# ── Tier vocabulary + ordering ──────────────────────────────────────────────
++TIERS = ("light", "standard", "high-risk", "irreversible")
++_TIER_RANK = {t: i for i, t in enumerate(TIERS)}
++# Natural-word aliases users type (the hold prompt says "/risk <tier>").
++_TIER_ALIASES = {"high": "high-risk", "highrisk": "high-risk",
++                 "high_risk": "high-risk", "irreversable": "irreversible",
++                 "irrev": "irreversible", "low": "light", "trivial": "light"}
++
++
++def _normalize_tier(word: str) -> str:
++    w = (word or "").strip().lower()
++    return _TIER_ALIASES.get(w, w)
++
++# The default for ordinary dispatched/executor turns (judge condition 1:
++# standard, not light). Light is reserved for trivial/self-contained text
++# turns (the bypass-to-direct path), runtime/meta commands, and explicit
++# override. PROVISIONAL.
++DEFAULT_TIER = "standard"
++# The floor a failed classification falls to — never a silent fail-open to
++# light (spec §7 fail-closed; judge condition 6 for criteria failure).
++FAILSAFE_TIER = "high-risk"
++
++# Task-approval token TTL: long enough to resume a held turn, short enough
++# not to blanket future turns. PROVISIONAL.
++TASK_TOKEN_TTL_S = 900
++TASK_ACTION = "task_execute"
++
++
++def tier_max(*tiers: str) -> str:
++    """Highest (most conservative) tier among the arguments; unknowns and
++    None are ignored. Empty → DEFAULT_TIER."""
++    ranked = [t for t in tiers if t in _TIER_RANK]
++    if not ranked:
++        return DEFAULT_TIER
++    return max(ranked, key=_TIER_RANK.get)
++
++
++def tier_at_least(tier: str, floor: str) -> bool:
++    return _TIER_RANK.get(tier, -1) >= _TIER_RANK.get(floor, 999)
++
++
++def is_tier(value) -> bool:
++    return value in _TIER_RANK
++
++
++# ── Stage A — turn-head pattern floors (PROVISIONAL) ────────────────────────
++# Seeded from the Phase 1 gate vocabulary (bash irreversible flags, curl/wget
++# write detection, credential/secret patterns). Extend from observed gate
++# events, not guesswork. Word-boundary anchored to avoid substring hits
++# (e.g. "deploy" must not fire inside "redeployment-history.md" discussion —
++# the intent verbs pair with an object cue).
++_IRREVERSIBLE_PATTERNS = [
++    r"\bdeploy(?:ing|ment)?\b.*\b(prod|production|live|release)\b",
++    r"\b(prod|production)\b.*\bdeploy",
++    r"\b(ship|ships|shipping|shipped|roll(?:ing)?\s+out|cut)\b.*\b(prod|production|release|live)\b",
++    r"\bcut\b.*\brelease\b",
++    r"\bpublish(?:ing|ed)?\b",
++    r"\bgo[- ]?live\b",
++    # "send/email/e-mail/text/dm/message" as the action verb + a recipient/
++    # channel cue anywhere (order-independent), so "email the customers" and
++    # "send this to the list" both fire.
++    r"\b(send|sending|sent|email|e-mail|emailing|text|dm|message|blast)\b.*"
++    r"\b(email|e-mail|sms|newsletter|campaign|customers?|clients?|list|"
++    r"subscribers?|everyone|recipients?|inbox|out)\b",
++    r"\b(newsletter|campaign)\b.*\b(send|blast|out|launch)\b",
++    r"\bgit\s+push\b.*(--force|-f\b|force)",
++    r"\bforce[- ]?push\b",
++    # Payments / money movement — broadened verbs incl. wire/send money.
++    r"\b(charge|payment|pay|payout|invoice|refund|transfer|wire|remit)\b.*"
++    r"\b(card|customer|account|vendor|\$|usd|dollars?|money|funds?)\b",
++    r"\b(wire|send|transfer)\b.*\b(\$|money|funds?|payment)\b",
++    r"\bdelete\b.*\b(remote|production|prod|origin|branch on|bucket|database|records?)\b",
++    r"\b(drop|truncate)\s+(table|database|schema)\b",
++    r"\bdns\b.*\b(record|change|update|cutover)\b",
++    r"\bmerge\b.*\b(to|into)\b.*\b(main|master|production)\b.*\b(deploy|release|ship)\b",
++    r"\brm\s+-rf\b.*\b(remote|prod|production|/|~)\b",
++]
++_EXTERNAL_WRITE_PATTERNS = [
++    r"\bpush\b.*\b(remote|origin|branch|upstream)\b",
++    r"\bopen\b.*\b(pr|pull request|issue)\b",
++    r"\b(create|update|delete|post)\b.*\b(api|endpoint|record|row|webhook)\b",
++    r"\bwrite\b.*\b(database|db|table|s3|bucket|remote)\b",
++    r"\bstaging\b.*\bdeploy",
++    r"\bupload\b.*\b(to|remote|s3|bucket|cdn)\b",
++    r"\bcommit\b.*\band\b.*\bpush\b",
++]
++
++_IRREVERSIBLE_RE = [re.compile(p, re.IGNORECASE) for p in _IRREVERSIBLE_PATTERNS]
++_EXTERNAL_WRITE_RE = [re.compile(p, re.IGNORECASE) for p in _EXTERNAL_WRITE_PATTERNS]
++
++
++def stage_a_floor(text: str) -> tuple[str | None, list[str]]:
++    """Deterministic pattern floor over raw input. Returns (floor|None,
++    matched_pattern_labels). Irreversible wins over external-write."""
++    text = text or ""
++    fired = []
++    floor = None
++    for rx in _IRREVERSIBLE_RE:
++        if rx.search(text):
++            fired.append(f"irreversible:{rx.pattern[:40]}")
++            floor = "irreversible"
++    if floor != "irreversible":
++        for rx in _EXTERNAL_WRITE_RE:
++            if rx.search(text):
++                fired.append(f"high-risk:{rx.pattern[:40]}")
++                floor = "high-risk"
++    return floor, fired
++
++
++# ── Stage B — mode ``## RISK TIER`` heading (extract_default_gear idiom) ─────
++_MODE_TIER_RE = re.compile(
++    r"^##\s+RISK\s+TIER\s*\n+\s*([A-Za-z-]+)", re.IGNORECASE | re.MULTILINE)
++
++
++def extract_mode_risk_tier(mode_text: str | None) -> str | None:
++    """Read an optional ``## RISK TIER`` heading from a mode file body.
++    Absent/unrecognized → None (no floor)."""
++    if not mode_text:
++        return None
++    m = _MODE_TIER_RE.search(mode_text)
++    if not m:
++        return None
++    val = m.group(1).strip().lower()
++    return val if val in _TIER_RANK else None
++
++
++# ── The before-clock: classify ─────────────────────────────────────────────
++def classify_tier(raw_input: str, *, mode_text: str | None = None,
++                  sticky_floor: str | None = None,
++                  is_trivial_text: bool = False,
++                  explicit_override: str | None = None) -> dict:
++    """Assign the turn's risk tier. Never raises — on internal error returns
++    FAILSAFE_TIER with an ``error`` field (judge condition 6 / spec §7).
++
++    Precedence: an explicit per-turn override wins outright (it may lower a
++    floor — user owns the risk, D5); otherwise final =
++    max(stage-A floor, stage-B mode floor, sticky floor, default). A trivial
++    self-contained text turn with no floors defaults to ``light``.
++    """
++    try:
++        a_floor, fired = stage_a_floor(raw_input)
++        b_floor = extract_mode_risk_tier(mode_text)
++        det_present = bool(a_floor or b_floor)
++
++        if explicit_override and is_tier(explicit_override):
++            final = explicit_override
++            source = "explicit-override"
++        else:
++            # The base default: light only for a trivial self-contained text
++            # turn with no floors and no sticky; otherwise standard
++            # (condition 1). Sticky may RAISE but never LOWER — it enters the
++            # max only as a floor, so a sticky 'light' can never pull a
++            # deterministic 'irreversible' down.
++            base = "light" if (is_trivial_text and not det_present
++                               and not sticky_floor) else DEFAULT_TIER
++            present = [t for t in (a_floor, b_floor, sticky_floor) if t]
++            final = tier_max(*present, base)
++            source = "floors" if det_present else (
++                "sticky" if sticky_floor else "default")
++        return {
++            "risk_tier": final,
++            "stage_a_floor": a_floor,
++            "stage_b_floor": b_floor,
++            "sticky_floor": sticky_floor,
++            "default_used": not det_present and not explicit_override,
++            "override": explicit_override if explicit_override else None,
++            "floors_fired": fired,
++            "source": source,
++            "error": None,
++        }
++    except Exception as e:  # pragma: no cover - defensive
++        return {"risk_tier": FAILSAFE_TIER, "error": f"classify: {e}",
++                "floors_fired": [], "source": "failsafe", "default_used": False,
++                "stage_a_floor": None, "stage_b_floor": None,
++                "sticky_floor": sticky_floor, "override": None}
++
++
++# ── Inline /risk parsing (judge condition 5) ────────────────────────────────
++# `/risk <tier> <task>`  → per-turn override, task returned as cleaned input.
++# `/risk <tier>`         → sticky command (no task) — NOT consumed here; the
++#                          runtime slash-command surface handles it.
++# `/risk auto`           → clears sticky (also a runtime command).
++_RISK_PREFIX_RE = re.compile(r"^\s*/risk\s+([A-Za-z-]+)\s+(\S.*)$", re.DOTALL)
++_RISK_BARE_RE = re.compile(r"^\s*/risk\s+([A-Za-z-]+)\s*$")
++
++
++def strip_risk_prefix(user_input: str) -> tuple[str, str | None]:
++    """Lift a leading ``/risk <tier> <task>`` override. Returns
++    (cleaned_input, override_tier|None). A bare ``/risk <tier>`` (no task) is
++    left intact (returns the input unchanged, None) so the sticky runtime
++    command handles it. An unknown tier word is left intact (typo passes as
++    text, mirroring parse_user_command's /style behavior)."""
++    if not user_input:
++        return user_input, None
++    m = _RISK_PREFIX_RE.match(user_input)
++    if not m:
++        return user_input, None
++    raw = m.group(1).strip().lower()
++    if raw == "auto":
++        # `/risk auto <task>` — clear-for-this-turn is meaningless; treat as
++        # no override, strip the prefix so the task still runs.
++        return m.group(2), None
++    tier = _normalize_tier(raw)
++    if tier not in _TIER_RANK:
++        return user_input, None  # unknown tier → leave as text
++    return m.group(2), tier
++
++
++def parse_sticky_risk(user_input: str) -> str | None:
++    """For the runtime command surface: a bare ``/risk <tier>`` or
++    ``/risk auto`` with no trailing task. Returns the tier, the sentinel
++    ``"auto"``, or None when it isn't a bare risk command."""
++    m = _RISK_BARE_RE.match(user_input or "")
++    if not m:
++        return None
++    raw = m.group(1).strip().lower()
++    if raw == "auto":
++        return "auto"
++    val = _normalize_tier(raw)
++    return val if val in _TIER_RANK else None
++
++
++def is_risk_command(user_input: str) -> bool:
++    return parse_sticky_risk(user_input) is not None
++
++
++# ── Task-approval fingerprint (judge condition 3) ───────────────────────────
++def task_fingerprint(*, conversation_id: str | None, prompt: str,
++                     surface: str = "", mode_id: str = "",
++                     output_target: str = "", config_name: str = "",
++                     manual_selections=None, attachments=None) -> str:
++    """Structured identity of a task for the approval token. Binds more than
++    conversation_id + prompt so the SAME task re-admits once while a
++    materially different task (different target / mode / attachment) does not
++    inherit the token. Prompt is whitespace-normalized + lowercased so
++    trivial re-typing still matches; structural fields are exact."""
++    norm_prompt = re.sub(r"\s+", " ", (prompt or "").strip().lower())
++    payload = {
++        "c": conversation_id or "",
++        "p": norm_prompt,
++        "s": surface or "",
++        "m": mode_id or "",
++        "o": output_target or "",
++        "cfg": config_name or "",
++        "sel": sorted(manual_selections.items()) if isinstance(manual_selections, dict)
++        else (sorted(manual_selections) if manual_selections else []),
++        "att": sorted(attachments) if attachments else [],
++    }
++    blob = json.dumps(payload, sort_keys=True, default=str)
++    return hashlib.sha1(blob.encode()).hexdigest()[:16]
++
++
++# The task token is scoped for CONSUMPTION by the FINGERPRINT, not by the
++# token's conversation field: the fingerprint already binds conversation_id
++# (plus surface/mode/output/…), so it is the authoritative task identity, and
++# consuming by fingerprint avoids a double-binding that broke approval on the
++# framework path (mint reply's conversation ≠ resume's conversation). BUT the
++# token still STORES the granting conversation_id so the stealth closeout
++# purge (which matches token.conversation_id == purged conversation) can reach
++# it. Cross-conversation safety comes from the fingerprint: two different chat
++# conversations produce different fingerprints; a framework deliverable
++# (conversation None in the fingerprint) is conversation-agnostic by design.
++def has_valid_task_token(fingerprint: str,
++                         conversation_id: str | None = None) -> bool:
++    """Non-consuming check: is there an unexpired task token for this
++    fingerprint? The resume CONSUMES via consume_task_token (one-shot)."""
++    data = _te._load_approvals()
++    import time as _time
++    from datetime import datetime as _dt
++    now = _time.time()
++    for entry in data.get("tokens", []):
++        if entry.get("used") or entry.get("action") != TASK_ACTION:
++            continue
++        if entry.get("args_hash") != fingerprint:
++            continue
++        try:
++            granted = _dt.fromisoformat(entry["granted_at"]).timestamp()
++        except Exception:
++            granted = 0
++        if now - granted > entry.get("ttl_s", TASK_TOKEN_TTL_S):
++            continue
++        return True
++    return False
++
++
++def grant_task_token(fingerprint: str, conversation_id: str | None = None,
++                     granted_via: str = "tier-gate") -> str:
++    """Mint a task-approval token (the recorded human approval). Stores the
++    granting conversation_id so the stealth closeout purge can reach it;
++    consumption is by fingerprint (see consume_task_token). First removes any
++    existing UNUSED token for this fingerprint so a double approval cannot
++    accumulate two live one-shot tokens (would let one hold admit the same
++    irreversible task twice)."""
++    try:
++        _te.remove_unused_tokens(TASK_ACTION, fingerprint)
++    except Exception:
++        pass
++    return _te.grant_approval(TASK_ACTION, fingerprint, conversation_id,
++                              ttl_s=TASK_TOKEN_TTL_S, granted_via=granted_via)
++
++
++def consume_task_token(fingerprint: str,
++                       conversation_id: str | None = None) -> str | None:
++    """Consume a matching one-shot task token by fingerprint (the token's
++    stored conversation is ignored for matching — see the module note)."""
++    return _te.consume_token_by_fingerprint(TASK_ACTION, fingerprint)
++
++
++# ── Task-gate conversation-as-state marker ──────────────────────────────────
++_TASK_GATE_MARKER_RE = re.compile(
++    r"<!--\s*ora-task-gate:\s*(\{.*?\})\s*-->", re.DOTALL)
++
++
++def task_gate_marker(payload: dict) -> str:
++    return f"\n\n<!-- ora-task-gate: {json.dumps(payload, sort_keys=True)} -->"
++
++
++def read_task_gate_marker(text: str) -> dict | None:
++    if not text:
++        return None
++    m = _TASK_GATE_MARKER_RE.search(text)
++    if not m:
++        return None
++    try:
++        return json.loads(m.group(1))
++    except Exception:
++        return None
++
++
++def is_task_gate_continuation(history: list) -> dict | None:
++    """Scan the most recent assistant message for a task-gate marker."""
++    for msg in reversed(history or []):
++        if msg.get("role") == "assistant":
++            return read_task_gate_marker(msg.get("content", ""))
++    return None
++
++
++
++# ── The hold decision ───────────────────────────────────────────────────────
++def should_hold(risk_tier: str, *, has_token: bool, stealth: bool = False) -> bool:
++    """A tier=irreversible turn holds before the executor unless a valid
++    task token already authorizes it. (Stealth still holds — it just uses the
++    marker path, no queue card.)"""
++    return risk_tier == "irreversible" and not has_token
++
++
++def build_task_gate_prompt(risk_tier: str, fingerprint: str,
++                           queue_id: str | None, resume: dict | None = None) -> str:
++    """The assistant reply that pauses an irreversible turn, as a plain
++    'response' with the marker appended (the only pause shape the /chat
++    plain-HTTP client can see).
++
++    ``resume`` (optional {"fw","mode"}): carried in the marker payload so an
++    approval can re-attach the framework elicitation marker and keep a
++    mid-elicitation flow alive across the hold (data only — never an embedded
++    HTML-comment marker, which would break the outer comment)."""
++    body = (
++        f"⚠️ This task is classified **{risk_tier}** — it may take an action "
++        f"that can't be cleanly undone. Reply **1** to approve and proceed, "
++        f"**2** to cancel, or `/risk <tier> <task>` to override the tier."
++    )
++    payload = {"queue_id": queue_id, "fp": fingerprint, "tier": risk_tier}
++    if resume:
++        payload["resume"] = resume
++    out = body + task_gate_marker(payload)
++    # For a framework-deliverable hold, ALSO carry the ora-framework
++    # elicitation marker as a SIBLING comment (never nested). This makes the
++    # sidebar / slash approval path work with a single "continue": after that
++    # approval mints the token, the user's "continue" in the origin
++    # conversation falls through the task-gate handler (not 1/2) to
++    # is_continuation, which re-enters the deliverable and consumes the token.
++    if resume and resume.get("fw"):
++        try:
++            from framework_elicitation import elicitation_marker
++        except ImportError:  # pragma: no cover
++            from orchestrator.framework_elicitation import elicitation_marker
++        out += "\n" + elicitation_marker(resume.get("fw", ""),
++                                         resume.get("mode", ""))
++    return out
++
++
++# ── The after-clock: route_observed fold (judge condition 7) ────────────────
++def fold_route_observed(events_path: str | None, *,
++                        conversation_id: str | None = None,
++                        turn_ts: str | None = None) -> dict:
++    """Fold a turn's tool-events into route signals. When ``events_path`` is
++    a per-turn trace file the whole file is the unit; when it is the global
++    sink, filter by conversation_id (+ optional turn_ts window) so a sibling
++    turn's events can't contaminate the fold. Never raises."""
++    signals = {"any_mutation": False, "max_mutability": "read",
++               "reads_present": False, "max_sensitivity": "public",
++               "max_egress": "none", "gate_outcomes": {}, "events_scanned": 0}
++    if not events_path or not os.path.exists(events_path):
++        return signals
++    scoped_to_file = bool(turn_ts is None and conversation_id is None)
++    try:
++        with open(events_path) as f:
++            for line in f:
++                line = line.strip()
++                if not line:
++                    continue
++                try:
++                    ev = json.loads(line)
++                except Exception:
++                    continue
++                if not scoped_to_file:
++                    if conversation_id is not None:
++                        corr = (ev.get("correlation") or {}).get("conversation_id")
++                        ev_conv = ev.get("conversation_id") or corr
++                        if ev_conv != conversation_id:
++                            continue
++                    if turn_ts is not None and ev.get("ts", "") < turn_ts:
++                        continue
++                signals["events_scanned"] += 1
++                mut = ev.get("mutability")
++                if mut:
++                    signals["max_mutability"] = _te.max_mutability(
++                        signals["max_mutability"], mut)
++                if ev.get("mutated"):
++                    signals["any_mutation"] = True
++                sens = ev.get("sensitivity")
++                if sens:
++                    signals["max_sensitivity"] = _te.max_sensitivity(
++                        signals["max_sensitivity"], sens)
++                egr = ev.get("egress")
++                if egr:
++                    signals["max_egress"] = _te.max_egress(
++                        signals["max_egress"], egr)
++                if ev.get("reads"):
++                    signals["reads_present"] = True
++                gate = ev.get("gate") or {}
++                dec = gate.get("decision")
++                if dec:
++                    signals["gate_outcomes"][dec] = \
++                        signals["gate_outcomes"].get(dec, 0) + 1
++    except Exception:
++        pass
++    return signals
++
++
++# ── Sticky per-conversation override (durable runtime state) ────────────────
++# Stored in a small data/ JSON file (surface-agnostic; no vault/envelope
++# schema change). A sticky sets a FLOOR that may raise but never lower a
++# deterministic floor (condition 2).
++def _sticky_path() -> str:
++    return os.path.join(_rp.DATA_DIR_STR, "risk-sticky.json")
++
++
++def _load_sticky() -> dict:
++    try:
++        with open(_sticky_path()) as f:
++            return json.load(f)
++    except Exception:
++        return {}
++
++
++def get_sticky(conversation_id: str | None) -> str | None:
++    if not conversation_id:
++        return None
++    val = _load_sticky().get(conversation_id)
++    return val if val in _TIER_RANK else None
++
++
++def set_sticky(conversation_id: str | None, tier: str | None) -> None:
++    """Set (tier in TIERS) or clear (tier is None / 'auto') the sticky."""
++    if not conversation_id:
++        return
++    try:
++        data = _load_sticky()
++        if tier is None or tier == "auto" or tier not in _TIER_RANK:
++            data.pop(conversation_id, None)
++        else:
++            data[conversation_id] = tier
++        os.makedirs(os.path.dirname(_sticky_path()), exist_ok=True)
++        tmp = _sticky_path() + ".tmp"
++        with open(tmp, "w") as f:
++            json.dump(data, f)
++        os.replace(tmp, _sticky_path())
++    except Exception:
++        pass
++
++
++def handle_risk_command(user_input: str, conversation_id: str | None) -> str | None:
++    """If ``user_input`` is a bare ``/risk <tier>`` / ``/risk auto`` (no task),
++    apply the sticky and return a confirmation message (short-circuit). Else
++    None. Called at the turn head, before is_runtime_command (condition 5)."""
++    val = parse_sticky_risk(user_input)
++    if val is None:
++        return None
++    if val == "auto":
++        set_sticky(conversation_id, None)
++        return "Risk tier override cleared — tiers now auto-classified per turn."
++    set_sticky(conversation_id, val)
++    return (f"Risk tier floor set to **{val}** for this conversation. "
++            f"It raises the tier when auto-classification would be lower, but "
++            f"never lowers a deterministic high-risk/irreversible floor. "
++            f"Use `/risk auto` to clear.")
++
++
++# ── Full before-clock assignment + task_tier record ─────────────────────────
++def assign_tier(cleaned_input: str, conversation_id: str | None, *,
++                mode_text: str | None = None, is_trivial_text: bool = False,
++                override: str | None = None, record: bool = True,
++                surface: str = "") -> dict:
++    """Classify + (optionally) record the turn's tier. Merges the sticky
++    floor. Returns the classify_tier dict augmented with the resolved
++    tier. Never raises."""
++    sticky = get_sticky(conversation_id)
++    result = classify_tier(cleaned_input, mode_text=mode_text,
++                           sticky_floor=sticky, is_trivial_text=is_trivial_text,
++                           explicit_override=override)
++    result["surface"] = surface
++    if record:
++        try:
++            _te.record({
++                "event": "task_tier", "action": "task_tier",
++                "category": "execute", "mutability": "read",
++                "sensitivity": "public", "egress": "none",
++                "enforcement_model": "in_harness",
++                "risk_tier": result["risk_tier"],
++                "floors_fired": result.get("floors_fired"),
++                "source": result.get("source"),
++                "default_used": result.get("default_used"),
++                "override": result.get("override"),
++                "sticky_floor": result.get("sticky_floor"),
++                "assignment_error": result.get("error"),
++            })
++        except Exception:
++            pass
++    return result
++
++
++# ── Task-gate hold card (mirrors Phase 1 execution_gate) ────────────────────
++def write_task_gate_card(risk_tier: str, fingerprint: str,
++                         conversation_id: str | None, surface: str,
++                         description: str, stealth: bool = False,
++                         resume: dict | None = None) -> str | None:
++    """Write a durable Paused card (kind='task_gate') for an irreversible-tier
++    hold. Skipped under stealth (Phase 1 invariant — no card, marker only).
++    Returns the queue id, or None (stealth / failure)."""
++    if stealth:
++        return None
++    try:
++        from oversight_queue import add_entry
++    except ImportError:  # pragma: no cover
++        from orchestrator.oversight_queue import add_entry
++    try:
++        name = f"Task held: {risk_tier} — {(description or '')[:48]}"
++        entry = add_entry({
++            "kind": "task_gate",
++            "name": name,
++            "conversation_id": conversation_id,
++            "event": {
++                "event_type": "TaskGateHeld",
++                "risk_tier": risk_tier,
++                "fingerprint": fingerprint,
++                "conversation_id": conversation_id,
++                "surface": surface,
++                "description": description,
++                # Persist the framework resume payload on the card so the
++                # queue-side approval path is self-describing (finding 2).
++                "resume": resume,
++            },
++            "verdict": {
++                "verdict": "HELD",
++                "reasoning": (
++                    f"This task is classified {risk_tier}. Approving records "
++                    f"the task-level human approval and admits the task once; "
++                    f"the per-call gate still fires on the actual irreversible "
++                    f"actions."),
++            },
++            "redefinition": False,
++        })
++        return getattr(entry, "id", None)
++    except Exception:
++        return None
++
++
++def resolve_task_gate_entry(record_dict: dict, approve: bool,
++                            reason: str = "") -> str:
++    """Commit handler for kind='task_gate' cards (parallels
++    tool_events.resolve_gate_entry). Approve → mint the task token; deny →
++    record the blocked decision. Called by resolution_chain / slash_commands
++    kind-dispatch."""
++    event = record_dict.get("event", {})
++    fp = event.get("fingerprint", "")
++    conv = event.get("conversation_id")
++    if approve:
++        grant_task_token(fp, conv, granted_via="paused-queue")
++        return ("✅ Task approved. Re-send the task (or say 'continue') in the "
++                "origin conversation and it will proceed without another hold.")
++    try:
++        _te.record({"event": "gate", "action": TASK_ACTION,
++                    "category": "execute", "mutability": "irreversible",
++                    "sensitivity": "private", "egress": "none",
++                    "enforcement_model": "in_harness",
++                    "gate": {"decision": "blocked",
++                             "why": f"task-gate denied: {reason}"[:200]}})
++    except Exception:
++        pass
++    return "❌ Task denied. The held task will not run."
++
++
++# ── The pre-executor hold evaluator (surface-agnostic) ──────────────────────
++def evaluate_hold(risk_tier: str, *, conversation_id: str | None, prompt: str,
++                  surface: str, mode_id: str = "", output_target: str = "",
++                  config_name: str = "", manual_selections=None,
++                  attachments=None, stealth: bool = False,
++                  description: str = "", resume: dict | None = None
++                  ) -> tuple[str | None, str]:
++    """The single hold decision both surfaces call, at the pre-executor
++    chokepoint. Returns (hold_reply_or_None, fingerprint).
++
++    For a non-irreversible tier: no hold. For irreversible: if a valid task
++    token exists it is CONSUMED (one-shot) and the run proceeds; otherwise a
++    durable card (non-stealth) + a marker reply pause the turn.
++
++    NEVER RAISES, and fails CLOSED: any internal error on an irreversible
++    tier returns a hold (spec §6 — gated before the executor runs, no
++    exceptions), so an I/O error in the token store can't leak an
++    irreversible task past the hold."""
++    try:
++        fp = task_fingerprint(conversation_id=conversation_id, prompt=prompt,
++                              surface=surface, mode_id=mode_id,
++                              output_target=output_target,
++                              config_name=config_name,
++                              manual_selections=manual_selections,
++                              attachments=attachments)
++    except Exception:
++        fp = ""
++    if risk_tier != "irreversible":
++        return None, fp
++    try:
++        if consume_task_token(fp):
++            return None, fp  # pre-authorized (approved earlier / override)
++        qid = write_task_gate_card(risk_tier, fp, conversation_id, surface,
++                                   description or prompt, stealth=stealth,
++                                   resume=resume)
++        return build_task_gate_prompt(risk_tier, fp, qid, resume=resume), fp
++    except Exception as e:
++        # Fail closed: an irreversible task must not proceed on an error.
++        try:
++            _te.record({"event": "gate", "action": TASK_ACTION,
++                        "category": "execute", "mutability": "irreversible",
++                        "sensitivity": "private", "egress": "none",
++                        "enforcement_model": "in_harness",
++                        "gate": {"decision": "blocked",
++                                 "why": f"hold fail-closed: {e}"[:200]}})
++        except Exception:
++            pass
++        return build_task_gate_prompt(risk_tier, fp, None, resume=resume), fp
++
++
++def _remove_task_gate_card(queue_id: str | None) -> None:
++    if not queue_id:
++        return
++    try:
++        from oversight_queue import remove_by_id
++    except ImportError:  # pragma: no cover
++        from orchestrator.oversight_queue import remove_by_id
++    try:
++        remove_by_id(queue_id)
++    except Exception:
++        pass
++
++
++def handle_task_gate_reply(marker_ctx: dict, user_text: str,
++                           conversation_id: str | None) -> str | None:
++    """A "1"/"2" reply to a task-gate hold. "1" mints the task token (the
++    recorded approval) and instructs re-send; "2" cancels. Anything else →
++    None (fall through to normal processing)."""
++    t = (user_text or "").strip()
++    fp = (marker_ctx or {}).get("fp", "")
++    qid = (marker_ctx or {}).get("queue_id")
++    resume = (marker_ctx or {}).get("resume")
++    if t == "1":
++        grant_task_token(fp, conversation_id, granted_via="tier-gate")
++        _remove_task_gate_card(qid)
++        reply = ("✅ Approved. ")
++        if resume and resume.get("fw"):
++            # A mid-elicitation deliverable hold: re-attach the framework
++            # marker so the next turn re-enters elicitation, re-reaches the
++            # deliverable, finds this token, and proceeds (the flow would
++            # otherwise be stranded — the deliverable path has no other way
++            # back). Say "continue" to resume.
++            try:
++                from framework_elicitation import elicitation_marker
++            except ImportError:  # pragma: no cover
++                from orchestrator.framework_elicitation import elicitation_marker
++            marker = elicitation_marker(resume.get("fw", ""), resume.get("mode", ""))
++            return (reply + "Say **continue** to produce the deliverable.\n\n"
++                    + marker)
++        return reply + ("Re-send the task (or repeat it) and it will "
++                        "proceed without another hold.")
++    if t == "2":
++        _remove_task_gate_card(qid)
++        return "❌ Cancelled. The held task will not run."
++    return None
++
++
++# ── Criteria pass for standard+ (judge condition 6) ─────────────────────────
++def run_criteria_pass(instruction: str, mode_text: str | None, *,
++                      invoker=None) -> tuple[str | None, str | None]:
++    """Set acceptance criteria BEFORE execution, separate from the executor
++    (spec §16-1). ``invoker(system, user)`` is a model-call callback (sidebar
++    slot); injected so this is unit-testable and a no-op when no endpoint is
++    available. Returns (criteria_text_or_None, error_or_None). Never raises."""
++    if invoker is None:
++        return None, "no-invoker"
++    try:
++        system = (
++            "You set acceptance criteria for a task BEFORE it is executed. "
++            "Read the task instruction and produce 2-5 short, checkable "
++            "acceptance criteria as a bulleted list — what must be true for "
++            "the result to count as correct. Do not attempt the task. Output "
++            "ONLY the bullets.")
++        user = f"TASK:\n{instruction}\n"
++        out = invoker(system, user)
++        if not out or not out.strip():
++            return None, "empty"
++        return out.strip(), None
++    except Exception as e:
++        return None, f"criteria: {e}"
++
++
++def apply_criteria(context_pkg: dict, instruction: str, risk_tier: str, *,
++                   invoker=None) -> str | None:
++    """Run the criteria pass for standard+ and stash the result on
++    context_pkg['acceptance_criteria'] for read-only injection. On FAILURE do
++    NOT fall through to light (condition 6): return a hold/warn directive
++    string for the caller to surface. Returns None when nothing to surface.
++
++    Return value semantics for the caller:
++      * None                     → proceed (light tier, or criteria set OK)
++      * "WARN:<msg>"             → prepend the warning, then proceed (standard)
++      * "HOLD:<msg>"             → treat as a pre-executor hold (high-risk+)
++    """
++    if risk_tier == "light":
++        return None
++    criteria, err = run_criteria_pass(instruction, context_pkg.get("mode_text"),
++                                      invoker=invoker)
++    if criteria and not err:
++        context_pkg["acceptance_criteria"] = criteria
++        try:
++            _te.record({"event": "acceptance_criteria",
++                        "action": "acceptance_criteria", "category": "execute",
++                        "mutability": "read", "sensitivity": "public",
++                        "egress": "none", "enforcement_model": "in_harness",
++                        "risk_tier": risk_tier})
++        except Exception:
++            pass
++        return None
++    if err == "no-invoker":
++        # No model available to set criteria (e.g. offline / test). Not a
++        # silent light-execution: record and proceed; criteria are absent by
++        # environment, not by classification.
++        return None
++    # Genuine failure (empty / error): surface, never silent (condition 6).
++    try:
++        _te.record({"event": "task_tier", "action": "task_tier",
++                    "category": "execute", "mutability": "read",
++                    "sensitivity": "public", "egress": "none",
++                    "enforcement_model": "in_harness", "risk_tier": risk_tier,
++                    "criteria_error": err})
++    except Exception:
++        pass
++    msg = ("Acceptance criteria could not be generated for this "
++           f"{risk_tier} task (criteria pass {err}).")
++    if tier_at_least(risk_tier, "high-risk"):
++        return "HOLD:" + msg + " Holding for your review."
++    return "WARN:" + msg + " Proceeding without pre-set criteria."
++
++
++def record_route_observed(turn_key, risk_tier: str | None = None) -> dict:
++    """Best-effort after-clock record on ANY terminal path (condition 7).
++    ``turn_key`` is either a trace-dir path (str) or a (conversation_id,
++    turn_ts) tuple for global-sink turns. Never raises."""
++    try:
++        if isinstance(turn_key, (tuple, list)) and len(turn_key) == 2:
++            conv, ts = turn_key
++            signals = fold_route_observed(_te.global_sink_path(),
++                                          conversation_id=conv, turn_ts=ts)
++        elif turn_key:
++            path = os.path.join(str(turn_key), "tool-events.jsonl")
++            signals = fold_route_observed(path)
++        else:
++            signals = fold_route_observed(None)
++        divergence = None
++        # The one divergence check well-defined in Phase 2 (no output_type
++        # until Phase 4): a standard-or-lower turn that mutated beyond its
++        # tier. Recorded, not enforced.
++        if risk_tier in ("light", "standard") and signals["any_mutation"] \
++                and signals["max_mutability"] in ("external_write", "irreversible"):
++            divergence = f"{risk_tier}-tier turn observed {signals['max_mutability']}"
++        _te.record({"event": "route_observed", "action": "route_observed",
++                    "category": "execute", "mutability": "read",
++                    "sensitivity": "public", "egress": "none",
++                    "enforcement_model": "in_harness",
++                    "risk_tier": risk_tier,
++                    "route_signals": signals, "divergence": divergence})
++        return {"signals": signals, "divergence": divergence}
++    except Exception:
++        return {"signals": None, "divergence": None}
+diff --git a/orchestrator/slash_commands.py b/orchestrator/slash_commands.py
+index 6cdd6ebe..de90baf6 100644
+--- a/orchestrator/slash_commands.py
++++ b/orchestrator/slash_commands.py
+@@ -616,14 +616,24 @@ def _maybe_resolve_gate_entry_at(idx: int, approve: bool,
+         if idx < 0 or idx >= len(lines):
+             return None
+         rec = _json.loads(lines[idx])
+-        if rec.get("kind") != "execution_gate":
++        _kind = rec.get("kind")
++        if _kind not in ("execution_gate", "task_gate"):
+             return None
+-        try:
+-            import tool_events
+-        except ImportError:
+-            from orchestrator import tool_events
+-        message = tool_events.resolve_gate_entry(rec, approve=approve,
+-                                                 reason=reason)
++        if _kind == "task_gate":
++            # Execution Review Phase 2: irreversible-tier task hold.
++            try:
++                import risk_gate
++            except ImportError:
++                from orchestrator import risk_gate
++            message = risk_gate.resolve_task_gate_entry(rec, approve=approve,
++                                                        reason=reason)
++        else:
++            try:
++                import tool_events
++            except ImportError:
++                from orchestrator import tool_events
++            message = tool_events.resolve_gate_entry(rec, approve=approve,
++                                                     reason=reason)
+         with file_lock(HUMAN_QUEUE_PATH):
+             with open(HUMAN_QUEUE_PATH) as f:
+                 current = [l for l in f if l.strip()]
+diff --git a/orchestrator/tests/test_risk_gate.py b/orchestrator/tests/test_risk_gate.py
+new file mode 100644
+index 00000000..da7607a6
+--- /dev/null
++++ b/orchestrator/tests/test_risk_gate.py
+@@ -0,0 +1,663 @@
++"""Execution Review Phase 2 — risk_gate unit tests (classifier, /risk parse,
++fingerprint, task tokens, task-gate marker, route_observed fold)."""
++
++from __future__ import annotations
++
++import json
++import os
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import risk_gate as rg  # noqa: E402
++import tool_events as te  # noqa: E402
++
++
++class TestTierOrdering(unittest.TestCase):
++    def test_tier_max(self):
++        self.assertEqual(rg.tier_max("light", "irreversible"), "irreversible")
++        self.assertEqual(rg.tier_max("standard", "high-risk"), "high-risk")
++        self.assertEqual(rg.tier_max("", None), rg.DEFAULT_TIER)
++        self.assertEqual(rg.tier_max("light", "standard", "light"), "standard")
++
++    def test_tier_at_least(self):
++        self.assertTrue(rg.tier_at_least("irreversible", "standard"))
++        self.assertFalse(rg.tier_at_least("light", "standard"))
++
++
++class TestStageAFloor(unittest.TestCase):
++    def test_irreversible_intents_floor_irreversible(self):
++        for txt in ("deploy this to production",
++                    "send an email to the client list",
++                    "git push --force to origin",
++                    "publish the article now",
++                    "charge the customer's card $40",
++                    "drop table users",
++                    "force-push the rebased branch"):
++            floor, fired = rg.stage_a_floor(txt)
++            self.assertEqual(floor, "irreversible", txt)
++            self.assertTrue(fired)
++
++    def test_external_write_intents_floor_high_risk(self):
++        for txt in ("open a pull request for this",
++                    "push the branch to origin",
++                    "upload the build to the S3 bucket"):
++            floor, _ = rg.stage_a_floor(txt)
++            self.assertEqual(floor, "high-risk", txt)
++
++    def test_ordinary_text_no_floor(self):
++        for txt in ("explain this function",
++                    "summarize the architecture",
++                    "what are the tradeoffs of event sourcing"):
++            floor, fired = rg.stage_a_floor(txt)
++            self.assertIsNone(floor, txt)
++            self.assertEqual(fired, [])
++
++    def test_irreversible_wins_over_external_write(self):
++        floor, _ = rg.stage_a_floor("commit and push then deploy to production")
++        self.assertEqual(floor, "irreversible")
++
++
++class TestModeTierHeading(unittest.TestCase):
++    def test_extracts_heading(self):
++        body = "# Mode\n\n## RISK TIER\nhigh-risk\n\n## DEFAULT GEAR\n4\n"
++        self.assertEqual(rg.extract_mode_risk_tier(body), "high-risk")
++
++    def test_absent_returns_none(self):
++        self.assertIsNone(rg.extract_mode_risk_tier("# Mode\n\n## DEFAULT GEAR\n3"))
++        self.assertIsNone(rg.extract_mode_risk_tier(None))
++
++    def test_unknown_value_returns_none(self):
++        self.assertIsNone(rg.extract_mode_risk_tier("## RISK TIER\nbananas\n"))
++
++
++class TestClassify(unittest.TestCase):
++    def test_default_is_standard(self):
++        r = rg.classify_tier("explain this function")
++        self.assertEqual(r["risk_tier"], "standard")
++        self.assertTrue(r["default_used"])
++
++    def test_trivial_text_defaults_light(self):
++        r = rg.classify_tier("hi there", is_trivial_text=True)
++        self.assertEqual(r["risk_tier"], "light")
++
++    def test_stage_a_floor_raises(self):
++        r = rg.classify_tier("send this as an email to everyone")
++        self.assertEqual(r["risk_tier"], "irreversible")
++        self.assertEqual(r["source"], "floors")
++
++    def test_mode_floor_applies(self):
++        r = rg.classify_tier("do the analysis",
++                             mode_text="## RISK TIER\nhigh-risk\n")
++        self.assertEqual(r["risk_tier"], "high-risk")
++
++    def test_sticky_raises_but_never_lowers_floor(self):
++        # sticky light must not pull an irreversible floor down (condition 2)
++        r = rg.classify_tier("deploy to production", sticky_floor="light")
++        self.assertEqual(r["risk_tier"], "irreversible")
++        # sticky high-risk raises an otherwise-standard turn
++        r2 = rg.classify_tier("analyze the data", sticky_floor="high-risk")
++        self.assertEqual(r2["risk_tier"], "high-risk")
++
++    def test_explicit_override_may_lower(self):
++        r = rg.classify_tier("deploy to production",
++                             explicit_override="high-risk")
++        self.assertEqual(r["risk_tier"], "high-risk")
++        self.assertEqual(r["override"], "high-risk")
++
++    def test_never_raises(self):
++        with mock.patch.object(rg, "stage_a_floor", side_effect=ValueError("x")):
++            r = rg.classify_tier("anything")
++        self.assertEqual(r["risk_tier"], rg.FAILSAFE_TIER)
++        self.assertIn("classify", r["error"])
++
++
++class TestRiskPrefix(unittest.TestCase):
++    def test_inline_override_extracted(self):
++        cleaned, tier = rg.strip_risk_prefix("/risk high-risk deploy the site")
++        self.assertEqual(cleaned, "deploy the site")
++        self.assertEqual(tier, "high-risk")
++
++    def test_bare_command_left_intact(self):
++        cleaned, tier = rg.strip_risk_prefix("/risk standard")
++        self.assertEqual(cleaned, "/risk standard")
++        self.assertIsNone(tier)
++
++    def test_unknown_tier_passes_as_text(self):
++        cleaned, tier = rg.strip_risk_prefix("/risk bananas do the thing")
++        self.assertEqual(cleaned, "/risk bananas do the thing")
++        self.assertIsNone(tier)
++
++    def test_non_risk_untouched(self):
++        cleaned, tier = rg.strip_risk_prefix("explain /risk levels to me")
++        self.assertEqual(cleaned, "explain /risk levels to me")
++        self.assertIsNone(tier)
++
++    def test_sticky_parse(self):
++        self.assertEqual(rg.parse_sticky_risk("/risk standard"), "standard")
++        self.assertEqual(rg.parse_sticky_risk("/risk auto"), "auto")
++        self.assertIsNone(rg.parse_sticky_risk("/risk high-risk do it"))
++        self.assertTrue(rg.is_risk_command("/risk light"))
++
++
++class TestFingerprint(unittest.TestCase):
++    def test_same_task_same_fp(self):
++        a = rg.task_fingerprint(conversation_id="c1", prompt="Deploy the site")
++        b = rg.task_fingerprint(conversation_id="c1", prompt="deploy the  site ")
++        self.assertEqual(a, b)  # whitespace + case normalized
++
++    def test_different_target_differs(self):
++        a = rg.task_fingerprint(conversation_id="c1", prompt="save it",
++                                output_target="file:/a.md")
++        b = rg.task_fingerprint(conversation_id="c1", prompt="save it",
++                                output_target="file:/b.md")
++        self.assertNotEqual(a, b)
++
++    def test_different_conversation_differs(self):
++        a = rg.task_fingerprint(conversation_id="c1", prompt="x")
++        b = rg.task_fingerprint(conversation_id="c2", prompt="x")
++        self.assertNotEqual(a, b)
++
++    def test_attachment_differs(self):
++        a = rg.task_fingerprint(conversation_id="c1", prompt="x", attachments=["h1"])
++        b = rg.task_fingerprint(conversation_id="c1", prompt="x", attachments=["h2"])
++        self.assertNotEqual(a, b)
++
++    def test_mode_and_surface_bind(self):
++        a = rg.task_fingerprint(conversation_id="c1", prompt="x", mode_id="m1",
++                                surface="chat")
++        b = rg.task_fingerprint(conversation_id="c1", prompt="x", mode_id="m2",
++                                surface="chat")
++        self.assertNotEqual(a, b)
++
++
++class TestTaskTokens(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._patch = mock.patch.object(
++            te, "APPROVALS_PATH", os.path.join(self._tmp, "approvals.json"))
++        self._patch.start()
++
++    def tearDown(self):
++        self._patch.stop()
++
++    def test_grant_check_consume_cycle(self):
++        fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
++        self.assertFalse(rg.has_valid_task_token(fp))
++        rg.grant_task_token(fp)
++        self.assertTrue(rg.has_valid_task_token(fp))
++        # consume is one-shot
++        self.assertIsNotNone(rg.consume_task_token(fp))
++        self.assertFalse(rg.has_valid_task_token(fp))
++        self.assertIsNone(rg.consume_task_token(fp))
++
++    def test_cross_conversation_isolation_via_fingerprint(self):
++        # Different conversations produce different fingerprints, so a token
++        # for one cannot admit the other (scoping is by fingerprint).
++        fp_c1 = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
++        fp_c2 = rg.task_fingerprint(conversation_id="c2", prompt="deploy")
++        self.assertNotEqual(fp_c1, fp_c2)
++        rg.grant_task_token(fp_c1)
++        self.assertTrue(rg.has_valid_task_token(fp_c1))
++        self.assertFalse(rg.has_valid_task_token(fp_c2))
++
++    def test_different_task_not_admitted(self):
++        fp1 = rg.task_fingerprint(conversation_id="c1", prompt="deploy A")
++        fp2 = rg.task_fingerprint(conversation_id="c1", prompt="deploy B")
++        rg.grant_task_token(fp1)
++        self.assertFalse(rg.has_valid_task_token(fp2))
++
++    def test_double_grant_is_one_shot(self):
++        # Adversarial fold: two approvals of the same task must not leave two
++        # live tokens (which would admit the irreversible task twice).
++        fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
++        rg.grant_task_token(fp)
++        rg.grant_task_token(fp)
++        self.assertIsNotNone(rg.consume_task_token(fp))
++        self.assertIsNone(rg.consume_task_token(fp))  # only ONE live token
++
++    def test_framework_style_approve_then_consume(self):
++        # Adversarial fold: framework path mints via handle_task_gate_reply
++        # (a real conversation) but consumes with conversation_id None — must
++        # still admit (fingerprint-scoped, not token-conversation-scoped).
++        fp = rg.task_fingerprint(conversation_id=None, prompt="send email",
++                                 surface="framework")
++        rg.handle_task_gate_reply({"fp": fp, "queue_id": None}, "1", "c9")
++        self.assertIsNotNone(rg.consume_task_token(fp))
++
++
++class TestEvaluateHoldFailClosed(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._patches = [
++            mock.patch.object(te, "APPROVALS_PATH",
++                              os.path.join(self._tmp, "a.json")),
++            mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp),
++        ]
++        for p in self._patches:
++            p.start()
++
++    def tearDown(self):
++        for p in self._patches:
++            p.stop()
++
++    def test_internal_error_holds_irreversible(self):
++        # Adversarial fold (blocker): an I/O error in the token check must
++        # NOT skip the hold — evaluate_hold fails CLOSED for irreversible.
++        with mock.patch.object(rg, "consume_task_token",
++                               side_effect=OSError("disk")), \
++             mock.patch.object(rg, "write_task_gate_card", return_value=None):
++            reply, fp = rg.evaluate_hold("irreversible", conversation_id="c1",
++                                         prompt="deploy prod", surface="chat")
++        self.assertIsNotNone(reply)  # held, not skipped
++        self.assertIsNotNone(rg.read_task_gate_marker(reply))
++
++    def test_non_irreversible_never_holds(self):
++        reply, _ = rg.evaluate_hold("high-risk", conversation_id="c1",
++                                    prompt="x", surface="chat")
++        self.assertIsNone(reply)
++
++
++class TestTierAliases(unittest.TestCase):
++    def test_high_alias(self):
++        _, tier = rg.strip_risk_prefix("/risk high deploy it")
++        self.assertEqual(tier, "high-risk")
++        self.assertEqual(rg.parse_sticky_risk("/risk high"), "high-risk")
++
++    def test_other_aliases(self):
++        _, t1 = rg.strip_risk_prefix("/risk irrev send email")
++        self.assertEqual(t1, "irreversible")
++        _, t2 = rg.strip_risk_prefix("/risk low chat")
++        self.assertEqual(t2, "light")
++
++
++class TestStageABroadened(unittest.TestCase):
++    def test_realistic_irreversible_phrasings(self):
++        for txt in ("ship it to prod",
++                    "email the customers about the outage",
++                    "cut a release",
++                    "wire $500 to the vendor",
++                    "go live with the new pricing",
++                    "send this to the list"):
++            floor, _ = rg.stage_a_floor(txt)
++            self.assertEqual(floor, "irreversible", txt)
++
++
++class TestRevision2Folds(unittest.TestCase):
++    """Judge Revision-2 findings — folded and regression-guarded."""
++
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._patches = [
++            mock.patch.object(te, "APPROVALS_PATH",
++                              os.path.join(self._tmp, "a.json")),
++            mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp),
++        ]
++        for p in self._patches:
++            p.start()
++
++    def tearDown(self):
++        for p in self._patches:
++            p.stop()
++
++    def test_token_stores_conversation_for_purge(self):
++        # P1: the token must store its granting conversation_id so the
++        # stealth closeout purge can match it — while consumption stays
++        # fingerprint-only.
++        fp = rg.task_fingerprint(conversation_id="cS", prompt="deploy")
++        rg.grant_task_token(fp, "cS")
++        data = te._load_approvals()
++        tok = [t for t in data["tokens"] if t["args_hash"] == fp][0]
++        self.assertEqual(tok["conversation_id"], "cS")
++        # consume ignores the stored conversation (fp-only)
++        self.assertIsNotNone(rg.consume_task_token(fp))
++
++    def test_framework_deliverable_resume_marker(self):
++        # P1: approving a mid-elicitation deliverable hold must re-attach the
++        # framework marker so the flow is not stranded.
++        import framework_elicitation as fe
++        fp = rg.task_fingerprint(conversation_id=None, prompt="send email",
++                                 surface="framework")
++        reply = rg.handle_task_gate_reply(
++            {"fp": fp, "queue_id": None,
++             "resume": {"fw": "corpus-formalization.md", "mode": "C-Design"}},
++            "1", "c9")
++        cont = fe.is_continuation([{"role": "assistant", "content": reply}])
++        self.assertIsNotNone(cont)
++        self.assertEqual(cont.mode, "C-Design")
++        self.assertTrue(rg.has_valid_task_token(fp))
++
++    def test_route_observed_turn_scoped(self):
++        # P1: the global-sink fold must exclude events before this turn.
++        import json as _j
++        p = os.path.join(self._tmp, "sink.jsonl")
++        with open(p, "w") as f:
++            f.write(_j.dumps({"conversation_id": "cR",
++                              "ts": "2020-01-01T00:00:00+00:00",
++                              "mutability": "irreversible", "mutated": True}) + "\n")
++        turn_ts = rg.now_ts()
++        s = rg.fold_route_observed(p, conversation_id="cR", turn_ts=turn_ts)
++        self.assertFalse(s["any_mutation"])
++        self.assertEqual(s["events_scanned"], 0)
++
++    def test_framework_deliverable_token_survives_summarizer_drift(self):
++        # Revision-2 adversarial blocker: the framework-deliverable token is
++        # fingerprinted by the STABLE framework+mode identity, so an approved
++        # deliverable still admits on the continue-turn even though the
++        # summarizer reworded/reordered the bullets (different deliverable
++        # text). Mirrors _produce_deliverable's _stable_id.
++        def stable_fp():
++            return rg.task_fingerprint(
++                conversation_id=None, prompt="framework-deliverable::cff.md::O-Render",
++                surface="framework", mode_id="cff.md/O-Render")
++        # hold-turn computes fp, approval mints it…
++        fp_hold = stable_fp()
++        rg.grant_task_token(fp_hold)
++        # continue-turn recomputes the fp from the SAME stable id (bullets
++        # drifted, but they don't enter the fingerprint) and consumes it.
++        reply, fp_resume = rg.evaluate_hold(
++            "irreversible", conversation_id=None,
++            prompt="framework-deliverable::cff.md::O-Render", surface="framework",
++            mode_id="cff.md/O-Render")
++        self.assertIsNone(reply)  # admitted, not re-held
++        self.assertEqual(fp_hold, fp_resume)
++
++    def test_framework_token_conversation_isolated(self):
++        # Rev-3 finding 1: the framework-deliverable fingerprint binds the
++        # conversation, so an approval in one conversation cannot admit the
++        # same framework/mode deliverable in another.
++        fp_a = rg.task_fingerprint(
++            conversation_id="convA", prompt="framework-deliverable::demo::all",
++            surface="framework", mode_id="demo/all")
++        fp_b = rg.task_fingerprint(
++            conversation_id="convB", prompt="framework-deliverable::demo::all",
++            surface="framework", mode_id="demo/all")
++        self.assertNotEqual(fp_a, fp_b)
++        rg.grant_task_token(fp_a, "convA")
++        self.assertTrue(rg.has_valid_task_token(fp_a))
++        self.assertFalse(rg.has_valid_task_token(fp_b))
++
++    def test_framework_hold_carries_both_markers(self):
++        # Rev-3 finding 2: a framework-deliverable hold reply carries BOTH the
++        # task-gate marker AND the ora-framework marker (siblings, not nested)
++        # so a sidebar/slash approval + single "continue" re-enters delivery.
++        import framework_elicitation as fe
++        reply = rg.build_task_gate_prompt(
++            "irreversible", "fpX", "q1",
++            resume={"fw": "corpus-formalization.md", "mode": "C-Design"})
++        self.assertIsNotNone(rg.read_task_gate_marker(reply))       # task-gate
++        self.assertIsNotNone(fe.is_continuation(                    # framework
++            [{"role": "assistant", "content": reply}]))
++        self.assertEqual(reply.count("<!--"), 2)  # two sibling comments
++
++    def test_sidebar_approval_then_continue_falls_through(self):
++        # Rev-3 finding 2: after a queue/sidebar approval mints the token, the
++        # origin "continue" is NOT handled by the task-gate reply (returns
++        # None) so it falls through to is_continuation, which re-enters.
++        marker_ctx = {"fp": "fpX", "queue_id": "q1",
++                      "resume": {"fw": "cff.md", "mode": "O-Render"}}
++        rg.grant_task_token("fpX", "convO")  # sidebar-minted
++        self.assertIsNone(rg.handle_task_gate_reply(marker_ctx, "continue", "convO"))
++
++    def test_card_persists_resume(self):
++        # Rev-3 finding 2: the queue card event carries the resume payload.
++        captured = {}
++
++        def _fake_add(rec, config=None):
++            captured.update(rec)
++            from types import SimpleNamespace
++            return SimpleNamespace(id="q9")
++        import oversight_queue
++        with mock.patch.object(oversight_queue, "add_entry", _fake_add):
++            rg.write_task_gate_card("irreversible", "fp1", "c1", "framework",
++                                    "desc", resume={"fw": "x.md", "mode": "M"})
++        self.assertEqual(captured["event"]["resume"], {"fw": "x.md", "mode": "M"})
++
++    def test_hold_message_skipped_from_summarizer_input(self):
++        # Rev-3 adversarial fold: a risk-gate hold reply (task-gate marker +
++        # approve/cancel prose) is scaffolding, not elicited facts — it must
++        # be skipped wholesale from the elicitation summarizer's input.
++        import framework_elicitation as fe
++        hold = rg.build_task_gate_prompt(
++            "irreversible", "fpX", "q1", resume={"fw": "cff.md", "mode": "O-Render"})
++        hist = [{"role": "user", "content": "produce the deliverable"},
++                {"role": "assistant", "content": hold},
++                {"role": "user", "content": "continue"}]
++        formatted = fe._format_conversation(hist, "continue")
++        self.assertNotIn("ora-task-gate", formatted)
++        self.assertNotIn("approve and proceed", formatted)
++
++    def test_route_fold_matches_seeded_conversation(self):
++        # Rev-3 adversarial fold: the framework paths seed the turn context so
++        # their tool events carry the conversation_id; the fold then matches.
++        import json as _j
++        p = os.path.join(self._tmp, "sink.jsonl")
++        with open(p, "w") as f:
++            f.write(_j.dumps({"conversation_id": "main",
++                              "ts": "2099-01-01T00:00:00+00:00",
++                              "mutability": "irreversible", "mutated": True}) + "\n")
++        s = rg.fold_route_observed(p, conversation_id="main",
++                                   turn_ts="2000-01-01T00:00:00+00:00")
++        self.assertTrue(s["any_mutation"])
++        self.assertEqual(s["events_scanned"], 1)
++
++    def test_hold_nonce_prevents_same_conversation_cross_task_reuse(self):
++        # Rev-4 finding: a per-hold nonce makes each held deliverable a
++        # distinct token, so a materially different later deliverable in the
++        # SAME conversation/framework/mode cannot reuse an earlier approval.
++        fp_a = rg.task_fingerprint(
++            conversation_id="convA", surface="framework", mode_id="demo/all",
++            prompt="framework-deliverable::demo::all::NONCE_A")
++        fp_b = rg.task_fingerprint(
++            conversation_id="convA", surface="framework", mode_id="demo/all",
++            prompt="framework-deliverable::demo::all::NONCE_B")
++        self.assertNotEqual(fp_a, fp_b)
++        rg.grant_task_token(fp_a, "convA")          # approved deliverable A
++        self.assertTrue(rg.has_valid_task_token(fp_a))
++        self.assertFalse(rg.has_valid_task_token(fp_b))  # B can't reuse
++
++    def test_content_nonce_reorder_stable_material_distinct(self):
++        # Rev-4: the framework nonce is a hash of the normalized WORD MULTISET
++        # of the whole deliverable text (mirrors _produce_deliverable).
++        # Bullet/word reordering → identical nonce (approved deliverable still
++        # produces on resume); materially different words → distinct nonce
++        # (holds — cannot reuse an earlier live approval, even a pivot).
++        import hashlib as _hl
++        import re as _re
++
++        def dnonce(text):
++            return _hl.sha1(" ".join(sorted(
++                _re.findall(r"\w+", (text or "").lower()))).encode(
++                "utf-8", "replace")).hexdigest()[:12]
++
++        a = "o-render Produce...\n- workflow: invoice\n- source: ERP export"
++        a_reordered = "o-render Produce...\n- source: ERP EXPORT\n- workflow: invoice"
++        b_material = "o-render Produce...\n- publish to all subscribers"
++        self.assertEqual(dnonce(a), dnonce(a_reordered))     # drift → same
++        self.assertNotEqual(dnonce(a), dnonce(b_material))   # pivot → distinct
++        # empty-fact deliverable is not a constant nonce (carries mode words)
++        self.assertNotEqual(dnonce("o-render Produce... (no facts)"),
++                            _hl.sha1(b"").hexdigest()[:12])
++        # distinct nonce → distinct fingerprint → B can't reuse A's token
++        fp_a = rg.task_fingerprint(
++            conversation_id="c1", surface="framework", mode_id="demo/all",
++            prompt=f"framework-deliverable::demo::all::{dnonce(a)}")
++        fp_b = rg.task_fingerprint(
++            conversation_id="c1", surface="framework", mode_id="demo/all",
++            prompt=f"framework-deliverable::demo::all::{dnonce(b_material)}")
++        rg.grant_task_token(fp_a, "c1")
++        self.assertFalse(rg.has_valid_task_token(fp_b))  # pivot-to-B holds
++
++    def test_resume_marker_has_no_nested_comment(self):
++        # The resume payload must be DATA, never an embedded HTML-comment
++        # marker (a nested '-->' would break the outer ora-task-gate comment).
++        reply = rg.build_task_gate_prompt(
++            "irreversible", "fp1", "q1",
++            resume={"fw": "x.md", "mode": "M"})
++        # the outer marker still parses cleanly
++        self.assertIsNotNone(rg.read_task_gate_marker(reply))
++        self.assertEqual(reply.count("ora-task-gate"), 1)
++
++
++class TestTaskGateMarker(unittest.TestCase):
++    def test_roundtrip(self):
++        reply = rg.build_task_gate_prompt("irreversible", "fp123", "q9")
++        self.assertIn("irreversible", reply)
++        payload = rg.read_task_gate_marker(reply)
++        self.assertEqual(payload["fp"], "fp123")
++        self.assertEqual(payload["queue_id"], "q9")
++
++    def test_continuation_scan(self):
++        hist = [{"role": "user", "content": "deploy"},
++                {"role": "assistant", "content": rg.build_task_gate_prompt(
++                    "irreversible", "fpX", None)}]
++        ctx = rg.is_task_gate_continuation(hist)
++        self.assertEqual(ctx["fp"], "fpX")
++
++    def test_no_marker_returns_none(self):
++        hist = [{"role": "assistant", "content": "normal reply"}]
++        self.assertIsNone(rg.is_task_gate_continuation(hist))
++
++
++class TestShouldHold(unittest.TestCase):
++    def test_holds_irreversible_without_token(self):
++        self.assertTrue(rg.should_hold("irreversible", has_token=False))
++        self.assertFalse(rg.should_hold("irreversible", has_token=True))
++        self.assertFalse(rg.should_hold("high-risk", has_token=False))
++        self.assertFalse(rg.should_hold("standard", has_token=False))
++
++
++class TestRouteObserved(unittest.TestCase):
++    def _write_events(self, path, events):
++        with open(path, "w") as f:
++            for e in events:
++                f.write(json.dumps(e) + "\n")
++
++    def test_fold_trace_file(self):
++        d = tempfile.mkdtemp()
++        p = os.path.join(d, "tool-events.jsonl")
++        self._write_events(p, [
++            {"mutability": "reversible_write", "mutated": True,
++             "sensitivity": "private", "egress": "none",
++             "gate": {"decision": "allowed"}},
++            {"mutability": "read", "reads": [{"what": "x"}],
++             "sensitivity": "public", "egress": "local"},
++        ])
++        s = rg.fold_route_observed(p)
++        self.assertTrue(s["any_mutation"])
++        self.assertEqual(s["max_mutability"], "reversible_write")
++        self.assertTrue(s["reads_present"])
++        self.assertEqual(s["max_egress"], "local")
++        self.assertEqual(s["gate_outcomes"], {"allowed": 1})
++
++    def test_global_sink_scoped_by_conversation(self):
++        d = tempfile.mkdtemp()
++        p = os.path.join(d, "sink.jsonl")
++        self._write_events(p, [
++            {"conversation_id": "c1", "ts": "2026-07-03T10:00:00Z",
++             "mutability": "irreversible", "mutated": True},
++            {"conversation_id": "c2", "ts": "2026-07-03T10:00:00Z",
++             "mutability": "read"},
++        ])
++        s = rg.fold_route_observed(p, conversation_id="c1")
++        self.assertEqual(s["max_mutability"], "irreversible")
++        self.assertEqual(s["events_scanned"], 1)  # c2 excluded
++
++    def test_missing_path_safe(self):
++        s = rg.fold_route_observed("/nonexistent/x.jsonl")
++        self.assertFalse(s["any_mutation"])
++
++    def test_record_divergence_for_light_mutation(self):
++        d = tempfile.mkdtemp()
++        p = os.path.join(d, "tool-events.jsonl")
++        self._write_events(p, [{"mutability": "external_write", "mutated": True}])
++        with mock.patch.object(te, "record") as m_rec:
++            out = rg.record_route_observed(d, risk_tier="light")
++        self.assertIsNotNone(out["divergence"])
++        self.assertTrue(m_rec.called)
++
++    def test_record_never_raises(self):
++        # bad turn_key type → still returns a dict
++        out = rg.record_route_observed(object())
++        self.assertIn("signals", out)
++
++
++class TestSticky(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._patch = mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp)
++        self._patch.start()
++
++    def tearDown(self):
++        self._patch.stop()
++
++    def test_set_get_clear(self):
++        self.assertIsNone(rg.get_sticky("c1"))
++        rg.set_sticky("c1", "high-risk")
++        self.assertEqual(rg.get_sticky("c1"), "high-risk")
++        rg.set_sticky("c1", "auto")
++        self.assertIsNone(rg.get_sticky("c1"))
++
++    def test_handle_bare_command(self):
++        msg = rg.handle_risk_command("/risk standard", "c1")
++        self.assertIsNotNone(msg)
++        self.assertEqual(rg.get_sticky("c1"), "standard")
++        clear = rg.handle_risk_command("/risk auto", "c1")
++        self.assertIn("cleared", clear)
++        self.assertIsNone(rg.get_sticky("c1"))
++
++    def test_handle_returns_none_for_non_command(self):
++        self.assertIsNone(rg.handle_risk_command("/risk high-risk deploy", "c1"))
++        self.assertIsNone(rg.handle_risk_command("hello", "c1"))
++
++    def test_assign_merges_sticky_but_floor_wins(self):
++        rg.set_sticky("c1", "light")
++        with mock.patch.object(rg._te, "record"):
++            r = rg.assign_tier("deploy to production", "c1", record=False)
++        self.assertEqual(r["risk_tier"], "irreversible")  # sticky light can't lower
++
++
++class TestAssignAndResolve(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._p1 = mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp)
++        self._p2 = mock.patch.object(
++            te, "APPROVALS_PATH", os.path.join(self._tmp, "approvals.json"))
++        self._p1.start(); self._p2.start()
++
++    def tearDown(self):
++        self._p1.stop(); self._p2.stop()
++
++    def test_assign_records_task_tier(self):
++        with mock.patch.object(rg._te, "record") as m_rec:
++            r = rg.assign_tier("analyze this", "c1", record=True)
++        self.assertEqual(r["risk_tier"], "standard")
++        self.assertTrue(m_rec.called)
++        self.assertEqual(m_rec.call_args[0][0]["event"], "task_tier")
++
++    def test_resolve_approve_mints_token(self):
++        fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
++        rec = {"kind": "task_gate",
++               "event": {"fingerprint": fp, "conversation_id": "c1"}}
++        msg = rg.resolve_task_gate_entry(rec, approve=True)
++        self.assertIn("approved", msg.lower())
++        self.assertTrue(rg.has_valid_task_token(fp, "c1"))
++
++    def test_resolve_deny_records_no_token(self):
++        fp = rg.task_fingerprint(conversation_id="c1", prompt="deploy")
++        rec = {"kind": "task_gate",
++               "event": {"fingerprint": fp, "conversation_id": "c1"}}
++        with mock.patch.object(rg._te, "record"):
++            msg = rg.resolve_task_gate_entry(rec, approve=False, reason="nope")
++        self.assertIn("denied", msg.lower())
++        self.assertFalse(rg.has_valid_task_token(fp, "c1"))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tests/test_risk_gate_pipeline.py b/orchestrator/tests/test_risk_gate_pipeline.py
+new file mode 100644
+index 00000000..eeb24506
+--- /dev/null
++++ b/orchestrator/tests/test_risk_gate_pipeline.py
+@@ -0,0 +1,116 @@
++"""Execution Review Phase 2 — integration of risk_gate into boot.run_pipeline
++(the terminal reference path). Heavy internals are mocked; the assertions are
++about the risk-gate wiring: sticky short-circuit, inline override, the
++irreversible pre-executor hold (executor NOT reached), and route_observed."""
++
++from __future__ import annotations
++
++import os
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import boot  # noqa: E402
++import risk_gate as rg  # noqa: E402
++import tool_events as te  # noqa: E402
++
++
++def _fake_context_pkg(gear=4, mode="root-cause-analysis", raw="do the thing"):
++    return {"gear": gear, "mode_name": mode, "mode": mode, "mode_text": "",
++            "cleaned_prompt": raw, "raw_prompt": raw, "trace_dir": None,
++            "execution_context": "interactive"}
++
++
++class TerminalRiskGateTest(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp()
++        self._patches = [
++            mock.patch.object(rg._rp, "DATA_DIR_STR", self._tmp),
++            mock.patch.object(te, "APPROVALS_PATH",
++                              os.path.join(self._tmp, "approvals.json")),
++            mock.patch.object(boot, "load_routing_config", return_value={}),
++            mock.patch.object(boot, "PIPELINE_TRACE_AVAILABLE", False),
++            # No queue card writes hitting real files.
++            mock.patch.object(rg, "write_task_gate_card", return_value="q1"),
++        ]
++        for p in self._patches:
++            p.start()
++
++    def tearDown(self):
++        for p in self._patches:
++            p.stop()
++
++    def test_bare_risk_command_short_circuits(self):
++        out = boot.run_pipeline("/risk high-risk", conversation_id="c1")
++        self.assertIn("high-risk", out)
++        self.assertEqual(rg.get_sticky("c1"), "high-risk")
++
++    def test_risk_auto_clears(self):
++        rg.set_sticky("c1", "irreversible")
++        out = boot.run_pipeline("/risk auto", conversation_id="c1")
++        self.assertIn("cleared", out)
++        self.assertIsNone(rg.get_sticky("c1"))
++
++    def test_irreversible_prompt_holds_before_executor(self):
++        # A prompt whose Stage-A floor is irreversible must NOT reach the
++        # gear executor; it returns the hold reply with a task-gate marker.
++        with mock.patch.object(boot, "run_step1_cleanup") as m_s1, \
++             mock.patch.object(boot, "run_step2_context_assembly") as m_s2, \
++             mock.patch.object(boot, "run_gear4") as m_g4, \
++             mock.patch.object(boot, "run_gear3") as m_g3, \
++             mock.patch.object(boot, "route_output", side_effect=lambda r, *a, **k: r):
++            m_s1.return_value = {"mode": "x"}
++            m_s2.return_value = _fake_context_pkg(
++                gear=4, raw="deploy this to production now")
++            out = boot.run_pipeline("deploy this to production now",
++                                    conversation_id="c1")
++        m_g4.assert_not_called()
++        m_g3.assert_not_called()
++        self.assertIn("irreversible", out)
++        self.assertIsNotNone(rg.read_task_gate_marker(out))
++
++    def test_token_admits_held_task(self):
++        # With a valid token for the fingerprint, the same task proceeds to
++        # the executor (hold consumed).
++        raw = "deploy this to production now"
++        fp = rg.task_fingerprint(conversation_id="c1", prompt=raw,
++                                 surface="terminal", mode_id="x",
++                                 output_target="screen", config_name="")
++        rg.grant_task_token(fp, "c1")
++        with mock.patch.object(boot, "run_step1_cleanup", return_value={"mode": "x"}), \
++             mock.patch.object(boot, "run_step2_context_assembly",
++                               return_value=_fake_context_pkg(gear=4, mode="x", raw=raw)), \
++             mock.patch.object(boot, "run_gear4", return_value="EXECUTED") as m_g4, \
++             mock.patch.object(boot, "route_output", side_effect=lambda r, *a, **k: r), \
++             mock.patch.object(rg, "record_route_observed"):
++            out = boot.run_pipeline(raw, conversation_id="c1")
++        m_g4.assert_called_once()
++        self.assertIn("EXECUTED", out)
++
++    def test_task_gate_reply_one_mints_token(self):
++        marker = rg.build_task_gate_prompt("irreversible", "fpZ", "q1")
++        history = [{"role": "user", "content": "deploy prod"},
++                   {"role": "assistant", "content": marker}]
++        out = boot.run_pipeline("1", history=history, conversation_id="c1")
++        self.assertIn("Approved", out)
++        self.assertTrue(rg.has_valid_task_token("fpZ", "c1"))
++
++    def test_normal_turn_records_route_observed(self):
++        with mock.patch.object(boot, "run_step1_cleanup", return_value={"mode": "x"}), \
++             mock.patch.object(boot, "run_step2_context_assembly",
++                               return_value=_fake_context_pkg(gear=4, raw="analyze X")), \
++             mock.patch.object(boot, "run_gear4", return_value="OUT"), \
++             mock.patch.object(boot, "route_output", side_effect=lambda r, *a, **k: r), \
++             mock.patch.object(rg, "record_route_observed") as m_ro:
++            boot.run_pipeline("analyze X", conversation_id="c1")
++        m_ro.assert_called()
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tool_events.py b/orchestrator/tool_events.py
+index e8364fc7..737c76ff 100644
+--- a/orchestrator/tool_events.py
++++ b/orchestrator/tool_events.py
+@@ -80,6 +80,7 @@ def _cmp_key(path) -> str:
+ _ENV_SINK = os.environ.get("ORA_TOOL_EVENTS_PATH") or None
+ _ENV_STEALTH = os.environ.get("ORA_STEALTH_CONTEXT", "") == "1"
+ _ENV_CONVERSATION = os.environ.get("ORA_CONVERSATION_ID") or None
++_ENV_RISK_TIER = os.environ.get("ORA_RISK_TIER") or None
+ 
+ MAX_LINE_BYTES = 8000
+ 
+@@ -374,12 +375,34 @@ _TURN_CTX: ContextVar[dict | None] = ContextVar("tool_events_turn_ctx",
+ def set_turn_context(trace_dir: str | None = None,
+                      conversation_id: str | None = None,
+                      stealth: bool = False,
+-                     surface: str = "unknown") -> None:
++                     surface: str = "unknown",
++                     risk_tier: str | None = None) -> None:
+     """Set by the pipeline (step 2), the server (_direct_stream head), and
+     daemons at their entry seams. Propagates to Gear-4 workers via
+-    boot._submit_with_context (contextvars.copy_context)."""
++    boot._submit_with_context (contextvars.copy_context).
++
++    ``risk_tier`` (Execution Review Phase 2) rides here so the per-call gate
++    and every recorded event can see the turn's upfront risk tier with no
++    dispatcher signature change; child processes inherit it via the
++    ORA_RISK_TIER env var (get_turn_context fallback)."""
+     _TURN_CTX.set({"trace_dir": trace_dir, "conversation_id": conversation_id,
+-                   "stealth": bool(stealth), "surface": surface})
++                   "stealth": bool(stealth), "surface": surface,
++                   "risk_tier": risk_tier})
++
++
++def update_turn_risk_tier(risk_tier: str | None) -> None:
++    """Attach/replace the risk tier on the CURRENT turn context without
++    re-deriving its other fields (Execution Review Phase 2). The tier is
++    known only after mode dispatch, which runs after set_turn_context seeds
++    the context at step 2; this lets the before-clock stamp it in place so
++    the per-call gate and event records see it."""
++    ctx = _TURN_CTX.get()
++    if ctx is None:
++        set_turn_context(risk_tier=risk_tier)
++    else:
++        ctx = dict(ctx)
++        ctx["risk_tier"] = risk_tier
++        _TURN_CTX.set(ctx)
+ 
+ 
+ def get_turn_context() -> dict:
+@@ -388,7 +411,8 @@ def get_turn_context() -> dict:
+         return {"trace_dir": None,
+                 "conversation_id": _ENV_CONVERSATION,
+                 "stealth": _ENV_STEALTH,
+-                "surface": "project" if _ENV_SINK else "unknown"}
++                "surface": "project" if _ENV_SINK else "unknown",
++                "risk_tier": _ENV_RISK_TIER}
+     return dict(ctx)
+ 
+ 
+@@ -501,6 +525,11 @@ def record(event: dict) -> None:
+             return  # suppressed at write — the primary stealth control
+         event.setdefault("ts", _now_iso())
+         event.setdefault("surface", ctx.get("surface", "unknown"))
++        # Execution Review Phase 2: stamp the turn's risk tier onto every
++        # event so the after-clock and audits can read it (only when the
++        # ctx carries one; None when unset).
++        if ctx.get("risk_tier") is not None:
++            event.setdefault("risk_tier", ctx.get("risk_tier"))
+         event.setdefault("correlation", {})
+         event["correlation"].setdefault("conversation_id",
+                                         ctx.get("conversation_id"))
+@@ -647,6 +676,63 @@ def has_standing_allow(scope: str) -> bool:
+                for e in data.get("standing", []))
+ 
+ 
++def consume_token_by_fingerprint(action: str, args_hash: str) -> str | None:
++    """Consume a matching unexpired one-shot token by (action, args_hash)
++    ONLY — ignoring the token's conversation_id. Used by the Phase 2 task
++    gate, whose scoping is the FINGERPRINT (which itself binds the
++    conversation); the token still STORES its conversation_id for the
++    stealth-purge matcher, but consumption must not require a conversation
++    match (the mint and the resume can legitimately differ, e.g. the
++    framework-deliverable path)."""
++    consumed = [None]
++
++    def _do():
++        data = _load_approvals()
++        now = time.time()
++        for entry in data.get("tokens", []):
++            if entry.get("used") or entry.get("action") != action:
++                continue
++            if entry.get("args_hash") != args_hash:
++                continue
++            try:
++                granted = datetime.fromisoformat(entry["granted_at"]).timestamp()
++            except Exception:
++                granted = 0
++            if now - granted > entry.get("ttl_s", DEFAULT_TOKEN_TTL_S):
++                continue
++            entry["used"] = True
++            entry["used_at"] = _now_iso()
++            consumed[0] = entry["id"]
++            break
++        if consumed[0]:
++            _save_approvals(data)
++    _with_approvals_lock(_do)
++    return consumed[0]
++
++
++def remove_unused_tokens(action: str, args_hash: str) -> int:
++    """Delete any UNUSED tokens matching (action, args_hash). Returns the
++    count removed. Used so a re-approval of the same task cannot accumulate
++    multiple live one-shot tokens (Execution Review Phase 2 — keeps the
++    task-approval one-shot: at most one live token per fingerprint)."""
++    removed = [0]
++
++    def _do():
++        data = _load_approvals()
++        kept = []
++        for t in data.get("tokens", []):
++            if (not t.get("used") and t.get("action") == action
++                    and t.get("args_hash") == args_hash):
++                removed[0] += 1
++                continue
++            kept.append(t)
++        if removed[0]:
++            data["tokens"] = kept
++            _save_approvals(data)
++    _with_approvals_lock(_do)
++    return removed[0]
++
++
+ def check_and_consume_approval(action: str, args_hash: str,
+                                conversation_id: str | None = None) -> str | None:
+     """Consume a matching unexpired one-shot token. Returns its id or None."""
+diff --git a/server/server.py b/server/server.py
+index 167964c0..4f6460fe 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -2694,6 +2694,16 @@ def _persist_vision_retry_queue(conversation_id: str, entries: list[dict]) -> No
+         print(f"[vision-retry-queue] persist failed for {conversation_id}: {e}")
+ 
+ 
++def _make_server_criteria_invoker(config, config_name):
++    """Sidebar-slot criteria invoker for the server path (delegates to the
++    boot helper). None when no endpoint is available."""
++    try:
++        from boot import _make_criteria_invoker
++        return _make_criteria_invoker(config, config_name)
++    except Exception:
++        return None
++
++
+ def _run_pipeline_from_step2(step1, config, history, user_input,
+                              clarification_text="", images=None,
+                              execution_context="interactive",
+@@ -2796,6 +2806,60 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+ 
+     gear = context_pkg["gear"]
+ 
++    # --- Execution Review Phase 2: assign risk tier + pre-executor hold ----
++    # This funnel is the single entry for every pipeline executor path
++    # (direct dispatch + all clarification resumes), so the irreversible-tier
++    # hold sits here, reading the tier as data (not the ContextVar, which was
++    # seeded upstream). Enrichment recheck: clarification answers were folded
++    # into cleaned_prompt above, so re-run Stage A over the enriched prompt.
++    # All fail-safe. ``_risk_warn`` surfaces a criteria-pass warning below.
++    _risk_warn = ""
++    _route_turn_ts = None
++    try:
++        import risk_gate as _rgate
++        import tool_events as _te_srv
++        _route_turn_ts = _rgate.now_ts()
++        context_pkg["_route_turn_ts"] = _route_turn_ts
++        _conv_id = (_te_srv.get_turn_context() or {}).get("conversation_id")
++        _enriched = context_pkg.get("cleaned_prompt", user_input)
++        _override = (extra_context or {}).get("risk_override")
++        _r = _rgate.assign_tier(
++            _enriched, _conv_id, mode_text=context_pkg.get("mode_text"),
++            is_trivial_text=(gear <= 2), override=_override, surface="chat")
++        _tier = _rgate.tier_max(_r["risk_tier"],
++                                step1.get("risk_tier") or "")
++        context_pkg["risk_tier"] = _tier
++        # Hold FIRST (evaluate_hold never raises + fails closed) so no
++        # exception in a later step can leak an irreversible task past it.
++        _hold_reply, _ = _rgate.evaluate_hold(
++            _tier, conversation_id=_conv_id, prompt=_enriched, surface="chat",
++            mode_id=context_pkg.get("mode_name", ""),
++            output_target=(extra_context or {}).get("output_target", ""),
++            config_name=config_name or "", stealth=(conversation_tag == "stealth"),
++            description=_enriched)
++        if _hold_reply is not None:
++            _rgate.record_route_observed(
++                trace_dir or (_conv_id, _route_turn_ts), risk_tier=_tier)
++            yield _sse("response", text=_hold_reply)
++            return
++        _te_srv.update_turn_risk_tier(_tier)
++        _crit = _rgate.apply_criteria(
++            context_pkg, _enriched, _tier,
++            invoker=_make_server_criteria_invoker(config, config_name))
++        if _crit and _crit.startswith("HOLD:"):
++            _hr, _ = _rgate.evaluate_hold(
++                "irreversible", conversation_id=_conv_id, prompt=_enriched,
++                surface="chat", mode_id=context_pkg.get("mode_name", ""),
++                config_name=config_name or "",
++                stealth=(conversation_tag == "stealth"), description=_crit[5:])
++            if _hr is not None:
++                yield _sse("response", text=_hr)
++                return
++        elif _crit and _crit.startswith("WARN:"):
++            _risk_warn = _crit[5:]
++    except Exception as _rge_srv:
++        print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
++
+     yield _sse("pipeline_stage", stage="step2_done", gear=gear,
+                label=f"Gear {gear} selected")
+ 
+@@ -2867,6 +2931,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+     if degradation_signal:
+         response = f"{degradation_signal}\n\n---\n\n{response}"
+ 
++    # Execution Review Phase 2: surface a criteria-pass warning (condition 6).
++    if _risk_warn:
++        response = f"⚠️ {_risk_warn}\n\n---\n\n{response}"
++
+     # Server-side visual hook (parity with run_pipeline's tail-of-function
+     # invocation). Without this, model-emitted ora-visual blocks with schema
+     # violations or critical Tufte / adversarial findings flowed through to
+@@ -2883,6 +2951,16 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+                mode=step1["mode"], label="Pipeline complete")
+     yield _sse("response", text=response)
+ 
++    # Execution Review Phase 2: after-clock — record route_observed on this
++    # terminal path (condition 7). Best-effort, never raises.
++    try:
++        _rgate.record_route_observed(
++            trace_dir or ((_te_srv.get_turn_context() or {}).get("conversation_id"),
++                          context_pkg.get("_route_turn_ts") or ""),
++            risk_tier=context_pkg.get("risk_tier"))
++    except Exception:
++        pass
++
+     # Phase 0 — make suppressed visuals loud + actionable. The hook above
+     # stashed per-visual diagnostics on context_pkg; surface the reason so the
+     # pane can explain why a visual didn't render instead of leaving only the
+@@ -2993,6 +3071,32 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     except Exception:
+         pass
+ 
++    # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
++    # Before any slash dispatch (condition 5): a bare `/risk <tier>` sets the
++    # conversation sticky; a "1"/"2" reply to a prior irreversible hold
++    # approves/cancels it; an inline `/risk <tier> <task>` override is lifted
++    # off the input and threaded to the executor funnel via extra_context.
++    try:
++        import risk_gate as _rgate_srv
++        _sticky_reply = _rgate_srv.handle_risk_command(user_input, panel_id)
++        if _sticky_reply is not None:
++            yield _sse("response", text=_sticky_reply)
++            return
++        _tg_marker = _rgate_srv.is_task_gate_continuation(history or [])
++        if _tg_marker is not None:
++            _tg_reply = _rgate_srv.handle_task_gate_reply(
++                _tg_marker, user_input, panel_id)
++            if _tg_reply is not None:
++                yield _sse("response", text=_tg_reply)
++                return
++        _clean_ui, _risk_ovr = _rgate_srv.strip_risk_prefix(user_input)
++        if _risk_ovr is not None:
++            user_input = _clean_ui
++            extra_context = dict(extra_context or {})
++            extra_context["risk_override"] = _risk_ovr
++    except Exception as _rge_head:
++        print(f"[risk-gate] server turn-head skipped: {_rge_head}")
++
+     # --- Runtime slash-command short-circuit ---
+     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+     # meta-layer runtime operations that don't need a model endpoint or
+@@ -3054,6 +3158,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             text = framework_elicitation.continue_elicitation(
+                 continuation_ctx, history or [], config,
+                 latest_user_text=user_input,
++                conversation_id=panel_id,
+             )
+         except Exception as exc:
+             yield _sse("error", text=f"Framework elicitation error: {exc}")
+@@ -3123,14 +3228,56 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     )
+     if is_framework_command(user_input):
+         if framework_command_has_query(user_input):
++            # Execution Review Phase 2 (condition 4): the /framework one-shot
++            # runs the gear pipeline with tools — hold before it if the query
++            # classifies irreversible. Fail-safe.
++            _fw_tier_srv, _fw_ts_srv = None, None
++            try:
++                import risk_gate as _rgate_fw
++                _fw_ts_srv = _rgate_fw.now_ts()
++                _fr = _rgate_fw.assign_tier(user_input, panel_id,
++                                            surface="framework")
++                _fw_tier_srv = _fr["risk_tier"]
++                _fhold, _ = _rgate_fw.evaluate_hold(
++                    _fw_tier_srv, conversation_id=panel_id,
++                    prompt=user_input, surface="framework",
++                    stealth=(_conv_tag == "stealth"), description=user_input)
++                if _fhold is not None:
++                    yield _sse("response", text=_fhold)
++                    return
++            except Exception as _rge_fw:
++                print(f"[risk-gate] server framework hold skipped: {_rge_fw}")
++            # Seed the turn context so the framework's tool events carry this
++            # conversation_id (the framework path bypasses step-2 seeding);
++            # without it route_observed folds zero events (they'd land under
++            # conversation_id=None). Also stamps the tier for the per-call gate.
++            try:
++                import tool_events as _te_fw2
++                _te_fw2.set_turn_context(conversation_id=panel_id, surface="chat",
++                                         stealth=(_conv_tag == "stealth"),
++                                         risk_tier=_fw_tier_srv)
++            except Exception:
++                pass
+             yield _sse("pipeline_stage", stage="framework_execution",
+                        label="Running framework via layered milestone executor…")
+             try:
+                 result_text = run_framework_command(user_input, config)
+             except Exception as exc:
+                 yield _sse("error", text=f"Framework execution error: {exc}")
++                # Finding 3: record what the failed framework run observed.
++                try:
++                    _rgate_fw.record_route_observed(
++                        (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
++                except Exception:
++                    pass
+                 return
+             yield _sse("response", text=result_text)
++            # Finding 3: record route_observed on the framework terminal path.
++            try:
++                _rgate_fw.record_route_observed(
++                    (panel_id, _fw_ts_srv or ""), risk_tier=_fw_tier_srv)
++            except Exception:
++                pass
+             return
+         # Empty-query form → start an interactive elicitation session.
+         try:
+@@ -3362,7 +3509,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             flush=True,
+         )
+         yield from _direct_stream(user_input, history, images=images,
+-                                  panel_id=panel_id, conversation_tag=conversation_tag)
++                                  panel_id=panel_id, conversation_tag=conversation_tag,
++                                  risk_override=(extra_context or {}).get("risk_override"))
+         return
+ 
+     # --- Phase 9: pre-routing pipeline question gate ---
+@@ -3489,9 +3637,14 @@ def _tool_status_label(tool_name, params):
+ 
+ 
+ def _direct_stream(user_input, history, images=None, panel_id="main",
+-                   conversation_tag=""):
++                   conversation_tag="", risk_override=None):
+     """Generator: legacy single-model agentic loop with SSE tool events.
+-    Routes all tool calls through the unified dispatcher."""
++    Routes all tool calls through the unified dispatcher.
++
++    ``risk_override`` (Execution Review Phase 2): an inline ``/risk`` tier
++    threaded from the pipeline turn head when a turn falls back to direct
++    mode — so ``/risk irreversible <trivial prompt>`` still holds here
++    instead of silently classifying light."""
+     config   = load_config()
+     endpoint = get_endpoint(config)
+ 
+@@ -3536,6 +3689,40 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
+     except Exception:
+         pass
+ 
++    # --- Execution Review Phase 2: risk gate on the direct/bypass path -----
++    # The bypass guard routes trivial/self-contained prompts here, but an
++    # irreversible-intent prompt (e.g. "send an email to the list") can land
++    # here too — so the Stage-A floor + irreversible hold must fire before the
++    # auto-approve agentic loop runs. Default light (this IS the trivial path);
++    # floors raise it. Fail-safe.
++    _route_turn_ts_ds = None
++    try:
++        import risk_gate as _rgate_ds
++        _route_turn_ts_ds = _rgate_ds.now_ts()
++        # Strip an inline /risk arriving straight on the direct route (the
++        # pipeline turn head never ran for a /direct turn); a threaded
++        # risk_override (pipeline fallback) takes precedence.
++        _clean_ds, _ovr_ds = _rgate_ds.strip_risk_prefix(user_input)
++        if _ovr_ds is not None:
++            user_input = _clean_ds
++            messages[-1]["content"] = user_input
++        _eff_override = risk_override or _ovr_ds
++        _r_ds = _rgate_ds.assign_tier(user_input, panel_id,
++                                      is_trivial_text=True, override=_eff_override,
++                                      surface="direct")
++        _hold_ds, _ = _rgate_ds.evaluate_hold(
++            _r_ds["risk_tier"], conversation_id=panel_id, prompt=user_input,
++            surface="direct", stealth=(_ds_tag == "stealth"),
++            description=user_input)
++        if _hold_ds is not None:
++            _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
++                                            risk_tier=_r_ds["risk_tier"])
++            yield _sse("response", text=_hold_ds)
++            return
++        _te_ds.update_turn_risk_tier(_r_ds["risk_tier"])
++    except Exception as _rge_ds:
++        print(f"[risk-gate] direct-stream hold skipped: {_rge_ds}")
++
+     response = ""
+     for iteration in range(MAX_ITERATIONS):
+         # Pass images only on the first call (they accompany the user's original message)
+@@ -3546,6 +3733,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
+             reset_consecutive()
+             clean = strip_tool_calls(response)
+             yield _sse("response", text=clean)
++            try:
++                _rgate_ds.record_route_observed(
++                    (panel_id, _route_turn_ts_ds),
++                    risk_tier=_r_ds.get("risk_tier"))
++            except Exception:
++                pass
+             return
+ 
+         for tc in tool_calls:
+@@ -3594,6 +3787,13 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
+                stripped_response_chars=len(clean),
+                final_response_was_empty_after_strip=(not clean.strip()))
+     yield _sse("response", text=clean)
++    # A MAX_ITERATIONS overrun is the highest-mutation direct exit (many tool
++    # calls ran); record route_observed here too so this path isn't missed.
++    try:
++        _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
++                                        risk_tier=_r_ds.get("risk_tier"))
++    except Exception:
++        pass
+ 
+ 
+ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main", images=None, extra_context=None,

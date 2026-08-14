@@ -1,0 +1,2992 @@
+diff --git a/.ora/tools/README.md b/.ora/tools/README.md
+new file mode 100644
+index 00000000..ebc4bb8d
+--- /dev/null
++++ b/.ora/tools/README.md
+@@ -0,0 +1,79 @@
++# `.ora/tools/` — Execution Review adapter-family check scripts
++
++Execution Review Phase 8 Chunk C (§4). These are **self-contained, import-free**
++check scripts that the Ora evidence runner executes inside its sandbox. They are
++the canonical templates; copy the ones you need into any repo's own `.ora/tools/`
++and declare them in that repo's `.ora/evidence.yaml`.
++
++## Why self-contained
++
++The evidence runner's sandbox denies reads under `~/ora` (Ora's own module tree)
++and under the private roots, and a linked worktree's `.git` is unreadable inside
++it. So a check script:
++
++- imports **only the Python standard library** (plus PyYAML, which lives in
++  site-packages outside the deny roots) — **never `orchestrator.*`**; and
++- runs **no `git`** inside the sandbox. Every git-derived input (the changed-file
++  list, the note-title universe) is precomputed by the runner *outside* the
++  sandbox and handed to the check as a read-only file.
++
++## Inputs contract
++
++A check declares what it needs with `inputs:` in the catalog. The runner builds
++each declared input into a read-only directory and points the check at it via the
++`ORA_CHECK_INPUTS` environment variable:
++
++| input            | file in `$ORA_CHECK_INPUTS` | contents |
++|------------------|-----------------------------|----------|
++| `changed_files`  | `changed-files.txt`         | one repo-relative path per line (deletions excluded) |
++| `title_universe` | `title-universe.txt`        | one repo-relative path per line = the note universe at check time, including this turn's new notes |
++
++A check that declares inputs but runs with no pre-execution base (base-unknown) is
++refused cleanly by the runner — it never runs against a missing input.
++
++## The scripts
++
++- **`vault_frontmatter_lint.py`** — strict YAML parse of each changed markdown
++  file's frontmatter; distinguishes *malformed* from *absent*. Args:
++  `--frontmatter optional|required`, `--require <k1,k2,…>`.
++- **`vault_wikilink_check.py`** — resolves body `[[targets]]` against
++  `title-universe.txt` (Obsidian bare-title semantics). Args:
++  `--allow-file <path>` (a tolerated-targets allowlist). Runs **no git**.
++- **`render_validity.py`** — mechanical validity of rendered artifacts (SVG/XML
++  parse, docx/pptx/xlsx zip-open, PDF header). Perceptual quality is out of scope
++  by construction — that stays a judgment lane.
++
++Every script: stdout is machine-readable JSON; exit `0` iff ok, `1` on findings,
++`2` on usage error, `3` on tooling unavailable; a listed-but-missing file is
++skipped (`skipped_missing`), never a crash — a deleted note/artifact must not
++false-FAIL a routine turn.
++
++## Declaring in `.ora/evidence.yaml`
++
++```yaml
++checks:
++  vault-frontmatter:
++    argv: [python, .ora/tools/vault_frontmatter_lint.py, --frontmatter, optional, --require, type]
++    mutates: false
++    network: deny
++    inputs: [changed_files]
++    scope: changed_files
++  vault-wikilinks:
++    argv: [python, .ora/tools/vault_wikilink_check.py, --allow-file, .ora/tools/wikilink-allowlist.txt]
++    mutates: false
++    network: deny
++    inputs: [changed_files, title_universe]
++    scope: changed_files
++```
++
++`python` resolves to the running interpreter (`sys.executable`), so the
++python-vs-python3 split never bites and the invocation stays platform-neutral.
++
++## `.ora/` is write-protected
++
++`.ora/` anywhere in any repo is a write-protected config path: a model-issued
++write into it (including via `git checkout/restore/mv` of a pathspec touching
++`.ora/`) escalates to the irreversible gate. A check script is as load-bearing as
++the catalog that names it. The write-gate raises the bar; the verify stage and the
++planning-set acceptance criteria are the architectural closure against an executor
++weakening its own check.
+diff --git a/.ora/tools/render_validity.py b/.ora/tools/render_validity.py
+new file mode 100644
+index 00000000..50be77fa
+--- /dev/null
++++ b/.ora/tools/render_validity.py
+@@ -0,0 +1,110 @@
++#!/usr/bin/env python3
++"""Ora Execution Review — render validity check (self-contained).
++
++Execution Review Phase 8 Chunk C (§4.4). SELF-CONTAINED, stdlib-only mechanical
++validity of rendered artifacts: file exists, nonzero, and PARSES. Perceptual
++quality is NOT checked here — it stays a judgment lane with ``verdict: null`` by
++construction (the §5 category-error guard).
++
++  * .svg / .xml            → well-formed XML (xml.etree parse)
++  * .docx / .pptx / .xlsx  → a valid zip that opens (OOXML container)
++  * .pdf                   → ``%PDF-`` header
++  * anything else          → skipped (not this tool's business)
++
++Inputs (read-only, via ``$ORA_CHECK_INPUTS``):
++  changed-files.txt   one repo-relative path per line
++
++A file listed but missing on disk is skipped (never a false FAIL — a deleted
++artifact is not an invalid one).
++
++stdout: JSON {"checked", "invalid":[{file,reason}], "skipped_ext", "skipped_missing",
++              "ok"}
++exit:   0 iff ok, 1 on findings, 2 usage error.
++"""
++import json
++import os
++import sys
++import zipfile
++
++_XML_EXT = (".svg", ".xml")
++_ZIP_EXT = (".docx", ".pptx", ".xlsx")
++_ALL_EXT = _XML_EXT + _ZIP_EXT + (".pdf",)
++
++
++def _changed_files() -> list:
++    d = os.environ.get("ORA_CHECK_INPUTS")
++    if not d:
++        return []
++    try:
++        with open(os.path.join(d, "changed-files.txt"), "r",
++                  encoding="utf-8") as f:
++            return [ln.strip() for ln in f if ln.strip()]
++    except OSError:
++        return []
++
++
++def _validate(rel: str) -> str | None:
++    """Return a failure reason, or None if valid."""
++    try:
++        if os.path.getsize(rel) == 0:
++            return "empty file"
++    except OSError as e:
++        return f"stat error: {e}"
++    low = rel.lower()
++    if low.endswith(_XML_EXT):
++        try:
++            import xml.etree.ElementTree as ET
++            ET.parse(rel)
++            return None
++        except Exception as e:
++            return f"XML parse error: {str(e)[:120]}"
++    if low.endswith(_ZIP_EXT):
++        try:
++            with zipfile.ZipFile(rel) as z:
++                bad = z.testzip()
++                if bad is not None:
++                    return f"corrupt zip entry: {bad}"
++            return None
++        except Exception as e:
++            return f"not a valid OOXML zip: {str(e)[:120]}"
++    if low.endswith(".pdf"):
++        try:
++            with open(rel, "rb") as f:
++                head = f.read(5)
++            if head != b"%PDF-":
++                return "missing %PDF- header"
++            return None
++        except Exception as e:
++            return f"read error: {str(e)[:120]}"
++    return None  # unreachable — extension pre-filtered
++
++
++def main() -> int:
++    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
++        print(__doc__)
++        return 0
++    changed = _changed_files()
++    invalid = []
++    skipped_ext = 0
++    skipped_missing = []
++    checked = 0
++    for rel in changed:
++        if not rel.lower().endswith(_ALL_EXT):
++            skipped_ext += 1
++            continue
++        if not os.path.isfile(rel):
++            skipped_missing.append(rel)
++            continue
++        checked += 1
++        reason = _validate(rel)
++        if reason:
++            invalid.append({"file": rel, "reason": reason})
++    ok = not invalid
++    print(json.dumps({
++        "checked": checked, "invalid": invalid, "skipped_ext": skipped_ext,
++        "skipped_missing": skipped_missing, "ok": ok}))
++    return 0 if ok else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/.ora/tools/vault_frontmatter_lint.py b/.ora/tools/vault_frontmatter_lint.py
+new file mode 100644
+index 00000000..22b639a9
+--- /dev/null
++++ b/.ora/tools/vault_frontmatter_lint.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Ora Execution Review — vault frontmatter lint (self-contained check tool).
++
++Execution Review Phase 8 Chunk C (§4.2). A SELF-CONTAINED, import-free check that
++runs INSIDE the evidence runner's sandbox: stdlib + PyYAML only (NO
++``orchestrator.*`` imports — the sandbox denies reads under ~/ora; NO git — the
++delta scope arrives as a harness-built input file). Ships as the canonical
++template in ora's own ``.ora/tools/``; copy into any markdown repo's ``.ora/tools/``.
++
++Strict YAML parse of each changed file's leading ``---`` frontmatter block.
++Distinguishes MALFORMED (a parse error) from ABSENT (no block) — the gap
++``knowledge_index`` / vault-health cannot. A file listed but missing on disk is
++skipped (``skipped_missing``), never a crash (a deleted note must not false-FAIL).
++
++Inputs (read-only, via ``$ORA_CHECK_INPUTS``):
++  changed-files.txt   one repo-relative path per line (the turn's changed files)
++
++Args:
++  --frontmatter optional|required   absent frontmatter FAILs only when 'required'
++  --require <k1,k2,...>             required frontmatter keys (checked only on
++                                    frontmatter-bearing files)
++
++stdout: JSON {"checked", "malformed":[{file,error}], "missing_frontmatter":[...],
++              "missing_required":[{file,keys}], "skipped_missing":[...], "ok"}
++exit:   0 iff ok, 1 on findings, 2 usage error, 3 tooling unavailable.
++"""
++import argparse
++import json
++import os
++import sys
++
++
++def _changed_files() -> list:
++    d = os.environ.get("ORA_CHECK_INPUTS")
++    if not d:
++        return []
++    path = os.path.join(d, "changed-files.txt")
++    try:
++        with open(path, "r", encoding="utf-8") as f:
++            return [ln.strip() for ln in f if ln.strip()]
++    except OSError:
++        return []
++
++
++def _read_frontmatter_block(text: str):
++    """Return (has_block, raw_yaml) for a leading ``---`` fenced block."""
++    if not text.startswith("---"):
++        return False, ""
++    lines = text.splitlines()
++    # first line is '---' (allow a trailing CR already stripped by splitlines)
++    if lines and lines[0].strip() != "---":
++        return False, ""
++    body = []
++    for ln in lines[1:]:
++        if ln.strip() == "---":
++            return True, "\n".join(body)
++        body.append(ln)
++    # opened but never closed → treat as malformed frontmatter, not absent
++    return True, "\n".join(body)
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--frontmatter", choices=("optional", "required"),
++                    default="optional")
++    ap.add_argument("--require", default="")
++    try:
++        args = ap.parse_args()
++    except SystemExit:
++        return 2
++
++    try:
++        import yaml
++    except Exception as e:  # pragma: no cover
++        print(json.dumps({"error": f"PyYAML unavailable: {e}", "ok": False}))
++        return 3
++
++    require_keys = [k.strip() for k in args.require.replace(",", " ").split()
++                    if k.strip()]
++    changed = [p for p in _changed_files() if p.lower().endswith(".md")]
++
++    malformed = []
++    missing_fm = []
++    missing_req = []
++    skipped_missing = []
++    checked = 0
++    for rel in changed:
++        if not os.path.isfile(rel):
++            skipped_missing.append(rel)
++            continue
++        checked += 1
++        try:
++            with open(rel, "r", encoding="utf-8") as f:
++                text = f.read()
++        except OSError as e:
++            skipped_missing.append(rel)
++            continue
++        has_block, raw = _read_frontmatter_block(text)
++        if not has_block:
++            if args.frontmatter == "required":
++                missing_fm.append(rel)
++            continue
++        try:
++            data = yaml.safe_load(raw)
++        except Exception as e:
++            malformed.append({"file": rel, "error": str(e)[:200]})
++            continue
++        if not isinstance(data, dict):
++            malformed.append({"file": rel,
++                              "error": "frontmatter is not a YAML mapping"})
++            continue
++        if require_keys:
++            missing = [k for k in require_keys if k not in data]
++            if missing:
++                missing_req.append({"file": rel, "keys": missing})
++
++    ok = not (malformed or missing_fm or missing_req)
++    print(json.dumps({
++        "checked": checked, "malformed": malformed,
++        "missing_frontmatter": missing_fm, "missing_required": missing_req,
++        "skipped_missing": skipped_missing, "ok": ok}))
++    return 0 if ok else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/.ora/tools/vault_wikilink_check.py b/.ora/tools/vault_wikilink_check.py
+new file mode 100644
+index 00000000..bae80f28
+--- /dev/null
++++ b/.ora/tools/vault_wikilink_check.py
+@@ -0,0 +1,150 @@
++#!/usr/bin/env python3
++"""Ora Execution Review — vault wikilink integrity check (self-contained).
++
++Execution Review Phase 8 Chunk C (§4.2). SELF-CONTAINED, import-free, NO git: it
++resolves body ``[[targets]]`` in the changed markdown files against a
++harness-precomputed title universe (built OUTSIDE the sandbox and passed in), so
++the check runs stdlib-only inside the evidence runner's sandbox.
++
++Inputs (read-only, via ``$ORA_CHECK_INPUTS``):
++  changed-files.txt    one repo-relative path per line (the turn's changed files)
++  title-universe.txt   one repo-relative path per line = the note universe as it
++                       exists at check time (INCLUDING this turn's new notes)
++
++Resolution (Obsidian bare-title semantics — the live vault link language):
++  * a ``.md`` universe entry resolves by its basename minus ``.md``  ([[Title]])
++  * a non-``.md`` entry resolves by full basename  (SVG embeds: ![[fig-1.svg]])
++  * a target containing ``/`` resolves by full repo-relative path (legacy links)
++Alias (``[[t|a]]``), heading (``[[t#h]]``) and embed (``![[t]]``) forms are handled;
++the resolvable name is the part before ``|`` / ``#``.
++
++Args:
++  --allow-file <repo-relative path>   an allowlist of tolerated exact targets
++                                      (one per line; e.g. known legacy dead links)
++
++stdout: JSON {"checked", "links", "dangling":[{file,target}], "allowed_skips",
++              "skipped_missing":[...], "ok"}
++exit:   0 iff none dangling, 1 on findings, 2 usage error.
++"""
++import argparse
++import json
++import os
++import re
++import sys
++
++_WIKILINK_RE = re.compile(r"!?\[\[([^\]]+)\]\]")
++
++
++def _inputs_dir() -> str:
++    return os.environ.get("ORA_CHECK_INPUTS") or ""
++
++
++def _read_lines(name: str) -> list:
++    d = _inputs_dir()
++    if not d:
++        return []
++    try:
++        with open(os.path.join(d, name), "r", encoding="utf-8") as f:
++            return [ln.strip() for ln in f if ln.strip()]
++    except OSError:
++        return []
++
++
++def _strip_frontmatter(text: str) -> str:
++    """Return the body (frontmatter removed) so a YAML value never reads as a link."""
++    if not text.startswith("---"):
++        return text
++    lines = text.splitlines()
++    if not (lines and lines[0].strip() == "---"):
++        return text
++    for i in range(1, len(lines)):
++        if lines[i].strip() == "---":
++            return "\n".join(lines[i + 1:])
++    return text  # unterminated → treat whole file as body
++
++
++def _build_universe(paths: list) -> set:
++    """Resolvable names: bare title (basename-minus-.md) for .md, full basename for
++    non-.md, plus the full relative path for every entry (path-form targets)."""
++    universe = set()
++    for p in paths:
++        p = p.strip()
++        if not p:
++            continue
++        universe.add(p)                       # full relative path
++        base = p.rsplit("/", 1)[-1]
++        if base.lower().endswith(".md"):
++            universe.add(base[:-3])           # bare title
++        else:
++            universe.add(base)                # non-.md basename (embeds)
++    return universe
++
++
++def _resolvable(target: str) -> str:
++    """The name to resolve: strip alias (``|``) and heading (``#``); keep path form."""
++    t = target.strip()
++    t = t.split("|", 1)[0].strip()
++    t = t.split("#", 1)[0].strip()
++    return t
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--allow-file", default="")
++    try:
++        args = ap.parse_args()
++    except SystemExit:
++        return 2
++
++    changed = [p for p in _read_lines("changed-files.txt")
++               if p.lower().endswith(".md")]
++    universe = _build_universe(_read_lines("title-universe.txt"))
++
++    allow = set()
++    if args.allow_file:
++        try:
++            with open(args.allow_file, "r", encoding="utf-8") as f:
++                allow = {ln.strip() for ln in f if ln.strip()
++                         and not ln.lstrip().startswith("#")}
++        except OSError:
++            allow = set()
++
++    dangling = []
++    skipped_missing = []
++    checked = 0
++    link_count = 0
++    allowed_skips = 0
++    for rel in changed:
++        if not os.path.isfile(rel):
++            skipped_missing.append(rel)
++            continue
++        checked += 1
++        try:
++            with open(rel, "r", encoding="utf-8") as f:
++                body = _strip_frontmatter(f.read())
++        except OSError:
++            skipped_missing.append(rel)
++            continue
++        for m in _WIKILINK_RE.finditer(body):
++            raw = m.group(1)
++            name = _resolvable(raw)
++            if not name:
++                continue
++            link_count += 1
++            if name in universe:
++                continue
++            if name in allow or raw.strip() in allow:
++                allowed_skips += 1
++                continue
++            dangling.append({"file": rel, "target": name})
++
++    ok = not dangling
++    print(json.dumps({
++        "checked": checked, "links": link_count, "dangling": dangling,
++        "allowed_skips": allowed_skips, "skipped_missing": skipped_missing,
++        "ok": ok}))
++    return 0 if ok else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/orchestrator/evidence_runner.py b/orchestrator/evidence_runner.py
+index dedb7cb2..067a63ea 100644
+--- a/orchestrator/evidence_runner.py
++++ b/orchestrator/evidence_runner.py
+@@ -98,6 +98,37 @@ class Check:
+     mutates: bool = False
+     timeout: int = _DEFAULT_TIMEOUT
+     network: str = "deny"          # deny | local | allow
++    # Phase 8 Chunk C (§4.1/§2.2): declared, harness-built check INPUTS +
++    # delta scoping. ``inputs`` names artifacts the actuator precomputes OUTSIDE
++    # the sandbox (git works there) and hands the check via the read-only
++    # ``ORA_CHECK_INPUTS`` directory — the check runs NO git and reads NO ora
++    # code in the sandbox. ``scope`` drives sparse checkout (changed-files-only
++    # vault checks stay O(delta), not O(137k)).
++    inputs: list | None = None     # subset of {"changed_files", "title_universe"}
++    scope: str = "repo"            # "repo" | "changed_files"
++
++
++_VALID_CHECK_INPUTS = {"changed_files", "title_universe"}
++_VALID_CHECK_SCOPE = {"repo", "changed_files"}
++_CHECK_INPUTS_ENV = "ORA_CHECK_INPUTS"     # read-only inputs dir handed to a check
++# Filenames the actuator writes into the inputs dir, one per declared input.
++_INPUTS_FILENAMES = {"changed_files": "changed-files.txt",
++                     "title_universe": "title-universe.txt"}
++
++
++@dataclass
++class Recipe:
++    """A named, repo-declared, write-protected standing/probe recipe (§4.1). Lives
++    in the catalog's ``recipes:`` block so a model can never inject a probe URL or
++    weaken a check — the recipe body always comes from the §6-protected file."""
++
++    name: str
++    lane: str                      # deploy_probe | render_inspect | run_observe
++    target: str
++    standing: bool = False
++    probes: list | None = None     # deploy_probe recipes
++    rollback: str | None = None    # MANDATORY for deploy_probe
++    check: str | None = None       # render_inspect recipes — a catalog check name
+ 
+ 
+ @dataclass
+@@ -116,6 +147,7 @@ class Catalog:
+     checks: dict[str, Check] = field(default_factory=dict)
+     runner: Runner = field(default_factory=Runner)
+     path: str | None = None
++    recipes: dict[str, Recipe] = field(default_factory=dict)
+ 
+ 
+ @dataclass
+@@ -216,6 +248,56 @@ def validate_check(name: str, check: dict) -> list[str]:
+         errors.append(f"check {name!r}: mutates must be boolean")
+     if check.get("network", "deny") not in _te._EVIDENCE_NETWORK:
+         errors.append(f"check {name!r}: invalid network {check.get('network')!r}")
++    # Phase 8 Chunk C: declared inputs + delta scope (fixed vocabularies so a
++    # typo is a LOUD parse error, never a silently-ignored input).
++    if "inputs" in check:
++        inp = check["inputs"]
++        if not isinstance(inp, list):
++            errors.append(f"check {name!r}: 'inputs' must be a list")
++        else:
++            bad = [x for x in inp if x not in _VALID_CHECK_INPUTS]
++            if bad:
++                errors.append(f"check {name!r}: unknown inputs {bad} "
++                              f"(valid: {sorted(_VALID_CHECK_INPUTS)})")
++    if "scope" in check and check["scope"] not in _VALID_CHECK_SCOPE:
++        errors.append(f"check {name!r}: invalid scope {check.get('scope')!r} "
++                      f"(valid: {sorted(_VALID_CHECK_SCOPE)})")
++    return errors
++
++
++_VALID_RECIPE_LANES = {"deploy_probe", "render_inspect", "run_observe"}
++
++
++def validate_recipe(name: str, recipe: dict, check_names: set) -> list[str]:
++    """Validate one ``recipes:`` entry (§4.1). A ``deploy_probe`` recipe REQUIRES a
++    ``rollback`` field (⚖ design Rev 3 — a reviewer of a deploy delta must always
++    see the recovery posture); a ``render_inspect`` recipe REQUIRES a ``check`` that
++    exists in the catalog. The recipe body is repo-declared + §6-protected, so a
++    model can never inject a probe URL through it."""
++    errors: list[str] = []
++    lane = recipe.get("lane")
++    if lane not in _VALID_RECIPE_LANES:
++        errors.append(f"recipe {name!r}: invalid lane {lane!r} "
++                      f"(valid: {sorted(_VALID_RECIPE_LANES)})")
++    if not recipe.get("target"):
++        errors.append(f"recipe {name!r}: missing required 'target'")
++    if "standing" in recipe and not isinstance(recipe["standing"], bool):
++        errors.append(f"recipe {name!r}: 'standing' must be boolean")
++    if lane == "deploy_probe":
++        probes = recipe.get("probes")
++        if not isinstance(probes, list) or not probes:
++            errors.append(f"recipe {name!r}: deploy_probe needs a non-empty 'probes' list")
++        # Mandatory rollback — absence is an ERROR, never a silent default.
++        rb = recipe.get("rollback")
++        if not (isinstance(rb, str) and rb.strip()):
++            errors.append(f"recipe {name!r}: deploy_probe requires a 'rollback' string "
++                          "(a recovery ref, or the explicit literal 'none: <recovery contract>')")
++    if lane == "render_inspect":
++        chk = recipe.get("check")
++        if not chk:
++            errors.append(f"recipe {name!r}: render_inspect needs a 'check' (a catalog check name)")
++        elif chk not in check_names:
++            errors.append(f"recipe {name!r}: render_inspect 'check' {chk!r} not in the catalog checks")
+     return errors
+ 
+ 
+@@ -257,7 +339,27 @@ def parse_catalog(path: str) -> Catalog:
+             cmd_windows=c.get("cmd_windows"), cmd_posix=c.get("cmd_posix"),
+             mutates=bool(c.get("mutates", False)),
+             timeout=int(c.get("timeout", _DEFAULT_TIMEOUT)),
+-            network=c.get("network", runner_raw.get("network", "deny")))
++            network=c.get("network", runner_raw.get("network", "deny")),
++            inputs=c.get("inputs"), scope=c.get("scope", "repo"))
++
++    # Phase 8 Chunk C: the optional recipes: block (declared lanes). Unknown keys
++    # inside a recipe would be silently ignored by dataclass construction, so we
++    # validate the shape LOUDLY; the recipe body is write-protected (§6).
++    recipes_raw = raw.get("recipes") or {}
++    if not isinstance(recipes_raw, dict):
++        raise ValueError(f"evidence catalog {path}: 'recipes' must be a mapping")
++    check_names = set(checks.keys())
++    recipes: dict[str, Recipe] = {}
++    for rname, r in recipes_raw.items():
++        if not isinstance(r, dict):
++            errs.append(f"recipe {rname!r} must be a mapping")
++            continue
++        errs.extend(validate_recipe(rname, r, check_names))
++        recipes[rname] = Recipe(
++            name=rname, lane=r.get("lane"), target=r.get("target"),
++            standing=bool(r.get("standing", False)), probes=r.get("probes"),
++            rollback=r.get("rollback"), check=r.get("check"))
++
+     if errs:
+         raise ValueError(f"invalid evidence catalog {path}: " + "; ".join(errs))
+     runner = Runner(
+@@ -266,7 +368,7 @@ def parse_catalog(path: str) -> Catalog:
+         network=runner_raw.get("network", "deny"),
+         redact=runner_raw.get("redact", "by-sensitivity"),
+         on_unknown=runner_raw.get("on_unknown", "gated"))
+-    return Catalog(checks=checks, runner=runner, path=path)
++    return Catalog(checks=checks, runner=runner, path=path, recipes=recipes)
+ 
+ 
+ def discover_catalog(repo_root: str | None = None) -> str | None:
+@@ -300,13 +402,16 @@ def discover_catalog(repo_root: str | None = None) -> str | None:
+ 
+ 
+ # ── Platform: clean env, argv resolution, enforcement backend ─────────────────
+-def _clean_env(work_home: str, tmpdir: str) -> dict:
++def _clean_env(work_home: str, tmpdir: str, inputs_dir: str | None = None) -> dict:
+     """Credential-stripping clean env the runner BUILDS ITSELF (defense in depth on
+     every backend). Platform-aware: POSIX ``HOME``/``TMPDIR``; Windows
+     ``USERPROFILE``/``TEMP``/``TMP`` + ``SystemRoot``/``COMSPEC``/``PATHEXT`` (a
+     spawned Windows process needs these to start). Deliberately does NOT reuse
+     ``bash_execute._clean_env`` — that one is a leaky allowlist preserving
+-    ``HOME``/``USER``/``SSH_AUTH_SOCK`` (an agent socket is a live credential)."""
++    ``HOME``/``USER``/``SSH_AUTH_SOCK`` (an agent socket is a live credential).
++    Phase 8 Chunk C: when the check declares ``inputs``, the read-only inputs dir
++    is announced via ``ORA_CHECK_INPUTS`` (env, not argv — argv is exec'd
++    shell-free and cannot expand a variable)."""
+     env: dict[str, str] = {}
+     for key in ("PATH", "LANG", "LC_ALL"):
+         if key in os.environ:
+@@ -322,6 +427,8 @@ def _clean_env(work_home: str, tmpdir: str) -> dict:
+     else:
+         env["HOME"] = work_home
+         env["TMPDIR"] = tmpdir
++    if inputs_dir:
++        env[_CHECK_INPUTS_ENV] = inputs_dir
+     return env
+ 
+ 
+@@ -542,13 +649,16 @@ def sandbox_worktree_unsafe(worktree: str, tmpdir: str) -> str | None:
+     return None
+ 
+ 
+-def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
++def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool,
++                   inputs_dir: str | None = None) -> str:
+     """Deny reads under $HOME + every Ora private root, RE-ALLOW reads (and, for a
+     mutating check, writes) under the SPECIFIC worktree, then RE-DENY any private
+     root nested under the worktree (belt-and-suspenders for SEC-2 — the runner also
+     refuses an ancestor worktree pre-flight). ``(deny network*)`` enforces
+     ``network: deny``. Callers pass only SBPL-safe paths (``sandbox_worktree_unsafe``
+-    is checked first)."""
++    is checked first). Phase 8 Chunk C: ``inputs_dir`` (under SCRATCH_DIR, i.e.
++    under a denied private root) gets an explicit read-ONLY re-allow so the check
++    can read the harness-precomputed inputs — never a write-allow."""
+     real_wt = os.path.realpath(worktree)
+     real_tmp = os.path.realpath(tmpdir)
+     deny_roots = _private_deny_roots()
+@@ -562,6 +672,10 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
+         "(version 1)", "(allow default)", "(deny network*)", denies,
+         f'(allow file-read* (subpath "{real_wt}"))',
+         f'(allow file-read* (subpath "{real_tmp}"))',
++    ]
++    if inputs_dir:
++        parts.append(f'(allow file-read* (subpath "{os.path.realpath(inputs_dir)}"))')
++    parts += [
+         re_denies,                       # nested private roots stay denied
+         "(deny file-write*)",
+         f'(allow file-write* (subpath "{real_tmp}"))',
+@@ -573,10 +687,10 @@ def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
+ 
+ 
+ def _wrap_argv(backend: str, argv: list[str], worktree: str, tmpdir: str,
+-               allow_write_repo: bool) -> list[str]:
++               allow_write_repo: bool, inputs_dir: str | None = None) -> list[str]:
+     """Build the OS argv that runs ``argv`` UNDER the enforcing backend."""
+     if backend == "sandbox-exec":
+-        profile = _macos_profile(worktree, tmpdir, allow_write_repo)
++        profile = _macos_profile(worktree, tmpdir, allow_write_repo, inputs_dir)
+         return [shutil.which("sandbox-exec") or "sandbox-exec", "-p", profile, *argv]
+     if backend == "unshare":
+         # Unprivileged user+net namespace: no network interfaces → deny enforced.
+@@ -652,7 +766,7 @@ def _record_check_event(check: Check, result: CheckResult) -> None:
+     event. Never raises."""
+     try:
+         ran = not result.skipped
+-        _te.record({
++        evt = {
+             "event": "evidence_check",
+             "action": f"evidence_check:{check.name}",
+             "category": "execute",
+@@ -667,28 +781,46 @@ def _record_check_event(check: Check, result: CheckResult) -> None:
+             "gate": {"decision": ("allowed" if ran else "blocked"),
+                      "why": (result.skip_reason or "ran under "
+                              + str(result.backend or "?"))},
+-        })
++        }
++        # Phase 8 Chunk C: which harness-built inputs the check declared (observed,
++        # not narrated — the reviewer sees the check's delta scope in the log).
++        if getattr(check, "inputs", None):
++            evt["inputs"] = list(check.inputs)
++        _te.record(evt)
+     except Exception as e:
+         _mark_failure(e, "evidence_runner_record")
+ 
+ 
+ def run_check(check: Check, runner: Runner, repo_root: str, *,
+-              worktree: str | None = None, mode: str | None = None) -> CheckResult:
++              worktree: str | None = None, mode: str | None = None,
++              inputs_dir: str | None = None) -> CheckResult:
+     """Run ONE check ENFORCE-OR-REFUSE, and RECORD a tool-event for the outcome
+-    (observed, not narrated — §16-3). Returns a CheckResult; never raises."""
+-    result = _run_check_impl(check, runner, repo_root, worktree=worktree, mode=mode)
++    (observed, not narrated — §16-3). Returns a CheckResult; never raises.
++    ``inputs_dir`` (Phase 8 Chunk C) is a read-only directory of harness-built
++    check inputs, announced to the check via ``ORA_CHECK_INPUTS``."""
++    result = _run_check_impl(check, runner, repo_root, worktree=worktree, mode=mode,
++                             inputs_dir=inputs_dir)
+     _record_check_event(check, result)
+     return result
+ 
+ 
+ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
+-                    worktree: str | None = None, mode: str | None = None) -> CheckResult:
++                    worktree: str | None = None, mode: str | None = None,
++                    inputs_dir: str | None = None) -> CheckResult:
+     """The enforce-or-refuse body. A check runs only under a backend that enforces
+     its declared network policy; else it refuses cleanly. ``mutates: true`` runs
+     only under an explicit ``clean_worktree``."""
+     try:
+         argv, cmd, shell = resolve_command(check)
+ 
++        # 0. A check that DECLARED inputs but got no inputs dir (base-unknown, or
++        # the builder failed) REFUSES cleanly — never runs against a missing input
++        # file and reports a false FAIL, and never a GUESSED input (§2.2).
++        if getattr(check, "inputs", None) and not inputs_dir:
++            return _refused(check, argv or cmd,
++                            "declared inputs unavailable (no base / not built); "
++                            "the check is not run against a missing input")
++
+         # 1. mutates:true only under clean_worktree (never mutate a tree the user
+         # owns). Absence of an explicit mode FAILS SAFE — a missing mode context
+         # REFUSES a mutating check rather than permitting it (SEC-3).
+@@ -748,6 +880,11 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
+         # subverted profile could otherwise record a FALSE `orchestrated` claim.
+         if backend == "sandbox-exec":
+             _bad = sandbox_worktree_unsafe(wt, run_tmp)
++            # SEC-1: the inputs dir also lands in the SBPL profile, so an
++            # unsafe-char inputs path could inject the profile — refuse it too.
++            if not _bad and inputs_dir and not _sbpl_path_safe(os.path.realpath(inputs_dir)):
++                _bad = ("inputs dir contains a character unsafe for the sandbox "
++                        "profile; refusing rather than risk profile injection")
+             if _bad:
+                 shutil.rmtree(run_home, ignore_errors=True)
+                 shutil.rmtree(run_tmp, ignore_errors=True)
+@@ -756,8 +893,9 @@ def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
+         # is not offered in P5 (it would pass SSH_AUTH_SOCK / API keys through); a
+         # future dedicated-HOME variant can add a SAFE inherit that still strips
+         # credentials.
+-        env = _clean_env(run_home, run_tmp)
+-        os_argv = _wrap_argv(backend, argv, wt, run_tmp, allow_write_repo=check.mutates)
++        env = _clean_env(run_home, run_tmp, inputs_dir)
++        os_argv = _wrap_argv(backend, argv, wt, run_tmp,
++                             allow_write_repo=check.mutates, inputs_dir=inputs_dir)
+ 
+         # 6. Run, capture, redact. enforcement_model is the HONEST level of the
+         # backend that ran it (orchestrated for verified kernel isolation;
+@@ -859,6 +997,20 @@ def _parse_contract(text: str, available: list[str]) -> tuple[list[str], list[st
+     return required, probe, suff
+ 
+ 
++def lanes_from_catalog(catalog: Any) -> list:
++    """The declared-lane block for the Evidence Contract, sourced from the catalog's
++    write-protected ``recipes:`` (§16-2 — the model never invents a lane; the recipe
++    body is the §6-protected file). ``[{lane, target, recipe}]``; empty when the
++    catalog declares no recipes (all live ora turns)."""
++    out: list = []
++    for name, r in (getattr(catalog, "recipes", None) or {}).items():
++        lane = getattr(r, "lane", None)
++        target = getattr(r, "target", None)
++        if lane and target:
++            out.append({"lane": lane, "target": target, "recipe": name})
++    return out
++
++
+ def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str, *,
+                             invoker=None, repo_root: str | None = None) -> str | None:
+     """The sibling to ``risk_gate.apply_criteria`` — run at the SAME planning point,
+@@ -877,10 +1029,15 @@ def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str,
+             except Exception as e:
+                 _mark_failure(e, "evidence_runner_apply_contract_parse")
+                 catalog = None
++        # Phase 8 Chunk C: the declared-lane block comes from the catalog's
++        # write-protected recipes (deterministic, model-independent — §16-2).
++        _lanes = lanes_from_catalog(catalog)
+         criteria = context_pkg.get("acceptance_criteria")
+         contract, err = run_evidence_contract_pass(
+             instruction, catalog, criteria, invoker=invoker)
+         if contract and not err:
++            if _lanes:
++                contract["lanes"] = _lanes
+             context_pkg["evidence_contract"] = contract
+             try:
+                 _te.record({"event": "evidence_contract", "action": "evidence_contract",
+@@ -890,6 +1047,16 @@ def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str,
+             except Exception:
+                 pass
+             return None
++        # No model contract, but the repo declares recipes → still emit the
++        # declared lanes (a repo's deploy_probe/render_inspect lane is a catalog
++        # fact, not a task-specific model choice). Zero existing catalogs declare
++        # recipes, so this path is inert for every pre-Chunk-C repo (parity).
++        if _lanes:
++            context_pkg["evidence_contract"] = {
++                "required_standard_checks": [], "bespoke_probes": [],
++                "sufficiency": "", "repo_less": not (catalog and catalog.checks),
++                "lanes": _lanes}
++            return None
+         if err == "no-invoker":
+             return None
+         try:
+@@ -1283,11 +1450,14 @@ def fill_evidence_lanes(packet: Any, results: list[CheckResult],
+ 
+ # ── Terminal convenience: run a Contract's required checks over a repo ─────────
+ def run_contract(catalog: Catalog, contract: dict, repo_root: str, *,
+-                 worktree: str | None = None, mode: str | None = None
++                 worktree: str | None = None, mode: str | None = None,
++                 inputs_dir: str | None = None
+                  ) -> list[CheckResult]:
+     """Run the Contract's ``required_standard_checks`` (a subset of the catalog).
+     A required check missing from the catalog is recorded as refused (the executor
+-    cannot invent checks). Never raises."""
++    cannot invent checks). Never raises. ``inputs_dir`` (Phase 8 Chunk C) is the
++    shared read-only directory of harness-built check inputs — each check reads
++    only the files it declared in its ``inputs`` list, via ``ORA_CHECK_INPUTS``."""
+     results: list[CheckResult] = []
+     for name in (contract.get("required_standard_checks") or []):
+         check = (catalog.checks or {}).get(name)
+@@ -1300,6 +1470,134 @@ def run_contract(catalog: Catalog, contract: dict, repo_root: str, *,
+             _record_check_event(Check(name=name), missing)
+             results.append(missing)
+             continue
++        # A check gets an inputs dir only if it DECLARED inputs (else None keeps
++        # the pre-Chunk-C behavior byte-identical — no env var, no read-allow).
++        chk_inputs = inputs_dir if getattr(check, "inputs", None) else None
+         results.append(run_check(check, catalog.runner, repo_root,
+-                                 worktree=worktree, mode=mode))
++                                 worktree=worktree, mode=mode,
++                                 inputs_dir=chk_inputs))
+     return results
++
++
++# ── Phase 8 Chunk C — harness-built check INPUTS (§2.2) ───────────────────────
++# Every git-derived check input is precomputed IN-HARNESS (outside the sandbox,
++# where git works), written into a read-only inputs dir, and read by the
++# self-contained check via ORA_CHECK_INPUTS. The check runs NO git and reads NO
++# ora code inside the sandbox (design ⚖ Rev 3; addendum §2.2/§3).
++
++def changed_files_at(repo_root: str, base_sha: str,
++                     delta_commit: str | None = None,
++                     *, timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
++    """The turn's changed files, EXCLUDING deletions (``--diff-filter=d`` lowercase
++    = exclude deleted) so a deleted/renamed-away path never reaches a check that
++    would then open a missing file (⚖ Rev-4/C2 false-FAIL fix). Isolated path
++    (``delta_commit`` given): ``git diff base..delta``. In-place path: ``git diff
++    base`` ∪ current untracked. Returns repo-relative forward-slash paths."""
++    paths: list[str] = []
++    if delta_commit:
++        rc, out = _git(repo_root, ["diff", "--name-only", "--diff-filter=d",
++                                   base_sha, delta_commit], timeout=timeout)
++        if rc == 0:
++            paths = [p for p in out.splitlines() if p.strip()]
++    else:
++        rc, out = _git(repo_root, ["diff", "--name-only", "--diff-filter=d",
++                                   base_sha], timeout=timeout)
++        if rc == 0:
++            paths = [p for p in out.splitlines() if p.strip()]
++        rc2, out2 = _git(repo_root, ["ls-files", "--others", "--exclude-standard"],
++                         timeout=timeout)
++        if rc2 == 0:
++            paths += [p for p in out2.splitlines() if p.strip()]
++    # De-dup, stable order.
++    seen: set = set()
++    uniq = []
++    for p in paths:
++        if p not in seen:
++            seen.add(p)
++            uniq.append(p)
++    return uniq
++
++
++def _title_universe_at(repo_root: str, base_sha: str,
++                       delta_commit: str | None = None,
++                       *, timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
++    """The note-title universe as it exists AT CHECK TIME, including this turn's
++    NEW notes. Isolated: ``git ls-tree -r <delta_commit>`` (the delta commit's
++    ``add -A`` already captured untracked new files). In-place: ``git ls-files
++    --cached --others --exclude-standard`` (current tracked + untracked) — NOT the
++    base tree, which omits the turn's new notes and would false-dangle a
++    new-note→new-note link (⚖ Rev-4/C3)."""
++    if delta_commit:
++        rc, out = _git(repo_root, ["ls-tree", "-r", "--name-only", delta_commit],
++                       timeout=timeout)
++    else:
++        rc, out = _git(repo_root, ["ls-files", "--cached", "--others",
++                                   "--exclude-standard"], timeout=timeout)
++    if rc != 0:
++        return []
++    return [p for p in out.splitlines() if p.strip()]
++
++
++def build_check_inputs(repo_root: str, dest_dir: str, needed: set, base_sha: str,
++                       delta_commit: str | None = None,
++                       *, changed: list | None = None,
++                       timeout: int = _WT_GIT_TIMEOUT) -> list[str]:
++    """Write each declared input into ``dest_dir`` (one file per input, UTF-8). All
++    git runs OUTSIDE the sandbox. Returns the input names actually written (recorded
++    on the check event — observed, not narrated). ``changed`` may be passed to
++    reuse an already-computed changed-file list (avoids a second ``git diff``)."""
++    written: list[str] = []
++    try:
++        os.makedirs(dest_dir, exist_ok=True)
++        if "changed_files" in needed:
++            cf = changed if changed is not None else changed_files_at(
++                repo_root, base_sha, delta_commit, timeout=timeout)
++            with open(os.path.join(dest_dir, _INPUTS_FILENAMES["changed_files"]),
++                      "w", encoding="utf-8") as f:
++                f.write("\n".join(cf) + ("\n" if cf else ""))
++            written.append("changed_files")
++        if "title_universe" in needed:
++            tu = _title_universe_at(repo_root, base_sha, delta_commit, timeout=timeout)
++            with open(os.path.join(dest_dir, _INPUTS_FILENAMES["title_universe"]),
++                      "w", encoding="utf-8") as f:
++                f.write("\n".join(tu) + ("\n" if tu else ""))
++            written.append("title_universe")
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_build_inputs")
++    return written
++
++
++def make_inputs_dir() -> str:
++    """A fresh read-only-destined inputs directory under the runner's scratch base
++    (runtime-paths-derived — portability amendment). Caller removes it
++    finally-guaranteed."""
++    base = os.path.join(_rp.SCRATCH_DIR_STR, "evidence-runner")
++    os.makedirs(base, exist_ok=True)
++    return tempfile.mkdtemp(prefix="inputs-", dir=base)
++
++
++def collect_declared_inputs(catalog: Any, check_names: list) -> set:
++    """Union of declared ``inputs`` across the named checks (what the inputs dir
++    must contain for this batch)."""
++    needed: set = set()
++    checks = getattr(catalog, "checks", None) or {}
++    for n in check_names:
++        c = checks.get(n)
++        for i in (getattr(c, "inputs", None) or []):
++            needed.add(i)
++    return needed
++
++
++def batch_all_changed_scope(catalog: Any, check_names: list) -> bool:
++    """True iff EVERY named check declares ``scope: changed_files`` — the condition
++    for a sparse worktree (a ``scope: repo`` check in the batch would silently miss
++    files in a sparse tree, so any such check forces a full checkout)."""
++    checks = getattr(catalog, "checks", None) or {}
++    names = list(check_names)
++    if not names:
++        return False
++    for n in names:
++        c = checks.get(n)
++        if getattr(c, "scope", "repo") != "changed_files":
++            return False
++    return True
+diff --git a/orchestrator/execution_families.py b/orchestrator/execution_families.py
+new file mode 100644
+index 00000000..63914304
+--- /dev/null
++++ b/orchestrator/execution_families.py
+@@ -0,0 +1,346 @@
++"""Execution Review Phase 8 Chunk C (§4) — the DECLARED-lane fillers.
++
++Two adapter families beyond the observed lanes (diff_validate, collect_provenance):
++
++- **deploy_probe** (§4.3): a generic in-harness filler that executes recipe-declared
++  probe specs against the live network via ``tools/web_fetch`` (HTTP kinds) and a
++  local git-heartbeat read. It does NOT run through the subprocess evidence runner
++  (which enforces ``network:deny`` only). Verdicts are tri-state PASS / FAIL /
++  INDETERMINATE (an INDETERMINATE probe is never a PASS). Every probe records one
++  ``deploy_probe:<kind>`` tool event (egress observed at the instrumented boundary,
++  §7). Every recipe carries a MANDATORY ``rollback`` field (validated at parse).
++
++- **render_inspect** (§4.4): runs a named catalog check (e.g. ``render_validity``)
++  and stamps its result onto the render_inspect lane — in place on a normal repo,
++  through the Chunk-B isolated worktree on a SEC-2 repo (the vault class).
++
++House style mirrors ``execution_provenance``: never-raises, failures stamped via
++``tool_events._note_failure``; ``lane.result`` stays JSON-primitive with URLs under
++``ref`` keys (``sanitize_url``-cleaned) so the durable scrub (§2.6) covers it; the
++renderer (execution_packet) frames both lanes as INFORMATIONAL, never a convergence
++input (converged() reads only capture.sufficient + findings).
++"""
++from __future__ import annotations
++
++import shutil
++import time
++from typing import Any
++
++try:
++    import evidence_runner as _er
++except ImportError:  # pragma: no cover
++    from orchestrator import evidence_runner as _er
++
++try:
++    import tool_events as _te
++except ImportError:  # pragma: no cover
++    from orchestrator import tool_events as _te
++
++
++def _mark_failure(err: Exception, where: str) -> None:
++    try:
++        _te._note_failure(err, f"execution_families_{where}")
++    except Exception:
++        pass
++
++
++# ── Provisional constants (retunable, not calibrated) ─────────────────────────
++_PROBE_TIMEOUT_S = 15          # default per-probe HTTP budget
++_LANE_PROBE_CAP = 24           # RENDER/STORAGE bound on the lane summary rows ONLY
++                               # — never limits execution or sufficiency (P1 fold)
++_PROBE_BODY_SNIFF_CAP = 2_000_000   # never scan an unbounded body for a marker
++
++
++# ══ deploy_probe family (§4.3) ════════════════════════════════════════════════
++
++def _safe_ref(url_or_ref: str) -> str:
++    """Sanitize a URL/ref before it rides an event OR the lane result (signed-URL
++    credentials stripped; fail-closed on sanitizer failure — never raw)."""
++    try:
++        return _te.sanitize_url(url_or_ref)
++    except Exception:
++        return "[ref withheld — sanitizer unavailable]"
++
++
++def _record_probe_event(kind: str, safe_ref: str, verdict: str, reason: str) -> None:
++    """One ``deploy_probe:<kind>`` event per probe (§7 egress observed). Explicit
++    ``sensitivity: public`` — ``_redact_for_record`` keys off the EVENT's own
++    sensitivity (default secret), not the manifest (⚖ C1). The per-kind manifest
++    entry keeps ``manifest_axes`` from failing closed on the gate side."""
++    try:
++        egress = "none" if kind == "git_heartbeat" else "external"
++        where = "local" if kind == "git_heartbeat" else "network"
++        _te.record({
++            "event": "deploy_probe",
++            "action": f"deploy_probe:{kind}",
++            "category": "read",
++            "mutability": "read",
++            "sensitivity": "public",
++            "egress": egress,
++            "enforcement_model": "in_harness",
++            "reads": [{"what": safe_ref, "where": where}],
++            "deploy_probe": {"kind": kind, "verdict": verdict,
++                             "reason": reason[:200]},
++        })
++    except Exception as e:
++        _mark_failure(e, "probe_event")
++
++
++def _http_fetch(url: str, timeout_s: float | None):
++    """Raw pinned-httpx fetch (status + headers visible; no extraction cascade)."""
++    try:
++        import tools.web_fetch as _wf
++    except ImportError:  # pragma: no cover
++        from orchestrator.tools import web_fetch as _wf
++    return _wf.web_fetch(url, channel="httpx", raw=True,
++                         timeout_s=timeout_s or _PROBE_TIMEOUT_S)
++
++
++def _content_verdict(result: dict, must_contain: str | None) -> tuple[str, str]:
++    """Tri-state verdict for page/sitemap/feed. 200 + marker (if any) → PASS; 200
++    without the declared marker → FAIL; 404/410 → FAIL; 403/429/5xx/timeout/
++    network-error/unknown-status → INDETERMINATE (never a silent PASS)."""
++    if not isinstance(result, dict):
++        return "INDETERMINATE", "no result"
++    status = result.get("status_code")
++    if status is None:
++        return "INDETERMINATE", f"no status (error: {result.get('error') or 'unknown'})"
++    if status in (403, 429):
++        return "INDETERMINATE", f"status {status} (edge challenge / rate limit)"
++    if status >= 500:
++        return "INDETERMINATE", f"status {status} (server error)"
++    if status in (404, 410):
++        return "FAIL", f"status {status} (not found / gone)"
++    if status != 200:
++        return "INDETERMINATE", f"status {status}"
++    if must_contain:
++        body = (result.get("markdown") or "")[:_PROBE_BODY_SNIFF_CAP]
++        if str(must_contain) not in body:
++            return "FAIL", f"200 but marker {str(must_contain)[:60]!r} absent"
++        return "PASS", "200 + marker present"
++    return "PASS", "200 (liveness)"
++
++
++def _header_age_seconds(header: str, value: str) -> float | None:
++    """Age in seconds for a staleness header. ``age`` is integer seconds;
++    ``last-modified`` / date-shaped headers parse as an HTTP date. None if
++    unparseable (→ INDETERMINATE, never a guessed freshness)."""
++    h = (header or "").lower()
++    try:
++        if h == "age":
++            return float(int(value.strip()))
++        # HTTP-date headers (last-modified, date, expires…)
++        from email.utils import parsedate_to_datetime
++        dt = parsedate_to_datetime(value)
++        if dt is None:
++            return None
++        import datetime as _d
++        now = _d.datetime.now(_d.timezone.utc)
++        if dt.tzinfo is None:
++            dt = dt.replace(tzinfo=_d.timezone.utc)
++        return (now - dt).total_seconds()
++    except Exception:
++        return None
++
++
++def _headers_verdict(result: dict, header: str, max_age_s) -> tuple[str, str, float | None]:
++    if not isinstance(result, dict):
++        return "INDETERMINATE", "no result", None
++    status = result.get("status_code")
++    if status is None:
++        return "INDETERMINATE", f"no status (error: {result.get('error') or 'unknown'})", None
++    if status != 200:
++        return "INDETERMINATE", f"status {status}", None
++    headers = result.get("headers") or {}
++    val = headers.get((header or "").lower())
++    if not val:
++        return "INDETERMINATE", f"header {header!r} absent", None
++    age = _header_age_seconds(header, val)
++    if age is None:
++        return "INDETERMINATE", f"header {header!r} unparseable", None
++    if max_age_s is not None and age > float(max_age_s):
++        return "FAIL", f"header {header!r} stale ({int(age)}s > {max_age_s}s)", age
++    return "PASS", f"header {header!r} fresh ({int(age)}s)", age
++
++
++def _git_heartbeat_verdict(repo_root: str, ref: str, match: str,
++                           max_age_s) -> tuple[str, str, float | None]:
++    """Inspect the LOCAL remote-tracking ref (NO fetch, ⚖ C2). Latest commit whose
++    message matches ``match``; age vs ``max_age_s``. Missing commit / ref →
++    INDETERMINATE (a stale local ref is disclosed, never a silent PASS)."""
++    if not repo_root:
++        return "INDETERMINATE", "no repo_root", None
++    args = ["log", "-1", "--format=%ct"]
++    if match:
++        args += ["--grep", str(match)]
++    args.append(str(ref))
++    try:
++        rc, out = _er._git(repo_root, args)
++    except Exception as e:
++        return "INDETERMINATE", f"git error: {str(e)[:80]}", None
++    if rc != 0 or not out.strip():
++        return "INDETERMINATE", f"no matching commit on {ref!r} (local ref; no fetch)", None
++    try:
++        commit_ts = int(out.strip().splitlines()[0])
++    except Exception:
++        return "INDETERMINATE", "unparseable commit timestamp", None
++    age = time.time() - commit_ts
++    if max_age_s is not None and age > float(max_age_s):
++        return "FAIL", f"heartbeat stale ({int(age)}s > {max_age_s}s; local ref, no fetch)", age
++    return "PASS", f"heartbeat fresh ({int(age)}s)", age
++
++
++def _run_one_probe(spec: dict, repo_root: str | None) -> dict:
++    """Execute ONE declared probe spec → a scrub-conformant result row."""
++    kind = (spec or {}).get("kind")
++    timeout_s = (spec or {}).get("timeout_s")
++    http_status = None
++    age_s = None
++    if kind in ("page", "sitemap", "feed"):
++        url = (spec or {}).get("url") or ""
++        result = _http_fetch(url, timeout_s)
++        http_status = result.get("status_code") if isinstance(result, dict) else None
++        verdict, reason = _content_verdict(result, (spec or {}).get("must_contain"))
++        ref = _safe_ref(url)
++    elif kind == "headers":
++        url = (spec or {}).get("url") or ""
++        result = _http_fetch(url, timeout_s)
++        http_status = result.get("status_code") if isinstance(result, dict) else None
++        verdict, reason, age_s = _headers_verdict(
++            result, (spec or {}).get("header", ""), (spec or {}).get("max_age_s"))
++        ref = _safe_ref(url)
++    elif kind == "git_heartbeat":
++        ref_spec = (spec or {}).get("ref") or ""
++        verdict, reason, age_s = _git_heartbeat_verdict(
++            repo_root, ref_spec, (spec or {}).get("match", ""),
++            (spec or {}).get("max_age_s"))
++        ref = _safe_ref(ref_spec)
++    else:
++        verdict, reason, ref = "INDETERMINATE", f"unknown probe kind {kind!r}", ""
++    _record_probe_event(str(kind), ref, verdict, reason)
++    row = {"kind": kind, "ref": ref, "verdict": verdict, "reason": reason}
++    if http_status is not None:
++        row["http_status"] = http_status
++    if age_s is not None:
++        row["age_s"] = int(age_s)
++    return row
++
++
++def fill_deploy_probe_lane(packet: Any, lane: Any, *, fill_ctx: dict):
++    """Fill a declared deploy_probe lane from its recipe's probe specs. Sufficient
++    IFF every probe PASSes. Returns the lane summary, or None on stealth / no
++    recipe / failure (the lane stays owed). Never raises."""
++    try:
++        if fill_ctx.get("stealth") or packet is None or lane is None:
++            return None
++        recipe = fill_ctx.get("recipe")
++        probes = getattr(recipe, "probes", None) or []
++        if not probes:
++            return None
++        repo_root = fill_ctx.get("repo_root")
++        # ⚖ code-review P1 fold: run + count EVERY declared probe. The
++        # _LANE_PROBE_CAP is a RENDER/STORAGE bound on the lane summary ONLY — it
++        # must NEVER limit what executes or what sufficiency is computed from, or
++        # a failing probe beyond the cap would be silently unrun and the lane
++        # would read a FALSE green ("all declared probes must PASS", §4.3).
++        rows = [_run_one_probe(p, repo_root) for p in probes]
++        counts = {"PASS": 0, "FAIL": 0, "INDETERMINATE": 0}
++        for r in rows:
++            counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
++        sufficient = bool(rows) and counts["FAIL"] == 0 and counts["INDETERMINATE"] == 0
++        rollback = getattr(recipe, "rollback", None) or "none: (unspecified)"
++        summary = {"probes": rows[:_LANE_PROBE_CAP],   # cap the STORED rows only
++                   "rollback": str(rollback),
++                   "verdict_counts": counts,           # counts over ALL probes
++                   "probes_truncated": len(rows) > _LANE_PROBE_CAP}
++        lane.generated_by = ["deploy_probe"]
++        lane.result = {"deploy_probe": summary}
++        lane.sufficient = True if sufficient else False
++        return summary
++    except Exception as e:
++        _mark_failure(e, "deploy_probe")
++        return None
++
++
++# ══ render_inspect family (§4.4) ══════════════════════════════════════════════
++
++def _run_named_check(runner: Any, catalog: Any, check: Any, repo_root: str,
++                     base: str | None):
++    """Run ONE catalog check: in place on a normal repo, through the Chunk-B
++    isolated worktree on a SEC-2 repo (⚖ Rev-3 §5 — in-place would be refused
++    check-by-check on a SEC-2 repo). Lazy execution_loop import avoids the
++    execution_loop↔execution_families cycle (both are fully loaded by call time)."""
++    try:
++        import execution_loop as _el
++    except ImportError:  # pragma: no cover
++        from orchestrator import execution_loop as _el
++    sec2 = False
++    try:
++        sec2 = _el.requires_isolated_worktree(repo_root, runner)
++    except Exception:
++        sec2 = False
++    if sec2:
++        if not base:
++            return None      # base-unknown → owed (never a false render verdict)
++        cr = _el.CaptureResult(mode="clean_worktree")
++        return _el.run_isolated_checks(runner, catalog, [check.name], repo_root,
++                                       base, cr)
++    # In-place: build any declared inputs from the current tree, then run.
++    needed = _er.collect_declared_inputs(catalog, [check.name])
++    inputs_dir = None
++    if needed and base:
++        try:
++            inputs_dir = _er.make_inputs_dir()
++            _er.build_check_inputs(repo_root, inputs_dir, needed, base, None)
++        except Exception:
++            inputs_dir = None
++    kw = {}
++    if inputs_dir is not None:
++        kw["inputs_dir"] = inputs_dir
++    try:
++        return runner.run_contract(
++            catalog, {"required_standard_checks": [check.name]}, repo_root, **kw)
++    finally:
++        if inputs_dir:
++            shutil.rmtree(inputs_dir, ignore_errors=True)
++
++
++def fill_render_inspect_lane(packet: Any, lane: Any, *, fill_ctx: dict):
++    """Fill a declared render_inspect lane by running the recipe's named catalog
++    check (mechanical validity only — SVG/zip/PDF parse). Sufficient IFF the check
++    RAN and passed. Returns the summary, or None on stealth / no check / failure
++    (lane stays owed). Never raises."""
++    try:
++        if fill_ctx.get("stealth") or packet is None or lane is None:
++            return None
++        recipe = fill_ctx.get("recipe")
++        catalog = fill_ctx.get("catalog")
++        repo_root = fill_ctx.get("repo_root")
++        runner = fill_ctx.get("runner") or _er
++        cname = getattr(recipe, "check", None)
++        check = (getattr(catalog, "checks", None) or {}).get(cname) if cname else None
++        if check is None:
++            return None
++        context_pkg = fill_ctx.get("context_pkg") or {}
++        before = context_pkg.get("exec_review_state_before")
++        base = before.get("head") if isinstance(before, dict) else None
++        results = _run_named_check(runner, catalog, check, repo_root, base)
++        # ⚖ pre-check fold: the check did NOT run (SEC-2 base-unknown, or a
++        # worktree-lifecycle failure → _run_named_check returned None). Leave the
++        # lane OWED (sufficient stays None) — an unrun check must never render as
++        # a FAILED one (mirrors the diff_validate base-unknown rule: never a false
++        # sufficiency AND never a false failure). run_contract always yields ≥1
++        # CheckResult for an existing check, so a genuine in-place run is never
++        # falsely owed here.
++        if not results:
++            return None
++        payload = [r.to_dict() for r in results]
++        ran_ok = all(getattr(r, "passed", False) and not getattr(r, "skipped", False)
++                     for r in results)
++        lane.generated_by = [f"render_inspect:{check.name}"]
++        lane.result = {"render_inspect": {"check": check.name, "checks": payload}}
++        lane.sufficient = True if ran_ok else False
++        return lane.result["render_inspect"]
++    except Exception as e:
++        _mark_failure(e, "render_inspect")
++        return None
+diff --git a/orchestrator/execution_loop.py b/orchestrator/execution_loop.py
+index 54eb4b5e..7648ed67 100644
+--- a/orchestrator/execution_loop.py
++++ b/orchestrator/execution_loop.py
+@@ -73,6 +73,14 @@ try:  # Phase 8 Chunk A — the collect_provenance lane filler (§4/§7)
+ except ImportError:  # pragma: no cover
+     from orchestrator import execution_provenance as _eprov
+ 
++try:  # Phase 8 Chunk C — deploy_probe + render_inspect declared-lane fillers (§4)
++    import execution_families as _efam
++except ImportError:  # pragma: no cover
++    try:
++        from orchestrator import execution_families as _efam
++    except ImportError:
++        _efam = None
++
+ 
+ # ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
+ MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
+@@ -358,6 +366,71 @@ def _batch_has_enforcing_backend(runner: Any, catalog: Any,
+         return True
+ 
+ 
++# ── Phase 8 Chunk C — check-inputs orchestration (§2.2) ───────────────────────
++# Thin wrappers over evidence_runner's git-mechanics so a minimal injected runner
++# (test double) degrades gracefully instead of raising: a runner without the
++# builder returns "no inputs", and a check declaring inputs then refuses cleanly.
++
++def _collect_inputs(runner: Any, catalog: Any, check_names: list) -> set:
++    fn = getattr(runner, "collect_declared_inputs", None) or getattr(
++        _er, "collect_declared_inputs", None)
++    try:
++        return fn(catalog, check_names) if fn else set()
++    except Exception:
++        return set()
++
++
++def _batch_all_changed_scope(runner: Any, catalog: Any, check_names: list) -> bool:
++    fn = getattr(runner, "batch_all_changed_scope", None) or getattr(
++        _er, "batch_all_changed_scope", None)
++    try:
++        return bool(fn(catalog, check_names)) if fn else False
++    except Exception:
++        return False
++
++
++def _changed_files(runner: Any, repo_root: str, base_sha: str,
++                   delta_commit: str | None) -> list:
++    fn = getattr(runner, "changed_files_at", None) or getattr(
++        _er, "changed_files_at", None)
++    try:
++        return fn(repo_root, base_sha, delta_commit) if fn else []
++    except Exception:
++        return []
++
++
++def _build_inputs(runner: Any, repo_root: str, needed: set, base_sha: str,
++                  delta_commit: str | None, changed: list | None,
++                  cr: CaptureResult | None = None) -> str | None:
++    """Build the read-only inputs dir; returns its path (or None on any failure —
++    the checks then refuse cleanly rather than run against a missing input). The
++    inputs each check actually consumed are recorded on its own evidence_check
++    event (``inputs: [...]``), the observed-not-narrated record that matters."""
++    mk = getattr(runner, "make_inputs_dir", None) or getattr(
++        _er, "make_inputs_dir", None)
++    build = getattr(runner, "build_check_inputs", None) or getattr(
++        _er, "build_check_inputs", None)
++    if not (mk and build):
++        return None
++    try:
++        d = mk()
++        build(repo_root, d, needed, base_sha, delta_commit, changed=changed)
++        return d
++    except Exception as e:
++        _mark_failure(e, "execution_loop_build_inputs")
++        return None
++
++
++def _cleanup_inputs(inputs_dir: str | None) -> None:
++    if not inputs_dir:
++        return
++    try:
++        import shutil as _sh
++        _sh.rmtree(inputs_dir, ignore_errors=True)
++    except Exception:
++        pass
++
++
+ def run_isolated_checks(runner: Any, catalog: Any, check_names: list,
+                         repo_root: str, base_sha: str,
+                         cr: CaptureResult) -> list | None:
+@@ -408,14 +481,39 @@ def run_isolated_checks(runner: Any, catalog: Any, check_names: list,
+         if not delta_commit:
+             cr.isolated = {"ran": False, "fallback_reason": "temp-commit failed"}
+             return None
+-        wt = runner.create_isolated_worktree(repo_root, delta_commit)
++        # Phase 8 Chunk C (§2.2): sparse opt-in + harness-built check INPUTS.
++        # Only when EVERY check in the batch is scope:changed_files may the
++        # worktree be sparse (a scope:repo check in a sparse tree would silently
++        # miss files). The changed-file list is computed ONCE (from the delta
++        # commit) and reused for both the sparse set and changed-files.txt.
++        needed = _collect_inputs(runner, catalog, check_names)
++        sparse = None
++        changed = None
++        if _batch_all_changed_scope(runner, catalog, check_names):
++            changed = _changed_files(runner, repo_root, base_sha, delta_commit)
++            # sparse = the changed paths ∪ .ora (so the check scripts + catalog
++            # materialize in the worktree). Empty changed → just .ora.
++            sparse = list(dict.fromkeys((changed or []) + [".ora"]))
++        wt = (runner.create_isolated_worktree(repo_root, delta_commit, sparse=sparse)
++              if sparse is not None
++              else runner.create_isolated_worktree(repo_root, delta_commit))
+         if not wt:
+             cr.isolated = {"ran": False, "delta_commit": delta_commit,
+                            "fallback_reason": "worktree add failed/refused"}
+             return None
+-        results = runner.run_contract(
+-            catalog, {"required_standard_checks": list(check_names)},
+-            repo_root, worktree=wt, mode="clean_worktree")
++        inputs_dir = _build_inputs(runner, repo_root, needed, base_sha,
++                                   delta_commit, changed, cr) if needed else None
++        # Pass inputs_dir ONLY when built (byte-identical to the pre-Chunk-C call
++        # for a no-declared-inputs batch — preserves the Chunk-B test doubles).
++        kw = {"worktree": wt, "mode": "clean_worktree"}
++        if inputs_dir is not None:
++            kw["inputs_dir"] = inputs_dir
++        try:
++            results = runner.run_contract(
++                catalog, {"required_standard_checks": list(check_names)},
++                repo_root, **kw)
++        finally:
++            _cleanup_inputs(inputs_dir)
+         # Belt (judge P2): isolated.ran=True must mean a check GENUINELY RAN,
+         # not merely that the lifecycle completed. If every result came back
+         # skipped/refused (a mixed-policy batch the up-front gate could not
+@@ -525,13 +623,33 @@ def run_capture(packet: Any, *, context_pkg: dict | None = None,
+                     n, runner, reason=why,
+                     mutates=bool(getattr(chk_n, "mutates", False))))
+ 
++        def _run_in_place(names: list) -> list:
++            """Run a batch of checks IN PLACE, building any declared inputs from the
++            CURRENT tree (in-place derivation: changed = diff base + untracked;
++            title universe = current tracked+untracked — §2.2). No pre-exec base
++            (base_unknown) → no inputs dir → a declared-inputs check refuses
++            cleanly, never runs against a missing input."""
++            needed = _collect_inputs(runner, catalog, names)
++            inputs_dir = None
++            if needed and before_head:
++                inputs_dir = _build_inputs(runner, rr, needed, before_head,
++                                           None, None, cr)
++            # Pass inputs_dir ONLY when built — a batch with no declared inputs is
++            # byte-identical to the pre-Chunk-C call (no new kwarg).
++            kw = {"mode": mode}
++            if inputs_dir is not None:
++                kw["inputs_dir"] = inputs_dir
++            try:
++                return runner.run_contract(
++                    catalog, {"required_standard_checks": names}, rr, **kw)
++            finally:
++                _cleanup_inputs(inputs_dir)
++
+         if mode == "clean_worktree":
+             # Caller-attested isolated checkout: the runner permits mutating
+             # checks in place; no actuator worktree needed.
+             if required and catalog is not None:
+-                results.extend(runner.run_contract(
+-                    catalog, {"required_standard_checks": required}, rr,
+-                    mode=mode))
++                results.extend(_run_in_place(required))
+         elif iso_all and required and catalog is not None:
+             # SEC-2 repo: EVERY check must run isolated (in-place would be
+             # refused check-by-check). Requires the actuator + a real base.
+@@ -580,9 +698,7 @@ def run_capture(packet: Any, *, context_pkg: dict | None = None,
+                                    + str((cr.isolated or {}).get(
+                                        "fallback_reason", "unknown")) + ")")
+             if runnable and catalog is not None:
+-                filtered = {"required_standard_checks": runnable}
+-                results.extend(runner.run_contract(catalog, filtered, rr,
+-                                                   mode=mode))
++                results.extend(_run_in_place(runnable))
+         cr.results = results
+ 
+         # state_after + a delta REFERENCE (diff written trace-local, never inlined).
+@@ -1114,6 +1230,91 @@ def _now_iso() -> str:
+     return _ep._now_iso()
+ 
+ 
++# ── Phase 8 Chunk C — declared-lane filler registry (§2.3/§4.1) ───────────────
++# The two OBSERVED lanes (diff_validate, collect_provenance) are filled by their
++# own signal-keyed paths (run_capture / fill_provenance_lane) and are NOT in this
++# map. This registry dispatches only the DECLARED lanes. A None entry means "no
++# filler shipped in Phase 8" (run_observe) — the lane stays honestly owed.
++
++def _deploy_probe_filler(packet, lane, *, fill_ctx):
++    if _efam is None:
++        return None
++    return _efam.fill_deploy_probe_lane(packet, lane, fill_ctx=fill_ctx)
++
++
++def _render_inspect_filler(packet, lane, *, fill_ctx):
++    if _efam is None:
++        return None
++    return _efam.fill_render_inspect_lane(packet, lane, fill_ctx=fill_ctx)
++
++
++LANE_FILLERS = {
++    "deploy_probe": _deploy_probe_filler,
++    "render_inspect": _render_inspect_filler,
++    "run_observe": None,          # DECLARED-ONLY in Phase 8 — no filler shipped
++}
++
++
++def _match_recipe(recipes: dict, lane: str, target: str | None):
++    """Find the declared recipe for a (lane, target) pair — the recipe body is the
++    §6-protected catalog file, never model output (§16-2)."""
++    for r in (recipes or {}).values():
++        if getattr(r, "lane", None) == lane and (
++                target is None or getattr(r, "target", None) == target):
++            return r
++    return None
++
++
++def fill_declared_lanes(packet: Any, *, context_pkg: dict | None = None,
++                        capture: Any = None, trace_dir: str | None = None,
++                        stealth: bool = False, runner: Any = None) -> None:
++    """Fill every DECLARED lane (deploy_probe / render_inspect) that is still owed,
++    has a registered filler, AND a matching recipe in the target repo's catalog.
++    No filler / no recipe → today's exact owed semantics. Called on BOTH engaged
++    branches — mutation (capture set) and source-read-only (capture=None). The
++    catalog is re-discovered + re-parsed here (the landed re-parse-per-seam idiom);
++    on a live turn ``repo_root`` resolves to ~/ora (§3.0) whose catalog declares no
++    recipes, so live turns get no declared-lane fill — reachable only via explicit
++    repo_root (programmatic runs / tests). Never raises."""
++    runner = runner or _er
++    try:
++        lanes = getattr(packet, "evidence_lanes", None) or []
++        # Any owed declared lane to consider before paying for catalog discovery?
++        pending = [l for l in lanes
++                   if getattr(l, "sufficient", None) is None
++                   and LANE_FILLERS.get(getattr(l, "lane", None)) is not None]
++        if not pending:
++            return
++        rr = (getattr(capture, "repo_root", None)
++              or discover_repo_root(context_pkg, runner=runner))
++        catalog = None
++        if rr:
++            try:
++                cat_path = runner.discover_catalog(rr)
++                if cat_path:
++                    catalog = runner.parse_catalog(cat_path)
++            except Exception as e:
++                _mark_failure(e, "execution_loop_declared_catalog")
++                catalog = None
++        recipes = getattr(catalog, "recipes", None) or {}
++        for lane in pending:
++            lname = getattr(lane, "lane", None)
++            recipe = _match_recipe(recipes, lname, getattr(lane, "target", None))
++            if recipe is None:
++                continue          # no recipe → stays owed (unchanged semantics)
++            fill_ctx = {"context_pkg": context_pkg, "recipe": recipe,
++                        "catalog": catalog, "repo_root": rr, "capture": capture,
++                        "trace_dir": trace_dir, "stealth": stealth,
++                        "runner": runner}
++            filler = LANE_FILLERS.get(lname)
++            try:
++                filler(packet, lane, fill_ctx=fill_ctx)
++            except Exception as e:
++                _mark_failure(e, "execution_loop_fill_declared")
++    except Exception as e:
++        _mark_failure(e, "execution_loop_fill_declared_lanes")
++
++
+ # ── The controller (§3/§4) — assemble the loop from the parts above ────────────
+ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+              ro: dict | None = None, signals: dict | None = None,
+@@ -1190,6 +1391,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+                         f"examined={cov.get('claims_examined', 0)}, "
+                         f"unsupported={cov.get('claims_unsupported', 0)}); "
+                         "not entered into the converge/escalate cycle")
++            # Phase 8 Chunk C: fill any DECLARED lanes on this engaged branch too
++            # (deploy_probe / render_inspect) — capture=None here (this branch runs
++            # no diff capture). Record + render only; never a convergence input.
++            fill_declared_lanes(packet, context_pkg=context_pkg, capture=None,
++                                trace_dir=trace_dir, stealth=stealth, runner=runner)
+             _ep.populate_loop_fields(
+                 packet, planning=planning,
+                 loop={"iteration": 0, "stop_condition": None, "note": note},
+@@ -1231,6 +1437,12 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+                 trace_dir=trace_dir, stealth=stealth, mixed_turn=True,
+                 level2_invoker=_l2_inv, level2_family_note=_l2_note)
+ 
++        # Phase 8 Chunk C: fill any DECLARED lanes (deploy_probe / render_inspect)
++        # on the mutation branch too — informational, never a convergence input
++        # (converged() reads only capture.sufficient + findings).
++        fill_declared_lanes(packet, context_pkg=context_pkg, capture=capture,
++                            trace_dir=trace_dir, stealth=stealth, runner=runner)
++
+         while True:
+             review_text = _ep.render_for_review(packet)
+             verify_rec = run_verify(review_text, verify_invoker=verify_invoker,
+diff --git a/orchestrator/execution_packet.py b/orchestrator/execution_packet.py
+index 44a9f2fa..9314d03a 100644
+--- a/orchestrator/execution_packet.py
++++ b/orchestrator/execution_packet.py
+@@ -173,18 +173,38 @@ def consistency_note(declared_output_type: str | None, signals: dict | None) ->
+ # ── The evaluation-lane router (§5) — route by evaluation unit, not whole task ─
+ def route_lanes(signals: dict | None,
+                 declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
+-                mode_meta: dict | None = None) -> tuple[list[EvidenceLane], list[JudgmentLane]]:
++                mode_meta: dict | None = None,
++                declared: list | None = None
++                ) -> tuple[list[EvidenceLane], list[JudgmentLane]]:
+     """Map the two folded §6 signals onto evidence lanes. Judgment lanes come from
+     a mode's declared interpretive targets (``mode_meta['judgment_targets']``) —
+     most modes declare none in P4, so ``judgment_lanes`` is normally empty. Evidence
+     lanes are DECLARED-EMPTY here (Phase 5 fills the result); an empty result must
+-    never read as sufficient."""
++    never read as sufficient.
++
++    Phase 8 Chunk C (§4.1): ``declared`` is the Evidence Contract's ``lanes`` block
++    (``[{lane, target, recipe}]`` — repo-declared, NOT signal-inferred; deploys are
++    declared, spec-aligned). Declared lanes are appended DECLARED-EMPTY, deduped by
++    ``(lane, target)`` against the observed lanes and each other."""
+     signals = signals or {}
+     evidence: list[EvidenceLane] = []
+     if signals.get("any_mutation"):
+         evidence.append(EvidenceLane(target="state_change", lane="diff_validate"))
+     if signals.get("source_read_suspected"):
+         evidence.append(EvidenceLane(target="grounded_claims", lane="collect_provenance"))
++    seen = {(l.lane, l.target) for l in evidence}
++    for d in (declared or []):
++        try:
++            lane = (d.get("lane") if isinstance(d, dict) else None)
++            target = (d.get("target") if isinstance(d, dict) else None)
++        except Exception:
++            lane, target = None, None
++        if not lane or not target:
++            continue
++        if (lane, target) in seen:
++            continue
++        seen.add((lane, target))
++        evidence.append(EvidenceLane(target=str(target), lane=str(lane)))
+     judgment: list[JudgmentLane] = []
+     for t in (mode_meta or {}).get("judgment_targets", []) or []:
+         if isinstance(t, str) and t.strip():
+@@ -256,6 +276,55 @@ def _render_provenance_lane(l: EvidenceLane, *, durable_summary: bool) -> list[s
+     return lines
+ 
+ 
++# Phase 8 Chunk C (§4): render branches for the two DECLARED lanes. Both mirror
++# the provenance branch's two framing rules — an explicitly INFORMATIONAL header
++# (never the bare ``INSUFFICIENT`` token that the generic template emits, which
++# would drive the different-family verifier on a mixed turn, defeating OQ-4), and
++# ``durable_summary=True`` (the escalation-handback render) emits ONLY the verdict
++# counts — no refs, reasons, stdout, or rollback free-text (the Rev-3 handback-leak
++# rule, generalized to every new lane).
++_MAX_PROBE_RENDER_ROWS = 12
++
++
++def _render_deploy_probe_lane(l: EvidenceLane, *, durable_summary: bool) -> list[str]:
++    dp = (l.result or {}).get("deploy_probe")
++    if not isinstance(dp, dict):
++        return []
++    counts = dp.get("verdict_counts") or {}
++    state = "sufficient" if getattr(l, "sufficient", None) else "not sufficient"
++    lines = [f"DEPLOY PROBE (informational — not a convergence input in this "
++             f"phase) [{state}]",
++             f"  probes: PASS={counts.get('PASS', 0)} FAIL={counts.get('FAIL', 0)}"
++             f" INDETERMINATE={counts.get('INDETERMINATE', 0)}"]
++    if durable_summary:
++        return lines                      # counts only — no refs/reasons/rollback
++    for r in (dp.get("probes") or [])[:_MAX_PROBE_RENDER_ROWS]:
++        lines.append(f"  - {r.get('kind')} [{r.get('verdict')}] "
++                     f"{r.get('ref') or ''} — {r.get('reason') or ''}")
++    if dp.get("probes_truncated"):
++        lines.append("  …probes truncated")
++    lines.append(f"  rollback: {dp.get('rollback')}")
++    return lines
++
++
++def _render_render_inspect_lane(l: EvidenceLane, *, durable_summary: bool) -> list[str]:
++    ri = (l.result or {}).get("render_inspect")
++    if not isinstance(ri, dict):
++        return []
++    state = "sufficient" if getattr(l, "sufficient", None) else "not sufficient"
++    lines = [f"RENDER INSPECT (informational — not a convergence input in this "
++             f"phase) [{state}]",
++             f"  check: {ri.get('check')}"]
++    if durable_summary:
++        return lines
++    for c in (ri.get("checks") or []):
++        outcome = ("passed" if c.get("passed")
++                   else ("skipped" if c.get("skipped") else "failed"))
++        lines.append(f"  - {c.get('name')}: {outcome}"
++                     + (f" ({c.get('skip_reason')})" if c.get("skip_reason") else ""))
++    return lines
++
++
+ def _render_evidence(packet: ExecutionPacket, *, durable_summary: bool = False) -> str:
+     obs = packet.observed or {}
+     lines: list[str] = []
+@@ -272,15 +341,23 @@ def _render_evidence(packet: ExecutionPacket, *, durable_summary: bool = False)
+         lines.append("WHAT WAS READ AS A SOURCE: none suspected")
+     if packet.evidence_lanes:
+         for l in packet.evidence_lanes:
+-            # Phase 8: a FILLED provenance lane renders its own block — the
+-            # generic template's bare INSUFFICIENT token must never speak
+-            # for it (see _render_provenance_lane). An UNFILLED provenance
+-            # lane (sufficient None) falls through to the owed template.
+-            if (getattr(l, "lane", None) == "collect_provenance"
+-                    and getattr(l, "sufficient", None) is not None):
+-                prov = _render_provenance_lane(l, durable_summary=durable_summary)
+-                if prov:
+-                    lines.extend(prov)
++            # Phase 8: a FILLED provenance / deploy_probe / render_inspect lane
++            # renders its own INFORMATIONAL block — the generic template's bare
++            # INSUFFICIENT token must never speak for it (it would drive the
++            # different-family verifier on a mixed turn, defeating OQ-4). An
++            # UNFILLED lane (sufficient None) falls through to the owed template.
++            lname = getattr(l, "lane", None)
++            filled = getattr(l, "sufficient", None) is not None
++            if filled:
++                branch = None
++                if lname == "collect_provenance":
++                    branch = _render_provenance_lane(l, durable_summary=durable_summary)
++                elif lname == "deploy_probe":
++                    branch = _render_deploy_probe_lane(l, durable_summary=durable_summary)
++                elif lname == "render_inspect":
++                    branch = _render_render_inspect_lane(l, durable_summary=durable_summary)
++                if branch:
++                    lines.extend(branch)
+                     continue
+             if not lane_is_sufficient(l):
+                 # Covers the tri-state unfilled (None) AND an explicit False.
+@@ -445,8 +522,15 @@ def build_execution_packet(*, signals: dict | None, context_pkg: dict | None = N
+             "consistency": consistency,
+         }
+ 
++        # Phase 8 Chunk C: DECLARED lanes come from the Evidence Contract's
++        # ``lanes`` block (repo-declared at planning; the model cannot invent one
++        # — the recipe body is the §6-protected catalog file). Absent/empty on
++        # every turn whose catalog declares no recipes (incl. all live ora turns).
++        _contract = context_pkg.get("evidence_contract") or {}
++        _declared = _contract.get("lanes") if isinstance(_contract, dict) else None
+         evidence_lanes, judgment_lanes = route_lanes(
+-            signals, declared_output_type, context_pkg.get("mode_meta"))
++            signals, declared_output_type, context_pkg.get("mode_meta"),
++            declared=_declared)
+ 
+         instruction = (context_pkg.get("raw_prompt")
+                        or context_pkg.get("cleaned_prompt") or "")
+diff --git a/orchestrator/execution_persistence.py b/orchestrator/execution_persistence.py
+index 92cb8810..ca063ac9 100644
+--- a/orchestrator/execution_persistence.py
++++ b/orchestrator/execution_persistence.py
+@@ -396,7 +396,11 @@ def _scrub_lane_result(res: Any, level: str) -> Any:
+ # (never user/model free text). Everything else scrubs at the turn level.
+ _LANE_STRUCTURAL_KEYS = frozenset({
+     "support_status", "claim_id", "source_id", "kind", "origin",
+-    "batch_part", "mapper_family"})
++    "batch_part", "mapper_family",
++    # Phase 8 Chunk C: deploy_probe / render_inspect fixed-vocabulary tokens that
++    # must stay legible on a sensitive-turn durable note (PASS/FAIL/INDETERMINATE
++    # + the probe kind), so they survive verbatim rather than length-descriptored.
++    "verdict"})
+ 
+ 
+ # ── The durable note (self-contained markdown; renders the ALREADY-REDACTED packet) ──
+diff --git a/orchestrator/tests/test_chunk_c_integration.py b/orchestrator/tests/test_chunk_c_integration.py
+new file mode 100644
+index 00000000..452ce982
+--- /dev/null
++++ b/orchestrator/tests/test_chunk_c_integration.py
+@@ -0,0 +1,289 @@
++"""Execution Review Phase 8 Chunk C — cross-module integration + condition folds.
++
++Covers the seams that span modules:
++  * evidence_runner: inputs/scope + recipe validation (rollback mandatory,
++    render_inspect check-exists), parse_catalog recipes, ⚖ C2 --diff-filter=d
++    deletion-exclusion (real git), title_universe includes new notes, sparse-union
++    helpers, lanes_from_catalog, inputs_dir SBPL read-allow + ORA_CHECK_INPUTS env;
++  * tool_events: ⚖ §6 case-folded protection + /.ora/ segment rule (vault/msi/
++    Windows-shaped);
++  * bash_execute: ⚖ §6 git-route escalation (git mv/checkout into .ora);
++  * execution_packet: route_lanes declared + dedup, owed→filled render;
++  * execution_loop: declared-lane registry dispatch (no-recipe → owed).
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parent.parent
++if str(_ROOT) not in sys.path:
++    sys.path.insert(0, str(_ROOT))
++
++import evidence_runner as er                   # noqa: E402
++import tool_events as te                       # noqa: E402
++import execution_packet as ep                  # noqa: E402
++import execution_loop as el                    # noqa: E402
++from tools import bash_execute as be           # noqa: E402
++
++
++def _git(repo, *args):
++    subprocess.run(["git", "-C", repo, *args], check=True,
++                   capture_output=True, text=True)
++
++
++class _RealRepo(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.repo = self.tmp.name
++        _git(self.repo, "init", "-q")
++        _git(self.repo, "config", "user.email", "t@t")
++        _git(self.repo, "config", "user.name", "t")
++        (Path(self.repo) / "keep.md").write_text("# keep\n", encoding="utf-8")
++        _git(self.repo, "add", "-A")
++        _git(self.repo, "commit", "-qm", "base")
++        self.base = subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"],
++                                   capture_output=True, text=True).stdout.strip()
++
++    def tearDown(self):
++        self.tmp.cleanup()
++
++
++class TestDiffFilterExcludesDeletions(_RealRepo):
++    def test_deleted_path_excluded(self):
++        # ⚖ C2/false-FAIL fix: a deleted path must NOT appear in changed_files
++        # (--diff-filter=d), so a check never opens a missing file.
++        os.remove(os.path.join(self.repo, "keep.md"))
++        (Path(self.repo) / "new.md").write_text("# new\n", encoding="utf-8")
++        _git(self.repo, "add", "-A")
++        changed = er.changed_files_at(self.repo, self.base)   # in-place form
++        self.assertIn("new.md", changed)
++        self.assertNotIn("keep.md", changed)   # deletion excluded
++
++    def test_title_universe_includes_new_untracked(self):
++        # in-place universe = current tracked + untracked → new notes present (C3).
++        (Path(self.repo) / "n1.md").write_text("# n1\n", encoding="utf-8")
++        (Path(self.repo) / "n2.md").write_text("# n2\n", encoding="utf-8")
++        uni = er._title_universe_at(self.repo, self.base)   # in-place
++        self.assertIn("n1.md", uni)
++        self.assertIn("n2.md", uni)
++        self.assertIn("keep.md", uni)
++
++
++class TestCatalogSchema(unittest.TestCase):
++    def _parse(self, body):
++        with tempfile.TemporaryDirectory() as d:
++            p = Path(d) / "evidence.yaml"
++            p.write_text(body, encoding="utf-8")
++            return er.parse_catalog(str(p))
++
++    def test_inputs_and_scope_valid(self):
++        cat = self._parse(
++            "checks:\n"
++            "  vf:\n"
++            "    argv: [python, .ora/tools/x.py]\n"
++            "    network: deny\n"
++            "    inputs: [changed_files, title_universe]\n"
++            "    scope: changed_files\n"
++            "runner: {working_dir: <repo-root>, env: isolated, network: deny,"
++            " redact: by-sensitivity, on_unknown: gated}\n")
++        self.assertEqual(cat.checks["vf"].inputs, ["changed_files", "title_universe"])
++        self.assertEqual(cat.checks["vf"].scope, "changed_files")
++
++    def test_unknown_input_rejected(self):
++        with self.assertRaises(ValueError):
++            self._parse(
++                "checks:\n  vf:\n    argv: [true]\n    network: deny\n"
++                "    inputs: [bogus]\n"
++                "runner: {working_dir: r, redact: x}\n")
++
++    def test_deploy_probe_requires_rollback(self):
++        with self.assertRaises(ValueError) as cm:
++            self._parse(
++                "checks: {}\n"
++                "recipes:\n  pub:\n    lane: deploy_probe\n    target: t\n"
++                "    probes: [{kind: page, url: https://x}]\n"
++                "runner: {working_dir: r, redact: x}\n")
++        self.assertIn("rollback", str(cm.exception))
++
++    def test_deploy_probe_with_rollback_ok(self):
++        cat = self._parse(
++            "checks: {}\n"
++            "recipes:\n  pub:\n    lane: deploy_probe\n    target: published\n"
++            "    probes: [{kind: page, url: https://x, must_contain: ok}]\n"
++            "    rollback: 'none: next FULL build'\n"
++            "runner: {working_dir: r, redact: x}\n")
++        self.assertEqual(cat.recipes["pub"].rollback, "none: next FULL build")
++        lanes = er.lanes_from_catalog(cat)
++        self.assertEqual(lanes, [{"lane": "deploy_probe", "target": "published",
++                                  "recipe": "pub"}])
++
++    def test_render_inspect_check_must_exist(self):
++        with self.assertRaises(ValueError):
++            self._parse(
++                "checks: {}\n"
++                "recipes:\n  ri:\n    lane: render_inspect\n    target: t\n"
++                "    check: nonexistent\n"
++                "runner: {working_dir: r, redact: x}\n")
++
++    def test_collect_inputs_and_scope_helpers(self):
++        cat = self._parse(
++            "checks:\n"
++            "  a: {argv: [true], network: deny, inputs: [changed_files], scope: changed_files}\n"
++            "  b: {argv: [true], network: deny, inputs: [title_universe], scope: changed_files}\n"
++            "  c: {argv: [true], network: deny}\n"
++            "runner: {working_dir: r, redact: x}\n")
++        self.assertEqual(er.collect_declared_inputs(cat, ["a", "b"]),
++                         {"changed_files", "title_universe"})
++        self.assertTrue(er.batch_all_changed_scope(cat, ["a", "b"]))
++        self.assertFalse(er.batch_all_changed_scope(cat, ["a", "c"]))  # c is scope:repo
++
++
++class TestInputsDirPlumbing(_RealRepo):
++    def test_build_check_inputs_writes_files(self):
++        (Path(self.repo) / "new.md").write_text("# new\n[[keep]]\n", encoding="utf-8")
++        _git(self.repo, "add", "-A")
++        with tempfile.TemporaryDirectory() as dest:
++            written = er.build_check_inputs(
++                self.repo, dest, {"changed_files", "title_universe"}, self.base)
++            self.assertEqual(set(written), {"changed_files", "title_universe"})
++            cf = (Path(dest) / "changed-files.txt").read_text().split()
++            self.assertIn("new.md", cf)
++            tu = (Path(dest) / "title-universe.txt").read_text().split()
++            self.assertIn("new.md", tu)
++
++    def test_clean_env_injects_ora_check_inputs(self):
++        env = er._clean_env("/h", "/t", inputs_dir="/inp")
++        self.assertEqual(env[er._CHECK_INPUTS_ENV], "/inp")
++        env2 = er._clean_env("/h", "/t")
++        self.assertNotIn(er._CHECK_INPUTS_ENV, env2)   # absent when no inputs
++
++    @unittest.skipUnless(sys.platform == "darwin", "SBPL profile is macOS-only")
++    def test_macos_profile_read_allows_inputs_dir(self):
++        prof = er._macos_profile("/scratch/wt", "/scratch/tmp", False,
++                                 inputs_dir="/scratch/inp")
++        self.assertIn('(allow file-read* (subpath "/scratch/inp"))', prof)
++        # never a WRITE allow for the inputs dir
++        self.assertNotIn('(allow file-write* (subpath "/scratch/inp"))', prof)
++
++
++class TestVaultFamilyEndToEndSandbox(_RealRepo):
++    """Live-fire: the self-contained vault check runs UNDER the real macOS sandbox,
++    reading the harness-built ORA_CHECK_INPUTS — no git, no ora import inside."""
++
++    @unittest.skipUnless(er._macos_sandbox_available(),
++                         "needs the macOS sandbox-exec backend")
++    def test_frontmatter_check_runs_orchestrated_in_place(self):
++        tools = Path(_ROOT).parent / ".ora" / "tools"
++        # Stage the catalog + the self-contained script into the repo.
++        (Path(self.repo) / ".ora" / "tools").mkdir(parents=True)
++        (Path(self.repo) / ".ora" / "tools" / "vault_frontmatter_lint.py").write_text(
++            (tools / "vault_frontmatter_lint.py").read_text(), encoding="utf-8")
++        (Path(self.repo) / ".ora" / "evidence.yaml").write_text(
++            "checks:\n"
++            "  vf:\n"
++            "    argv: [python, .ora/tools/vault_frontmatter_lint.py,"
++            " --frontmatter, optional, --require, type]\n"
++            "    mutates: false\n    network: deny\n"
++            "    inputs: [changed_files]\n    scope: changed_files\n"
++            "runner: {working_dir: <repo-root>, env: isolated, network: deny,"
++            " redact: by-sensitivity, on_unknown: gated}\n", encoding="utf-8")
++        # A malformed note that the check should FAIL.
++        (Path(self.repo) / "bad.md").write_text("---\nx: [unclosed\n---\n# bad\n",
++                                                encoding="utf-8")
++        _git(self.repo, "add", "-A")
++        catalog = er.parse_catalog(os.path.join(self.repo, ".ora", "evidence.yaml"))
++        with tempfile.TemporaryDirectory() as inp:
++            er.build_check_inputs(self.repo, inp, {"changed_files"}, self.base)
++            results = er.run_contract(
++                catalog, {"required_standard_checks": ["vf"]}, self.repo,
++                inputs_dir=inp)
++        self.assertEqual(len(results), 1)
++        r = results[0]
++        self.assertFalse(r.skipped, r.skip_reason)         # it RAN
++        self.assertEqual(r.enforcement_model, "orchestrated")
++        self.assertFalse(r.passed)                          # malformed → FAIL
++        self.assertIn("malformed", r.stdout_tail)
++
++
++class TestProtectionCaseFoldAndSegment(unittest.TestCase):
++    def test_case_variants_protected(self):
++        self.assertTrue(te.is_protected_config_path("/v/.ora/evidence.yaml"))
++        self.assertTrue(te.is_protected_config_path("/v/.ora/EVIDENCE.YAML"))
++        self.assertTrue(te.is_protected_config_path("/v/.ORA/tools/x.py"))
++
++    def test_dot_ora_segment_any_repo(self):
++        self.assertTrue(te.is_protected_config_path("/sites/msi/.ora/tools/check.py"))
++        self.assertTrue(te.is_protected_config_path("/any/repo/.ora"))
++        self.assertFalse(te.is_protected_config_path("/any/repo/.orained/y"))
++        self.assertFalse(te.is_protected_config_path("/any/repo/notes/foo.md"))
++
++    def test_windows_shaped_key(self):
++        # A backslashed Windows-style key still matches after normalization.
++        self.assertTrue(te.is_protected_config_path(r"C:\Users\x\repo\.ora\tools\c.py"))
++
++
++class TestGitRouteProtection(unittest.TestCase):
++    def test_git_writes_into_dot_ora_escalate(self):
++        for cmd in ("git mv weak.py .ora/tools/check.py",
++                    "git checkout HEAD~1 -- .ora/tools/check.py",
++                    "git restore --source=HEAD~1 .ora/tools/check.py",
++                    "git add .ora/tools/check.py"):
++            axes = be._segment_axes(cmd)
++            self.assertEqual(axes["mutability"], "irreversible", cmd)
++
++    def test_normal_git_not_escalated(self):
++        self.assertEqual(be._segment_axes("git status")["mutability"], "read")
++        self.assertEqual(be._segment_axes("git add foo.py")["mutability"],
++                         "reversible_write")
++        # a path merely CONTAINING 'ora' but not a .ora segment is not escalated
++        self.assertEqual(be._segment_axes("git add orange.py")["mutability"],
++                         "reversible_write")
++
++
++class TestRouteLanesDeclared(unittest.TestCase):
++    def test_declared_appended_and_deduped(self):
++        ev, _ = ep.route_lanes(
++            {"any_mutation": True},
++            declared=[{"lane": "deploy_probe", "target": "published",
++                       "recipe": "pub"},
++                      {"lane": "diff_validate", "target": "state_change"},  # dup
++                      {"lane": "render_inspect", "target": "artifacts",
++                       "recipe": "ri"}])
++        names = [(l.lane, l.target) for l in ev]
++        self.assertIn(("deploy_probe", "published"), names)
++        self.assertIn(("render_inspect", "artifacts"), names)
++        # diff_validate/state_change appears exactly once (dedup)
++        self.assertEqual(names.count(("diff_validate", "state_change")), 1)
++
++    def test_declared_lanes_emit_owed(self):
++        ev, _ = ep.route_lanes(
++            {}, declared=[{"lane": "deploy_probe", "target": "t", "recipe": "p"}])
++        self.assertEqual(len(ev), 1)
++        self.assertIsNone(ev[0].sufficient)   # declared-empty = owed
++
++
++class TestDeclaredLaneDispatchNoRecipe(unittest.TestCase):
++    def test_owed_when_no_recipe(self):
++        # A declared lane with a registered filler but no matching recipe stays
++        # owed (today's exact semantics) — fill_declared_lanes finds no recipe.
++        pkt = ep.ExecutionPacket(task_id="t")
++        pkt.evidence_lanes = [ep.EvidenceLane(target="published", lane="deploy_probe")]
++
++        class _Runner:
++            def discover_catalog(self, rr):
++                return None
++            def parse_catalog(self, p):
++                return None
++        el.fill_declared_lanes(pkt, context_pkg={"repo_root": "/x"},
++                               capture=None, runner=_Runner())
++        self.assertIsNone(pkt.evidence_lanes[0].sufficient)   # still owed
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tests/test_execution_families.py b/orchestrator/tests/test_execution_families.py
+new file mode 100644
+index 00000000..1ecd38c6
+--- /dev/null
++++ b/orchestrator/tests/test_execution_families.py
+@@ -0,0 +1,309 @@
++"""Execution Review Phase 8 Chunk C — deploy_probe + render_inspect fillers.
++
++Covers:
++  * deploy_probe verdict truth table per kind (page/sitemap/feed/headers/
++    git_heartbeat) incl. 403/timeout/missing-header/local-ref staleness →
++    tri-state PASS/FAIL/INDETERMINATE;
++  * all-PASS sufficiency; mandatory rollback rendered; probe events recorded;
++  * ⚖ C1 — per kind, a sanitized probe ref survives BOTH the redaction path
++    (explicit sensitivity:public event) AND manifest_axes("deploy_probe:<kind>")
++    (non-fail-closed);
++  * ⚖ C2 — git_heartbeat runs ZERO `git fetch`;
++  * renderer: informational header, no bare INSUFFICIENT token, durable_summary
++    counts-only; lane result is scrub-conformant (JSON-primitive, URL under `ref`).
++"""
++from __future__ import annotations
++
++import json
++import os
++import sys
++import unittest
++import unittest.mock as mock
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parent.parent
++if str(_ROOT) not in sys.path:
++    sys.path.insert(0, str(_ROOT))
++
++import tool_events as te                       # noqa: E402
++import execution_families as ef                # noqa: E402
++import execution_packet as ep                  # noqa: E402
++import execution_persistence as epersist       # noqa: E402
++import evidence_runner as er                   # noqa: E402
++
++
++def _lane(name, target):
++    return ep.EvidenceLane(target=target, lane=name)
++
++
++def _pkt_with(lane):
++    p = ep.ExecutionPacket(task_id="t")
++    p.evidence_lanes = [lane]
++    return p
++
++
++class _Recipe:
++    def __init__(self, **k):
++        self.__dict__.update(k)
++
++
++def _fake_fetch(status=None, body="", headers=None, error=None):
++    d = {"url": "u", "markdown": body, "title": None, "channel": "httpx",
++         "fetched_at": "t", "status_code": status, "headers": headers}
++    if error:
++        d["error"] = error
++    return d
++
++
++class TestContentVerdict(unittest.TestCase):
++    def test_truth_table(self):
++        self.assertEqual(ef._content_verdict(_fake_fetch(200, "has slug-x"), "slug-x")[0], "PASS")
++        self.assertEqual(ef._content_verdict(_fake_fetch(200, "nope"), "slug-x")[0], "FAIL")
++        self.assertEqual(ef._content_verdict(_fake_fetch(200, "anything"), None)[0], "PASS")
++        self.assertEqual(ef._content_verdict(_fake_fetch(404), None)[0], "FAIL")
++        self.assertEqual(ef._content_verdict(_fake_fetch(403), None)[0], "INDETERMINATE")
++        self.assertEqual(ef._content_verdict(_fake_fetch(429), None)[0], "INDETERMINATE")
++        self.assertEqual(ef._content_verdict(_fake_fetch(503), None)[0], "INDETERMINATE")
++        self.assertEqual(ef._content_verdict(_fake_fetch(None, error="timeout"), None)[0],
++                         "INDETERMINATE")
++
++
++class TestHeadersVerdict(unittest.TestCase):
++    def test_fresh_stale_missing(self):
++        v, _, _ = ef._headers_verdict(_fake_fetch(200, headers={"age": "10"}), "age", 3600)
++        self.assertEqual(v, "PASS")
++        v, _, _ = ef._headers_verdict(_fake_fetch(200, headers={"age": "99999"}), "age", 3600)
++        self.assertEqual(v, "FAIL")
++        v, _, _ = ef._headers_verdict(_fake_fetch(200, headers={}), "age", 3600)
++        self.assertEqual(v, "INDETERMINATE")     # header absent
++        v, _, _ = ef._headers_verdict(_fake_fetch(403), "age", 3600)
++        self.assertEqual(v, "INDETERMINATE")     # non-200
++
++
++class TestDeployProbeFiller(unittest.TestCase):
++    def test_all_pass_sufficient(self):
++        recipe = _Recipe(probes=[{"kind": "page", "url": "https://x/p",
++                                  "must_contain": "ok"}],
++                         rollback="none: next FULL build")
++        lane = _lane("deploy_probe", "published")
++        pkt = _pkt_with(lane)
++        with mock.patch.object(ef, "_http_fetch",
++                               return_value=_fake_fetch(200, "all ok here")):
++            summary = ef.fill_deploy_probe_lane(pkt, lane, fill_ctx={"recipe": recipe})
++        self.assertTrue(lane.sufficient)
++        self.assertEqual(summary["verdict_counts"]["PASS"], 1)
++        self.assertEqual(summary["rollback"], "none: next FULL build")
++
++    def test_any_indeterminate_not_sufficient(self):
++        recipe = _Recipe(probes=[{"kind": "page", "url": "https://x/p"}],
++                         rollback="ref: rollback-runbook")
++        lane = _lane("deploy_probe", "published")
++        pkt = _pkt_with(lane)
++        with mock.patch.object(ef, "_http_fetch", return_value=_fake_fetch(403)):
++            ef.fill_deploy_probe_lane(pkt, lane, fill_ctx={"recipe": recipe})
++        self.assertFalse(lane.sufficient)
++
++    def test_stealth_no_fill(self):
++        recipe = _Recipe(probes=[{"kind": "page", "url": "https://x"}], rollback="x")
++        lane = _lane("deploy_probe", "published")
++        pkt = _pkt_with(lane)
++        out = ef.fill_deploy_probe_lane(pkt, lane, fill_ctx={"recipe": recipe,
++                                                             "stealth": True})
++        self.assertIsNone(out)
++        self.assertIsNone(lane.sufficient)
++
++    def test_failing_probe_beyond_render_cap_not_sufficient(self):
++        # ⚖ code-review P1: the _LANE_PROBE_CAP render bound must NEVER limit
++        # execution/sufficiency. Declare cap+1 probes where the LAST (beyond the
++        # render cap) FAILs — it must still run + count, so the lane is NOT
++        # sufficient, and the stored rows are capped with probes_truncated True.
++        n = ef._LANE_PROBE_CAP + 1
++        probes = [{"kind": "page", "url": f"https://x/p{i}", "must_contain": "ok"}
++                  for i in range(n)]
++        recipe = _Recipe(probes=probes, rollback="none: x")
++        lane = _lane("deploy_probe", "published")
++        pkt = _pkt_with(lane)
++        calls = {"n": 0}
++
++        def fetch(url, timeout_s):
++            calls["n"] += 1
++            # every probe passes EXCEPT the last-declared one (beyond the cap)
++            body = "" if calls["n"] == n else "ok"
++            return _fake_fetch(200, body)
++
++        with mock.patch.object(ef, "_http_fetch", side_effect=fetch):
++            summary = ef.fill_deploy_probe_lane(pkt, lane, fill_ctx={"recipe": recipe})
++        self.assertEqual(calls["n"], n)                 # ALL probes ran
++        self.assertFalse(lane.sufficient)               # the beyond-cap FAIL counts
++        self.assertEqual(summary["verdict_counts"]["FAIL"], 1)
++        self.assertEqual(len(summary["probes"]), ef._LANE_PROBE_CAP)  # rows capped
++        self.assertTrue(summary["probes_truncated"])
++
++    def test_url_sanitized_in_result(self):
++        recipe = _Recipe(probes=[{"kind": "page",
++                                  "url": "https://x/p?sig=SECRETSIG&a=1"}],
++                         rollback="x")
++        lane = _lane("deploy_probe", "published")
++        pkt = _pkt_with(lane)
++        with mock.patch.object(ef, "_http_fetch", return_value=_fake_fetch(200)):
++            summary = ef.fill_deploy_probe_lane(pkt, lane, fill_ctx={"recipe": recipe})
++        ref = summary["probes"][0]["ref"]
++        self.assertNotIn("SECRETSIG", ref)
++        self.assertIn("stripped", ref)
++
++
++class TestC2GitHeartbeatNoFetch(unittest.TestCase):
++    def test_local_ref_no_fetch(self):
++        # ⚖ C2: git_heartbeat inspects the LOCAL ref only — never a `git fetch`.
++        calls = []
++
++        def fake_git(repo, args, **k):
++            calls.append(args)
++            return 0, str(1_000_000_000)   # an old commit ts
++
++        with mock.patch.object(ef._er, "_git", side_effect=fake_git):
++            v, reason, age = ef._git_heartbeat_verdict("/repo", "origin/main",
++                                                       "publish", 999999999999)
++        self.assertEqual(v, "PASS")
++        # Only a `log` read was issued — no `fetch` anywhere.
++        self.assertTrue(all(a[0] == "log" for a in calls))
++        self.assertFalse(any("fetch" in a for a in calls))
++
++    def test_stale_local_ref_fails(self):
++        with mock.patch.object(ef._er, "_git",
++                               return_value=(0, str(1_000_000_000))):
++            v, _, _ = ef._git_heartbeat_verdict("/repo", "origin/main", "x", 60)
++        self.assertEqual(v, "FAIL")
++
++    def test_no_matching_commit_indeterminate(self):
++        with mock.patch.object(ef._er, "_git", return_value=(0, "")):
++            v, _, _ = ef._git_heartbeat_verdict("/repo", "origin/main", "x", 60)
++        self.assertEqual(v, "INDETERMINATE")
++
++
++class TestC1ManifestAndRedaction(unittest.TestCase):
++    """⚖ C1: for every kind, a sanitized ref survives BOTH the redaction path AND
++    a manifest lookup (non-fail-closed)."""
++
++    KINDS = ("page", "sitemap", "feed", "headers", "git_heartbeat")
++
++    def test_manifest_axes_not_fail_closed_per_kind(self):
++        for kind in self.KINDS:
++            axes = te.manifest_axes(f"deploy_probe:{kind}")
++            self.assertNotIn("unknown", axes, kind)   # fail-closed sets unknown=True
++            self.assertEqual(axes["sensitivity"], "public", kind)
++
++    def test_redaction_keeps_ref_on_explicit_public_event(self):
++        # _redact_for_record keys off the EVENT's sensitivity (public here) → keeps
++        # reads[]. A missing sensitivity would default to secret and strip them.
++        for kind in self.KINDS:
++            evt = {"event": "deploy_probe", "action": f"deploy_probe:{kind}",
++                   "sensitivity": "public",
++                   "reads": [{"what": "https://x/probe", "where": "network"}]}
++            red = te._redact_for_record(dict(evt))
++            self.assertIn("reads", red, kind)
++            self.assertEqual(red["reads"][0]["what"], "https://x/probe", kind)
++
++    def test_probe_event_recorded_public_with_ref(self):
++        import tempfile
++        prev = os.environ.pop("ORA_TOOL_EVENTS", None)   # enable recording hermetically
++        try:
++            with tempfile.TemporaryDirectory() as d:
++                te.set_turn_context(trace_dir=d, conversation_id="c1")
++                try:
++                    ef._record_probe_event("page", "https://x/p", "PASS", "200")
++                finally:
++                    te.set_turn_context()
++                path = os.path.join(d, "tool-events.jsonl")
++                lines = Path(path).read_text().splitlines()
++                evts = [json.loads(x) for x in lines if x.strip()]
++                dp = [e for e in evts if e.get("action") == "deploy_probe:page"]
++                self.assertTrue(dp)
++                self.assertEqual(dp[0]["sensitivity"], "public")
++                self.assertEqual(dp[0]["correlation"]["conversation_id"], "c1")
++        finally:
++            if prev is not None:
++                os.environ["ORA_TOOL_EVENTS"] = prev
++
++
++class TestDeployProbeRender(unittest.TestCase):
++    def test_informational_header_no_insufficient_token(self):
++        lane = _lane("deploy_probe", "published")
++        lane.result = {"deploy_probe": {"probes": [{"kind": "page", "ref": "u",
++                       "verdict": "FAIL", "reason": "404"}],
++                       "rollback": "x", "verdict_counts": {"PASS": 0, "FAIL": 1,
++                       "INDETERMINATE": 0}}}
++        lane.sufficient = False
++        pkt = _pkt_with(lane)
++        text = ep.render_for_review(pkt)
++        self.assertIn("DEPLOY PROBE (informational", text)
++        self.assertNotIn("INSUFFICIENT", text)   # the bare token never appears
++
++    def test_durable_summary_counts_only(self):
++        lane = _lane("deploy_probe", "published")
++        lane.result = {"deploy_probe": {"probes": [{"kind": "page",
++                       "ref": "https://secret.example/p", "verdict": "PASS",
++                       "reason": "200"}], "rollback": "sensitive-runbook-detail",
++                       "verdict_counts": {"PASS": 1, "FAIL": 0, "INDETERMINATE": 0}}}
++        lane.sufficient = True
++        pkt = _pkt_with(lane)
++        text = ep.render_for_review(pkt, durable_summary=True)
++        self.assertIn("DEPLOY PROBE", text)
++        self.assertNotIn("secret.example", text)          # no refs
++        self.assertNotIn("sensitive-runbook-detail", text)   # no rollback free-text
++
++    def test_lane_result_scrub_conformant(self):
++        # deploy_probe result must be JSON-primitive with URLs under `ref` so the
++        # durable scrub covers it; verdict tokens survive as structural keys.
++        lane = _lane("deploy_probe", "published")
++        lane.result = {"deploy_probe": {"probes": [{"kind": "page",
++                       "ref": "https://x/p?token=SEKRET", "verdict": "PASS",
++                       "reason": "200"}], "rollback": "r",
++                       "verdict_counts": {"PASS": 1}}}
++        lane.sufficient = True
++        pkt = ep.ExecutionPacket(task_id="t")
++        pkt.evidence_lanes = [lane]
++        red = epersist.redact_for_durable(pkt, max_sensitivity="public")
++        self.assertIsNotNone(red)   # fail-closed would return None
++        # walk the redacted lane; verdict token preserved, no crash
++        rl = red.evidence_lanes[0].result["deploy_probe"]
++        self.assertEqual(rl["probes"][0]["verdict"], "PASS")
++
++
++class TestRenderInspectFiller(unittest.TestCase):
++    def test_owed_when_no_such_check(self):
++        recipe = _Recipe(check="missing-check")
++
++        class _Cat:
++            checks = {}
++        lane = _lane("render_inspect", "artifacts")
++        pkt = _pkt_with(lane)
++        out = ef.fill_render_inspect_lane(
++            pkt, lane, fill_ctx={"recipe": recipe, "catalog": _Cat(),
++                                 "repo_root": "/x", "runner": er,
++                                 "context_pkg": {}})
++        self.assertIsNone(out)
++        self.assertIsNone(lane.sufficient)   # stays owed
++
++    def test_unrun_check_stays_owed_not_failed(self):
++        # ⚖ pre-check fold: when the named check does NOT run (_run_named_check
++        # returns None — SEC-2 base-unknown / lifecycle failure), the lane stays
++        # OWED (sufficient None), never a false FAILED (sufficient False).
++        class _Check:
++            name = "render-validity"
++
++        class _Cat:
++            checks = {"render-validity": _Check()}
++        lane = _lane("render_inspect", "artifacts")
++        pkt = _pkt_with(lane)
++        with mock.patch.object(ef, "_run_named_check", return_value=None):
++            out = ef.fill_render_inspect_lane(
++                pkt, lane, fill_ctx={"recipe": _Recipe(check="render-validity"),
++                                     "catalog": _Cat(), "repo_root": "/x",
++                                     "runner": er, "context_pkg": {}})
++        self.assertIsNone(out)
++        self.assertIsNone(lane.sufficient)   # owed, NOT False
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tests/test_vault_check_tools.py b/orchestrator/tests/test_vault_check_tools.py
+new file mode 100644
+index 00000000..47e48c3e
+--- /dev/null
++++ b/orchestrator/tests/test_vault_check_tools.py
+@@ -0,0 +1,255 @@
++"""Execution Review Phase 8 Chunk C — the self-contained `.ora/tools/` scripts.
++
++Runs the three shipped check scripts AS SUBPROCESSES (the way the evidence runner
++invokes them) against fixture repos:
++  * vault_frontmatter_lint — malformed-vs-absent truth table, both --frontmatter
++    modes, --require, deleted/absent-file skip;
++  * vault_wikilink_check — alias/heading/embed/path forms, allowlist, basename +
++    non-md-embed resolution, and the ⚖ C3 regression (two newly-created linked
++    notes resolve — the new-note→new-note link is NOT dangling);
++  * render_validity — per-format validity + vacuous-ok + missing-skip.
++Plus an import-scan asserting each script imports ZERO orchestrator.* / third-party
++(beyond PyYAML) — it must run stdlib-only inside the sandbox — and that
++vault_wikilink_check runs NO git subprocess.
++"""
++from __future__ import annotations
++
++import ast
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parent.parent
++_TOOLS = _ROOT.parent / ".ora" / "tools"
++_PY = sys.executable
++
++_FRONTMATTER = str(_TOOLS / "vault_frontmatter_lint.py")
++_WIKILINK = str(_TOOLS / "vault_wikilink_check.py")
++_RENDER = str(_TOOLS / "render_validity.py")
++
++
++def _run(script, args, repo, inputs_dir):
++    env = dict(os.environ)
++    env["ORA_CHECK_INPUTS"] = str(inputs_dir)
++    r = subprocess.run([_PY, script, *args], cwd=str(repo), env=env,
++                       capture_output=True, text=True, timeout=60)
++    try:
++        out = json.loads(r.stdout)
++    except Exception:
++        out = {"_raw": r.stdout, "_err": r.stderr}
++    return r.returncode, out
++
++
++class _Fixture(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.repo = Path(self.tmp.name) / "repo"
++        self.inputs = Path(self.tmp.name) / "inputs"
++        (self.repo / "Notes").mkdir(parents=True)
++        self.inputs.mkdir()
++
++    def tearDown(self):
++        self.tmp.cleanup()
++
++    def _write(self, rel, text):
++        p = self.repo / rel
++        p.parent.mkdir(parents=True, exist_ok=True)
++        p.write_text(text, encoding="utf-8")
++
++    def _changed(self, *paths):
++        (self.inputs / "changed-files.txt").write_text(
++            "\n".join(paths) + "\n", encoding="utf-8")
++
++    def _universe(self, *paths):
++        (self.inputs / "title-universe.txt").write_text(
++            "\n".join(paths) + "\n", encoding="utf-8")
++
++
++class TestFrontmatterLint(_Fixture):
++    def test_malformed_vs_absent_vs_missing_key(self):
++        self._write("Notes/A.md", "---\ntype: framework\ntitle: A\n---\n# A\n")
++        self._write("Notes/B.md", "---\nbad: [unclosed\n---\n# B\n")
++        self._write("Notes/C.md", "# C no frontmatter\n")
++        self._write("Notes/D.md", "---\ntitle: no type\n---\n# D\n")
++        self._changed("Notes/A.md", "Notes/B.md", "Notes/C.md", "Notes/D.md",
++                      "Notes/Deleted.md")
++        rc, out = _run(_FRONTMATTER,
++                       ["--frontmatter", "optional", "--require", "type"],
++                       self.repo, self.inputs)
++        self.assertEqual(rc, 1)
++        self.assertEqual(out["checked"], 4)               # Deleted skipped
++        self.assertEqual([m["file"] for m in out["malformed"]], ["Notes/B.md"])
++        self.assertEqual(out["missing_frontmatter"], [])  # C ok in optional
++        self.assertEqual([m["file"] for m in out["missing_required"]], ["Notes/D.md"])
++        self.assertIn("Notes/Deleted.md", out["skipped_missing"])
++
++    def test_required_mode_flags_absent(self):
++        self._write("Notes/A.md", "---\ntype: x\n---\n# A\n")
++        self._write("Notes/C.md", "# no fm\n")
++        self._changed("Notes/A.md", "Notes/C.md")
++        rc, out = _run(_FRONTMATTER, ["--frontmatter", "required"],
++                       self.repo, self.inputs)
++        self.assertEqual(rc, 1)
++        self.assertEqual(out["missing_frontmatter"], ["Notes/C.md"])
++
++    def test_all_valid_ok(self):
++        self._write("Notes/A.md", "---\ntype: x\n---\n# A\n")
++        self._changed("Notes/A.md")
++        rc, out = _run(_FRONTMATTER, ["--frontmatter", "optional", "--require", "type"],
++                       self.repo, self.inputs)
++        self.assertEqual(rc, 0)
++        self.assertTrue(out["ok"])
++
++    def test_non_md_ignored(self):
++        self._write("data.json", "{}")
++        self._changed("data.json")
++        rc, out = _run(_FRONTMATTER, ["--frontmatter", "required"],
++                       self.repo, self.inputs)
++        self.assertEqual(rc, 0)
++        self.assertEqual(out["checked"], 0)
++
++
++class TestWikilinkCheck(_Fixture):
++    def test_forms_and_dangling(self):
++        self._write("Notes/A.md",
++                    "# A\n[[B]] [[C|alias]] [[C#head]] ![[fig-1.svg]] [[Missing]]\n")
++        self._write("Notes/B.md", "# B\n")
++        self._write("Notes/C.md", "# C\n")
++        self._changed("Notes/A.md")
++        self._universe("Notes/A.md", "Notes/B.md", "Notes/C.md", "Notes/fig-1.svg")
++        rc, out = _run(_WIKILINK, [], self.repo, self.inputs)
++        self.assertEqual(rc, 1)
++        self.assertEqual([d["target"] for d in out["dangling"]], ["Missing"])
++
++    def test_c3_two_newly_created_linked_notes_resolve(self):
++        # ⚖ Rev-4/C3: two NEW notes, one linking the other. The in-place title
++        # universe (current tracked+untracked) includes both, so the link is NOT
++        # dangling. Regression against the base-tree universe that omitted them.
++        self._write("Notes/New1.md", "# New1\nsee [[New2]]\n")
++        self._write("Notes/New2.md", "# New2\n")
++        self._changed("Notes/New1.md", "Notes/New2.md")
++        self._universe("Notes/New1.md", "Notes/New2.md")   # both present (current)
++        rc, out = _run(_WIKILINK, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0, out)
++        self.assertEqual(out["dangling"], [])
++
++    def test_allowlist_tolerates_known_dead_link(self):
++        self._write("Notes/A.md", "# A\n[[Library/Imports/Old]]\n")
++        self._changed("Notes/A.md")
++        self._universe("Notes/A.md")
++        allow = self.repo / ".ora" / "tools" / "allow.txt"
++        allow.parent.mkdir(parents=True)
++        allow.write_text("Library/Imports/Old\n", encoding="utf-8")
++        rc, out = _run(_WIKILINK, ["--allow-file", ".ora/tools/allow.txt"],
++                       self.repo, self.inputs)
++        self.assertEqual(rc, 0, out)
++        self.assertEqual(out["allowed_skips"], 1)
++
++    def test_deleted_file_skipped_not_crash(self):
++        self._changed("Notes/Gone.md")
++        self._universe("Notes/Gone.md")
++        rc, out = _run(_WIKILINK, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0)
++        self.assertIn("Notes/Gone.md", out["skipped_missing"])
++
++    def test_frontmatter_values_not_parsed_as_links(self):
++        # A [[...]] inside frontmatter must not count as a body link.
++        self._write("Notes/A.md", "---\nrel: '[[Nope]]'\n---\n# A\n[[B]]\n")
++        self._write("Notes/B.md", "# B\n")
++        self._changed("Notes/A.md")
++        self._universe("Notes/A.md", "Notes/B.md")
++        rc, out = _run(_WIKILINK, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0, out)
++        self.assertEqual(out["links"], 1)   # only body [[B]]
++
++
++class TestRenderValidity(_Fixture):
++    def test_per_format(self):
++        (self.repo / "good.svg").write_text(
++            '<svg xmlns="http://www.w3.org/2000/svg"></svg>', encoding="utf-8")
++        (self.repo / "bad.svg").write_text("not xml <<<", encoding="utf-8")
++        # a real minimal zip = valid OOXML container
++        import zipfile
++        with zipfile.ZipFile(self.repo / "ok.docx", "w") as z:
++            z.writestr("[Content_Types].xml", "<x/>")
++        (self.repo / "bad.docx").write_text("not a zip", encoding="utf-8")
++        (self.repo / "ok.pdf").write_bytes(b"%PDF-1.4\n...")
++        (self.repo / "bad.pdf").write_bytes(b"nope")
++        self._changed("good.svg", "bad.svg", "ok.docx", "bad.docx", "ok.pdf",
++                      "bad.pdf", "notes.md")
++        rc, out = _run(_RENDER, [], self.repo, self.inputs)
++        self.assertEqual(rc, 1)
++        bad = {i["file"] for i in out["invalid"]}
++        self.assertEqual(bad, {"bad.svg", "bad.docx", "bad.pdf"})
++        self.assertEqual(out["skipped_ext"], 1)   # notes.md
++
++    def test_vacuous_ok_when_no_artifacts(self):
++        self._changed("notes.md", "readme.txt")
++        rc, out = _run(_RENDER, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0)
++        self.assertTrue(out["ok"])
++        self.assertEqual(out["checked"], 0)
++
++    def test_deleted_artifact_skipped(self):
++        self._changed("gone.svg")
++        rc, out = _run(_RENDER, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0)
++        self.assertIn("gone.svg", out["skipped_missing"])
++
++
++class TestSelfContainment(unittest.TestCase):
++    """The scripts MUST run stdlib-only inside the sandbox: zero orchestrator.*
++    imports, zero third-party beyond PyYAML, and wikilink runs no git."""
++
++    _ALLOWED_THIRD_PARTY = {"yaml"}
++
++    def _imports(self, path):
++        tree = ast.parse(Path(path).read_text(encoding="utf-8"))
++        mods = set()
++        for node in ast.walk(tree):
++            if isinstance(node, ast.Import):
++                for a in node.names:
++                    mods.add(a.name.split(".")[0])
++            elif isinstance(node, ast.ImportFrom):
++                if node.module:
++                    mods.add(node.module.split(".")[0])
++        return mods
++
++    def test_no_orchestrator_or_thirdparty_imports(self):
++        import sys as _s
++        stdlib = set(getattr(_s, "stdlib_module_names", ()))
++        for script in (_FRONTMATTER, _WIKILINK, _RENDER):
++            mods = self._imports(script)
++            self.assertNotIn("orchestrator", mods, script)
++            for m in mods:
++                self.assertTrue(
++                    m in stdlib or m in self._ALLOWED_THIRD_PARTY,
++                    f"{script} imports non-stdlib/non-PyYAML module {m!r}")
++
++    def test_wikilink_runs_no_git(self):
++        src = Path(_WIKILINK).read_text(encoding="utf-8")
++        self.assertNotIn("subprocess", src)
++        self.assertNotIn('"git"', src)
++        self.assertNotIn("'git'", src)
++
++
++class TestWindowsShapedFixtures(_Fixture):
++    """The scripts read git-native forward-slash paths; a repo checked out on
++    Windows still yields `/`-joined entries from `git ls-files`/`git diff`, so the
++    resolution stays correct. (The scripts never touch os.sep for input paths.)"""
++
++    def test_forward_slash_paths_resolve(self):
++        self._write("A/B/note.md", "# n\n[[target]]\n")
++        self._write("A/target.md", "# t\n")
++        self._changed("A/B/note.md")
++        self._universe("A/B/note.md", "A/target.md")
++        rc, out = _run(_WIKILINK, [], self.repo, self.inputs)
++        self.assertEqual(rc, 0, out)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tool_events.py b/orchestrator/tool_events.py
+index 8cc318cd..49c13732 100644
+--- a/orchestrator/tool_events.py
++++ b/orchestrator/tool_events.py
+@@ -192,6 +192,29 @@ ACTION_MANIFEST: dict[str, dict] = {
+     "web_fetch": {"category": "read", "mutability": "read",
+                   "sensitivity": "public", "egress": "external",
+                   "enforcement": "in_harness"},
++    # Execution Review Phase 8 (Chunk C §4): deploy_probe events are named
++    # ``deploy_probe:<kind>``. manifest_axes() is EXACT-MATCH (a single
++    # ``deploy_probe`` entry would NOT resolve ``deploy_probe:page`` → fail-closed
++    # to secret → the gate blocks the probe), so every kind gets its own entry.
++    # (The event ALSO carries an explicit ``sensitivity: public`` field because
++    # _redact_for_record keys off the event, not the manifest — belt + braces.)
++    "deploy_probe:page": {"category": "read", "mutability": "read",
++                          "sensitivity": "public", "egress": "external",
++                          "enforcement": "in_harness"},
++    "deploy_probe:sitemap": {"category": "read", "mutability": "read",
++                             "sensitivity": "public", "egress": "external",
++                             "enforcement": "in_harness"},
++    "deploy_probe:feed": {"category": "read", "mutability": "read",
++                          "sensitivity": "public", "egress": "external",
++                          "enforcement": "in_harness"},
++    "deploy_probe:headers": {"category": "read", "mutability": "read",
++                             "sensitivity": "public", "egress": "external",
++                             "enforcement": "in_harness"},
++    # git_heartbeat inspects a LOCAL remote-tracking ref (no network egress —
++    # no fetch in Chunk C, ⚖ C2), so egress:none.
++    "deploy_probe:git_heartbeat": {"category": "read", "mutability": "read",
++                                   "sensitivity": "public", "egress": "none",
++                                   "enforcement": "in_harness"},
+ }
+ 
+ # Core capability slots (config/capabilities.json). All are external paid
+@@ -277,8 +300,8 @@ _PROTECTED_FILES = {
+         "config/routing-config.json",
+     )
+ }
+-# Basenames are lowercase; a Windows key is already lowercased by normcase,
+-# a POSIX key preserves case (correct — POSIX filesystems are case-sensitive).
++# Basenames are lowercase; the protected-path check case-folds both sides
++# (below), so a macOS case-variant (``EVIDENCE.YAML``) can't evade the match.
+ _PROTECTED_BASENAMES = {"ora-project.json", "evidence.yaml"}
+ 
+ 
+@@ -287,13 +310,32 @@ def is_protected_config_path(path: str) -> bool:
+         key = _cmp_key(path)
+     except Exception:
+         return True  # unresolvable → treat as protected (fail closed)
+-    if key.rsplit("/", 1)[-1] in _PROTECTED_BASENAMES:
++    # Execution Review Phase 8 Chunk C (§6): case-fold BOTH sides for the
++    # protected-path match. ``_cmp_key`` uses ``os.path.normcase`` which
++    # case-folds on Windows only — a NO-OP on darwin, whose default APFS is
++    # case-INSENSITIVE, so a case-variant path (``.ORA/`` / ``EVIDENCE.YAML``)
++    # opens the SAME file yet would evade a case-sensitive match. Compare against
++    # the LIVE sets (lowercased inline) so a runtime-appended prefix still works;
++    # over-gating a genuine case-variant on a case-sensitive FS fails SAFE.
++    lk = key.lower()
++    if lk.rsplit("/", 1)[-1] in {b.lower() for b in _PROTECTED_BASENAMES}:
+         return True
+-    if key in _PROTECTED_FILES:
++    if lk in {p.lower() for p in _PROTECTED_FILES}:
+         return True
+     for prefix in _PROTECTED_PREFIXES:
+-        if key == prefix or key.startswith(prefix + "/"):
++        lp = prefix.lower()
++        if lk == lp or lk.startswith(lp + "/"):
+             return True
++    # Phase 8 Chunk C (§6): a `.ora/` config directory ANYWHERE in ANY repo is
++    # write-protected (not just ~/ora/.ora). A check script is as load-bearing as
++    # the catalog that names it — the Chunk-B delta commit materializes a
++    # same-turn edit to `.ora/tools/*` for that turn's OWN isolated review, so an
++    # executor weakening its own check is the grading-your-own-homework loop §12
++    # names the load-bearing integrity risk. The write-gate raises the bar; the
++    # verify stage + planning-set acceptance criteria are the architectural
++    # closure (disclosed residual, addendum §6).
++    if "/.ora/" in lk or lk.endswith("/.ora"):
++        return True
+     return False
+ 
+ 
+diff --git a/orchestrator/tools/bash_execute.py b/orchestrator/tools/bash_execute.py
+index 87690206..be515766 100644
+--- a/orchestrator/tools/bash_execute.py
++++ b/orchestrator/tools/bash_execute.py
+@@ -387,6 +387,20 @@ def _command_target_paths(segment: str) -> tuple[list[str], list[str]]:
+     return reads, writes
+ 
+ 
++def _arg_touches_dot_ora(args: list) -> bool:
++    """True if any non-flag token names a ``.ora`` PATH SEGMENT (Phase 8 Chunk C
++    §6). Segment match (not substring) so ``.orained`` is not a false hit;
++    separator-agnostic + case-folded so a Windows / macOS-case-variant pathspec
++    can't slip the git-route protection."""
++    for a in args:
++        if not a or a.startswith("-"):
++            continue
++        low = a.replace("\\", "/").lower()
++        if ".ora" in low.split("/"):
++            return True
++    return False
++
++
+ def _segment_axes(segment: str) -> dict:
+     """Axes for ONE simple command segment, or _UNKNOWN."""
+     import shlex
+@@ -436,6 +450,20 @@ def _segment_axes(segment: str) -> dict:
+ 
+     if base == "git":
+         sub = next((t for t in args if not t.startswith("-")), "")
++        # Execution Review Phase 8 Chunk C (§6): a git WRITE subcommand whose
++        # pathspec touches a `.ora/` directory (checkout/restore/mv/add/rm/…
++        # <ref> -- .ora/tools/x.py) surfaces NO write_path to
++        # is_protected_config_path, so it would run ungated and the Chunk-B
++        # delta commit would then materialize the tampered check for that turn's
++        # OWN review. Escalate to irreversible so the gate fires (the write-gate
++        # raises the bar; the §12 verify stage is the architectural closure).
++        # `git apply <patch>` naming `.ora` inside the patch is NOT arg-visible —
++        # a disclosed residual, not a claim of complete closure.
++        if sub not in _GIT_READ_SUBCOMMANDS and _arg_touches_dot_ora(args):
++            egress = "external" if (sub in _GIT_EGRESS_SUBCOMMANDS
++                                    or sub == "push") else "none"
++            return {"mutability": "irreversible", "sensitivity": "private",
++                    "egress": egress, "protected_config": True}
+         if sub == "push":
+             if any(f in _GIT_IRREVERSIBLE_PUSH_FLAGS for f in flags):
+                 return {"mutability": "irreversible", "sensitivity": "private",
+diff --git a/orchestrator/tools/web_fetch.py b/orchestrator/tools/web_fetch.py
+index 2540b98d..ae07fd69 100644
+--- a/orchestrator/tools/web_fetch.py
++++ b/orchestrator/tools/web_fetch.py
+@@ -41,11 +41,21 @@ _HTTPX_TIMEOUT_SECONDS = 15
+ _PLAYWRIGHT_TIMEOUT_MS = 30_000
+ _JINA_TIMEOUT_SECONDS = 20
+ 
++# Execution Review Phase 8 Chunk C (§4): the response headers a deploy_probe may
++# inspect (staleness / cache state). Whitelisted so an event never carries an
++# arbitrary header set.
++_RESP_HEADER_WHITELIST = ("last-modified", "age", "cache-control",
++                          "cf-cache-status", "etag", "content-type",
++                          "content-length")
++
+ 
+ def web_fetch(
+     url: str,
+     channel: str = "auto",
+     persist: bool = False,
++    *,
++    raw: bool = False,
++    timeout_s: float | None = None,
+ ) -> dict[str, Any]:
+     """Retrieve ``url`` as clean markdown.
+ 
+@@ -60,6 +70,14 @@ def web_fetch(
+         ``False`` returns the markdown ephemerally. ``True`` is reserved
+         for the Long-Form Document Processing path (G3.25) and currently
+         raises ``NotImplementedError``.
++    raw : bool
++        Execution Review Phase 8 Chunk C: httpx tier ONLY. Skip Trafilatura
++        extraction (so an XML sitemap/feed body survives instead of extracting
++        to nothing and cascading), and return the origin ``status_code`` even on
++        a ≥400 response (so a probe can distinguish FAIL from INDETERMINATE).
++        Not a bypass of any safety — extraction is a readability transform.
++    timeout_s : float | None
++        Per-call timeout override for the httpx tier (default 15s).
+     """
+     if persist:
+         raise NotImplementedError(
+@@ -75,7 +93,7 @@ def web_fetch(
+         return _error_result(url, "auto", f"Invalid URL scheme: {url}")
+ 
+     if channel == "httpx":
+-        return _record_fetch_read(_fetch_httpx(url))
++        return _record_fetch_read(_fetch_httpx(url, raw=raw, timeout_s=timeout_s))
+     if channel == "local":
+         return _record_fetch_read(_fetch_playwright(url))
+     if channel == "api":
+@@ -83,7 +101,8 @@ def web_fetch(
+     if channel != "auto":
+         return _error_result(url, channel, f"Unknown channel: {channel}")
+ 
+-    result = _fetch_httpx(url)
++    # auto cascade: extraction wanted (raw is a pinned-httpx affordance).
++    result = _fetch_httpx(url, timeout_s=timeout_s)
+     if _is_acceptable(result):
+         return _record_fetch_read(result)
+     result = _fetch_playwright(url)
+@@ -92,6 +111,19 @@ def web_fetch(
+     return _record_fetch_read(_fetch_jina(url))
+ 
+ 
++def _filter_headers(resp_headers) -> dict:
++    """Whitelisted response headers only (never an arbitrary set on an event)."""
++    out: dict = {}
++    try:
++        for h in _RESP_HEADER_WHITELIST:
++            v = resp_headers.get(h)
++            if v is not None:
++                out[h] = str(v)
++    except Exception:
++        pass
++    return out
++
++
+ def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
+     """Execution Review Phase 8 (Chunk A §2.3) LIBRARY GUARD: record EVERY
+     fetch as a ``web_fetch`` tool-event — successful ones with the sanitized
+@@ -136,26 +168,44 @@ def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
+ # ── Tier implementations ─────────────────────────────────────────────
+ 
+ 
+-def _fetch_httpx(url: str) -> dict[str, Any]:
++def _fetch_httpx(url: str, *, raw: bool = False,
++                 timeout_s: float | None = None) -> dict[str, Any]:
+     try:
+         import httpx
+     except ImportError:
+         return _error_result(url, "httpx", "httpx not installed")
+-    try:
+-        import trafilatura
+-    except ImportError:
+-        return _error_result(url, "httpx", "trafilatura not installed")
++    if not raw:
++        try:
++            import trafilatura  # noqa: F401
++        except ImportError:
++            return _error_result(url, "httpx", "trafilatura not installed")
+ 
++    timeout = timeout_s if timeout_s is not None else _HTTPX_TIMEOUT_SECONDS
+     try:
+         with httpx.Client(
+-            timeout=_HTTPX_TIMEOUT_SECONDS,
++            timeout=timeout,
+             follow_redirects=True,
+             headers={"User-Agent": _USER_AGENT},
+         ) as client:
+             resp = client.get(url)
+-        if resp.status_code >= 400:
+-            return _error_result(url, "httpx", f"HTTP {resp.status_code}")
+-        return _trafilatura_to_result(resp.text, url, "httpx")
++        status = resp.status_code
++        headers = _filter_headers(resp.headers)
++        if raw:
++            # RAW mode (Phase 8 Chunk C): never collapse ≥400 into an error that
++            # loses the status — a probe needs to SEE 403/404 to decide
++            # FAIL-vs-INDETERMINATE. Return the body + status + headers as-is.
++            return {
++                "url": url, "markdown": resp.text or "", "title": None,
++                "channel": "httpx", "fetched_at": _now(),
++                "status_code": status, "headers": headers,
++            }
++        if status >= 400:
++            r = _error_result(url, "httpx", f"HTTP {status}")
++            r["status_code"] = status
++            r["headers"] = headers
++            return r
++        return _trafilatura_to_result(resp.text, url, "httpx",
++                                      status_code=status, headers=headers)
+     except Exception as e:
+         return _error_result(url, "httpx", str(e))
+ 
+@@ -215,6 +265,8 @@ def _fetch_jina(url: str) -> dict[str, Any]:
+             "title": title,
+             "channel": "api",
+             "fetched_at": _now(),
++            "status_code": None,
++            "headers": None,
+         }
+     except Exception as e:
+         return _error_result(url, "api", str(e))
+@@ -225,12 +277,14 @@ def _fetch_jina(url: str) -> dict[str, Any]:
+ 
+ def _trafilatura_to_result(
+     html: str, url: str, channel: str,
++    *, status_code: int | None = None, headers: dict | None = None,
+ ) -> dict[str, Any]:
+     """Run Trafilatura on raw HTML and build a result dict.
+ 
+     Reuses Trafilatura's markdown extraction + metadata pass. A
+     metadata-extraction failure is non-fatal: the result still carries
+-    the markdown body with ``title=None``.
++    the markdown body with ``title=None``. ``status_code``/``headers`` are
++    populated on the httpx tier (Phase 8 Chunk C), ``None`` elsewhere.
+     """
+     import trafilatura
+ 
+@@ -249,6 +303,8 @@ def _trafilatura_to_result(
+         "title": title,
+         "channel": channel,
+         "fetched_at": _now(),
++        "status_code": status_code,
++        "headers": headers,
+     }
+ 
+ 
+@@ -280,6 +336,8 @@ def _error_result(
+         "channel": channel,
+         "fetched_at": _now(),
+         "error": message,
++        "status_code": None,
++        "headers": None,
+     }
+ 
+ 

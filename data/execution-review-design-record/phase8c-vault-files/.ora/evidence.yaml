@@ -1,0 +1,33 @@
+# .ora/evidence.yaml — Wisdom Nexus vault evidence catalog (Execution Review Phase 8 Chunk C).
+#
+# Delta-scoped, changed-files-only markdown checks that run through Ora's evidence
+# runner (isolated worktree; §4.2). Both are self-contained scripts under
+# .ora/tools/ (stdlib + PyYAML, no git, no orchestrator import inside the sandbox);
+# their git-derived inputs (changed files, the note-title universe) are precomputed
+# by the runner OUTSIDE the sandbox and read via $ORA_CHECK_INPUTS. Provisional
+# recipe choices (retunable here): --frontmatter optional (79 legacy frontmatter-
+# less notes must not fail); --require type (near-universal; the few type-less MSI
+# reference notes surface only if touched).
+
+checks:
+  vault-frontmatter:
+    argv: [python, .ora/tools/vault_frontmatter_lint.py, --frontmatter, optional, --require, type]
+    mutates: false
+    timeout: 120           # provisional — delta-scoped, expected <5s
+    network: deny
+    inputs: [changed_files]
+    scope: changed_files
+  vault-wikilinks:
+    argv: [python, .ora/tools/vault_wikilink_check.py, --allow-file, .ora/tools/wikilink-allowlist.txt]
+    mutates: false
+    timeout: 120           # provisional
+    network: deny
+    inputs: [changed_files, title_universe]
+    scope: changed_files
+
+runner:
+  working_dir: <repo-root>
+  env: isolated
+  network: deny
+  redact: by-sensitivity
+  on_unknown: gated

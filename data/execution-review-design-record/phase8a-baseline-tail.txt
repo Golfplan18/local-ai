@@ -1,0 +1,30 @@
+[visual-routing] extractor selected: api-vision (source=slot:image_extracts:interactive) for downstream mystery-model
+[visual-extraction] FAILED model=mock-extractor errors=0 first=''
+[visual-routing] WARNING: image input received but no vision-capable model found in slot 'image_extracts'. Falling back to text-only path — WP-4.4 will surface a manual-trace prompt to the user.
+[visual-routing] WARNING: image input received but no vision-capable model found in slot 'image_extracts'. Falling back to text-only path — WP-4.4 will surface a manual-trace prompt to the user.
+[visual-routing] extractor selected: api-vision (source=slot:image_extracts:interactive) for downstream unresolved
+[visual-extraction] FAILED model=mock-extractor errors=0 first=''
+[visual-routing] extractor selected: openrouter:anthropic/claude-opus-4-7 (source=slot:image_extracts:agent) for downstream text-only
+[visual-extraction] FAILED model=mock errors=0 first=''
+[visual-routing] extractor selected: openrouter:openai/gpt-5 (source=slot:image_extracts:agent) for downstream text-only
+[visual-extraction] FAILED model=mock errors=0 first=''
+[visual-routing] extractor selected: openrouter:openai/gpt-5 (source=slot:image_extracts:interactive) for downstream text-only
+[visual-extraction] FAILED model=mock errors=0 first=''
+[visual-routing] WARNING: image input received but no vision-capable model found in slot '(unset)'. Falling back to text-only path — WP-4.4 will surface a manual-trace prompt to the user.
+[visual-routing] extractor selected: openrouter:openai/gpt-5.4-image-2 (source=slot:image_generates) for downstream text-only
+[visual-extraction] FAILED model=mock errors=0 first=''
+[visual-routing] WARNING: image input received but no vision-capable model found in slot 'image_generates'. Falling back to text-only path — WP-4.4 will surface a manual-trace prompt to the user.
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.821498+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpbuneek6f/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:47:39.823855+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmptep_u6ex/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.830924+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpq8q4y8x8/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 5 consecutive sweeps since 2026-07-05T22:59:19.833162+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpcl9glqx0/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.837326+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpkcfm8v33/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] sweep_workflow failed for aaa-badptr: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+[workflow_spec_sweeper] failed to write sweeper state for test-workflow: [Errno 13] Permission denied: '/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmps55a8fmj/oversight/test-workflow/sweeper-state.json.tmp.15023.8682287232'
+[workflow_spec_sweeper] failed to write sweeper state for test-workflow: [Errno 13] Permission denied: '/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmps55a8fmj/oversight/test-workflow/sweeper-state.json.tmp.15023.8682287232'
+[workflow_spec_sweeper] failed to write sweeper state for test-workflow: [Errno 13] Permission denied: '/var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmps55a8fmj/oversight/test-workflow/sweeper-state.json.tmp.15023.8682287232'
+[workflow_spec_sweeper] emit_event raised: events.jsonl append failed
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.878389+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpu0s4m0ho/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.880481+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmpeknxu93s/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] deregistered watcher for 'test-workflow': spec missing for 3 consecutive sweeps since 2026-07-05T22:59:19.882287+00:00 (pointer archived at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmp8fpnvklt/oversight/test-workflow/workflow-pointer.json.deregistered)
+[workflow_spec_sweeper] restored watcher for 'test-workflow': spec reappeared at /var/folders/b7/xxm8n5nx66s8g1pg7nfqvsrr0000gn/T/tmp8fpnvklt/workflow-spec.md

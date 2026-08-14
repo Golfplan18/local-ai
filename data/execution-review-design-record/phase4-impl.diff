@@ -1,0 +1,1164 @@
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index bd3966c8..2efe2b80 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -9413,11 +9413,26 @@ def run_pipeline(user_input: str, history: list = None,
+     # (condition 7, best-effort on the terminal terminal path). Scoped by the
+     # exact trace dir when present, else (conversation_id, turn window).
+     try:
+-        _rgate.record_route_observed(
++        _ro = _rgate.record_route_observed(
+             trace_dir or (conversation_id,
+                           context_pkg.get("_route_turn_ts") or ""),
+             risk_tier=context_pkg.get("risk_tier"),
+-            output_text=response)  # Phase 3: drives the source-read signal
++            output_text=response,  # Phase 3: drives the source-read signal
++            declared_output_type=context_pkg.get("output_type", "unknown"))
++        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket
++        # SEPARATELY from the already-folded signals (single fold; no packet ref on
++        # route_observed) and write it TRACE-LOCAL only. Guarded to a real
++        # deliverable + a trace dir + non-stealth turns (stealth inherits the
++        # no-packet model). Never raises.
++        if not stealth:
++            try:
++                from execution_packet import construct_and_write as _cw
++            except ImportError:  # pragma: no cover
++                from orchestrator.execution_packet import construct_and_write as _cw
++            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
++                output_text=response, risk_tier=context_pkg.get("risk_tier"),
++                declared_output_type=context_pkg.get("output_type", "unknown"),
++                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
+     except Exception:
+         pass
+ 
+@@ -11547,6 +11562,11 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
+     gate_broken = _verifier_broken(gate_out) or not gate_call_ok
+     gate_verdict_label = (
+         "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
++    # Execution Review Phase 4 (condition 4): thread the scoped text-review verdict
++    # LABEL ONLY (never raw verifier text) onto a namespaced context_pkg subdict for
++    # the terminal packet builder. Not read by any prompt assembly — no leak.
++    context_pkg["execution_review"] = {"verdict": gate_verdict_label,
++                                       "scope": "text_review"}
+     gate_redo_fired = False
+     if not gate_passed and not gate_broken:
+         # Real FAIL -> one final re-revise carrying the gate's REQUIRED FIXES.
+@@ -11571,6 +11591,14 @@ def run_gear3(context_pkg: dict, config: dict, history: list = None, images: lis
+         )
+         _record("step6_5-quality-gate-redo", _qg_redo_ok, _qg_redo_reason)
+         contingencies_fired.append("step6_5-gear3-quality-gate-FAIL-redo-fired")
++        # Execution Review Phase 4 (Rev 1): the FAIL redo produced a NEW deliverable
++        # the gate never re-reviewed — so the prior FAIL no longer describes the
++        # shipped text. Overwrite the stale verdict with a scoped unreviewed status
++        # (verdict=None; no raw verifier text) rather than mislabel the final
++        # producer claim with a verdict that reviewed a different candidate.
++        context_pkg["execution_review"] = {
++            "verdict": None, "scope": "text_review",
++            "status": "failed-then-redone-unreviewed"}
+     else:
+         contingencies_fired.append(
+             f"step6_5-gear3-quality-gate-{gate_verdict_label}")
+@@ -12835,6 +12863,12 @@ def run_gear4(context_pkg: dict, config: dict, history: list = None,
+         problem = _parse_quality_gate_problem(gate_out)
+         gate_verdict_label = (
+             "BROKEN" if gate_broken else ("PASS" if gate_passed else "FAIL"))
++        # Execution Review Phase 4 (condition 4): thread the scoped text-review
++        # verdict LABEL ONLY (never raw verifier text) onto a namespaced
++        # context_pkg subdict for the terminal packet builder; last gate pass wins.
++        # Not read by any prompt assembly — no leak.
++        context_pkg["execution_review"] = {"verdict": gate_verdict_label,
++                                           "scope": "text_review"}
+         _record(f"step8_6-quality-gate-pass{_qg_pass + 1}", gate_call_ok,
+                 f"verdict={gate_verdict_label} problem={problem}")
+         _trace_step(f"step8_6-quality-gate-pass-{_qg_pass + 1}", {
+diff --git a/orchestrator/execution_packet.py b/orchestrator/execution_packet.py
+new file mode 100644
+index 00000000..b80a6d59
+--- /dev/null
++++ b/orchestrator/execution_packet.py
+@@ -0,0 +1,469 @@
++"""orchestrator/execution_packet.py — Execution Review Phase 4.
++
++The polymorphic ``ExecutionPacket`` output type + the packet-to-review renderer
++(spec §12) + the evaluation-lane router (§5), as ONE consolidated module.
++
++This is **"same downstream machinery, richer output — NOT a second pipeline."**
++The packet is a richer *form* of the terminal deliverable, built at the single
++run_pipeline / pipeline-stream terminal (``boot.py`` + ``server.py``) — which every
++non-hold gear (1/2/3/4 + the bare-model path) flows through — from the already-
++folded route signals (``risk_gate.fold_route_observed``) plus the in-gear text-
++review verdict threaded on ``context_pkg['execution_review']``. Never a parallel
++Gear-3/4. Only ``run_gear3``/``run_gear4`` thread a verdict, so gear-1/2, the gear-3
++single-model fallback, and the gear-4 external-consolidation handoff carry an HONEST
++null ``text_review_verdict`` (no review gate ran on those paths) — the renderer
++omits the text-review line when the verdict is absent.
++
++Phase-4 scope (judge-approved, Architecture A + 4 conditions):
++- LIVE at construction: the type, the lane router, and the packet builder run on
++  real gear turns; a real packet is built and written TRACE-LOCAL.
++- TESTED-BUT-UNWIRED: ``render_for_review`` / ``_format_artifact_for_review`` are
++  library functions proven by test — they are NOT installed at the six in-gear
++  review sites in P4 (a live packet review is the Phase-6 loop). No live P4
++  verifier consumes a packet.
++- Evidence lanes are DECLARED-EMPTY (Phase 5's runner fills
++  ``generated_by``/``result``/``sufficient``). ``JudgmentLane`` is defined but not
++  mass-populated (§5). Every §9 block is RESERVED so later phases fill, not
++  retrofit.
++- Storage is TRACE-LOCAL only (condition 2): inherits the caller's stealth /
++  no-packet behaviour, never a vault or durable store. Phase 7 owns durable tiered
++  persistence. ``producer_claim`` may be private, so it lives only where the trace
++  already holds the deliverable.
++- Ordering (condition 1): ``record_route_observed`` folds ONCE and records
++  ``route_observed`` first; the packet is built SEPARATELY from that returned
++  signals dict — no double-fold, and NO packet ref is smuggled onto
++  ``route_observed``.
++
++Nothing here raises into the pipeline: build/write are best-effort, and a caught
++write failure stamps an observable marker (``tool_events._note_failure``) rather
++than vanishing silently.
++"""
++
++from __future__ import annotations
++
++import dataclasses
++import json
++import os
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++from typing import Any
++
++# ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
++_PRODUCER_CLAIM_CAP = 100_000   # producer_claim is trace-local; cap defensively
++_TASK_INSTRUCTION_CAP = 20_000
++_PACKET_FILENAME = "execution-packet.json"
++
++# output_type enum (provisional names). The RAW declared hint — never rewritten
++# from observation (condition 3 / §9 "observed reality overrides").
++OUTPUT_TYPE_UNKNOWN = "unknown"
++OUTPUT_TYPE_TEXT = "text"
++OUTPUT_TYPE_EXECUTION = "execution"
++
++
++# ── Evaluation lanes (§5) — evidence vs judgment kept STRUCTURALLY separate ────
++@dataclass
++class EvidenceLane:
++    """A mechanical, verifiable lane (§5). Yields a REAL verdict once Phase 5's
++    runner fills it. ``sufficient`` is TRI-STATE: ``None`` = unfilled (evidence
++    owed, and NOT sufficient), ``True``/``False`` once judged. ``generated_by``
++    (§9/§10) records the declared command(s) that produced ``result`` — empty
++    until Phase 5, so a lane result ties back to a declared catalog check rather
++    than executor self-report."""
++
++    target: str
++    lane: str                       # diff_validate | run_observe | render_inspect | deploy_probe | collect_provenance
++    generated_by: list[str] = field(default_factory=list)   # §9/§10 — Phase 5 fills
++    result: Any = None                                       # Phase 5 fills
++    sufficient: bool | None = None                           # tri-state; None = unfilled = NOT sufficient
++
++
++@dataclass
++class JudgmentLane:
++    """An interpretive lane (§5). NEVER receives a mechanical verdict — by
++    CONSTRUCTION there is no ``verdict``/``sufficient`` field to hold one, so a
++    matter of taste can never be dressed up as a passing check."""
++
++    target: str
++    critique: str | None = None
++    # NB: deliberately NO `verdict` / `sufficient` field (§5 structural separation).
++
++
++def lane_is_sufficient(lane: EvidenceLane) -> bool:
++    """An unfilled lane (``sufficient is None``) is NOT sufficient — evidence owed
++    but not produced. Only an explicit ``True`` counts."""
++    return getattr(lane, "sufficient", None) is True
++
++
++def all_evidence_sufficient(lanes: list[EvidenceLane]) -> bool:
++    """True only if there is AT LEAST ONE lane and EVERY lane is explicitly
++    sufficient. An EMPTY list is NOT 'vacuously passed' (§16-2): no evidence lane
++    means nothing was proven, not that everything passed. This is the machine-
++    readable analogue of the renderer's 'evidence not yet generated' rule — for
++    Phase 5's runner and Phase 6's stop rule that read ``sufficient`` directly."""
++    if not lanes:
++        return False
++    return all(lane_is_sufficient(l) for l in lanes)
++
++
++# ── The ExecutionPacket (§9) — tier-optional, every block reserved ────────────
++@dataclass
++class ExecutionPacket:
++    """The §9 packet as a Python object. Frontmatter is a flat index
++    (``frontmatter()``); large artifacts are REFERENCED (``execution.delta.ref``),
++    never inlined. Blocks are tier-optional and reserved even when P4 does not
++    populate them, so later phases fill rather than retrofit the type."""
++
++    # --- frontmatter (small, flat, indexable — §9) ---
++    task_id: str = ""
++    created: str | None = None
++    modified: str | None = None
++    status: str = "in_progress"                 # in_progress | converged | escalated
++    output_type: str = OUTPUT_TYPE_UNKNOWN      # RAW declared hint — NEVER rewritten from observation
++    risk_tier: str | None = None
++    reversible: bool | None = None
++    tags: list[str] = field(default_factory=list)
++
++    # --- body blocks (tier-optional; reserved even when unfilled) ---
++    task: dict = field(default_factory=dict)            # instruction / constraints / non_goals
++    planning: dict | None = None                        # absent at light; Phase 6 fills (§8)
++    execution: dict = field(default_factory=dict)       # enforcement_model / mode / state_* / delta / source_reads / producer_claim
++    evidence_lanes: list[EvidenceLane] = field(default_factory=list)
++    judgment_lanes: list[JudgmentLane] = field(default_factory=list)
++    verification: dict = field(default_factory=dict)    # scoped text-review verdict + reserved confidence/reviewer_a/reviewer_b/findings/invented_tests
++    loop: dict | None = None                            # iteration/stop_condition/escalation — reserved, Phase 6
++    persistence: dict = field(default_factory=dict)     # tier / redacted — Phase 7
++    observed: dict = field(default_factory=dict)        # observed reality-contact character + consistency note (makes "observed overrides" VISIBLE, §9)
++
++    def frontmatter(self) -> dict:
++        """Flat, small, indexable metadata ONLY (§9). No nested blob in the header."""
++        return {
++            "task_id": self.task_id,
++            "created": self.created,
++            "modified": self.modified,
++            "status": self.status,
++            "output_type": self.output_type,
++            "risk_tier": self.risk_tier,
++            "reversible": self.reversible,
++            "tags": list(self.tags),
++        }
++
++    def to_dict(self) -> dict:
++        return dataclasses.asdict(self)
++
++
++# ── The §6 consistency note — record-only, declared-vs-observed (condition 3) ──
++def consistency_note(declared_output_type: str | None, signals: dict | None) -> str | None:
++    """§6 declared-vs-observed misroute check. RECORD ONLY — never enforced, never
++    rewrites the declared hint. Returns a short note or None.
++
++    - declared 'text' but reality-contact observed  → under-review risk.
++    - declared 'execution' but neither signal fired → over-heavy.
++    Default 'unknown' (P4) yields None on every live turn (the assertion is
++    installed + test-covered but dormant until a mode declares ``output_type``)."""
++    signals = signals or {}
++    dt = declared_output_type or OUTPUT_TYPE_UNKNOWN
++    contact = bool(signals.get("any_mutation") or signals.get("source_read_suspected"))
++    if dt == OUTPUT_TYPE_TEXT and contact:
++        return "declared text, observed reality contact (under-review risk)"
++    if dt == OUTPUT_TYPE_EXECUTION and not contact:
++        return "declared execution, observed no delta and no source read (over-heavy)"
++    return None
++
++
++# ── The evaluation-lane router (§5) — route by evaluation unit, not whole task ─
++def route_lanes(signals: dict | None,
++                declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
++                mode_meta: dict | None = None) -> tuple[list[EvidenceLane], list[JudgmentLane]]:
++    """Map the two folded §6 signals onto evidence lanes. Judgment lanes come from
++    a mode's declared interpretive targets (``mode_meta['judgment_targets']``) —
++    most modes declare none in P4, so ``judgment_lanes`` is normally empty. Evidence
++    lanes are DECLARED-EMPTY here (Phase 5 fills the result); an empty result must
++    never read as sufficient."""
++    signals = signals or {}
++    evidence: list[EvidenceLane] = []
++    if signals.get("any_mutation"):
++        evidence.append(EvidenceLane(target="state_change", lane="diff_validate"))
++    if signals.get("source_read_suspected"):
++        evidence.append(EvidenceLane(target="grounded_claims", lane="collect_provenance"))
++    judgment: list[JudgmentLane] = []
++    for t in (mode_meta or {}).get("judgment_targets", []) or []:
++        if isinstance(t, str) and t.strip():
++            judgment.append(JudgmentLane(target=t.strip()))
++    return evidence, judgment
++
++
++# ── The packet-to-review renderer (§12) — evidence FIRST, claim LAST ──────────
++# Banner-fence convention (mirrors boot._fenced): syntactically distinct from `#`
++# markdown, so it never collides with a body's own headings. Kept local so the
++# renderer carries no boot dependency.
++def _fence(label: str, body: str) -> str:
++    return f"=== {label} ===\n{str(body).strip()}\n=== END {label} ==="
++
++
++def _render_evidence(packet: ExecutionPacket) -> str:
++    obs = packet.observed or {}
++    lines: list[str] = []
++    if obs.get("any_mutation"):
++        ref = ((packet.execution or {}).get("delta") or {}).get("ref") or "n/a"
++        lines.append(f"WHAT CHANGED: mutation observed "
++                     f"(max_mutability={obs.get('max_mutability', '?')}); delta ref: {ref}")
++    else:
++        lines.append("WHAT CHANGED: no mutation observed")
++    if obs.get("source_read_suspected"):
++        chans = ", ".join(obs.get("source_read_channels") or []) or "unspecified"
++        lines.append(f"WHAT WAS READ AS A SOURCE: suspected (channels: {chans})")
++    else:
++        lines.append("WHAT WAS READ AS A SOURCE: none suspected")
++    if packet.evidence_lanes:
++        for l in packet.evidence_lanes:
++            if not lane_is_sufficient(l):
++                # Covers the tri-state unfilled (None) AND an explicit False.
++                state = ("evidence not yet generated (owed, not sufficient)"
++                         if getattr(l, "sufficient", None) is None
++                         else "INSUFFICIENT")
++                lines.append(f"EVIDENCE LANE [{l.lane} -> {l.target}]: {state}")
++            else:
++                by = ", ".join(l.generated_by) or "n/a"
++                lines.append(f"EVIDENCE LANE [{l.lane} -> {l.target}]: sufficient (via {by})")
++    else:
++        lines.append("EVIDENCE LANES: none (degrades to plain text review)")
++    note = obs.get("consistency")
++    if note:
++        lines.append(f"CONSISTENCY: {note}")
++    return "\n".join(lines)
++
++
++def render_for_review(packet: ExecutionPacket) -> str:
++    """§12 packet-to-review renderer: mechanical evidence FIRST, producer claim
++    LAST (labeled an unverified claim). Physically enforces "evidence over claims"
++    — a fluent claim can't out-argue a failing check because the reviewer meets the
++    evidence first and the claim explicitly framed as unverified.
++
++    TESTED-BUT-UNWIRED in P4: no live verifier consumes this. It is proven by a
++    test that feeds its output into the real evaluator/verifier user-prompt shape."""
++    parts: list[str] = []
++
++    # 1. Task + acceptance criteria — or a LOUD absence (never a silent omission).
++    task = packet.task or {}
++    instruction = (task.get("instruction") or "").strip()
++    if instruction:
++        parts.append(_fence("TASK", instruction))
++    criteria = ((packet.planning or {}).get("converged_brief") or {}).get("acceptance_criteria")
++    if criteria:
++        body = criteria if isinstance(criteria, str) else "\n".join(str(c) for c in criteria)
++        parts.append(_fence("ACCEPTANCE CRITERIA", body))
++    else:
++        parts.append(_fence(
++            "NO ACCEPTANCE CRITERIA DECLARED — evidence cannot be judged sufficient against a setpoint",
++            "No planning stage set acceptance criteria for this task; do not treat the "
++            "producer claim below as validated against a standard."))
++
++    # 2. Mechanical evidence FIRST.
++    parts.append(_fence("OBSERVED EVIDENCE", _render_evidence(packet)))
++    # The in-gear verdict renders as a SCOPED text-review line — never an
++    # unqualified green check that could be read as covering the mechanical
++    # evidence it never saw.
++    tv = (packet.verification or {}).get("text_review_verdict")
++    tstatus = (packet.verification or {}).get("status")
++    if tv:
++        parts.append(_fence(
++            "TEXT-REVIEW VERDICT (does not cover state changes or provenance)",
++            str(tv)))
++    elif tstatus:
++        # No valid verdict describes the shipped text (e.g. a FAIL redo produced a
++        # new unreviewed deliverable) — surface the scoped status loudly so the
++        # producer claim is never read as text-reviewed.
++        parts.append(_fence(
++            "TEXT-REVIEW STATUS (no verdict covers the shipped text)",
++            str(tstatus)))
++
++    # 3. Producer claim LAST, labeled unverified.
++    claim = (packet.execution or {}).get("producer_claim") or {}
++    claim_text = claim.get("summary") if isinstance(claim, dict) else str(claim)
++    parts.append(_fence(
++        "UNVERIFIED PRODUCER CLAIM (weigh against the evidence above; do not treat as established)",
++        (claim_text or "").strip()))
++    return "\n".join(parts)
++
++
++def _format_artifact_for_review(artifact: Any) -> Any:
++    """Polymorphic seam (LIBRARY function — NOT installed at the six in-gear review
++    sites in P4). A ``str`` is returned UNCHANGED with ZERO side effects (no
++    logging, no fold, no packet attempt): this is what keeps text review byte-
++    identical and makes ``msi_run_gear4.invoke_real_gear4`` (the one live path that
++    would route through this if it were ever wired) provably unaffected. An
++    ``ExecutionPacket`` is rendered evidence-first."""
++    if isinstance(artifact, ExecutionPacket):
++        return render_for_review(artifact)
++    return artifact
++
++
++# ── Construction (condition 1: from ALREADY-folded signals) + write (2/4) ─────
++def _now_iso() -> str:
++    return datetime.now(timezone.utc).isoformat()
++
++
++def _mark_failure(err: Exception, where: str) -> None:
++    """Stamp an OBSERVABLE marker for a caught packet build/write failure via
++    ``tool_events._note_failure`` (Rev 1). A construction/write exception must be
++    distinguishable from an INTENTIONAL skip (no trace dir / empty output / no
++    signals), which returns None WITHOUT a marker. This helper itself never raises,
++    so surfacing the failure can never interrupt the user's deliverable."""
++    try:
++        try:
++            import tool_events as _te
++        except ImportError:  # pragma: no cover
++            from orchestrator import tool_events as _te
++        _te._note_failure(err, where)
++    except Exception:
++        pass
++
++
++def build_execution_packet(*, signals: dict | None, context_pkg: dict | None = None,
++                           output_text: str | None = None, risk_tier: str | None = None,
++                           declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
++                           consistency: str | None = None, trace_ref: str | None = None,
++                           now_iso: str | None = None) -> ExecutionPacket | None:
++    """Build the packet from the ALREADY-folded ``signals`` (single fold —
++    condition 1) plus the text-review verdict threaded on
++    ``context_pkg['execution_review']`` (condition 4). NEVER raises — returns an
++    ``ExecutionPacket`` or ``None``. Writes nothing (see ``write_packet``)."""
++    try:
++        context_pkg = context_pkg or {}
++        signals = signals or {}
++        now_iso = now_iso or _now_iso()
++        er = context_pkg.get("execution_review") or {}
++
++        # verification — SCOPED text-review verdict LABEL only. No raw verifier
++        # text is copied in (condition 4: avoid leaking verifier prose; large
++        # artifacts referenced/capped, not blindly copied). confidence /
++        # reviewer_a / reviewer_b / findings / invented_tests reserved (§12, Phase 6).
++        verification = {
++            "text_review_verdict": er.get("verdict"),          # PASS | FAIL | BROKEN | None
++            "scope": "text_review — does not cover state changes or provenance",
++            # `status` records a scoped condition where a verdict does not describe
++            # the shipped text — e.g. a gear-3 FAIL redo that produced a NEW
++            # unreviewed deliverable (Rev 1). No raw verifier text rides here.
++            "status": er.get("status"),
++            "reviewer_a": None, "reviewer_b": None, "confidence": None,
++            "findings": [], "invented_tests": [],
++        }
++
++        # execution block. enforcement_model is honest for a core in-harness gear
++        # run; orchestrated / opaque-shell / MSI-custom paths that later produce a
++        # packet MUST set it correctly (§7 — TODO owned by the P6 enumeration),
++        # never inherit a blanket in_harness.
++        producer = output_text or ""
++        if len(producer) > _PRODUCER_CLAIM_CAP:
++            producer = producer[:_PRODUCER_CLAIM_CAP] + "\n…[capped]"
++        execution = {
++            "enforcement_model": "in_harness",
++            "mode": None, "state_before": None, "state_after": None,   # §11 reserved (Phase 5)
++            "delta": {"any_mutation": bool(signals.get("any_mutation")),
++                      "max_mutability": signals.get("max_mutability", "read"),
++                      "ref": trace_ref},
++            "source_reads": signals.get("source_candidate_reads") or [],  # already public-safe (Phase 3)
++            "producer_claim": {"summary": producer, "known_limitations": None},
++        }
++
++        # observed reality-contact character — makes "observed reality overrides"
++        # (§9) VISIBLE in the packet rather than an assertion made only in the note.
++        observed = {
++            "any_mutation": bool(signals.get("any_mutation")),
++            "max_mutability": signals.get("max_mutability", "read"),
++            "source_read_suspected": bool(signals.get("source_read_suspected")),
++            "source_read_channels": signals.get("source_read_channels") or [],
++            "consistency": consistency,
++        }
++
++        evidence_lanes, judgment_lanes = route_lanes(
++            signals, declared_output_type, context_pkg.get("mode_meta"))
++
++        instruction = (context_pkg.get("raw_prompt")
++                       or context_pkg.get("cleaned_prompt") or "")
++        if len(instruction) > _TASK_INSTRUCTION_CAP:
++            instruction = instruction[:_TASK_INSTRUCTION_CAP] + "…[capped]"
++
++        return ExecutionPacket(
++            task_id=str(context_pkg.get("task_id")
++                        or context_pkg.get("conversation_id") or ""),
++            created=now_iso, modified=now_iso,
++            output_type=(declared_output_type or OUTPUT_TYPE_UNKNOWN),  # RAW hint, never from observation
++            risk_tier=risk_tier,
++            # §9 `reversible` gates whether POST-HOC ROUTING is allowed (§6): it is
++            # permitted "inside reversible tiers only", and the only NON-reversible
++            # tier is `irreversible` (light/standard/high-risk are all reversible —
++            # high-risk carries a rollback check, §8). So this is the tier-boundary
++            # flag, NOT a consequence measure; high-risk == reversible is correct.
++            reversible=(risk_tier != "irreversible") if risk_tier else None,
++            task={"instruction": instruction, "constraints": None, "non_goals": None},
++            planning=None,
++            execution=execution,
++            evidence_lanes=evidence_lanes,
++            judgment_lanes=judgment_lanes,
++            verification=verification,
++            loop=None,
++            persistence={"tier": "trace_local", "redacted": "phase3-public-safe-source-reads"},
++            observed=observed,
++        )
++    except Exception as e:
++        # Rev 1: a caught BUILD exception (e.g. a malformed context_pkg / signals)
++        # must be OBSERVABLE, not a silent None — otherwise a construction bug is
++        # indistinguishable from a turn that legitimately had no packet.
++        _mark_failure(e, "execution_packet_construct")
++        return None
++
++
++def write_packet(packet: ExecutionPacket | None, trace_dir: str | None) -> str | None:
++    """Write the packet TRACE-LOCAL only (condition 2): inherits the trace's
++    retention + stealth handling, never a vault or durable store (Phase 7 owns
++    durable persistence). Best-effort; returns the path ref or None. A caught
++    failure stamps an OBSERVABLE marker (``tool_events._note_failure``) so a crash
++    is distinguishable from a legitimately-absent packet."""
++    if packet is None or not trace_dir:
++        return None
++    try:
++        os.makedirs(str(trace_dir), exist_ok=True)
++        path = os.path.join(str(trace_dir), _PACKET_FILENAME)
++        with open(path, "w") as f:
++            json.dump(packet.to_dict(), f, default=str, indent=2)
++        return path
++    except Exception as e:
++        _mark_failure(e, "execution_packet_write")
++        return None
++
++
++def construct_and_write(*, signals: dict | None, context_pkg: dict | None,
++                        output_text: str | None, risk_tier: str | None,
++                        declared_output_type: str = OUTPUT_TYPE_UNKNOWN,
++                        consistency: str | None = None,
++                        trace_dir: str | None = None,
++                        now_iso: str | None = None) -> str | None:
++    """Terminal one-liner: build + write trace-local, guarded. Returns the path ref
++    or None. NEVER raises. Constructs a packet ONLY when there is a real deliverable
++    AND a trace dir to hold it — no packet on holds / empty output, and no new
++    runtime store is invented when tracing is off (condition 2). The caller gates
++    on stealth (stealth turns get no packet, inheriting the Phase-1/2/3 model)."""
++    try:
++        if not trace_dir:
++            return None
++        if not (output_text and str(output_text).strip()):
++            return None
++        # A packet describes a turn's observed reality-contact; only write one when
++        # the fold that describes it actually produced a signals dict. `signals is
++        # None` is unreachable today (fold_route_observed never returns None), but
++        # the guard keeps "packet ⇒ successful fold" true if that ever changes,
++        # rather than emitting an all-False packet that reads as a no-contact turn.
++        if signals is None:
++            return None
++        pkt = build_execution_packet(
++            signals=signals, context_pkg=context_pkg, output_text=output_text,
++            risk_tier=risk_tier, declared_output_type=declared_output_type,
++            consistency=consistency, trace_ref=str(trace_dir), now_iso=now_iso)
++        return write_packet(pkt, trace_dir)
++    except Exception as e:
++        # Belt: build_execution_packet + write_packet catch (and mark) their own
++        # failures, so this fires only on an unexpected error in this wrapper — mark
++        # it too, distinctly, so it is never a silent None.
++        _mark_failure(e, "execution_packet_construct_and_write")
++        return None
+diff --git a/orchestrator/risk_gate.py b/orchestrator/risk_gate.py
+index 9fa995c0..d0fec730 100644
+--- a/orchestrator/risk_gate.py
++++ b/orchestrator/risk_gate.py
+@@ -981,12 +981,21 @@ def apply_criteria(context_pkg: dict, instruction: str, risk_tier: str, *,
+ 
+ 
+ def record_route_observed(turn_key, risk_tier: str | None = None, *,
+-                          output_text: str | None = None) -> dict:
++                          output_text: str | None = None,
++                          declared_output_type: str = "unknown") -> dict:
+     """Best-effort after-clock record on ANY terminal path (condition 7).
+     ``turn_key`` is either a trace-dir path (str) or a (conversation_id,
+     turn_ts) tuple for global-sink turns. ``output_text`` (Phase 3, optional)
+     is the produced deliverable; it drives the source-read "makes claims"
+-    over-approximation. Never raises."""
++    over-approximation. Never raises.
++
++    Phase 4 (condition 1): this folds ONCE and records ``route_observed`` first;
++    it does NOT build the packet or carry a packet ref — the terminal caller
++    builds the packet SEPARATELY from the returned ``signals`` dict, so there is
++    no double-fold and no packet ref smuggled onto the event.
++    Phase 4 (condition 3): ``declared_output_type`` is the RAW declared §9 hint
++    (default 'unknown'); it is recorded verbatim and NEVER rewritten from the
++    observed signals, and it drives the record-only §6 consistency note below."""
+     try:
+         if isinstance(turn_key, (tuple, list)) and len(turn_key) == 2:
+             conv, ts = turn_key
+@@ -1005,6 +1014,21 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
+         if risk_tier in ("light", "standard") and signals["any_mutation"] \
+                 and signals["max_mutability"] in ("external_write", "irreversible"):
+             divergence = f"{risk_tier}-tier turn observed {signals['max_mutability']}"
++        # Phase 4 §6 consistency assertion — declared_output_type vs observed
++        # reality contact. RECORD ONLY (never enforced): a "text" task that
++        # touched reality is under-review; an "execution" task with no delta and
++        # no source read is over-heavy. Dormant on live P4 turns (output_type is
++        # 'unknown' until a mode declares it) — exercised in tests. Never raises;
++        # a missing helper degrades to no note.
++        consistency = None
++        try:
++            try:
++                from execution_packet import consistency_note as _cnote
++            except ImportError:  # pragma: no cover
++                from orchestrator.execution_packet import consistency_note as _cnote
++            consistency = _cnote(declared_output_type, signals)
++        except Exception:
++            consistency = None
+         # Judge condition 2: the event's sensitivity/egress reflect the folded
+         # max (honest classification) rather than a hardcoded public — and
+         # source_candidate_reads is already public-safe by construction (a
+@@ -1022,6 +1046,9 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
+         # Promote the routing verdict to a TOP-LEVEL field (also in the
+         # truncation keep-set) so it survives even if a pathological turn's
+         # route_signals block is byte-truncated at write (finding [5]).
++        # `output_type` (RAW declared hint) + `consistency` ride TOP-LEVEL (and in
++        # the truncation keep-set) so they survive a byte-truncated route_signals
++        # block. No packet ref here (condition 1).
+         _te.record({"event": "route_observed", "action": "route_observed",
+                     "category": "execute", "mutability": "read",
+                     "sensitivity": _stamp_sens,
+@@ -1030,7 +1057,11 @@ def record_route_observed(turn_key, risk_tier: str | None = None, *,
+                     "risk_tier": risk_tier,
+                     "source_read_suspected": signals.get("source_read_suspected",
+                                                          False),
++                    "output_type": declared_output_type,
++                    "consistency": consistency,
+                     "route_signals": signals, "divergence": divergence})
+-        return {"signals": signals, "divergence": divergence}
++        return {"signals": signals, "divergence": divergence,
++                "consistency": consistency, "output_type": declared_output_type}
+     except Exception:
+-        return {"signals": None, "divergence": None}
++        return {"signals": None, "divergence": None,
++                "consistency": None, "output_type": declared_output_type}
+diff --git a/orchestrator/tests/test_execution_packet.py b/orchestrator/tests/test_execution_packet.py
+new file mode 100644
+index 00000000..f274a7ad
+--- /dev/null
++++ b/orchestrator/tests/test_execution_packet.py
+@@ -0,0 +1,440 @@
++"""Execution Review Phase 4 — ExecutionPacket + renderer + lane router + the
++terminal construction wiring (evaluation-lane router, polymorphic output,
++packet-to-review renderer). Mirrors the design packet §5 test plan and the four
++judge conditions."""
++
++from __future__ import annotations
++
++import json
++import os
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import execution_packet as ep  # noqa: E402
++import risk_gate as rg  # noqa: E402
++import tool_events as te  # noqa: E402
++
++
++def _sig(**kw):
++    base = {"any_mutation": False, "max_mutability": "read", "reads_present": False,
++            "max_sensitivity": "public", "max_egress": "none", "gate_outcomes": {},
++            "events_scanned": 0, "source_read_suspected": False,
++            "source_read_channels": [], "source_candidate_reads": [],
++            "source_candidate_reads_truncated": False}
++    base.update(kw)
++    return base
++
++
++# ── §9 packet shape: tier-optional, every block reserved, flat frontmatter ────
++class TestPacketShape(unittest.TestCase):
++    def _pkt(self, **kw):
++        return ep.build_execution_packet(signals=_sig(), context_pkg={"raw_prompt": "do x"},
++                                         output_text="a deliverable", risk_tier="light", **kw)
++
++    def test_frontmatter_is_flat_scalars_only(self):
++        p = self._pkt()
++        fm = p.frontmatter()
++        self.assertEqual(sorted(fm), ["created", "modified", "output_type",
++                                      "reversible", "risk_tier", "status",
++                                      "tags", "task_id"])
++        # no nested block leaks into the header
++        for k in ("task", "execution", "verification", "evidence_lanes", "loop"):
++            self.assertNotIn(k, fm)
++        for v in fm.values():
++            self.assertNotIsInstance(v, dict)
++
++    def test_every_section9_block_reserved(self):
++        p = self._pkt().to_dict()
++        # blocks reserved even when unfilled, so later phases fill not retrofit
++        self.assertIn("loop", p)
++        self.assertIn("planning", p)          # None at light, but the key exists
++        self.assertIn("confidence", p["verification"])
++        self.assertIn("reviewer_a", p["verification"])
++        self.assertIn("reviewer_b", p["verification"])
++        for k in ("mode", "state_before", "state_after"):
++            self.assertIn(k, p["execution"])   # §11 dirty-state reserved (Phase 5)
++
++    def test_light_tier_has_no_planning(self):
++        # §8/§9: a light packet legitimately has no planning stage — correct, not incomplete.
++        self.assertIsNone(self._pkt().planning)
++
++    def test_large_artifacts_capped_not_inlined(self):
++        big = "x" * (ep._PRODUCER_CLAIM_CAP + 5000)
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={"raw_prompt": "y"},
++                                      output_text=big, risk_tier="light")
++        summary = p.execution["producer_claim"]["summary"]
++        self.assertLessEqual(len(summary), ep._PRODUCER_CLAIM_CAP + 20)
++        self.assertTrue(summary.endswith("[capped]"))
++
++    def test_delta_is_a_reference_not_a_blob(self):
++        p = ep.build_execution_packet(signals=_sig(any_mutation=True), context_pkg={},
++                                      output_text="d", risk_tier="light",
++                                      trace_ref="/traces/turn-1")
++        self.assertEqual(p.execution["delta"]["ref"], "/traces/turn-1")
++
++    def test_enforcement_model_recorded(self):
++        self.assertEqual(self._pkt().execution["enforcement_model"], "in_harness")
++
++    def test_reversible_derived_from_tier(self):
++        self.assertFalse(ep.build_execution_packet(signals=_sig(), context_pkg={},
++                         output_text="d", risk_tier="irreversible").reversible)
++        self.assertTrue(ep.build_execution_packet(signals=_sig(), context_pkg={},
++                        output_text="d", risk_tier="standard").reversible)
++
++
++# ── §5 lane router — structurally separate evidence vs judgment ───────────────
++class TestLaneRouter(unittest.TestCase):
++    def test_mutation_yields_diff_evidence_lane(self):
++        ev, ju = ep.route_lanes(_sig(any_mutation=True))
++        self.assertEqual([(l.lane, l.target) for l in ev], [("diff_validate", "state_change")])
++        self.assertEqual(ju, [])
++
++    def test_source_read_yields_provenance_lane(self):
++        ev, _ = ep.route_lanes(_sig(source_read_suspected=True))
++        self.assertEqual([(l.lane, l.target) for l in ev], [("collect_provenance", "grounded_claims")])
++
++    def test_both_signals_two_lanes(self):
++        ev, _ = ep.route_lanes(_sig(any_mutation=True, source_read_suspected=True))
++        self.assertEqual(len(ev), 2)
++
++    def test_neither_signal_no_evidence_lane(self):
++        ev, ju = ep.route_lanes(_sig())
++        self.assertEqual(ev, [])
++        self.assertEqual(ju, [])
++
++    def test_judgment_lanes_from_mode_meta_only(self):
++        _, ju = ep.route_lanes(_sig(any_mutation=True),
++                               mode_meta={"judgment_targets": ["voice", " ", "persuasion"]})
++        self.assertEqual([j.target for j in ju], ["voice", "persuasion"])
++
++    def test_judgment_lane_has_no_verdict_field(self):
++        # §5 structural separation: a JudgmentLane by CONSTRUCTION cannot hold a verdict.
++        fields = ep.JudgmentLane("voice").__dataclass_fields__
++        self.assertNotIn("verdict", fields)
++        self.assertNotIn("sufficient", fields)
++
++
++# ── sufficient tri-state — unfilled/empty is NOT vacuously passed (adv-L1-5) ──
++class TestSufficientTriState(unittest.TestCase):
++    def test_empty_lane_list_is_not_sufficient(self):
++        self.assertFalse(ep.all_evidence_sufficient([]))
++
++    def test_unfilled_lane_is_not_sufficient(self):
++        self.assertFalse(ep.lane_is_sufficient(ep.EvidenceLane("t", "diff_validate")))
++        self.assertFalse(ep.all_evidence_sufficient([ep.EvidenceLane("t", "diff_validate")]))
++
++    def test_explicit_false_is_not_sufficient(self):
++        self.assertFalse(ep.all_evidence_sufficient(
++            [ep.EvidenceLane("t", "diff_validate", sufficient=False)]))
++
++    def test_all_explicit_true_is_sufficient(self):
++        self.assertTrue(ep.all_evidence_sufficient(
++            [ep.EvidenceLane("t", "diff_validate", sufficient=True)]))
++
++    def test_mixed_is_not_sufficient(self):
++        self.assertFalse(ep.all_evidence_sufficient(
++            [ep.EvidenceLane("a", "diff_validate", sufficient=True),
++             ep.EvidenceLane("b", "collect_provenance")]))
++
++
++# ── §12 renderer — evidence FIRST, producer claim LAST (unverified) ──────────
++class TestRenderer(unittest.TestCase):
++    def _render(self, **kw):
++        p = ep.build_execution_packet(signals=_sig(**kw.pop("signals", {})),
++                                      context_pkg=kw.pop("ctx", {"raw_prompt": "task text"}),
++                                      output_text=kw.pop("out", "the produced claim"),
++                                      risk_tier="light", **kw)
++        return ep.render_for_review(p)
++
++    def test_evidence_before_claim(self):
++        r = self._render()
++        self.assertLess(r.index("OBSERVED EVIDENCE"), r.index("UNVERIFIED PRODUCER CLAIM"))
++
++    def test_producer_claim_labeled_unverified(self):
++        self.assertIn("UNVERIFIED PRODUCER CLAIM", self._render())
++
++    def test_missing_acceptance_criteria_is_loud(self):
++        self.assertIn("NO ACCEPTANCE CRITERIA DECLARED", self._render())
++
++    def test_unfilled_evidence_lane_never_reads_sufficient(self):
++        r = self._render(signals={"any_mutation": True})
++        self.assertIn("evidence not yet generated", r)
++        self.assertNotIn("sufficient (via", r)
++
++    def test_text_review_verdict_is_scope_labeled(self):
++        r = self._render(ctx={"raw_prompt": "t", "execution_review": {"verdict": "PASS"}})
++        self.assertIn("TEXT-REVIEW VERDICT (does not cover state changes or provenance)", r)
++        # the raw PASS must not appear as an unqualified green check line
++        self.assertNotIn("VERDICT: PASS", r)
++
++    def test_unreviewed_status_shown_when_no_verdict(self):
++        # Rev 1: a redo produced a new unreviewed deliverable → no verdict, but the
++        # scoped status is surfaced (never a stale/absent silent claim).
++        r = self._render(ctx={"raw_prompt": "t", "execution_review": {
++            "verdict": None, "scope": "text_review",
++            "status": "failed-then-redone-unreviewed"}})
++        self.assertIn("TEXT-REVIEW STATUS", r)
++        self.assertIn("failed-then-redone-unreviewed", r)
++        self.assertNotIn("TEXT-REVIEW VERDICT", r)
++
++    def test_uses_banner_fences_not_hash_headings(self):
++        r = self._render()
++        self.assertIn("=== OBSERVED EVIDENCE ===", r)
++        self.assertNotIn("\n## ", r)
++
++    def test_rendered_packet_drops_into_real_evaluator_prompt(self):
++        # "the existing review logic accepts an ExecutionPacket" — proven by
++        # feeding the rendered string into the REAL evaluator user-prompt shape,
++        # WITHOUT editing any live in-gear site.
++        import boot
++        rendered = self._render(signals={"source_read_suspected": True},
++                                ctx={"raw_prompt": "Q", "execution_review": {"verdict": "PASS"}})
++        user_msg = (f"## ORIGINAL QUERY\n\nQ\n\n"
++                    f"## ANALYST OUTPUT\n\n{rendered}\n\n"
++                    "Evaluate per the universal seven-section contract.")
++        self.assertIn("UNVERIFIED PRODUCER CLAIM", user_msg)
++        self.assertTrue(hasattr(boot, "build_system_prompt_for_gear"))
++
++
++# ── polymorphic seam — side-effect-free identity on str (adv-L1-6) ───────────
++class TestFormatArtifactSeam(unittest.TestCase):
++    def test_str_returned_unchanged(self):
++        s = "a plain draft string"
++        self.assertIs(ep._format_artifact_for_review(s), s)
++
++    def test_str_branch_has_no_side_effects(self):
++        # msi_run_gear4.invoke_real_gear4 is the one live path through this if it
++        # is ever wired — the str branch must make no telemetry/fold calls.
++        before = te.get_telemetry_health().get("failures")
++        out = ep._format_artifact_for_review("draft")
++        after = te.get_telemetry_health().get("failures")
++        self.assertEqual(out, "draft")
++        self.assertEqual(before, after)
++
++    def test_packet_is_rendered(self):
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={"raw_prompt": "x"},
++                                      output_text="claim", risk_tier="light")
++        self.assertIn("UNVERIFIED PRODUCER CLAIM", ep._format_artifact_for_review(p))
++
++
++# ── §6 consistency assertion — record-only, dormant on unknown (condition 3) ─
++class TestConsistencyNote(unittest.TestCase):
++    def test_text_plus_mutation_flags(self):
++        self.assertIn("under-review", ep.consistency_note("text", _sig(any_mutation=True)))
++
++    def test_text_plus_source_read_flags(self):
++        self.assertIn("under-review", ep.consistency_note("text", _sig(source_read_suspected=True)))
++
++    def test_execution_plus_neither_flags(self):
++        self.assertIn("over-heavy", ep.consistency_note("execution", _sig()))
++
++    def test_execution_with_contact_no_flag(self):
++        self.assertIsNone(ep.consistency_note("execution", _sig(any_mutation=True)))
++
++    def test_text_without_contact_no_flag(self):
++        self.assertIsNone(ep.consistency_note("text", _sig()))
++
++    def test_unknown_default_is_dormant(self):
++        # P4: no mode declares output_type → the assertion fires on zero live turns.
++        self.assertIsNone(ep.consistency_note("unknown", _sig(any_mutation=True, source_read_suspected=True)))
++        self.assertIsNone(ep.consistency_note(None, _sig(any_mutation=True)))
++
++
++# ── construction — guarded, never raises, observable failure (conds 1/2/4) ──
++class TestConstruction(unittest.TestCase):
++    def test_verdict_threaded_from_context_pkg(self):
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={"execution_review": {"verdict": "FAIL"}},
++                                      output_text="d", risk_tier="light")
++        self.assertEqual(p.verification["text_review_verdict"], "FAIL")
++        self.assertIn("text_review", p.verification["scope"])
++
++    def test_no_raw_verifier_text_in_verification(self):
++        # condition 4: only the LABEL rides in; no raw verifier prose.
++        er = {"verdict": "PASS", "raw": "long verifier prose " * 50}
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={"execution_review": er},
++                                      output_text="d", risk_tier="light")
++        self.assertNotIn("long verifier prose", json.dumps(p.verification))
++
++    def test_output_type_is_raw_hint_never_from_observation(self):
++        # declared unknown even though reality-contact observed — never rewritten.
++        p = ep.build_execution_packet(signals=_sig(any_mutation=True, source_read_suspected=True),
++                                      context_pkg={}, output_text="d", risk_tier="light",
++                                      declared_output_type="unknown")
++        self.assertEqual(p.output_type, "unknown")
++
++    def test_findings_empty_class_untagged(self):
++        # spec-L1-8: a P4 finding carries no class (findings is empty; no fabricated tag).
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={}, output_text="d", risk_tier="light")
++        self.assertEqual(p.verification["findings"], [])
++
++    def test_build_never_raises_on_malformed(self):
++        # all-None inputs must not raise (they normalize to empties → a valid packet).
++        out = ep.build_execution_packet(signals=None, context_pkg=None,
++                                        output_text=None, risk_tier=None)
++        self.assertIsInstance(out, (ep.ExecutionPacket, type(None)))
++        # a well-formed call returns a packet
++        self.assertIsInstance(ep.build_execution_packet(signals=_sig(), context_pkg={},
++                              output_text="d", risk_tier="light"), ep.ExecutionPacket)
++
++    def test_construct_and_write_skips_without_trace(self):
++        self.assertIsNone(ep.construct_and_write(signals=_sig(), context_pkg={},
++                          output_text="d", risk_tier="light", trace_dir=None))
++
++    def test_construct_and_write_skips_when_fold_failed(self):
++        # signals is None means the fold failed — no packet describes a turn whose
++        # reality-contact was never successfully observed (adversarial pre-check fold).
++        d = tempfile.mkdtemp()
++        self.assertIsNone(ep.construct_and_write(signals=None, context_pkg={},
++                          output_text="d", risk_tier="light", trace_dir=d))
++        self.assertFalse(os.path.exists(os.path.join(d, ep._PACKET_FILENAME)))
++
++    def test_high_risk_tier_is_reversible(self):
++        # §6/§9: `reversible` gates post-hoc routing; only 'irreversible' tier is
++        # non-reversible. high-risk (with rollback) is reversible.
++        self.assertTrue(ep.build_execution_packet(signals=_sig(), context_pkg={},
++                        output_text="d", risk_tier="high-risk").reversible)
++        self.assertFalse(ep.build_execution_packet(signals=_sig(), context_pkg={},
++                         output_text="d", risk_tier="irreversible").reversible)
++
++    def test_construct_and_write_skips_empty_output(self):
++        d = tempfile.mkdtemp()
++        self.assertIsNone(ep.construct_and_write(signals=_sig(), context_pkg={},
++                          output_text="   ", risk_tier="light", trace_dir=d))
++        self.assertFalse(os.path.exists(os.path.join(d, ep._PACKET_FILENAME)))
++
++    def test_construct_and_write_writes_trace_local(self):
++        d = tempfile.mkdtemp()
++        ref = ep.construct_and_write(signals=_sig(any_mutation=True), context_pkg={"raw_prompt": "p"},
++                                     output_text="deliverable", risk_tier="standard", trace_dir=d)
++        self.assertEqual(ref, os.path.join(d, ep._PACKET_FILENAME))
++        self.assertTrue(os.path.exists(ref))
++        pkt = json.load(open(ref))
++        self.assertEqual(pkt["persistence"]["tier"], "trace_local")
++
++    def test_write_failure_is_observable(self):
++        # a caught write failure stamps EXACTLY ONE marker (never silently vanishes).
++        p = ep.build_execution_packet(signals=_sig(), context_pkg={}, output_text="d", risk_tier="light")
++        before = te.get_telemetry_health()["failures"]
++        ref = ep.write_packet(p, "/nonexistent-root-\x00/definitely/cannot/write")
++        after = te.get_telemetry_health()["failures"]
++        self.assertIsNone(ref)
++        self.assertEqual(after, before + 1)  # exactly one stamp, not swallowed
++
++
++# ── construction failures are OBSERVABLE, skips are NOT (Rev 1, F2) ──────────
++class TestConstructionFailureObservable(unittest.TestCase):
++    def test_build_exception_stamps_exactly_one_marker(self):
++        # A build exception (here: route_lanes raises) must NOT be a silent None —
++        # it stamps EXACTLY ONE observable marker while never interrupting the turn.
++        before = te.get_telemetry_health()["failures"]
++        with mock.patch.object(ep, "route_lanes", side_effect=RuntimeError("boom")):
++            out = ep.build_execution_packet(signals=_sig(), context_pkg={},
++                                            output_text="d", risk_tier="light")
++        after = te.get_telemetry_health()["failures"]
++        self.assertIsNone(out)
++        self.assertEqual(after, before + 1)
++
++    def test_construct_and_write_build_exception_stamps_exactly_one(self):
++        # Build fails inside construct_and_write: build stamps once, write_packet
++        # short-circuits on the None packet (no second stamp), wrapper completes.
++        d = tempfile.mkdtemp()
++        before = te.get_telemetry_health()["failures"]
++        with mock.patch.object(ep, "route_lanes", side_effect=RuntimeError("boom")):
++            ref = ep.construct_and_write(signals=_sig(), context_pkg={},
++                                         output_text="d", risk_tier="light", trace_dir=d)
++        after = te.get_telemetry_health()["failures"]
++        self.assertIsNone(ref)
++        self.assertFalse(os.path.exists(os.path.join(d, ep._PACKET_FILENAME)))
++        self.assertEqual(after, before + 1)  # exactly one stamp, no double-count
++
++    def test_construct_and_write_write_failure_stamps_exactly_one(self):
++        # Build succeeds, WRITE fails (json.dump raises): write_packet stamps once,
++        # the wrapper try completes normally — no second stamp.
++        d = tempfile.mkdtemp()
++        before = te.get_telemetry_health()["failures"]
++        with mock.patch.object(ep.json, "dump", side_effect=OSError("disk full")):
++            ref = ep.construct_and_write(signals=_sig(), context_pkg={"raw_prompt": "p"},
++                                         output_text="d", risk_tier="light", trace_dir=d)
++        after = te.get_telemetry_health()["failures"]
++        self.assertIsNone(ref)
++        self.assertEqual(after, before + 1)
++
++    def test_construct_and_write_wrapper_failure_stamps_exactly_one(self):
++        # An unexpected error in the wrapper body (build_execution_packet re-raises)
++        # is caught by the wrapper's own except and stamped exactly once.
++        d = tempfile.mkdtemp()
++        before = te.get_telemetry_health()["failures"]
++        with mock.patch.object(ep, "build_execution_packet",
++                               side_effect=RuntimeError("boom")):
++            ref = ep.construct_and_write(signals=_sig(), context_pkg={},
++                                         output_text="d", risk_tier="light", trace_dir=d)
++        after = te.get_telemetry_health()["failures"]
++        self.assertIsNone(ref)
++        self.assertEqual(after, before + 1)
++
++    def test_intentional_skip_stamps_no_marker(self):
++        # No trace dir / empty output / no signals are INTENTIONAL skips — they
++        # return None WITHOUT a failure marker (distinct from a build exception).
++        before = te.get_telemetry_health()["failures"]
++        self.assertIsNone(ep.construct_and_write(signals=_sig(), context_pkg={},
++                          output_text="d", risk_tier="light", trace_dir=None))
++        self.assertIsNone(ep.construct_and_write(signals=_sig(), context_pkg={},
++                          output_text="  ", risk_tier="light", trace_dir=tempfile.mkdtemp()))
++        self.assertIsNone(ep.construct_and_write(signals=None, context_pkg={},
++                          output_text="d", risk_tier="light", trace_dir=tempfile.mkdtemp()))
++        after = te.get_telemetry_health()["failures"]
++        self.assertEqual(after, before)  # skips are not failures
++
++
++# ── risk_gate integration — single fold, output_type + consistency recorded ─
++class TestRiskGateWiring(unittest.TestCase):
++    def _trace_with(self, *events):
++        d = tempfile.mkdtemp()
++        with open(os.path.join(d, "tool-events.jsonl"), "w") as f:
++            for e in events:
++                f.write(json.dumps(e) + "\n")
++        return d
++
++    def test_return_carries_output_type_and_consistency(self):
++        d = self._trace_with({"event": "tool", "action": "web_fetch", "mutability": "read",
++                              "reads": [{"what": "u", "where": "network"}],
++                              "exit": {"ok": True}, "sensitivity": "public"})
++        r = rg.record_route_observed(d, risk_tier="standard",
++                                     output_text="a grounded answer", declared_output_type="text")
++        self.assertEqual(sorted(r), ["consistency", "divergence", "output_type", "signals"])
++        self.assertEqual(r["output_type"], "text")
++        self.assertIn("under-review", r["consistency"])
++
++    def test_unknown_declared_is_dormant(self):
++        d = self._trace_with({"event": "tool", "action": "web_fetch", "mutability": "read",
++                              "reads": [{"what": "u", "where": "network"}],
++                              "exit": {"ok": True}, "sensitivity": "public"})
++        r = rg.record_route_observed(d, risk_tier="standard", output_text="x")
++        self.assertEqual(r["output_type"], "unknown")
++        self.assertIsNone(r["consistency"])
++
++    def test_record_never_raises_and_returns_output_type_on_error(self):
++        # a bad turn_key should not raise; output_type still echoes back.
++        r = rg.record_route_observed(object(), risk_tier="light", declared_output_type="text")
++        self.assertEqual(r["output_type"], "text")
++
++
++# ── tool_events keep-set — output_type + consistency survive truncation ──────
++class TestKeepSetSurvival(unittest.TestCase):
++    def test_keepset_includes_output_type_and_consistency(self):
++        # the route_observed verdict fields must survive a byte-truncated event.
++        import inspect
++        src = inspect.getsource(te.record)
++        self.assertIn('"output_type"', src)
++        self.assertIn('"consistency"', src)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tests/test_quality_gate.py b/orchestrator/tests/test_quality_gate.py
+index 67e4c754..e63b2338 100644
+--- a/orchestrator/tests/test_quality_gate.py
++++ b/orchestrator/tests/test_quality_gate.py
+@@ -203,6 +203,45 @@ class TestGear3QualityGate(unittest.TestCase):
+         self.assertNotIn("QGFIX", result)
+ 
+ 
++class TestGear3VerdictThreadForPacket(unittest.TestCase):
++    """Execution Review Phase 4 (Rev 1): the gate verdict threaded onto
++    context_pkg['execution_review'] for the terminal packet builder must describe
++    the SHIPPED text. A FAIL fires a redo that produces a NEW unreviewed
++    deliverable, so the stale FAIL must not be carried onto the final producer
++    claim — the exact path the judge flagged."""
++
++    def test_fail_redo_records_unreviewed_status_not_stale_verdict(self):
++        ctx = _ctx()
++        h = _Harness(["## QUALITY GATE\nCQ1 unmet\nVERDICT: FAIL"])
++        with _patched(h):
++            result = boot.run_gear3(ctx, {}, config_name=None)
++        self.assertIn("QGFIX", result)                      # the redo output ships
++        er = ctx.get("execution_review")
++        self.assertIsNotNone(er)
++        # the shipped (redone) text was NOT reviewed by the gate → no stale FAIL
++        self.assertIsNone(er["verdict"])
++        self.assertEqual(er["status"], "failed-then-redone-unreviewed")
++        self.assertEqual(er["scope"], "text_review")
++
++    def test_pass_records_pass_verdict(self):
++        ctx = _ctx()
++        h = _Harness(["## QUALITY GATE\nall good\nVERDICT: PASS"])
++        with _patched(h):
++            boot.run_gear3(ctx, {}, config_name=None)
++        er = ctx.get("execution_review")
++        self.assertEqual(er["verdict"], "PASS")
++        self.assertIsNone(er.get("status"))
++
++    def test_broken_records_broken_verdict(self):
++        ctx = _ctx()
++        h = _Harness(["Cannot reach a verdict.\nVERDICT: BROKEN"])
++        with _patched(h):
++            boot.run_gear3(ctx, {}, config_name=None)
++        er = ctx.get("execution_review")
++        self.assertEqual(er["verdict"], "BROKEN")           # BROKEN ships as-reviewed
++        self.assertIsNone(er.get("status"))
++
++
+ # ─────────────────────────── Gear 4 behavior ────────────────────────────────
+ 
+ 
+diff --git a/orchestrator/tool_events.py b/orchestrator/tool_events.py
+index 51781605..d923c055 100644
+--- a/orchestrator/tool_events.py
++++ b/orchestrator/tool_events.py
+@@ -554,7 +554,8 @@ def record(event: dict) -> None:
+                      "exit", "duration_ms", "gate", "enforcement_model",
+                      "correlation", "conversation_id", "truncated",
+                      "telemetry_incomplete", "risk_tier", "divergence",
+-                     "source_read_suspected") if k in event}
++                     "source_read_suspected", "output_type",
++                     "consistency") if k in event}
+             encoded = json.dumps(keep, default=str).encode("utf-8",
+                                                            errors="replace")
+         path = _sink_path(ctx)
+diff --git a/server/server.py b/server/server.py
+index 98dd4eed..413be556 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -2954,11 +2954,25 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+     # Execution Review Phase 2: after-clock — record route_observed on this
+     # terminal path (condition 7). Best-effort, never raises.
+     try:
+-        _rgate.record_route_observed(
++        _ro = _rgate.record_route_observed(
+             trace_dir or ((_te_srv.get_turn_context() or {}).get("conversation_id"),
+                           context_pkg.get("_route_turn_ts") or ""),
+             risk_tier=context_pkg.get("risk_tier"),
+-            output_text=response)  # Phase 3: drives the source-read signal
++            output_text=response,  # Phase 3: drives the source-read signal
++            declared_output_type=context_pkg.get("output_type", "unknown"))
++        # Execution Review Phase 4 (conditions 1+2): build the ExecutionPacket from
++        # the already-folded signals (single fold; no packet ref on route_observed)
++        # and write it TRACE-LOCAL only. Guarded to a real deliverable + trace dir +
++        # non-stealth. Never raises.
++        if conversation_tag != "stealth":
++            try:
++                from execution_packet import construct_and_write as _cw
++            except ImportError:  # pragma: no cover
++                from orchestrator.execution_packet import construct_and_write as _cw
++            _cw(signals=(_ro or {}).get("signals"), context_pkg=context_pkg,
++                output_text=response, risk_tier=context_pkg.get("risk_tier"),
++                declared_output_type=context_pkg.get("output_type", "unknown"),
++                consistency=(_ro or {}).get("consistency"), trace_dir=trace_dir)
+     except Exception:
+         pass
+ 
