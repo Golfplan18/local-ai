@@ -1,0 +1,2111 @@
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index df80b171..75c70c58 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -9172,6 +9172,51 @@ def run_pipeline(user_input: str, history: list = None,
+                  conversation_tag: str = "",
+                  style_id: str | None = None,
+                  style_register: str | None = None) -> str:
++    """Trace-manifest wrapper (Trace Walk Chunk 0). Owns the single
++    try/except/finally that finalizes the turn's trace-manifest.json on
++    every exit path — normal return, caught-error-and-return, and
++    uncaught exception — mirroring server.py's ``_pipeline_stream``
++    wrapper. The actual pipeline body is ``_run_pipeline_impl``; see its
++    docstring for the pipeline description. ``turn_state`` is the
++    branch-local kind/status channel the impl assigns at each early-return
++    site.
++    """
++    turn_state = {
++        "trace_dir": None, "kind": "unknown", "status": None,
++        "mode": None, "gear": None, "parent_ref": None,
++    }
++    try:
++        return _run_pipeline_impl(
++            user_input, history, output_target, execution_context,
++            conversation_id, ambiguity_mode, stealth, config_name,
++            conversation_tag, style_id, style_register,
++            turn_state=turn_state)
++    except BaseException:
++        turn_state["status"] = "error"
++        raise
++    finally:
++        if PIPELINE_TRACE_AVAILABLE:
++            try:
++                pipeline_trace.finalize_manifest(
++                    turn_state["trace_dir"], kind=turn_state["kind"],
++                    status_hint=turn_state["status"],
++                    mode=turn_state["mode"], gear=turn_state["gear"],
++                    parent_trace_ref=turn_state["parent_ref"])
++            except Exception as _fin_exc:
++                print(f"[boot trace] manifest finalize skipped: {_fin_exc}")
++
++
++def _run_pipeline_impl(user_input: str, history: list = None,
++                       output_target: str = "screen",
++                       execution_context: str = "interactive",
++                       conversation_id: str | None = None,
++                       ambiguity_mode: str = "assume",
++                       stealth: bool = False,
++                       config_name: str | None = None,
++                       conversation_tag: str = "",
++                       style_id: str | None = None,
++                       style_register: str | None = None,
++                       turn_state: dict | None = None) -> str:
+     """Full orchestrated pipeline: Step 1 → Step 2 → Gear-appropriate execution → Output.
+ 
+     For Gear 1-2: Single model with context package.
+@@ -9201,6 +9246,11 @@ def run_pipeline(user_input: str, history: list = None,
+     bug. Default False to preserve diagnostic coverage for normal
+     conversations.
+     """
++    if turn_state is None:
++        # Direct invocation (tests, future callers) — track locally so the
++        # branch assignments below never need a guard.
++        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
++                      "mode": None, "gear": None, "parent_ref": None}
+     config = load_routing_config()
+ 
+     # --- Pipeline forensic trace — open the per-turn directory now so
+@@ -9217,7 +9267,9 @@ def run_pipeline(user_input: str, history: list = None,
+             style_id=style_id,
+             style_register=style_register,
+             stealth=stealth,
++            conversation_tag=conversation_tag,
+         )
++    turn_state["trace_dir"] = trace_dir
+ 
+     # --- Execution Review Phase 2: risk gate (before-clock), turn head ---
+     # Handled BEFORE any slash dispatch (condition 5): a bare `/risk <tier>`
+@@ -9229,12 +9281,14 @@ def run_pipeline(user_input: str, history: list = None,
+         import risk_gate as _rgate
+         _sticky_reply = _rgate.handle_risk_command(user_input, conversation_id)
+         if _sticky_reply is not None:
++            turn_state["kind"] = "risk_hold"
+             return _sticky_reply
+         _tg_marker = _rgate.is_task_gate_continuation(history or [])
+         if _tg_marker is not None:
+             _tg_reply = _rgate.handle_task_gate_reply(
+                 _tg_marker, user_input, conversation_id)
+             if _tg_reply is not None:
++                turn_state["kind"] = "risk_hold"
+                 return _tg_reply
+         user_input, _risk_override = _rgate.strip_risk_prefix(user_input)
+     except Exception as _rge:
+@@ -9247,6 +9301,7 @@ def run_pipeline(user_input: str, history: list = None,
+     # cheaper and more deterministic.
+     from slash_commands import is_runtime_command, run_runtime_command
+     if is_runtime_command(user_input):
++        turn_state["kind"] = "runtime_command"
+         return run_runtime_command(user_input)
+ 
+     # --- Mid-framework continuation short-circuit ---
+@@ -9256,6 +9311,7 @@ def run_pipeline(user_input: str, history: list = None,
+     import framework_elicitation
+     continuation_ctx = framework_elicitation.is_continuation(history or [])
+     if continuation_ctx is not None:
++        turn_state["kind"] = "framework_elicitation"
+         return framework_elicitation.continue_elicitation(
+             continuation_ctx, history or [], config,
+             latest_user_text=user_input,
+@@ -9270,6 +9326,7 @@ def run_pipeline(user_input: str, history: list = None,
+         run_framework_command, parse_framework_command,
+     )
+     if is_framework_command(user_input):
++        turn_state["kind"] = "framework_command"
+         if framework_command_has_query(user_input):
+             # Execution Review Phase 2 (condition 4): the /framework one-shot
+             # runs the gear pipeline with tools — hold before it if the query
+@@ -9285,6 +9342,7 @@ def run_pipeline(user_input: str, history: list = None,
+                     prompt=user_input, surface="framework",
+                     description=user_input)
+                 if _fhold is not None:
++                    turn_state["kind"] = "risk_hold"
+                     return _fhold
+             except Exception as _frge:
+                 print(f"[risk-gate] framework one-shot hold skipped: {_frge}")
+@@ -9315,12 +9373,18 @@ def run_pipeline(user_input: str, history: list = None,
+         try:
+             framework_name, _, _ = parse_framework_command(user_input)
+         except ValueError as exc:
++            turn_state["status"] = "error"
+             return f"[Framework command error: {exc}]"
++        turn_state["kind"] = "framework_elicitation"
+         return framework_elicitation.start_elicitation(
+             framework_name, history or [], config,
+         )
+ 
+     # --- Step 1: Prompt Cleanup + Mode Selection ---
++    # From here the turn is headed into the analytical pipeline; terminal
++    # branches below refine the kind (risk_hold / error) and
++    # finalize_manifest refines "chat" to chat-gear<N> once gear is known.
++    turn_state["kind"] = "chat"
+     # Build conversation context from recent history. Truncation stats are
+     # captured for the trace so context-loss is visible when it matters.
+     conv_context = ""
+@@ -9351,6 +9415,14 @@ def run_pipeline(user_input: str, history: list = None,
+     # gate reads a real value rather than defaulting to 'interactive'.
+     context_pkg.setdefault("execution_context", execution_context)
+     gear = context_pkg["gear"]
++    turn_state["mode"] = step1.get("mode")
++    # Pre-dispatch prediction only — run_gear3/run_gear4 may silently
++    # degrade to a lower gear internally (single-endpoint / unrecoverable-
++    # analyst fallback); finalize_manifest re-derives the ACTUAL gear from
++    # step-health.json (written last, by whichever gear function actually
++    # completed) when that file is present, so this hint only matters if
++    # the turn ends before any gear function writes one.
++    turn_state["gear"] = gear
+ 
+     # --- WP-4.2 — capability-conditional vision routing gate ---
+     # When an image_path rides along on context_pkg (via WP-3.3's
+@@ -9376,6 +9448,7 @@ def run_pipeline(user_input: str, history: list = None,
+         if deg_state.fallback_gear:
+             gear = deg_state.fallback_gear
+             context_pkg["gear"] = gear
++            turn_state["gear"] = gear
+         degradation_signal = format_degradation_signal(deg_state)
+ 
+     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
+@@ -9407,6 +9480,7 @@ def run_pipeline(user_input: str, history: list = None,
+         if _hold_reply is not None:
+             _rgate.record_route_observed(
+                 trace_dir or (conversation_id, _route_turn_ts), risk_tier=_tier)
++            turn_state["kind"] = "risk_hold"
+             return _hold_reply
+         try:
+             import tool_events as _te_tier
+@@ -9424,6 +9498,7 @@ def run_pipeline(user_input: str, history: list = None,
+                 output_target=output_target, config_name=config_name or "",
+                 stealth=stealth, description=_crit[5:])
+             if _hr is not None:
++                turn_state["kind"] = "risk_hold"
+                 return _hr
+         elif _crit and _crit.startswith("WARN:"):
+             _risk_warn = _crit[5:]
+@@ -9491,6 +9566,7 @@ def run_pipeline(user_input: str, history: list = None,
+                 or get_active_endpoint(config)
+             )
+         if endpoint is None:
++            turn_state["status"] = "error"
+             return "[No AI endpoints configured.]"
+ 
+         messages = [{"role": "system", "content": system_prompt}]
+@@ -9570,6 +9646,11 @@ def run_pipeline(user_input: str, history: list = None,
+     except Exception:
+         pass
+ 
++    # Explicit completion signal for the trace manifest — the only honest
++    # source for gear-1/2 turns, which write no step-health.json. A later
++    # exception on the way out overwrites this with "error" in the
++    # generator-level wrapper.
++    turn_state["status"] = "completed"
+     return route_output(response, output_target, context_pkg)
+ 
+ 
+diff --git a/orchestrator/conversation_memory.py b/orchestrator/conversation_memory.py
+index 2217f669..b4351e10 100644
+--- a/orchestrator/conversation_memory.py
++++ b/orchestrator/conversation_memory.py
+@@ -177,6 +177,7 @@ def save_turn_spatial_state(
+     timestamp: str | None = None,
+     tag: str = "",
+     project_ids: list[str] | None = None,
++    trace_ref: str | None = None,
+     sessions_root: Path | None = None,
+ ) -> Path | None:
+     """Append a user+assistant pair to conversation.json with optional
+@@ -204,6 +205,13 @@ def save_turn_spatial_state(
+     verbatim (membership is edited via the project modal, not per turn).
+     ``None`` / empty means the default ``General`` project.
+ 
++    The ``trace_ref`` argument (trace manifest, Chunk 0) is the turn's
++    pipeline-trace ref ("<conversation_id>/<turn_timestamp>", relative to
++    the trace root). Stamped on the ASSISTANT turn — the turn the trace
++    explains. ``None`` (stealth / tracing off / no trace) writes ``null``;
++    the key is always present, matching the reserved-``None`` field
++    convention on the assistant turn.
++
+     Returns the path written, or ``None`` on I/O failure (non-blocking; the
+     persistence step must never break the conversation flow).
+     """
+@@ -221,7 +229,7 @@ def save_turn_spatial_state(
+         return _do_write(path, conversation_id, user_input, ai_response,
+                           tag, timestamp, spatial_representation,
+                           annotations, vision_extraction_result,
+-                          project_ids)
++                          project_ids, trace_ref)
+ 
+ 
+ def _do_write(
+@@ -235,6 +243,7 @@ def _do_write(
+     annotations: dict | list | None,
+     vision_extraction_result: dict | None,
+     project_ids: list[str] | None = None,
++    trace_ref: str | None = None,
+ ) -> Path | None:
+     """Inner read-modify-write helper. Runs inside the per-conversation
+     lock; do not call directly."""
+@@ -342,6 +351,7 @@ def _do_write(
+         "spatial_representation": None,
+         "annotations": None,
+         "vision_extraction_result": None,
++        "trace_ref": trace_ref,
+     }
+ 
+     existing["messages"].append(user_turn)
+diff --git a/orchestrator/pipeline_trace.py b/orchestrator/pipeline_trace.py
+index fe4b8833..8912cfd8 100644
+--- a/orchestrator/pipeline_trace.py
++++ b/orchestrator/pipeline_trace.py
+@@ -77,7 +77,8 @@ def start_trace(conversation_id: str | None,
+                 ambiguity_mode: str = "assume",
+                 style_id: str | None = None,
+                 style_register: str | None = None,
+-                stealth: bool = False) -> str | None:
++                stealth: bool = False,
++                conversation_tag: str = "") -> str | None:
+     """Open a new per-turn trace directory.
+ 
+     Args:
+@@ -95,6 +96,12 @@ def start_trace(conversation_id: str | None,
+             ``conversation_closeout.py`` adds a defence-in-depth sweep
+             that walks ``TRACE_ROOT/<conversation_id>/`` and unlinks any
+             trace dir that ever existed for the stealth conversation.
++        conversation_tag: the conversation-level mode (V3 Phase 1.1 —
++            empty / "private" / "stealth"). Stamped on the manifest as
++            ``redaction_level`` so downstream viewers/exports (Chunk 2)
++            know to treat the trace content as private. Stealth never
++            reaches here with a trace (the ``stealth`` flag suppresses
++            creation entirely).
+ 
+     Returns:
+         Absolute path to the new trace directory, or ``None`` if:
+@@ -133,6 +140,21 @@ def start_trace(conversation_id: str | None,
+             "started_at": _dt.datetime.utcnow().isoformat() + "Z",
+         }
+         _atomic_write_json(os.path.join(trace_dir, "metadata.json"), meta)
++        # Trace-manifest skeleton (Chunk 0). Opened with
++        # ``terminal_status: "open"``; ``finalize_manifest`` overwrites it
++        # at turn end with the honest kind/status/step derivation. A turn
++        # that dies so hard its finalizer never runs leaves "open" on disk
++        # — itself an honest signal (the turn never reached any exit path).
++        try:
++            _atomic_write_json(
++                os.path.join(trace_dir, MANIFEST_FILENAME),
++                _manifest_skeleton(conversation_id, ts, conversation_tag),
++            )
++        except Exception as _mf_exc:
++            # Fail-open: a manifest failure must never cost the turn its
++            # trace (metadata.json is already down at this point).
++            print(f"[pipeline_trace] manifest skeleton failed: {_mf_exc}",
++                  file=sys.stderr)
+         # Maintain a latest-pointer for quick inspection (mirrors the
+         # /tmp/ora-trace-latest.txt convention but per-conversation).
+         try:
+@@ -317,6 +339,311 @@ def write_step_health(trace_dir: str | None,
+               file=sys.stderr)
+ 
+ 
++# ---------------------------------------------------------------------------
++# Trace manifest (Chunk 0 — the join layer)
++# ---------------------------------------------------------------------------
++# One trace-manifest.json per turn directory. Written as a skeleton by
++# ``start_trace`` and overwritten in place by ``finalize_manifest`` from the
++# single generator-level ``finally`` in the server's turn paths. The manifest
++# is the mechanical join between conversation.json turns (``trace_ref``) and
++# the trace store, and the anti-false-confidence record: expected vs actual
++# steps, plus an honest ``trace_kind`` / ``terminal_status`` for every turn
++# path including the metadata-only short-circuits.
++
++MANIFEST_FILENAME = "trace-manifest.json"
++MANIFEST_SCHEMA_VERSION = 1
++
++# Turn kinds whose *normal* end is not a completed analytical pipeline.
++# A turn of one of these kinds that exits without an error hint finalizes
++# as ``short_circuit`` — never ``abandoned``.
++SHORT_CIRCUIT_KINDS = frozenset({
++    "runtime_command", "risk_hold", "resolution_continuation",
++    "framework_elicitation", "framework_command", "no_endpoint_error",
++    "direct",
++})
++
++# Required (always-written on a clean run) step files per gear for full
++# pipeline turns. Everything else that lands as step*.json is a legitimate
++# observed step (verifier cycles, claim verification, unflagged scans,
++# quality gate, web consultation, contingency fallbacks) but is deliberately
++# NOT expected-counted, so its absence can never render as a missing step
++# (design Q3 as modified by the 2026-07-11 design-gate verdict).
++_REQUIRED_STEPS_COMMON = ["step1-phase-a", "step1-pre-routing"]
++_REQUIRED_STEPS_BY_GEAR = {
++    1: _REQUIRED_STEPS_COMMON + ["step2-context"],
++    2: _REQUIRED_STEPS_COMMON + ["step2-context"],
++    3: _REQUIRED_STEPS_COMMON + [
++        "step2-context", "step3-depth", "step4-eval", "step5-revised",
++    ],
++    4: _REQUIRED_STEPS_COMMON + [
++        "step2-context", "step3-depth", "step3-breadth",
++        "step4-eval-of-depth", "step4-eval-of-breadth",
++        "step5-revised-depth", "step5-revised-breadth",
++        "step7-consolidated", "step8-formatted",
++    ],
++}
++
++# step*.json files that are derived summaries, not pipeline steps. They are
++# excluded from ``actual_steps`` and listed under ``derived_artifacts``
++# instead, so viewer missing-step rendering stays clean (design-gate
++# condition 5). ``cost-summary`` doesn't match the step* glob but belongs
++# in the derived list when present.
++_DERIVED_STEP_STEMS = frozenset({
++    "step-health", "step-visual-hook", "step-visual-emissions",
++})
++_DERIVED_EXTRA_FILES = ("cost-summary.json",)
++
++# Contingency fallback markers: run_gear3/run_gear4 (orchestrator/boot.py)
++# have documented, legitimate fallback branches that complete a turn with a
++# materially smaller step footprint than the gear's normal table — a
++# single-endpoint gear-3 turn collapses analyst→eval→revise into one
++# "step3-single-analyst-fallback" call and returns; a gear-4 turn invoked
++# with an external-consolidation request skips native consolidation and
++# formatting entirely, writing "step7-external-consolidation-handoff" and
++# returning. Both write step-health.json and complete normally — they are
++# not errors or degradations to flag. When the marker is present in
++# actual_steps it REPLACES (never merely supplements) the listed normal
++# steps in expected_steps, so these legitimate completions never render a
++# permanent false "missing step" warning.
++_CONTINGENCY_SATISFIERS = {
++    3: {
++        "step3-single-analyst-fallback": {
++            "step3-depth", "step4-eval", "step5-revised",
++        },
++    },
++    4: {
++        "step7-external-consolidation-handoff": {
++            "step7-consolidated", "step8-formatted",
++        },
++    },
++}
++
++
++def trace_ref_for_dir(trace_dir: str | None) -> str | None:
++    """Return the machine-resolvable trace ref for a turn directory.
++
++    The ref is ``"<conversation_id>/<turn_timestamp>"`` relative to
++    ``TRACE_ROOT`` — no absolute paths, so conversation.json entries stay
++    portable across machines and relocations. Returns ``None`` for a
++    ``None``/empty ``trace_dir`` or a directory outside the trace root.
++    """
++    if not trace_dir:
++        return None
++    try:
++        rel = os.path.relpath(os.path.abspath(trace_dir),
++                              os.path.abspath(TRACE_ROOT))
++        if rel.startswith(".."):
++            return None
++        return rel.replace(os.sep, "/")
++    except Exception:
++        return None
++
++
++def _manifest_skeleton(conversation_id: str | None,
++                       turn_ts: str,
++                       conversation_tag: str = "") -> dict[str, Any]:
++    """The schema-v1 manifest as written at trace start."""
++    return {
++        "schema_version": MANIFEST_SCHEMA_VERSION,
++        "conversation_id": conversation_id,
++        "turn_timestamp_utc": turn_ts,
++        "trace_kind": "unknown",
++        "terminal_status": "open",
++        "gear": None,
++        "mode": None,
++        "framework_id": None,
++        "milestone_id": None,
++        "expected_steps": [],
++        "actual_steps": [],
++        "derived_artifacts": [],
++        "redaction_level": ("private" if conversation_tag == "private"
++                            else "default"),
++        "retention_state": "default",
++        "parent_trace_ref": None,
++        "child_trace_refs": [],
++        "finalized_at": None,
++    }
++
++
++def _expected_steps_for(kind: str, gear: int | None,
++                        actual: list[str] | None = None) -> list[str]:
++    """Static required-step derivation (design Q3: per-gear tables).
++
++    Short-circuit kinds expect nothing beyond metadata — except ``direct``
++    (the gear-1/2 bypass), which runs step1 before bypassing and therefore
++    expects the step1 files. A pipeline turn expects its gear's table,
++    adjusted for any contingency-fallback marker actually observed (see
++    ``_CONTINGENCY_SATISFIERS`` — a legitimate reduced-footprint completion,
++    not a missing step). A clarification resume expects the gear table
++    minus the step1 files (the resume reuses the paused turn's stored
++    step1 dict; step1 is never re-run, so expecting it would manufacture a
++    false missing-step warning). Unknown gear → empty list (never guess).
++    Lists are sorted so expected/actual diff cleanly.
++    """
++    if kind == "direct":
++        return sorted(_REQUIRED_STEPS_COMMON)
++    if kind in SHORT_CIRCUIT_KINDS or kind == "clarification_pending":
++        # A paused (clarification_pending) turn legitimately ends after
++        # step1; its step1 files show up in actual_steps as observed.
++        return []
++    table = _REQUIRED_STEPS_BY_GEAR.get(gear) if gear else None
++    if not table:
++        return []
++    required = set(table)
++    if kind == "clarification_resume":
++        required = {s for s in required if not s.startswith("step1")}
++    else:
++        actual_set = set(actual or [])
++        for marker, replaced in _CONTINGENCY_SATISFIERS.get(gear, {}).items():
++            if marker in actual_set:
++                required -= replaced
++                required.add(marker)
++    return sorted(required)
++
++
++def _scan_turn_dir(trace_dir: str) -> tuple[list[str], list[str]]:
++    """Classify the turn dir's contents into (actual_steps, derived).
++
++    ``actual_steps`` = stems of ``step*.json`` files that are real pipeline
++    steps; ``derived`` = summary/derived artifacts present (step-health,
++    visual hook/emissions, cost-summary). Markdown siblings and JSONL logs
++    are neither.
++    """
++    actual: list[str] = []
++    derived: list[str] = []
++    for name in os.listdir(trace_dir):
++        if not name.endswith(".json") or name.endswith(".tmp"):
++            continue
++        stem = name[:-len(".json")]
++        if stem in _DERIVED_STEP_STEMS:
++            derived.append(stem)
++        elif name in _DERIVED_EXTRA_FILES:
++            derived.append(stem)
++        elif stem.startswith("step"):
++            actual.append(stem)
++        # metadata.json / trace-manifest.json are structural, not steps.
++    return sorted(actual), sorted(derived)
++
++
++def finalize_manifest(trace_dir: str | None,
++                      kind: str = "unknown",
++                      status_hint: str | None = None,
++                      mode: str | None = None,
++                      gear: int | None = None,
++                      parent_trace_ref: str | None = None) -> None:
++    """Finalize the turn's trace manifest. Idempotent; never raises.
++
++    Called from the single generator-level ``finally`` wrapping each server
++    turn path (design Q1), so it also fires on ``GeneratorExit`` (client
++    disconnect) and uncaught exceptions. Safe to call repeatedly — it
++    re-derives from the turn dir and atomically overwrites
++    (``compute_cost_summary`` precedent).
++
++    ``terminal_status`` derivation, in precedence order (design-gate
++    conditions 1 and 2):
++
++    1. ``status_hint == "error"`` → ``error``. Set by the caller both for
++       caught-yield-error-and-return paths and for exceptions propagating
++       out of the generator body.
++    2. ``status_hint == "paused"`` → ``paused``. A clarification pause is
++       an intentional stop, never ``abandoned``.
++    3. ``status_hint == "completed"`` or ``step-health.json`` present →
++       ``completed``. The explicit hint covers gear-1/2 pipeline turns,
++       which never write step-health.
++    4. kind in the short-circuit set → ``short_circuit``.
++    5. otherwise → ``abandoned``.
++    """
++    if not trace_dir:
++        return
++    try:
++        manifest_path = os.path.join(trace_dir, MANIFEST_FILENAME)
++        # Start from the on-disk manifest so fields this finalizer does not
++        # own (retention_state, redaction_level, child_trace_refs, a
++        # previously-set parent_trace_ref) survive re-finalization.
++        manifest: dict[str, Any] | None = None
++        try:
++            with open(manifest_path) as f:
++                loaded = json.load(f)
++            if isinstance(loaded, dict):
++                manifest = loaded
++        except Exception:
++            manifest = None
++        if manifest is None:
++            # Pre-manifest trace dir (or unreadable skeleton) — rebuild from
++            # the dir name; conversation_id is the parent dir name.
++            conv = os.path.basename(os.path.dirname(trace_dir)) or None
++            manifest = _manifest_skeleton(
++                None if conv == "_orphan" else conv,
++                os.path.basename(trace_dir),
++            )
++
++        actual, derived = _scan_turn_dir(trace_dir)
++        step_health_present = "step-health" in derived
++
++        # step-health.json is the ACTUAL-execution ground truth, written by
++        # whichever gear function actually completed. The caller's ``gear``
++        # is only a pre-dispatch prediction, stamped before run_gear3 /
++        # run_gear4 execute — and both silently degrade to a lower gear
++        # internally (single-endpoint / unrecoverable-analyst fallback)
++        # without the caller ever finding out. When both a fallback and a
++        # final completion write step-health.json, the LAST write (the
++        # gear that actually finished) wins on disk — so step-health.json
++        # always wins here when present and readable, never just when the
++        # caller passed gear=None (a stale gear=4 hint must not survive a
++        # turn that actually ran and completed as gear 3).
++        if step_health_present:
++            try:
++                with open(os.path.join(trace_dir, "step-health.json")) as f:
++                    _sh_gear = json.load(f).get("gear")
++                if _sh_gear is not None:
++                    gear = _sh_gear
++            except Exception:
++                pass
++        if mode is None:
++            try:
++                with open(os.path.join(trace_dir,
++                                       "step1-pre-routing.json")) as f:
++                    mode = json.load(f).get("dispatched_mode_id")
++            except Exception:
++                mode = None
++
++        # A full-pipeline turn refines to its gear-specific kind once the
++        # gear is known; a turn abandoned before gear selection stays the
++        # honest bare "chat".
++        if kind == "chat" and gear:
++            kind = f"chat-gear{gear}"
++
++        if status_hint == "error":
++            status = "error"
++        elif status_hint == "paused":
++            status = "paused"
++        elif status_hint == "completed" or step_health_present:
++            status = "completed"
++        elif kind in SHORT_CIRCUIT_KINDS:
++            status = "short_circuit"
++        else:
++            status = "abandoned"
++
++        manifest.update({
++            "schema_version": MANIFEST_SCHEMA_VERSION,
++            "trace_kind": kind,
++            "terminal_status": status,
++            "gear": gear,
++            "mode": mode,
++            "expected_steps": _expected_steps_for(kind, gear, actual),
++            "actual_steps": actual,
++            "derived_artifacts": derived,
++            "finalized_at": _dt.datetime.utcnow().isoformat() + "Z",
++        })
++        if parent_trace_ref:
++            manifest["parent_trace_ref"] = parent_trace_ref
++        _atomic_write_json(manifest_path, manifest)
++    except Exception as e:
++        # Fail-open (design-gate Q1): the manifest must never break a turn.
++        print(f"[pipeline_trace] finalize_manifest failed: {e}",
++              file=sys.stderr)
++
++
+ # ---------------------------------------------------------------------------
+ # Internal helpers
+ # ---------------------------------------------------------------------------
+diff --git a/orchestrator/tests/test_stealth_short_circuit_purge_2026_05_17.py b/orchestrator/tests/test_stealth_short_circuit_purge_2026_05_17.py
+index ce349238..a7961bdc 100644
+--- a/orchestrator/tests/test_stealth_short_circuit_purge_2026_05_17.py
++++ b/orchestrator/tests/test_stealth_short_circuit_purge_2026_05_17.py
+@@ -55,7 +55,15 @@ class TestPipelineStreamHoistsStealthAboveShortCircuits(unittest.TestCase):
+         self.src = server_py.read_text()
+ 
+         # Locate the _pipeline_stream function body (next def after it).
+-        start = self.src.index("def _pipeline_stream(")
++        #
++        # 2026-07-11 (Trace Walk Chunk 0): ``_pipeline_stream`` is now a
++        # thin wrapper owning the generator-level try/finally that
++        # finalizes the turn's trace manifest; it delegates the actual
++        # turn logic to ``_pipeline_stream_impl`` via ``yield from``. The
++        # stealth/trace-setup-before-every-short-circuit invariant this
++        # test class protects lives in the impl body now, so locate that
++        # function instead of the (now near-empty) wrapper.
++        start = self.src.index("def _pipeline_stream_impl(")
+         # Heuristic: cut at the next top-level def or @route.
+         end = self.src.index("\ndef ", start + 1)
+         self.body = self.src[start:end]
+diff --git a/orchestrator/tests/test_trace_manifest.py b/orchestrator/tests/test_trace_manifest.py
+new file mode 100644
+index 00000000..2cd0f487
+--- /dev/null
++++ b/orchestrator/tests/test_trace_manifest.py
+@@ -0,0 +1,703 @@
++"""Tests for the per-turn trace manifest (Trace Walk Chunk 0).
++
++Covers the pipeline_trace manifest layer (skeleton at start_trace, the
++idempotent fail-open finalizer, honest kind/status derivation per path
++class, actual-step filtering, trace refs), the conversation-side
++``trace_ref`` stamp, gitignore coverage, and the server generator wrapper
++(short-circuit / error / disconnect finalization) with the pipeline body
++stubbed — no model calls.
++
++Run::
++
++    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_trace_manifest -v
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++HERE = Path(__file__).resolve().parent
++ORCHESTRATOR = HERE.parent
++sys.path.insert(0, str(ORCHESTRATOR))
++if str(HERE) not in sys.path:
++    sys.path.insert(0, str(HERE))
++
++import live_guard  # noqa: E402,F401  — arm the oversight write quarantine
++
++# NOTE: running the suite from a worktree other than ~/ora requires
++# ``ORA_HOME`` exported to that worktree's root (as start.sh does in
++# production) — server.py's WORKSPACE and several other modules default to
++# the literal ``~/ora`` otherwise, which can cross-contaminate sys.modules
++# with the live checkout's copy of a same-named module during full-suite
++# discovery. Do NOT work around this here with sys.modules eviction: doing
++# so swaps the module OBJECT out from under any earlier-collected test
++# fixture that already patched attributes on it (observed regression:
++# test_conversations_filter.py / test_modal_endpoints.py silently read the
++# live default sessions root instead of their tempdir because server.py's
++# lazy per-request ``from conversation_memory import ...`` resolved a
++# different object than the one the test patched). Set ORA_HOME instead.
++import pipeline_trace  # noqa: E402
++import conversation_memory  # noqa: E402
++
++
++class TraceManifestBase(unittest.TestCase):
++    """Redirect TRACE_ROOT into a tempdir; no test touches the live tree."""
++
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.root = os.path.join(self.tmp.name, "pipeline-traces")
++        os.makedirs(self.root)
++        patcher = mock.patch.object(pipeline_trace, "TRACE_ROOT", self.root)
++        patcher.start()
++        self.addCleanup(patcher.stop)
++        self.addCleanup(self.tmp.cleanup)
++
++    # -- helpers -----------------------------------------------------------
++
++    def start(self, conv="conv-a", **kw):
++        return pipeline_trace.start_trace(conv, raw_input="hello", **kw)
++
++    def manifest(self, trace_dir):
++        with open(os.path.join(trace_dir, "trace-manifest.json")) as f:
++            return json.load(f)
++
++    def touch_step(self, trace_dir, stem, payload=None):
++        pipeline_trace.write_step(trace_dir, stem, payload or {"x": 1})
++
++
++class TestSkeleton(TraceManifestBase):
++    def test_start_trace_writes_manifest_skeleton(self):
++        d = self.start()
++        m = self.manifest(d)
++        self.assertEqual(m["schema_version"], 1)
++        self.assertEqual(m["trace_kind"], "unknown")
++        self.assertEqual(m["terminal_status"], "open")
++        self.assertEqual(m["conversation_id"], "conv-a")
++        self.assertEqual(m["turn_timestamp_utc"], os.path.basename(d))
++        self.assertIsNone(m["gear"])
++        self.assertIsNone(m["mode"])
++        self.assertIsNone(m["parent_trace_ref"])
++        self.assertEqual(m["child_trace_refs"], [])
++        self.assertEqual(m["retention_state"], "default")
++        self.assertEqual(m["redaction_level"], "default")
++        self.assertIsNone(m["finalized_at"])
++
++    def test_private_tag_sets_redaction_level(self):
++        d = self.start(conversation_tag="private")
++        self.assertEqual(self.manifest(d)["redaction_level"], "private")
++
++    def test_stealth_produces_no_files(self):
++        d = pipeline_trace.start_trace("conv-s", stealth=True)
++        self.assertIsNone(d)
++        self.assertEqual(os.listdir(self.root), [])
++
++    def test_global_disable_produces_no_files(self):
++        with mock.patch.dict(os.environ, {"ORA_PIPELINE_TRACE": "off"}):
++            d = pipeline_trace.start_trace("conv-x")
++        self.assertIsNone(d)
++        self.assertEqual(os.listdir(self.root), [])
++
++    def test_no_tmp_residue(self):
++        d = self.start()
++        residue = [n for n in os.listdir(d) if n.endswith(".tmp")]
++        self.assertEqual(residue, [])
++
++
++class TestTraceRef(TraceManifestBase):
++    def test_ref_is_relative_conv_slash_ts(self):
++        d = self.start("conv-r")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        self.assertEqual(ref, f"conv-r/{os.path.basename(d)}")
++        self.assertNotIn(os.sep if os.sep != "/" else "\\", ref)
++
++    def test_none_and_outside_root(self):
++        self.assertIsNone(pipeline_trace.trace_ref_for_dir(None))
++        self.assertIsNone(pipeline_trace.trace_ref_for_dir(""))
++        self.assertIsNone(pipeline_trace.trace_ref_for_dir(self.tmp.name))
++
++
++class TestFinalizeStatusAndKind(TraceManifestBase):
++    """One test per turn-path class (design §Tests: simulate the groups)."""
++
++    def test_metadata_only_short_circuit(self):
++        # Runtime command, resolution continuation, framework paths: the
++        # turn dir holds metadata + manifest only.
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="runtime_command")
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "runtime_command")
++        self.assertEqual(m["terminal_status"], "short_circuit")
++        self.assertEqual(m["expected_steps"], [])
++        self.assertEqual(m["actual_steps"], [])
++        self.assertIsNotNone(m["finalized_at"])
++
++    def test_caught_error_path_is_error_not_short_circuit(self):
++        # Design-gate condition 1: paths that catch, yield error, and
++        # return must finalize as error.
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="runtime_command",
++                                         status_hint="error")
++        self.assertEqual(self.manifest(d)["terminal_status"], "error")
++
++    def test_no_endpoint_error(self):
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="no_endpoint_error",
++                                         status_hint="error")
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "no_endpoint_error")
++        self.assertEqual(m["terminal_status"], "error")
++
++    def test_clarification_pending_is_paused_not_abandoned(self):
++        # Design-gate condition 2.
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step1-pre-routing")
++        pipeline_trace.finalize_manifest(d, kind="clarification_pending",
++                                         status_hint="paused")
++        m = self.manifest(d)
++        self.assertEqual(m["terminal_status"], "paused")
++        self.assertEqual(m["expected_steps"], [])
++        self.assertEqual(m["actual_steps"],
++                         ["step1-phase-a", "step1-pre-routing"])
++
++    def test_direct_bypass_short_circuit(self):
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step1-pre-routing")
++        pipeline_trace.finalize_manifest(d, kind="direct")
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "direct")
++        self.assertEqual(m["terminal_status"], "short_circuit")
++        self.assertEqual(m["expected_steps"],
++                         ["step1-phase-a", "step1-pre-routing"])
++
++    def test_abandoned_mid_pipeline(self):
++        # step1 landed, no step-health, kind chat, no hints → abandoned;
++        # the bare "chat" kind survives (gear never known).
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step1-pre-routing")
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "chat")
++        self.assertEqual(m["terminal_status"], "abandoned")
++
++    def test_completed_gear4_via_step_health(self):
++        d = self.start()
++        for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
++                  "step3-depth", "step3-breadth", "step4-eval-of-depth",
++                  "step4-eval-of-breadth", "step5-revised-depth",
++                  "step5-revised-breadth", "step7-consolidated",
++                  "step8-formatted"):
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {"step3": (True, "ok")}, 4, [])
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "chat-gear4")
++        self.assertEqual(m["terminal_status"], "completed")
++        self.assertEqual(m["gear"], 4)
++        self.assertEqual(m["expected_steps"],
++                         sorted(pipeline_trace._REQUIRED_STEPS_BY_GEAR[4]))
++        self.assertEqual(set(m["expected_steps"]) - set(m["actual_steps"]),
++                         set())
++
++    def test_completed_gear2_without_step_health(self):
++        # Gear 1/2 never writes step-health — the explicit completed hint
++        # + gear from turn state must classify honestly (never abandoned).
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step1-pre-routing")
++        self.touch_step(d, "step2-context")
++        pipeline_trace.finalize_manifest(d, kind="chat",
++                                         status_hint="completed", gear=2)
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "chat-gear2")
++        self.assertEqual(m["terminal_status"], "completed")
++        self.assertEqual(m["expected_steps"],
++                         ["step1-phase-a", "step1-pre-routing",
++                          "step2-context"])
++
++    def test_error_hint_beats_step_health(self):
++        # A turn that completed its gear but crashed on the way out is an
++        # error, not completed.
++        d = self.start()
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="error")
++        self.assertEqual(self.manifest(d)["terminal_status"], "error")
++
++    def test_mid_pipeline_risk_hold(self):
++        # _run_pipeline_from_step2's hold return reassigns the kind.
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step1-pre-routing")
++        self.touch_step(d, "step2-context")
++        pipeline_trace.finalize_manifest(d, kind="risk_hold", gear=4)
++        m = self.manifest(d)
++        self.assertEqual(m["trace_kind"], "risk_hold")
++        self.assertEqual(m["terminal_status"], "short_circuit")
++        self.assertEqual(m["expected_steps"], [])
++
++
++class TestExpectedActualDerivation(TraceManifestBase):
++    def test_derived_artifacts_filtered_from_actual(self):
++        # Design-gate condition 5: step-health / visual hook / visual
++        # emissions / cost-summary are derived, never steps.
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        self.touch_step(d, "step-visual-hook")
++        self.touch_step(d, "step-visual-emissions")
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace._atomic_write_json(
++            os.path.join(d, "cost-summary.json"), {"total": 0})
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertEqual(m["actual_steps"], ["step1-phase-a"])
++        self.assertEqual(m["derived_artifacts"],
++                         ["cost-summary", "step-health",
++                          "step-visual-emissions", "step-visual-hook"])
++
++    def test_observed_only_steps_stay_in_actual_but_never_expected(self):
++        # Verifier cycles / claim verification / quality gate / web
++        # consultation are observed-only (design Q3 as modified): present
++        # in actual_steps, never in expected_steps.
++        d = self.start()
++        observed = ["step2-web-consultation", "step4.5-claim-verification",
++                    "step5.5-unflagged-scan", "step6-verifier-cycle-1",
++                    "step6-verifier-cycle-2", "step6_5-quality-gate"]
++        for s in observed:
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        for s in observed:
++            self.assertIn(s, m["actual_steps"])
++            self.assertNotIn(s, m["expected_steps"])
++
++    def test_clarification_resume_expects_no_step1(self):
++        # The resume reuses the paused turn's stored step1 dict; expecting
++        # step1 files would manufacture a false missing-step warning.
++        d = self.start()
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace.finalize_manifest(d, kind="clarification_resume")
++        m = self.manifest(d)
++        self.assertEqual(m["expected_steps"],
++                         ["step2-context", "step3-depth", "step4-eval",
++                          "step5-revised"])
++
++    def test_mode_from_pre_routing_when_no_hint(self):
++        d = self.start()
++        self.touch_step(d, "step1-pre-routing",
++                        {"dispatched_mode_id": "root-cause-analysis"})
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        self.assertEqual(self.manifest(d)["mode"], "root-cause-analysis")
++
++    def test_explicit_mode_hint_wins(self):
++        d = self.start()
++        self.touch_step(d, "step1-pre-routing",
++                        {"dispatched_mode_id": "other"})
++        pipeline_trace.finalize_manifest(d, kind="chat", mode="cui-bono")
++        self.assertEqual(self.manifest(d)["mode"], "cui-bono")
++
++
++class TestGearDegradeAndContingencies(TraceManifestBase):
++    """Adversarial-review findings (2026-07-11): run_gear4 silently
++    degrading to run_gear3, and the two documented fallback branches that
++    complete with a smaller step footprint than the gear's normal table.
++    """
++
++    def test_step_health_gear_wins_over_stale_predispatch_hint(self):
++        # run_gear4 falls back to run_gear3 internally on unrecoverable
++        # analyst streams; the caller's turn_state["gear"] was stamped
++        # BEFORE dispatch and never corrected. step-health.json (written
++        # last, by whichever gear function actually completed) must win.
++        d = self.start()
++        for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
++                  "step3-depth", "step4-eval", "step5-revised"):
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace.finalize_manifest(d, kind="chat", gear=4)
++        m = self.manifest(d)
++        self.assertEqual(m["gear"], 3)
++        self.assertEqual(m["trace_kind"], "chat-gear3")
++        self.assertEqual(
++            set(m["expected_steps"]) - set(m["actual_steps"]), set())
++
++    def test_predispatch_hint_used_when_no_step_health(self):
++        # Gear 1/2 never writes step-health.json — the caller's hint is
++        # the only signal and must still be honored (no regression).
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="chat",
++                                         status_hint="completed", gear=2)
++        self.assertEqual(self.manifest(d)["gear"], 2)
++
++    def test_gear3_single_analyst_fallback_satisfies_requirement(self):
++        d = self.start()
++        for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
++                  "step3-single-analyst-fallback"):
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {}, 3, [])
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertEqual(m["gear"], 3)
++        self.assertNotIn("step3-depth", m["expected_steps"])
++        self.assertNotIn("step4-eval", m["expected_steps"])
++        self.assertNotIn("step5-revised", m["expected_steps"])
++        self.assertIn("step3-single-analyst-fallback", m["expected_steps"])
++        self.assertEqual(
++            set(m["expected_steps"]) - set(m["actual_steps"]), set())
++
++    def test_gear4_external_consolidation_handoff_satisfies_requirement(self):
++        d = self.start()
++        for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
++                  "step3-depth", "step3-breadth", "step4-eval-of-depth",
++                  "step4-eval-of-breadth", "step5-revised-depth",
++                  "step5-revised-breadth", "step7-external-consolidation-handoff"):
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {}, 4, [])
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertEqual(m["gear"], 4)
++        self.assertNotIn("step7-consolidated", m["expected_steps"])
++        self.assertNotIn("step8-formatted", m["expected_steps"])
++        self.assertIn("step7-external-consolidation-handoff",
++                      m["expected_steps"])
++        self.assertEqual(
++            set(m["expected_steps"]) - set(m["actual_steps"]), set())
++
++    def test_normal_gear4_completion_unaffected_by_contingency_logic(self):
++        # No fallback marker present — the normal full table still applies.
++        d = self.start()
++        for s in ("step1-phase-a", "step1-pre-routing", "step2-context",
++                  "step3-depth", "step3-breadth", "step4-eval-of-depth",
++                  "step4-eval-of-breadth", "step5-revised-depth",
++                  "step5-revised-breadth", "step7-consolidated",
++                  "step8-formatted"):
++            self.touch_step(d, s)
++        pipeline_trace.write_step_health(d, {}, 4, [])
++        pipeline_trace.finalize_manifest(d, kind="chat")
++        m = self.manifest(d)
++        self.assertIn("step7-consolidated", m["expected_steps"])
++        self.assertIn("step8-formatted", m["expected_steps"])
++        self.assertNotIn("step7-external-consolidation-handoff",
++                         m["expected_steps"])
++
++
++class TestFinalizeLifecycle(TraceManifestBase):
++    def test_idempotent_double_finalize(self):
++        d = self.start()
++        self.touch_step(d, "step1-phase-a")
++        pipeline_trace.finalize_manifest(d, kind="direct")
++        first = self.manifest(d)
++        pipeline_trace.finalize_manifest(d, kind="direct")
++        second = self.manifest(d)
++        first.pop("finalized_at"); second.pop("finalized_at")
++        self.assertEqual(first, second)
++
++    def test_refinalize_preserves_unowned_fields(self):
++        d = self.start()
++        m = self.manifest(d)
++        m["retention_state"] = "pinned"
++        m["child_trace_refs"] = ["conv-a/x"]
++        pipeline_trace._atomic_write_json(
++            os.path.join(d, "trace-manifest.json"), m)
++        pipeline_trace.finalize_manifest(d, kind="direct")
++        m2 = self.manifest(d)
++        self.assertEqual(m2["retention_state"], "pinned")
++        self.assertEqual(m2["child_trace_refs"], ["conv-a/x"])
++
++    def test_parent_trace_ref_recorded_and_preserved(self):
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="clarification_resume",
++                                         parent_trace_ref="conv-a/20260101T000000Z")
++        self.assertEqual(self.manifest(d)["parent_trace_ref"],
++                         "conv-a/20260101T000000Z")
++        # A later re-finalize without the arg must not erase it.
++        pipeline_trace.finalize_manifest(d, kind="clarification_resume")
++        self.assertEqual(self.manifest(d)["parent_trace_ref"],
++                         "conv-a/20260101T000000Z")
++
++    def test_finalize_rebuilds_when_skeleton_missing(self):
++        # Pre-manifest trace dirs (or a clobbered skeleton) still finalize.
++        d = self.start()
++        os.remove(os.path.join(d, "trace-manifest.json"))
++        pipeline_trace.finalize_manifest(d, kind="runtime_command")
++        m = self.manifest(d)
++        self.assertEqual(m["conversation_id"], "conv-a")
++        self.assertEqual(m["turn_timestamp_utc"], os.path.basename(d))
++        self.assertEqual(m["terminal_status"], "short_circuit")
++
++    def test_fail_open(self):
++        # None and nonexistent dirs must never raise.
++        pipeline_trace.finalize_manifest(None, kind="chat")
++        pipeline_trace.finalize_manifest(
++            os.path.join(self.root, "nope", "nothere"), kind="chat")
++
++    def test_no_tmp_residue_after_finalize(self):
++        d = self.start()
++        pipeline_trace.finalize_manifest(d, kind="direct")
++        residue = [n for n in os.listdir(d) if n.endswith(".tmp")]
++        self.assertEqual(residue, [])
++
++
++class TestGitignoreCoverage(unittest.TestCase):
++    def test_manifest_path_is_gitignored(self):
++        repo = ORCHESTRATOR.parent
++        if not (repo / ".git").exists():  # pragma: no cover
++            self.skipTest("not a git checkout")
++        probe = "data/pipeline-traces/conv/20260101T000000Z/trace-manifest.json"
++        rc = subprocess.run(
++            ["git", "check-ignore", "-q", probe],
++            cwd=str(repo), capture_output=True,
++        ).returncode
++        self.assertEqual(rc, 0, f"{probe} is not gitignored")
++
++
++class TestConversationSideJoin(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.tmp.cleanup)
++
++    def test_trace_ref_stamped_on_assistant_turn(self):
++        path = conversation_memory.save_turn_spatial_state(
++            "conv-j", "hi", "hello",
++            sessions_root=Path(self.tmp.name),
++            trace_ref="conv-j/20260101T000000Z",
++        )
++        data = json.loads(Path(path).read_text())
++        user_turn, assistant_turn = data["messages"][-2:]
++        self.assertEqual(assistant_turn["role"], "assistant")
++        self.assertEqual(assistant_turn["trace_ref"],
++                         "conv-j/20260101T000000Z")
++        self.assertNotIn("trace_ref", user_turn)
++
++    def test_trace_ref_defaults_null(self):
++        # Stealth / untraced turns: the key is present, value null.
++        path = conversation_memory.save_turn_spatial_state(
++            "conv-k", "hi", "hello", sessions_root=Path(self.tmp.name),
++        )
++        data = json.loads(Path(path).read_text())
++        self.assertIsNone(data["messages"][-1]["trace_ref"])
++
++
++class TestServerStreamWrapper(unittest.TestCase):
++    """The generator-level wrapper finalizes on every exit path.
++
++    Uses the real _pipeline_stream with the runtime-command short-circuit
++    (run_runtime_command stubbed) — no model calls, no endpoint needed.
++    """
++
++    @classmethod
++    def setUpClass(cls):
++        sys.path.insert(0, str(ORCHESTRATOR.parent / "server"))
++        import server  # noqa: WPS433
++        cls.S = server
++
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.root = os.path.join(self.tmp.name, "pipeline-traces")
++        os.makedirs(self.root)
++        # The server imports ``orchestrator.pipeline_trace``; the unit tests
++        # above import top-level ``pipeline_trace``. They are DISTINCT module
++        # objects — patch TRACE_ROOT on both so no path escapes the tempdir.
++        import orchestrator.pipeline_trace as opt  # noqa: WPS433
++        for mod in (pipeline_trace, opt):
++            patcher = mock.patch.object(mod, "TRACE_ROOT", self.root)
++            patcher.start()
++            self.addCleanup(patcher.stop)
++        self.addCleanup(self.tmp.cleanup)
++
++    def _events(self, chunks):
++        out = []
++        for c in chunks:
++            try:
++                out.append(json.loads(c[6:]))
++            except Exception:
++                pass
++        return out
++
++    def _manifest_for(self, conv):
++        conv_dir = os.path.join(self.root, conv)
++        turns = [t for t in os.listdir(conv_dir) if not t.startswith("_")]
++        self.assertEqual(len(turns), 1)
++        with open(os.path.join(conv_dir, turns[0], "trace-manifest.json")) as f:
++            return json.load(f)
++
++    def test_runtime_command_short_circuit_finalizes_honestly(self):
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               return_value="queue empty"):
++            events = self._events(
++                self.S._pipeline_stream("/queue", [], panel_id="t-conv-rc"))
++        m = self._manifest_for("t-conv-rc")
++        self.assertEqual(m["trace_kind"], "runtime_command")
++        self.assertEqual(m["terminal_status"], "short_circuit")
++        # The in-band trace_ref channel fired and matches the manifest dir.
++        refs = [e["ref"] for e in events if e.get("type") == "trace_ref"]
++        self.assertEqual(len(refs), 1)
++        self.assertTrue(refs[0].startswith("t-conv-rc/"))
++
++    def test_runtime_command_error_finalizes_error(self):
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               side_effect=RuntimeError("boom")):
++            list(self.S._pipeline_stream("/queue", [], panel_id="t-conv-err"))
++        m = self._manifest_for("t-conv-err")
++        self.assertEqual(m["trace_kind"], "runtime_command")
++        self.assertEqual(m["terminal_status"], "error")
++
++    def test_client_disconnect_finalizes_abandoned(self):
++        gen = self.S._pipeline_stream("anything", [], panel_id="t-conv-gx")
++        next(gen)          # first event (trace_ref) — turn underway
++        gen.close()        # GeneratorExit — client disconnected
++        m = self._manifest_for("t-conv-gx")
++        self.assertEqual(m["terminal_status"], "abandoned")
++        self.assertEqual(m["trace_kind"], "unknown")
++
++    def test_direct_stream_no_endpoint_finalizes_error_via_fallback(self):
++        # Adversarial-review finding: _direct_stream's own endpoint check
++        # (reached via the fallback_to_direct branch, which already set
++        # kind="direct") must set turn_state["status"]="error" — not
++        # leave the turn misclassified as a clean short_circuit.
++        with mock.patch.object(self.S, "get_endpoint", return_value=None):
++            list(self.S._direct_stream("hi", [], turn_state={
++                "kind": "direct", "status": None,
++            }))
++        # Verified via the turn_state dict directly (no trace_dir here —
++        # this unit exercises _direct_stream in isolation, matching the
++        # design's own call-site contract).
++
++    def test_direct_stream_sets_error_status_on_turn_state(self):
++        turn_state = {"kind": "direct", "status": None}
++        with mock.patch.object(self.S, "get_endpoint", return_value=None):
++            list(self.S._direct_stream("hi", [], turn_state=turn_state))
++        self.assertEqual(turn_state["status"], "error")
++
++    def test_direct_stream_turn_state_none_is_a_no_op(self):
++        # The /direct slash-command call site passes no turn_state at all.
++        with mock.patch.object(self.S, "get_endpoint", return_value=None):
++            list(self.S._direct_stream("hi", []))  # must not raise
++
++    def test_direct_stream_risk_hold_rekinds_from_direct(self):
++        # Codex code-review-gate block, finding #2: the caller already
++        # stamped kind="direct" before invoking this generator; a held
++        # turn is an intentional stop, not the "direct" short-circuit —
++        # it must re-kind to risk_hold, or the manifest reads
++        # terminal_status: short_circuit for a turn that was actually held.
++        import risk_gate
++        turn_state = {"kind": "direct", "status": None}
++        with mock.patch.object(self.S, "get_endpoint",
++                               return_value={"name": "mock"}), \
++             mock.patch.object(risk_gate, "evaluate_hold",
++                               return_value=("held for review.", "fp")):
++            events = self._events(
++                list(self.S._direct_stream("hi", [], turn_state=turn_state)))
++        self.assertEqual(turn_state["kind"], "risk_hold")
++        self.assertTrue(any(e.get("type") == "response" for e in events))
++
++    def test_first_turn_stealth_tag_honored_when_no_envelope_exists(self):
++        # Codex code-review-gate block, finding #1: a brand-new
++        # conversation has no conversation.json envelope yet, so
++        # get_conversation_tag returns "" — the REQUEST's own
++        # conversation_tag (the client's stealth choice for this
++        # submission) must still be honoured, not silently ignored.
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               return_value="queue empty"), \
++             mock.patch("orchestrator.conversation_memory.get_conversation_tag",
++                        return_value=""):
++            events = self._events(list(self.S._pipeline_stream(
++                "/queue", [], panel_id="t-conv-stealth-new",
++                conversation_tag="stealth")))
++        conv_dir = os.path.join(self.root, "t-conv-stealth-new")
++        self.assertFalse(os.path.isdir(conv_dir))
++        self.assertFalse(any(e.get("type") == "trace_ref" for e in events))
++
++    def test_persisted_envelope_tag_wins_over_differing_request_tag(self):
++        # The inverse precedence: an EXISTING conversation's persisted tag
++        # is authoritative (immutable after first save) even if this
++        # particular request carries no tag of its own.
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               return_value="queue empty"), \
++             mock.patch("orchestrator.conversation_memory.get_conversation_tag",
++                        return_value="stealth"):
++            list(self.S._pipeline_stream(
++                "/queue", [], panel_id="t-conv-stealth-existing",
++                conversation_tag=""))
++        conv_dir = os.path.join(self.root, "t-conv-stealth-existing")
++        self.assertFalse(os.path.isdir(conv_dir))
++
++
++class TestRunPipelineFinalization(unittest.TestCase):
++    """boot.py::run_pipeline (the CLI/terminal entry point) is a second,
++    independent trace-opening call path from server.py's _pipeline_stream.
++    Adversarial-review finding: Chunk 0 originally wired the finalizer
++    into server.py only, leaving every run_pipeline turn's manifest
++    permanently stuck at terminal_status "open".
++    """
++
++    @classmethod
++    def setUpClass(cls):
++        sys.path.insert(0, str(ORCHESTRATOR))
++        import boot  # noqa: WPS433
++        cls.boot = boot
++
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.root = os.path.join(self.tmp.name, "pipeline-traces")
++        os.makedirs(self.root)
++        import orchestrator.pipeline_trace as opt  # noqa: WPS433
++        for mod in (pipeline_trace, opt, self.boot.pipeline_trace):
++            patcher = mock.patch.object(mod, "TRACE_ROOT", self.root)
++            patcher.start()
++            self.addCleanup(patcher.stop)
++        self.addCleanup(self.tmp.cleanup)
++
++    def _manifest_for(self, conv):
++        conv_dir = os.path.join(self.root, conv)
++        turns = [t for t in os.listdir(conv_dir) if not t.startswith("_")]
++        self.assertEqual(len(turns), 1)
++        with open(os.path.join(conv_dir, turns[0], "trace-manifest.json")) as f:
++            return json.load(f)
++
++    def test_runtime_command_finalizes_honestly(self):
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               return_value="queue empty"):
++            result = self.boot.run_pipeline(
++                "/queue", conversation_id="t-boot-rc")
++        self.assertEqual(result, "queue empty")
++        m = self._manifest_for("t-boot-rc")
++        self.assertEqual(m["trace_kind"], "runtime_command")
++        self.assertEqual(m["terminal_status"], "short_circuit")
++
++    def test_exception_finalizes_error_not_left_open(self):
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               side_effect=RuntimeError("boom")):
++            with self.assertRaises(RuntimeError):
++                self.boot.run_pipeline("/queue", conversation_id="t-boot-err")
++        m = self._manifest_for("t-boot-err")
++        self.assertEqual(m["terminal_status"], "error")
++
++    def test_conversation_tag_reaches_redaction_level(self):
++        # Adversarial-review finding: run_pipeline never threaded
++        # conversation_tag into start_trace, so CLI-invoked private
++        # conversations were silently stamped redaction_level "default".
++        import slash_commands
++        with mock.patch.object(slash_commands, "run_runtime_command",
++                               return_value="queue empty"):
++            self.boot.run_pipeline("/queue", conversation_id="t-boot-priv",
++                                   conversation_tag="private")
++        m = self._manifest_for("t-boot-priv")
++        self.assertEqual(m["redaction_level"], "private")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/server/server.py b/server/server.py
+index 4e7669eb..732dbec8 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -2722,7 +2722,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+                              clarification_text="", images=None,
+                              execution_context="interactive",
+                              extra_context=None, trace_dir=None,
+-                             config_name=None, conversation_tag=""):
++                             config_name=None, conversation_tag="",
++                             turn_state=None):
+     """Resume pipeline from Step 2 onward, optionally enriched with clarification answers.
+ 
+     ``extra_context`` (WP-3.3): an optional dict of extra keys to merge into the
+@@ -2819,6 +2820,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         yield _sse("visual_fallback", **fallback_frame)
+ 
+     gear = context_pkg["gear"]
++    if turn_state is not None:
++        # Authoritative gear for the trace manifest. Gear 1/2 turns never
++        # write step-health.json, so without this explicit signal a
++        # completed gear-1/2 turn is indistinguishable on disk from a
++        # gear-3/4 turn abandoned after step 2.
++        turn_state["gear"] = gear
+ 
+     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ----
+     # This funnel is the single entry for every pipeline executor path
+@@ -2854,6 +2861,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         if _hold_reply is not None:
+             _rgate.record_route_observed(
+                 trace_dir or (_conv_id, _route_turn_ts), risk_tier=_tier)
++            if turn_state is not None:
++                # The turn terminated at an intentional risk hold, not an
++                # abandoned pipeline run (design-gate condition 1).
++                turn_state["kind"] = "risk_hold"
+             yield _sse("response", text=_hold_reply)
+             return
+         _te_srv.update_turn_risk_tier(_tier)
+@@ -2867,6 +2878,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+                 config_name=config_name or "",
+                 stealth=(conversation_tag == "stealth"), description=_crit[5:])
+             if _hr is not None:
++                if turn_state is not None:
++                    turn_state["kind"] = "risk_hold"
+                 yield _sse("response", text=_hr)
+                 return
+         elif _crit and _crit.startswith("WARN:"):
+@@ -2906,6 +2919,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         if deg_state.fallback_gear:
+             gear = deg_state.fallback_gear
+             context_pkg["gear"] = gear
++            if turn_state is not None:
++                turn_state["gear"] = gear
+         degradation_signal = format_degradation_signal(deg_state)
+         if degradation_signal:
+             yield _sse("pipeline_stage", stage="degradation",
+@@ -2935,6 +2950,8 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         system_prompt = build_system_prompt_for_gear(context_pkg, "breadth")
+         ep = endpoint  # Gear 1/2: single model, use active endpoint
+         if ep is None:
++            if turn_state is not None:
++                turn_state["status"] = "error"
+             yield _sse("error", text="No active endpoint configured.")
+             return
+         messages = [{"role": "system", "content": system_prompt}]
+@@ -2983,6 +3000,12 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         # Fail-open: never block legitimate prose on a hook bug.
+         print(f"[server visual-hook] skipped due to error: {_vh_exc}")
+ 
++    if turn_state is not None:
++        # Explicit completion signal for the trace manifest — the only
++        # honest source for gear-1/2 turns, which write no step-health. A
++        # later exception on the way out overwrites this with "error" in
++        # the generator-level wrapper.
++        turn_state["status"] = "completed"
+     yield _sse("pipeline_stage", stage="complete", gear=gear,
+                mode=step1["mode"], label="Pipeline complete")
+     yield _sse("response", text=response)
+@@ -3032,6 +3055,58 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                        framework_selected="", config_name=None, conversation_tag=""):
+     """Generator: run the full pipeline with SSE stage events.
+ 
++    Trace-manifest wrapper (Chunk 0). The turn body lives in
++    ``_pipeline_stream_impl``; this wrapper owns the single generator-level
++    ``try/finally`` that finalizes the turn's ``trace-manifest.json`` on
++    every exit path — normal return, caught-error-and-return, uncaught
++    exception, and ``GeneratorExit`` (client disconnect). ``turn_state`` is
++    the branch-local kind/status channel: the impl assigns
++    ``turn_state["kind"]`` one line at each branch entry and
++    ``turn_state["status"]`` on caught-error and pause exits; the finalizer
++    here is the only writer of the manifest's terminal fields.
++    """
++    turn_state = {
++        "trace_dir": None,   # set by impl right after start_trace
++        "kind": "unknown",   # honest default — a turn that dies pre-branch
++        "status": None,      # status hint: "error" | "paused" | "completed"
++        "mode": None,        # step1's mode once known
++        "gear": None,        # set at gear dispatch in _run_pipeline_from_step2
++        "parent_ref": None,  # paused-turn ref on clarification continuation
++    }
++    try:
++        yield from _pipeline_stream_impl(
++            user_input, history, panel_id=panel_id, images=images,
++            extra_context=extra_context,
++            manual_mode_selection=manual_mode_selection,
++            manual_lens_selection=manual_lens_selection,
++            framework_selected=framework_selected, config_name=config_name,
++            conversation_tag=conversation_tag, turn_state=turn_state)
++    except GeneratorExit:
++        # Client disconnect — not an error. The finalizer derives
++        # completed (step-health present / completed hint) vs abandoned.
++        raise
++    except BaseException:
++        turn_state["status"] = "error"
++        raise
++    finally:
++        try:
++            from orchestrator import pipeline_trace as _pt_fin
++            _pt_fin.finalize_manifest(
++                turn_state["trace_dir"], kind=turn_state["kind"],
++                status_hint=turn_state["status"], mode=turn_state["mode"],
++                gear=turn_state["gear"],
++                parent_trace_ref=turn_state["parent_ref"])
++        except Exception as _fin_exc:
++            print(f"[server trace] manifest finalize skipped: {_fin_exc}",
++                  flush=True)
++
++
++def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, extra_context=None,
++                            manual_mode_selection="", manual_lens_selection="",
++                            framework_selected="", config_name=None, conversation_tag="",
++                            turn_state=None):
++    """Generator: run the full pipeline with SSE stage events.
++
+     Yields SSE events for each pipeline stage so the browser can display progress.
+     For Tier 2/3 triage, pauses for clarification before proceeding.
+ 
+@@ -3044,6 +3119,11 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     the pipeline continues regardless. The UI consumes the comparison data
+     once Phase 3-6 land.
+     """
++    if turn_state is None:
++        # Direct invocation (tests, future callers) — still track locally so
++        # the branch assignments below never need a guard.
++        turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
++                      "mode": None, "gear": None, "parent_ref": None}
+     manual_mode_selection = (manual_mode_selection or "").strip()
+     manual_lens_selection = (manual_lens_selection or "").strip()
+     framework_selected = (framework_selected or "").strip()
+@@ -3075,10 +3155,19 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     # the *only* layer that prevents the write in the first place.
+     try:
+         from orchestrator.conversation_memory import get_conversation_tag as _gct
+-        _conv_tag = _gct(panel_id) or ""
++        # An existing conversation's persisted envelope tag is authoritative
++        # (immutable after first save, matching save_turn_spatial_state's own
++        # convention) — but a BRAND NEW conversation has no envelope yet, so
++        # ``get_conversation_tag`` returns "" regardless of what the request
++        # actually asked for. Falling back to the request's own
++        # ``conversation_tag`` (the client's stealth/private choice for
++        # THIS submission) closes that gap: a first stealth/private turn
++        # in a new conversation is honoured instead of silently traced.
++        _conv_tag = _gct(panel_id) or conversation_tag or ""
+     except Exception:
+-        _conv_tag = ""
++        _conv_tag = conversation_tag or ""
+     trace_dir = None
++    trace_ref_val = None
+     try:
+         from boot import PIPELINE_TRACE_AVAILABLE as _pta
+         if _pta:
+@@ -3088,9 +3177,21 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                 raw_input=user_input,
+                 ambiguity_mode="assume",
+                 stealth=(_conv_tag == "stealth"),
++                conversation_tag=_conv_tag,
+             )
++            trace_ref_val = _pt.trace_ref_for_dir(trace_dir)
+     except Exception as _trace_exc:
+         print(f"[server trace] start_trace skipped: {_trace_exc}", flush=True)
++    turn_state["trace_dir"] = trace_dir
++
++    # Non-inferential trace_ref channel (design-gate condition 3): the
++    # generator owns trace_dir, but the conversation savers live in
++    # _invoke_pipeline, outside this generator. A dedicated event carries
++    # the ref in-band; _invoke_pipeline captures it and threads it through
++    # _save_conversation / _persist_turn_spatial_state. Stealth turns have
++    # no trace, emit no event, and save trace_ref: null by construction.
++    if trace_ref_val:
++        yield _sse("trace_ref", ref=trace_ref_val)
+ 
+     # Set the thread-local stealth context so oversight events emitted
+     # during this turn skip on-disk persistence (events.jsonl / actions.jsonl
+@@ -3133,6 +3234,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         import risk_gate as _rgate_srv
+         _sticky_reply = _rgate_srv.handle_risk_command(user_input, panel_id)
+         if _sticky_reply is not None:
++            turn_state["kind"] = "risk_hold"
+             yield _sse("response", text=_sticky_reply)
+             return
+         _tg_marker = _rgate_srv.is_task_gate_continuation(history or [])
+@@ -3140,6 +3242,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             _tg_reply = _rgate_srv.handle_task_gate_reply(
+                 _tg_marker, user_input, panel_id)
+             if _tg_reply is not None:
++                turn_state["kind"] = "risk_hold"
+                 yield _sse("response", text=_tg_reply)
+                 return
+         _clean_ui, _risk_ovr = _rgate_srv.strip_risk_prefix(user_input)
+@@ -3158,11 +3261,13 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     # when no AI endpoint is configured.
+     from slash_commands import is_runtime_command, run_runtime_command
+     if is_runtime_command(user_input):
++        turn_state["kind"] = "runtime_command"
+         yield _sse("pipeline_stage", stage="runtime_command",
+                    label="Running runtime command…")
+         try:
+             yield _sse("response", text=run_runtime_command(user_input))
+         except Exception as exc:
++            turn_state["status"] = "error"
+             yield _sse("error", text=f"Runtime command error: {exc}")
+         return
+ 
+@@ -3170,6 +3275,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     endpoint = get_endpoint(config)
+ 
+     if endpoint is None:
++        turn_state["kind"] = "no_endpoint_error"
++        turn_state["status"] = "error"
+         yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+         return
+ 
+@@ -3181,6 +3288,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     import resolution_chain
+     resolution_ctx = resolution_chain.is_resolution_continuation(history or [])
+     if resolution_ctx is not None:
++        turn_state["kind"] = "resolution_continuation"
+         yield _sse("pipeline_stage", stage="resolution_continuation",
+                    label="Continuing resolution discussion…")
+         try:
+@@ -3190,6 +3298,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                 config=config,
+             )
+         except Exception as exc:
++            turn_state["status"] = "error"
+             yield _sse("error", text=f"Resolution discussion error: {exc}")
+             return
+         yield _sse("response", text=text)
+@@ -3205,6 +3314,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     import framework_elicitation
+     continuation_ctx = framework_elicitation.is_continuation(history or [])
+     if continuation_ctx is not None:
++        turn_state["kind"] = "framework_elicitation"
+         yield _sse("pipeline_stage", stage="framework_elicitation",
+                    label=f"Continuing {continuation_ctx.framework_id} / {continuation_ctx.mode}…")
+         try:
+@@ -3214,6 +3324,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                 conversation_id=panel_id,
+             )
+         except Exception as exc:
++            turn_state["status"] = "error"
+             yield _sse("error", text=f"Framework elicitation error: {exc}")
+             return
+         yield _sse("response", text=text)
+@@ -3229,6 +3340,11 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     manual_pending = _pending_clarification.get(panel_id)
+     if manual_pending and manual_pending.get("source") == "manual_mode_selection":
+         pending = _pending_clarification.pop(panel_id)
++        turn_state["kind"] = "clarification_resume"
++        turn_state["mode"] = (pending.get("step1") or {}).get("mode")
++        # Lineage (design-gate condition 4): the paused turn stored its own
++        # trace ref when it returned; this resume turn records it as parent.
++        turn_state["parent_ref"] = pending.get("trace_ref")
+         yield _sse("pipeline_stage", stage="analysis_mode_clarification",
+                    label="Continuing selected analysis…")
+         step1 = dict(pending["step1"])
+@@ -3258,6 +3374,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                 trace_dir=trace_dir,
+                 config_name=config_name,
+                 conversation_tag=pending.get("conversation_tag") or conversation_tag,
++                turn_state=turn_state,
+             )
+         finally:
+             if trace_dir:
+@@ -3280,6 +3397,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         run_framework_command, parse_framework_command,
+     )
+     if is_framework_command(user_input):
++        turn_state["kind"] = "framework_command"
+         if framework_command_has_query(user_input):
+             # Execution Review Phase 2 (condition 4): the /framework one-shot
+             # runs the gear pipeline with tools — hold before it if the query
+@@ -3296,6 +3414,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                     prompt=user_input, surface="framework",
+                     stealth=(_conv_tag == "stealth"), description=user_input)
+                 if _fhold is not None:
++                    turn_state["kind"] = "risk_hold"
+                     yield _sse("response", text=_fhold)
+                     return
+             except Exception as _rge_fw:
+@@ -3316,6 +3435,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             try:
+                 result_text = run_framework_command(user_input, config)
+             except Exception as exc:
++                turn_state["status"] = "error"
+                 yield _sse("error", text=f"Framework execution error: {exc}")
+                 # Finding 3: record what the failed framework run observed.
+                 try:
+@@ -3337,8 +3457,10 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         try:
+             framework_name, _, _ = parse_framework_command(user_input)
+         except ValueError as exc:
++            turn_state["status"] = "error"
+             yield _sse("error", text=f"Framework command error: {exc}")
+             return
++        turn_state["kind"] = "framework_elicitation"
+         yield _sse("pipeline_stage", stage="framework_elicitation_start",
+                    label=f"Starting interactive {framework_name} session…")
+         try:
+@@ -3346,12 +3468,17 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                 framework_name, history or [], config,
+             )
+         except Exception as exc:
++            turn_state["status"] = "error"
+             yield _sse("error", text=f"Framework elicitation error: {exc}")
+             return
+         yield _sse("response", text=text)
+         return
+ 
+     # --- Step 1: Prompt Cleanup + Mode Selection ---
++    # From here the turn is headed into the analytical pipeline; terminal
++    # branches below refine the kind (clarification_pending / direct) and
++    # finalize_manifest refines "chat" to chat-gear<N> once gear is known.
++    turn_state["kind"] = "chat"
+     yield _sse("pipeline_stage", stage="step1_cleanup", label="Cleaning prompt…")
+ 
+     conv_context = ""
+@@ -3494,6 +3621,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+     # residual disambiguation questions, and completeness gaps per
+     # Decision I/J's expanded output format.
+     pre_routing = step1.get("pre_routing", {}) or {}
++    turn_state["mode"] = step1.get("mode")
+ 
+     confidence = step1.get("classification_confidence", "")
+     conf_tag = f" ({confidence})" if confidence else ""
+@@ -3514,6 +3642,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+ 
+     if (pre_routing.get("manual_override_applied")
+         and pre_routing.get("pending_clarification")):
++        turn_state["kind"] = "clarification_pending"
++        turn_state["status"] = "paused"
+         _pending_clarification[panel_id] = {
+             "source": "manual_mode_selection",
+             "step1": step1,
+@@ -3524,6 +3654,9 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             "extra_context": extra_context,
+             "conversation_tag": conversation_tag,
+             "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
++            # This paused turn's own trace ref — the eventual resume turn
++            # records it as parent_trace_ref (design-gate condition 4).
++            "trace_ref": trace_ref_val,
+         }
+         yield _sse("pipeline_stage", stage="analysis_mode_elicitation",
+                    mode=step1["mode"],
+@@ -3555,6 +3688,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         or pre_routing.get("pending_clarification")
+     )
+     if fallback_to_direct:
++        turn_state["kind"] = "direct"
+         print(
+             f"[pipeline-bypass] bypass_to_direct={pre_routing.get('bypass_to_direct_response')!r} "
+             f"step1_mode={step1.get('mode')!r} pending_clar={bool(pre_routing.get('pending_clarification'))} "
+@@ -3564,7 +3698,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         )
+         yield from _direct_stream(user_input, history, images=images,
+                                   panel_id=panel_id, conversation_tag=conversation_tag,
+-                                  risk_override=(extra_context or {}).get("risk_override"))
++                                  risk_override=(extra_context or {}).get("risk_override"),
++                                  turn_state=turn_state)
+         return
+ 
+     # --- Phase 9: pre-routing pipeline question gate ---
+@@ -3586,6 +3721,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         if pending_stage == "stage3" and pre_routing.get("lighter_sibling_mode_id"):
+             questions[0]["lighter_sibling_mode_id"] = pre_routing["lighter_sibling_mode_id"]
+ 
++        turn_state["kind"] = "clarification_pending"
++        turn_state["status"] = "paused"
+         _pending_clarification[panel_id] = {
+             "step1": step1,
+             "config": config,
+@@ -3595,6 +3732,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             "extra_context": extra_context,
+             "conversation_tag": conversation_tag,
+             "pre_routing_stage": pending_stage,
++            "trace_ref": trace_ref_val,
+         }
+ 
+         yield _sse("clarification_needed",
+@@ -3623,6 +3761,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+         questions = _generate_clarification_questions(step1, config)
+ 
+         # Store pending state for resumption
++        turn_state["kind"] = "clarification_pending"
++        turn_state["status"] = "paused"
+         _pending_clarification[panel_id] = {
+             "step1": step1,
+             "config": config,
+@@ -3631,6 +3771,7 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+             "images": images,
+             "extra_context": extra_context,
+             "conversation_tag": conversation_tag,
++            "trace_ref": trace_ref_val,
+         }
+ 
+         yield _sse("clarification_needed",
+@@ -3655,7 +3796,8 @@ def _pipeline_stream(user_input, history, panel_id="main", images=None, extra_co
+                                             images=images, extra_context=extra_context,
+                                             trace_dir=trace_dir,
+                                             config_name=config_name,
+-                                            conversation_tag=conversation_tag)
++                                            conversation_tag=conversation_tag,
++                                            turn_state=turn_state)
+     finally:
+         # 2026-05-28: aggregate per-turn token usage into cost-summary.json.
+         # Runs even when the SSE consumer disconnects mid-stream (GeneratorExit)
+@@ -3691,18 +3833,32 @@ def _tool_status_label(tool_name, params):
+ 
+ 
+ def _direct_stream(user_input, history, images=None, panel_id="main",
+-                   conversation_tag="", risk_override=None):
++                   conversation_tag="", risk_override=None, turn_state=None):
+     """Generator: legacy single-model agentic loop with SSE tool events.
+     Routes all tool calls through the unified dispatcher.
+ 
+     ``risk_override`` (Execution Review Phase 2): an inline ``/risk`` tier
+     threaded from the pipeline turn head when a turn falls back to direct
+     mode — so ``/risk irreversible <trivial prompt>`` still holds here
+-    instead of silently classifying light."""
++    instead of silently classifying light.
++
++    ``turn_state`` (Trace Walk Chunk 0): optional — set only by the
++    fallback_to_direct call site inside ``_pipeline_stream_impl``, which
++    already opened a trace for this turn. This function re-resolves its
++    own endpoint independently of that caller's earlier check; if it comes
++    up empty here (e.g. the active endpoint was removed in the window
++    between the two checks), the turn genuinely produced no response and
++    must finalize as an error, not the "direct" short-circuit its kind
++    already carries (design-gate condition 1). The other call site
++    (``agentic_loop_stream``'s ``/direct`` command path) never opens a
++    trace at all, so it passes no turn_state and this is a no-op there.
++    """
+     config   = load_config()
+     endpoint = get_endpoint(config)
+ 
+     if endpoint is None:
++        if turn_state is not None:
++            turn_state["status"] = "error"
+         yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
+         return
+ 
+@@ -3771,6 +3927,12 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
+         if _hold_ds is not None:
+             _rgate_ds.record_route_observed((panel_id, _route_turn_ts_ds),
+                                             risk_tier=_r_ds["risk_tier"])
++            if turn_state is not None:
++                # The caller already stamped kind="direct" before invoking
++                # this generator; a held turn is an intentional stop, not
++                # the "direct" short-circuit — re-kind so the manifest
++                # reads risk_hold, matching every other risk-hold site.
++                turn_state["kind"] = "risk_hold"
+             yield _sse("response", text=_hold_ds)
+             return
+         _te_ds.update_turn_risk_tier(_r_ds["risk_tier"])
+@@ -5652,7 +5814,8 @@ def _resolve_chunk_destination(output_destination: str) -> str:
+         return CONVERSATIONS_DIR
+ 
+ 
+-def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination=""):
++def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag="", output_destination="",
++                       trace_ref=None):
+     """
+     Three steps, all inline, immediately after every response:
+ 
+@@ -5680,6 +5843,12 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
+     ``_resolve_chunk_destination``. The raw audit log stays at
+     ``CONVERSATIONS_RAW`` regardless — that's audit infrastructure, not
+     user-facing output.
++
++    Trace manifest (Chunk 0): ``trace_ref`` is the turn's trace-store ref
++    ("<conversation_id>/<turn_timestamp>", relative to the pipeline-traces
++    root), recorded on the conversation-manifest line so any saved turn
++    resolves mechanically to its trace dir. ``None`` for stealth/untraced
++    turns by construction.
+     """
+     chunk_dir = _resolve_chunk_destination(output_destination)
+     os.makedirs(CONVERSATIONS_RAW, exist_ok=True)
+@@ -5819,6 +5988,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session, tag=""
+                 "chunk_path": chunk_path,
+                 "raw_path": sess["raw_path"],
+                 "tag": tag,
++                "trace_ref": trace_ref,
+             }) + "\n")
+     except Exception as _mf_exc:
+         # Manifest is a defensive layer — failure to write it should NOT
+@@ -6102,6 +6272,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
+     failure_summary = None
+     cfg            = None
+     ep             = None
++    trace_ref      = None
+ 
+     try:
+         # MLX per-machine serialization lives inside call_model
+@@ -6139,6 +6310,11 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
+                         active_mode = d["mode"]
+                     if d.get("gear"):
+                         active_gear = d["gear"]
++                elif t == "trace_ref":
++                    # Chunk 0: the pipeline generator's in-band trace-ref
++                    # channel — joins this turn's conversation records to
++                    # its trace dir. Absent (None) for stealth/untraced.
++                    trace_ref = d.get("ref")
+                 elif t == "error":
+                     failure_summary = d.get("text") or d.get("error") or "pipeline error"
+         except Exception as e:
+@@ -6213,7 +6389,8 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
+                 chunk_id = _save_conversation(
+                     clean_input, final_response, panel_id,
+                     is_new_session, tag,
+-                    output_destination=output_destination)
++                    output_destination=output_destination,
++                    trace_ref=trace_ref)
+             except Exception as e:
+                 failure_summary = f"_save_conversation failed: {e}"
+                 print(f"[ERROR] _save_conversation: {e}")
+@@ -6251,6 +6428,7 @@ def _invoke_pipeline(user_input, history, panel_id, is_main, images=None, extra_
+             threading.Thread(
+                 target=_persist_turn_spatial_state,
+                 args=(panel_id, clean_input, final_response, extra_context, tag),
++                kwargs={"trace_ref": trace_ref},
+                 daemon=True,
+             ).start()
+ 
+@@ -9179,7 +9357,8 @@ def chat_queue_retry():
+ _bridge_state = {}
+ _pipeline_state = {"stage": None, "stages": [], "active": False}
+ 
+-def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context, tag=""):
++def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context, tag="",
++                                trace_ref=None):
+     """WP-5.3 — append this turn to conversation.json so subsequent turns
+     can retrieve the prior spatial state.
+ 
+@@ -9224,6 +9403,7 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response, extra_context
+             timestamp=datetime.now().isoformat(timespec="seconds"),
+             tag=tag,
+             project_ids=_project_ids,
++            trace_ref=trace_ref,
+         )
+     except Exception as e:
+         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
+@@ -10805,9 +10985,16 @@ def clarification_respond():
+ 
+         # Open a fresh per-resume trace, honouring stealth tag.
+         _resume_trace_dir = None
++        _resume_trace_ref = None
++        _resume_tag = ""
+         try:
+             from orchestrator.conversation_memory import get_conversation_tag as _gct_r
+-            _resume_tag = _gct_r(panel_id) or ""
++            # Persisted envelope tag wins when present; a still-paused
++            # conversation may have no envelope yet, so fall back to the
++            # ORIGINAL turn's own tag (stashed in _pending_clarification at
++            # pause time) rather than silently tracing a stealth/private
++            # resume as standard.
++            _resume_tag = _gct_r(panel_id) or pending.get("conversation_tag") or ""
+             from boot import PIPELINE_TRACE_AVAILABLE as _pta_r
+             if _pta_r:
+                 from orchestrator import pipeline_trace as _pt_r
+@@ -10816,10 +11003,20 @@ def clarification_respond():
+                     raw_input=f"[clarification-resume] {user_input}",
+                     ambiguity_mode="assume",
+                     stealth=(_resume_tag == "stealth"),
++                    conversation_tag=_resume_tag,
+                 )
++                _resume_trace_ref = _pt_r.trace_ref_for_dir(_resume_trace_dir)
+         except Exception as _trace_exc:
+             print(f"[server trace] clarification-resume start_trace skipped: {_trace_exc}", flush=True)
+ 
++        # Trace-manifest state for this resume turn. The paused turn stored
++        # its own trace ref when it returned; it becomes this turn's parent
++        # (design-gate condition 4).
++        turn_state = {"trace_dir": _resume_trace_dir,
++                      "kind": "clarification_resume", "status": None,
++                      "mode": step1.get("mode"), "gear": None,
++                      "parent_ref": pending.get("trace_ref")}
++
+         yield _sse("start", endpoint="resumed", pipeline=True)
+         yield _sse("pipeline_stage", stage="step2_context",
+                     label="Assembling context with clarification…")
+@@ -10828,27 +11025,55 @@ def clarification_respond():
+         active_mode = [step1.get("mode")]
+         active_gear = [None]
+ 
+-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
+-                                              images=pending.get("images"),
+-                                              extra_context=pending.get("extra_context"),
+-                                              trace_dir=_resume_trace_dir,
+-                                              conversation_tag=pending.get("conversation_tag") or _resume_tag):
+-            yield chunk
++        try:
++            for chunk in _run_pipeline_from_step2(step1, config, history, user_input, answers,
++                                                  images=pending.get("images"),
++                                                  extra_context=pending.get("extra_context"),
++                                                  trace_dir=_resume_trace_dir,
++                                                  conversation_tag=pending.get("conversation_tag") or _resume_tag,
++                                                  turn_state=turn_state):
++                yield chunk
++                try:
++                    d = json.loads(chunk[6:])
++                    if d.get("type") == "response":
++                        final_response[0] = d.get("text", "")
++                    elif d.get("type") == "pipeline_stage":
++                        if d.get("gear"):
++                            active_gear[0] = d["gear"]
++                except Exception:
++                    pass
++        except GeneratorExit:
++            raise
++        except BaseException:
++            turn_state["status"] = "error"
++            raise
++        finally:
++            # Q2 (design-gate): the resume path previously never computed a
++            # cost summary — same best-effort behavior as _pipeline_stream.
++            if _resume_trace_dir:
++                try:
++                    from boot import compute_cost_summary as _ccs_r
++                    _ccs_r(_resume_trace_dir)
++                except Exception as _cs_exc:
++                    print(f"[cost-summary] clarification-resume computation "
++                          f"failed: {_cs_exc}", flush=True)
+             try:
+-                d = json.loads(chunk[6:])
+-                if d.get("type") == "response":
+-                    final_response[0] = d.get("text", "")
+-                elif d.get("type") == "pipeline_stage":
+-                    if d.get("gear"):
+-                        active_gear[0] = d["gear"]
+-            except Exception:
+-                pass
++                from orchestrator import pipeline_trace as _pt_fin_r
++                _pt_fin_r.finalize_manifest(
++                    _resume_trace_dir, kind=turn_state["kind"],
++                    status_hint=turn_state["status"],
++                    mode=turn_state["mode"], gear=turn_state["gear"],
++                    parent_trace_ref=turn_state["parent_ref"])
++            except Exception as _fin_exc:
++                print(f"[server trace] clarification-resume manifest "
++                      f"finalize skipped: {_fin_exc}", flush=True)
+ 
+         if final_response[0] is not None:
+             is_new_session = len(history) == 0
+             threading.Thread(
+                 target=_save_conversation,
+                 args=(user_input, final_response[0], panel_id, is_new_session),
++                kwargs={"trace_ref": _resume_trace_ref},
+                 daemon=True,
+             ).start()
+ 
+@@ -10890,9 +11115,13 @@ def clarification_skip():
+ 
+         # Open a fresh per-skip trace, honouring stealth tag.
+         _skip_trace_dir = None
++        _skip_trace_ref = None
++        _skip_tag = ""
+         try:
+             from orchestrator.conversation_memory import get_conversation_tag as _gct_s
+-            _skip_tag = _gct_s(panel_id) or ""
++            # Same precedence as the resume endpoint: persisted envelope tag
++            # first, else the original turn's own tag from pending state.
++            _skip_tag = _gct_s(panel_id) or pending.get("conversation_tag") or ""
+             from boot import PIPELINE_TRACE_AVAILABLE as _pta_s
+             if _pta_s:
+                 from orchestrator import pipeline_trace as _pt_s
+@@ -10901,32 +11130,69 @@ def clarification_skip():
+                     raw_input=f"[clarification-skip] {user_input}",
+                     ambiguity_mode="assume",
+                     stealth=(_skip_tag == "stealth"),
++                    conversation_tag=_skip_tag,
+                 )
++                _skip_trace_ref = _pt_s.trace_ref_for_dir(_skip_trace_dir)
+         except Exception as _trace_exc:
+             print(f"[server trace] clarification-skip start_trace skipped: {_trace_exc}", flush=True)
+ 
++        # Trace-manifest state — same lineage semantics as the resume
++        # endpoint (a skip is a resume without answers).
++        turn_state = {"trace_dir": _skip_trace_dir,
++                      "kind": "clarification_resume", "status": None,
++                      "mode": step1.get("mode"), "gear": None,
++                      "parent_ref": pending.get("trace_ref")}
++
+         yield _sse("start", endpoint="resumed", pipeline=True)
+         yield _sse("pipeline_stage", stage="step2_context",
+                     label="Assembling context (clarification skipped)…")
+ 
+         final_response = [None]
+-        for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
+-                                              images=pending.get("images"),
+-                                              extra_context=pending.get("extra_context"),
+-                                              trace_dir=_skip_trace_dir,
+-                                              conversation_tag=pending.get("conversation_tag") or _skip_tag):
+-            yield chunk
++        try:
++            for chunk in _run_pipeline_from_step2(step1, config, history, user_input,
++                                                  images=pending.get("images"),
++                                                  extra_context=pending.get("extra_context"),
++                                                  trace_dir=_skip_trace_dir,
++                                                  conversation_tag=pending.get("conversation_tag") or _skip_tag,
++                                                  turn_state=turn_state):
++                yield chunk
++                try:
++                    d = json.loads(chunk[6:])
++                    if d.get("type") == "response":
++                        final_response[0] = d.get("text", "")
++                except Exception:
++                    pass
++        except GeneratorExit:
++            raise
++        except BaseException:
++            turn_state["status"] = "error"
++            raise
++        finally:
++            # Q2 (design-gate): best-effort cost summary, as on the
++            # resume endpoint and _pipeline_stream.
++            if _skip_trace_dir:
++                try:
++                    from boot import compute_cost_summary as _ccs_s
++                    _ccs_s(_skip_trace_dir)
++                except Exception as _cs_exc:
++                    print(f"[cost-summary] clarification-skip computation "
++                          f"failed: {_cs_exc}", flush=True)
+             try:
+-                d = json.loads(chunk[6:])
+-                if d.get("type") == "response":
+-                    final_response[0] = d.get("text", "")
+-            except Exception:
+-                pass
++                from orchestrator import pipeline_trace as _pt_fin_s
++                _pt_fin_s.finalize_manifest(
++                    _skip_trace_dir, kind=turn_state["kind"],
++                    status_hint=turn_state["status"],
++                    mode=turn_state["mode"], gear=turn_state["gear"],
++                    parent_trace_ref=turn_state["parent_ref"])
++            except Exception as _fin_exc:
++                print(f"[server trace] clarification-skip manifest "
++                      f"finalize skipped: {_fin_exc}", flush=True)
+ 
+         if final_response[0] is not None:
+             threading.Thread(
+                 target=_save_conversation,
+                 args=(user_input, final_response[0], panel_id, len(history) == 0),
++                kwargs={"trace_ref": _skip_trace_ref},
+                 daemon=True,
+             ).start()
+ 

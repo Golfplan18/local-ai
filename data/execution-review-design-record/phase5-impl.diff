@@ -1,0 +1,1816 @@
+diff --git a/.ora/evidence.yaml b/.ora/evidence.yaml
+new file mode 100644
+index 00000000..6bff4a82
+--- /dev/null
++++ b/.ora/evidence.yaml
+@@ -0,0 +1,32 @@
++# .ora/evidence.yaml — Ora's own evidence catalog (Execution Review Phase 5).
++#
++# The repo-level, write-PROTECTED declaration of what checks EXIST for this repo
++# and how they must run (spec §7/§10). This file is version-controlled repo data;
++# `evidence.yaml` is in tool_events._PROTECTED_BASENAMES and `.ora` is a protected
++# prefix, so an executor cannot silently rewrite it to skip a check.
++#
++# Checks are shell-free `argv` (subprocess shell=False) so they are platform-
++# neutral; `python` resolves to the running interpreter (sys.executable), so the
++# python-vs-python3 split never bites. Both checks declare `network: deny`, so the
++# evidence runner runs them only under a backend that ENFORCES denial (macOS
++# sandbox-exec / a declared ORA_EVIDENCE_SANDBOX wrapper / native Linux
++# `unshare -rn`) and otherwise refuses cleanly — a check is never run unenforced.
++
++checks:
++  test:
++    argv: [python, -m, unittest, discover, -s, orchestrator/tests]
++    mutates: false
++    timeout: 1200          # provisional — the full suite is large
++    network: deny
++  js-test:
++    argv: [node, server/static/ora-visual-compiler/tests/run.js]
++    mutates: false
++    timeout: 300           # provisional
++    network: deny
++
++runner:
++  working_dir: <repo-root> # fixed; checks do not roam
++  env: isolated            # credential-stripping clean env, no ambient secrets
++  network: deny            # deny | local | allow (per-check `network` overrides)
++  redact: by-sensitivity   # §7 axis: secret never emitted, sensitive scrubbed
++  on_unknown: gated        # a check not declared here is not auto-run
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index 2efe2b80..582b1fec 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -9317,6 +9317,19 @@ def run_pipeline(user_input: str, history: list = None,
+             _risk_warn = _crit[5:]
+         else:
+             _risk_warn = ""
++        # Execution Review Phase 5: the Evidence Contract — the planning-stage
++        # sibling to apply_criteria (spec §15/§16-2), produced BEFORE + SEPARATE
++        # FROM execution, IN THE LIVE PLANNING PATH (standard+). Writes
++        # context_pkg['evidence_contract'] (a repo-less contract when no
++        # .ora/evidence.yaml is discoverable) + records a tool-event. Additive and
++        # never-raises: the response text is unchanged (the Phase-6 loop acts on the
++        # directive); a no-invoker/offline turn is a graceful no-op.
++        try:
++            from evidence_runner import apply_evidence_contract as _aec
++        except ImportError:  # pragma: no cover
++            from orchestrator.evidence_runner import apply_evidence_contract as _aec
++        _aec(context_pkg, context_pkg.get("cleaned_prompt", user_input), _tier,
++             invoker=_make_criteria_invoker(config, config_name))
+     except Exception as _rge2:
+         print(f"[risk-gate] tier/hold skipped: {_rge2}")
+         _risk_warn = ""
+diff --git a/orchestrator/evidence_runner.py b/orchestrator/evidence_runner.py
+new file mode 100644
+index 00000000..12092cc3
+--- /dev/null
++++ b/orchestrator/evidence_runner.py
+@@ -0,0 +1,1042 @@
++"""orchestrator/evidence_runner.py — Execution Review Phase 5 (code adapter).
++
++The ``.ora/evidence.yaml`` catalog parser + the evidence RUNNER + the
++planning-stage Evidence Contract producer + the three dirty-state modes, as ONE
++consolidated module (the vault consolidated-files rule; these are one cohesive
++unit, as ``execution_packet.py`` was for Phase 4).
++
++Catalog vs. Contract — stated plainly so no future reader misreads it (spec §10):
++  * The **catalog** (``.ora/evidence.yaml``) declares *what checks exist and how
++    they must run* — a repo-level, write-*protected* (``evidence.yaml`` ∈
++    ``tool_events._PROTECTED_BASENAMES``), executor-independent fact.
++  * The **Evidence Contract** is *task-specific and produced at planning time*:
++    which catalog checks matter for THIS task, what bespoke probe proves THIS
++    feature, and what result counts as sufficient.
++Conflating them is how the loop's integrity quietly leaks: if the executor picks
++its own checks at runtime, self-reporting sneaks back in one level up.
++
++The load-bearing sentence (spec §10 / §16-2), landed in code and the packet:
++  A green evidence run means *nothing broke that you knew to check* — it does NOT
++  mean the executor solved the right problem (that is the planning-stage
++  acceptance criteria + the verify stage), and NOT that the checks themselves are
++  honest if the executor wrote the code they run (that is §12's verify-authored
++  adversarial tests). ``EvidenceLane.sufficient`` is judged against the Contract's
++  declared sufficiency, never self-asserted.
++
++ENFORCE-OR-REFUSE (spec §7; the design-gate resolution): the runner is itself an
++executor and must run each check *under its declared constraints*. A check runs
++ONLY under a backend that actually ENFORCES its declared network policy — macOS
++``sandbox-exec``, a declared ``ORA_EVIDENCE_SANDBOX`` wrapper (the first-class
++Windows enforcement route), or native Linux ``unshare -rn`` (capability-probed,
++degrades to refuse). Where no enforcing backend exists, the check **refuses
++cleanly** (``skipped=True`` + ``skip_reason``) — it is NEVER run under an
++unenforced ``network: deny``. A check that ran is genuinely ``orchestrated``;
++there is no "ran-but-unenforced" state.
++
++Portability (release-blocking amendment): the runner MACHINERY (parse / validate
++/ discover / Contract / git-state) is pure Python and runs on macOS + Windows +
++Linux. Check EXECUTION runs under an enforcing backend or refuses; on Windows the
++supported route is a declared ``ORA_EVIDENCE_SANDBOX``. Commands are shell-free
++``argv`` by default (``subprocess.run(argv, shell=False)``); a ``cmd`` +
++``shell: true`` check runs under ``ORA_POSIX_SHELL`` and refuses cleanly (never
++``cmd.exe``) when it is unset. All paths derive from ``runtime_paths`` /
++``tempfile`` / ``pathlib`` — never a hardcoded root.
++
++Nothing here raises into the pipeline: parse/run/contract are best-effort, and a
++caught failure stamps an observable marker (``tool_events._note_failure``).
++"""
++
++from __future__ import annotations
++
++import dataclasses
++import os
++import shlex
++import shutil
++import subprocess
++import sys
++import tempfile
++from dataclasses import dataclass, field
++from typing import Any
++
++try:  # runtime import shape mirrors the rest of orchestrator/
++    import runtime_paths as _rp
++except ImportError:  # pragma: no cover
++    from orchestrator import runtime_paths as _rp
++
++try:
++    import tool_events as _te
++except ImportError:  # pragma: no cover
++    from orchestrator import tool_events as _te
++
++# ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
++_DEFAULT_TIMEOUT = 300
++_STDOUT_TAIL_CAP = 8_000          # per-check captured-output cap (redacted, tailed)
++_CATALOG_RELPATH = os.path.join(".ora", "evidence.yaml")
++_MAX_DISCOVERY_WALK = 40          # pathlib upward-walk ceiling (cross-platform)
++_ENV_SANDBOX = "ORA_EVIDENCE_SANDBOX"     # declared wrapper (first-class Windows route)
++_ENV_POSIX_SHELL = "ORA_POSIX_SHELL"
++
++_VALID_ENV = {"isolated"}          # SEC-5: 'inherit' would leak credentials — not offered in P5
++_VALID_ON_UNKNOWN = {"gated", "skip"}
++
++
++# ── Catalog types (§10) ───────────────────────────────────────────────────────
++@dataclass
++class Check:
++    """One declared check. Exactly ONE execution form: ``argv`` (shell-free, the
++    portable default) OR ``cmd`` + ``shell`` (needs a real shell) — plus optional
++    per-platform ``argv_windows``/``argv_posix`` (or ``cmd_*``) variants."""
++
++    name: str
++    argv: list[str] | None = None
++    cmd: str | None = None
++    shell: bool = False
++    argv_windows: list[str] | None = None
++    argv_posix: list[str] | None = None
++    cmd_windows: str | None = None
++    cmd_posix: str | None = None
++    mutates: bool = False
++    timeout: int = _DEFAULT_TIMEOUT
++    network: str = "deny"          # deny | local | allow
++
++
++@dataclass
++class Runner:
++    """The catalog ``runner:`` block — how checks must run (§7/§10)."""
++
++    working_dir: str = "<repo-root>"
++    env: str = "isolated"
++    network: str = "deny"
++    redact: str = "by-sensitivity"
++    on_unknown: str = "gated"
++
++
++@dataclass
++class Catalog:
++    checks: dict[str, Check] = field(default_factory=dict)
++    runner: Runner = field(default_factory=Runner)
++    path: str | None = None
++
++
++@dataclass
++class CheckResult:
++    """One check's mechanical outcome. ``enforcement_model`` is ``orchestrated``
++    for a check that RAN under an enforcing backend; a REFUSED check carries
++    ``skipped=True`` + ``skip_reason`` and no enforcement claim."""
++
++    name: str
++    generated_by: list[str] = field(default_factory=list)   # the argv/cmd actually run
++    exit_code: int | None = None
++    passed: bool = False
++    stdout_tail: str = ""           # capped + redacted
++    duration_ms: int | None = None
++    enforcement_model: str | None = None    # 'orchestrated' when ran; None when refused
++    backend: str | None = None      # sandbox-exec | ora-evidence-sandbox | unshare | None
++    mutates: bool = False
++    skipped: bool = False
++    skip_reason: str | None = None
++
++    def to_dict(self) -> dict:
++        return dataclasses.asdict(self)
++
++
++def _mark_failure(err: Exception, where: str) -> None:
++    """Observable marker for a caught failure (never re-raises)."""
++    try:
++        _te._note_failure(err, where)
++    except Exception:
++        pass
++
++
++# ── Catalog parse + validate ──────────────────────────────────────────────────
++def validate_runner_block(runner: dict) -> list[str]:
++    """Validate the ``runner:`` block (§7/§10). ``redact`` is REQUIRED — the code
++    default ``EVIDENCE_RUNNER_DEFAULTS`` omits it, but §7/§10 make redaction
++    load-bearing, so a catalog that drops it is invalid."""
++    errors: list[str] = []
++    if not runner.get("working_dir"):
++        errors.append("runner missing required 'working_dir'")
++    if runner.get("env", "isolated") not in _VALID_ENV:
++        errors.append(f"invalid runner env: {runner.get('env')!r}")
++    if runner.get("network", "deny") not in _te._EVIDENCE_NETWORK:
++        errors.append(f"invalid runner network: {runner.get('network')!r}")
++    if not runner.get("redact"):
++        errors.append("runner missing required 'redact' (secret-redaction is load-bearing, §7/§10)")
++    if runner.get("on_unknown", "gated") not in _VALID_ON_UNKNOWN:
++        errors.append(f"invalid runner on_unknown: {runner.get('on_unknown')!r}")
++    return errors
++
++
++def validate_check(name: str, check: dict) -> list[str]:
++    """Validate one check entry. Extends ``tool_events.validate_check_declaration``
++    (which requires ``cmd``) to accept an ``argv`` list OR ``cmd`` — exactly one
++    execution form; ``shell: true`` only with ``cmd``; a per-platform variant only
++    in a matched pair."""
++    errors: list[str] = []
++    # An execution form is EITHER the argv family (argv / argv_windows / argv_posix)
++    # OR the cmd family (cmd / cmd_windows / cmd_posix) — never both, and never
++    # neither (P3 — the malformed-combination catch).
++    argv_forms = [k for k in ("argv", "argv_windows", "argv_posix") if check.get(k) is not None]
++    cmd_forms = [k for k in ("cmd", "cmd_windows", "cmd_posix") if check.get(k) is not None]
++    if not argv_forms and not cmd_forms:
++        errors.append(f"check {name!r}: needs an 'argv' list or a 'cmd' string")
++    if argv_forms and cmd_forms:
++        errors.append(f"check {name!r}: cannot mix argv-form and cmd-form execution "
++                      f"(has {argv_forms + cmd_forms}) — choose one")
++    if check.get("argv") is not None and not isinstance(check["argv"], list):
++        errors.append(f"check {name!r}: 'argv' must be a list")
++    if check.get("cmd") is not None and not isinstance(check["cmd"], str):
++        errors.append(f"check {name!r}: 'cmd' must be a string")
++    # A cmd form runs under a shell → it REQUIRES 'shell: true' (else run_check
++    # refuses it at runtime — a silent dead check).
++    if cmd_forms and not check.get("shell"):
++        errors.append(f"check {name!r}: a 'cmd' form requires 'shell: true'")
++    # 'shell: true' is only meaningful with a cmd form (never with argv).
++    if check.get("shell") and not cmd_forms:
++        errors.append(f"check {name!r}: 'shell: true' is only valid with a 'cmd' form")
++    # Per-platform variants MUST come as a matched pair (P2-2): a POSIX-only
++    # declaration would silently pass validation and then refuse on Windows,
++    # violating the release-blocking "runs on macOS AND Windows" requirement. A
++    # check without a base argv/cmd must supply BOTH sides of a variant family.
++    for base, win, pos in (("argv", "argv_windows", "argv_posix"),
++                           ("cmd", "cmd_windows", "cmd_posix")):
++        has_win, has_pos = check.get(win) is not None, check.get(pos) is not None
++        if (has_win or has_pos) and check.get(base) is None and not (has_win and has_pos):
++            errors.append(f"check {name!r}: per-platform variants must be a matched "
++                          f"pair — declare BOTH {win} and {pos} (or a base {base})")
++    for k in ("argv_windows", "argv_posix"):
++        if check.get(k) is not None and not isinstance(check[k], list):
++            errors.append(f"check {name!r}: {k!r} must be a list")
++    for k in ("cmd_windows", "cmd_posix"):
++        if check.get(k) is not None and not isinstance(check[k], str):
++            errors.append(f"check {name!r}: {k!r} must be a string")
++    if "timeout" in check and not isinstance(check["timeout"], (int, float)):
++        errors.append(f"check {name!r}: timeout must be numeric")
++    if "mutates" in check and not isinstance(check["mutates"], bool):
++        errors.append(f"check {name!r}: mutates must be boolean")
++    if check.get("network", "deny") not in _te._EVIDENCE_NETWORK:
++        errors.append(f"check {name!r}: invalid network {check.get('network')!r}")
++    return errors
++
++
++def parse_catalog(path: str) -> Catalog:
++    """Parse + validate a ``.ora/evidence.yaml``. Raises ``ValueError`` LOUDLY on a
++    malformed file or a validation error — never returns a silent empty catalog
++    that reads as "no checks" (a lazy/failing catalog must be visible)."""
++    try:
++        import yaml  # PyYAML 6.x is in the runtime
++    except ImportError as e:  # pragma: no cover
++        raise ValueError(f"cannot parse {path}: PyYAML unavailable ({e})")
++    try:
++        with open(path) as f:
++            raw = yaml.safe_load(f)
++    except Exception as e:
++        raise ValueError(f"malformed evidence catalog {path}: {e}")
++    if not isinstance(raw, dict):
++        raise ValueError(f"evidence catalog {path} is not a mapping")
++
++    runner_raw = raw.get("runner") or {}
++    if not isinstance(runner_raw, dict):
++        raise ValueError(f"evidence catalog {path}: 'runner' must be a mapping")
++    errs = validate_runner_block(runner_raw)
++
++    checks_raw = raw.get("checks") or {}
++    if not isinstance(checks_raw, dict):
++        raise ValueError(f"evidence catalog {path}: 'checks' must be a mapping")
++
++    checks: dict[str, Check] = {}
++    for name, c in checks_raw.items():
++        if not isinstance(c, dict):
++            errs.append(f"check {name!r} must be a mapping")
++            continue
++        errs.extend(validate_check(name, c))
++        checks[name] = Check(
++            name=name, argv=c.get("argv"), cmd=c.get("cmd"),
++            shell=bool(c.get("shell", False)),
++            argv_windows=c.get("argv_windows"), argv_posix=c.get("argv_posix"),
++            cmd_windows=c.get("cmd_windows"), cmd_posix=c.get("cmd_posix"),
++            mutates=bool(c.get("mutates", False)),
++            timeout=int(c.get("timeout", _DEFAULT_TIMEOUT)),
++            network=c.get("network", runner_raw.get("network", "deny")))
++    if errs:
++        raise ValueError(f"invalid evidence catalog {path}: " + "; ".join(errs))
++    runner = Runner(
++        working_dir=runner_raw.get("working_dir", "<repo-root>"),
++        env=runner_raw.get("env", "isolated"),
++        network=runner_raw.get("network", "deny"),
++        redact=runner_raw.get("redact", "by-sensitivity"),
++        on_unknown=runner_raw.get("on_unknown", "gated"))
++    return Catalog(checks=checks, runner=runner, path=path)
++
++
++def discover_catalog(repo_root: str | None = None) -> str | None:
++    """Find ``.ora/evidence.yaml`` cross-platform (pathlib, no shell). Order:
++    explicit ``repo_root`` → ``ORA_PROJECT_ROOT`` env → a pathlib upward walk from
++    cwd. Returns the catalog path or None."""
++    from pathlib import Path
++    candidates: list[Path] = []
++    if repo_root:
++        candidates.append(Path(repo_root))
++    proj = os.environ.get("ORA_PROJECT_ROOT")
++    if proj:
++        candidates.append(Path(proj))
++    for base in candidates:
++        p = base / ".ora" / "evidence.yaml"
++        if p.is_file():
++            return str(p)
++    # Upward walk from cwd (bounded, cross-platform).
++    try:
++        cur = Path(os.getcwd()).resolve()
++    except Exception:
++        return None
++    for _ in range(_MAX_DISCOVERY_WALK):
++        p = cur / ".ora" / "evidence.yaml"
++        if p.is_file():
++            return str(p)
++        if cur.parent == cur:
++            break
++        cur = cur.parent
++    return None
++
++
++# ── Platform: clean env, argv resolution, enforcement backend ─────────────────
++def _clean_env(work_home: str, tmpdir: str) -> dict:
++    """Credential-stripping clean env the runner BUILDS ITSELF (defense in depth on
++    every backend). Platform-aware: POSIX ``HOME``/``TMPDIR``; Windows
++    ``USERPROFILE``/``TEMP``/``TMP`` + ``SystemRoot``/``COMSPEC``/``PATHEXT`` (a
++    spawned Windows process needs these to start). Deliberately does NOT reuse
++    ``bash_execute._clean_env`` — that one is a leaky allowlist preserving
++    ``HOME``/``USER``/``SSH_AUTH_SOCK`` (an agent socket is a live credential)."""
++    env: dict[str, str] = {}
++    for key in ("PATH", "LANG", "LC_ALL"):
++        if key in os.environ:
++            env[key] = os.environ[key]
++    if os.name == "nt":
++        env["USERPROFILE"] = work_home
++        env["TEMP"] = tmpdir
++        env["TMP"] = tmpdir
++        for key in ("SystemRoot", "COMSPEC", "PATHEXT", "NUMBER_OF_PROCESSORS",
++                    "PROCESSOR_ARCHITECTURE"):
++            if key in os.environ:
++                env[key] = os.environ[key]
++    else:
++        env["HOME"] = work_home
++        env["TMPDIR"] = tmpdir
++    return env
++
++
++def resolve_command(check: Check) -> tuple[list[str] | None, str | None, bool]:
++    """Resolve a check to (argv | None, cmd | None, shell). Prefers a matched
++    per-platform variant, else the base ``argv``/``cmd``. A bare ``python``/
++    ``python3`` argv[0] resolves to ``sys.executable`` (kills the python-vs-python3
++    split cross-platform)."""
++    win = os.name == "nt"
++    argv = check.argv
++    cmd = check.cmd
++    if win and (check.argv_windows or check.cmd_windows):
++        argv, cmd = check.argv_windows, check.cmd_windows
++    elif not win and (check.argv_posix or check.cmd_posix):
++        argv, cmd = check.argv_posix, check.cmd_posix
++    if argv:
++        argv = list(argv)
++        if argv and argv[0] in ("python", "python3"):
++            argv[0] = sys.executable
++        return argv, None, False
++    return None, cmd, bool(check.shell)
++
++
++def _macos_sandbox_available() -> bool:
++    return sys.platform == "darwin" and bool(shutil.which("sandbox-exec"))
++
++
++def _declared_wrapper() -> list[str] | None:
++    """A declared ``ORA_EVIDENCE_SANDBOX`` wrapper command (the first-class Windows
++    enforcement route). Must name a real executable (its first token), mirroring
++    ``ORA_POSIX_SHELL`` validation; an invalid value counts as no wrapper. Parsed
++    with ``shlex`` (platform-aware) so a quoted executable or a path WITH SPACES —
++    e.g. ``"C:\\Program Files\\sandbox\\run.exe"`` on Windows — is not mangled by a
++    naive whitespace split (P2-1)."""
++    raw = (os.environ.get(_ENV_SANDBOX) or "").strip()
++    if not raw:
++        return None
++    try:
++        # posix=False on Windows keeps backslashes literal (Windows paths) and
++        # honors "quotes" — but RETAINS the surrounding quote chars in the token, so
++        # strip a balanced surrounding pair afterwards (posix mode already stripped
++        # them). Without this a quoted `"C:\Program Files\x.exe"` keeps its quotes
++        # and fails isabs/which (the P2-1 re-check catch).
++        parts = shlex.split(raw, posix=(os.name != "nt"))
++        if os.name == "nt":
++            parts = [(p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in ('"', "'")
++                      else p) for p in parts]
++    except ValueError:
++        return None
++    if not parts:
++        return None
++    exe = parts[0]
++    if os.path.isabs(exe):
++        if not os.path.isfile(exe):
++            return None
++    elif shutil.which(exe) is None:
++        return None
++    return parts
++
++
++_unshare_probe_cache: bool | None = None
++_wrapper_probe_cache: dict[str, bool] = {}
++
++# A tiny network-egress probe: prints DENIED if a socket connect fails (network
++# blocked), OPEN otherwise. Used to VERIFY a backend actually enforces deny.
++_NET_PROBE_CODE = (
++    "import socket\n"
++    "try:\n socket.create_connection(('1.1.1.1',80),timeout=4); print('OPEN')\n"
++    "except Exception: print('DENIED')\n")
++
++
++def _linux_unshare_available() -> bool:
++    """Capability-probe native Linux ``unshare -rn`` (unprivileged user+net
++    namespace). Judge direction: include it ONLY if it can be probed and safely
++    degrades to refuse. Platform-gated FIRST (a cache hit never returns True
++    off-Linux — PORT-2), then cached; any probe failure → False (→ refuse)."""
++    global _unshare_probe_cache
++    if not sys.platform.startswith("linux"):
++        return False
++    if _unshare_probe_cache is not None:
++        return _unshare_probe_cache
++    ok = False
++    if shutil.which("unshare"):
++        try:
++            r = subprocess.run(
++                ["unshare", "-rn", "true"], capture_output=True, timeout=10)
++            ok = r.returncode == 0
++        except Exception:
++            ok = False
++    _unshare_probe_cache = ok
++    return ok
++
++
++def _net_probe(prefix: list[str]) -> str:
++    """Run the net-egress probe, optionally UNDER ``prefix`` (a wrapper argv).
++    Returns 'OPEN' (network reached), 'DENIED' (blocked or unreachable), or 'ERROR'."""
++    try:
++        r = subprocess.run([*prefix, sys.executable, "-c", _NET_PROBE_CODE],
++                           capture_output=True, text=True, timeout=15)
++        out = r.stdout or ""
++        if "OPEN" in out:
++            return "OPEN"
++        if "DENIED" in out:
++            return "DENIED"
++        return "ERROR"
++    except Exception:
++        return "ERROR"
++
++
++def _wrapper_is_demonstrable_passthrough() -> bool:
++    """A SOUND, REJECT-ONLY probe (SEC-4 + the fold re-check). True ONLY when the
++    declared wrapper DEMONSTRABLY does not isolate network — the probe target is
++    reachable WITHOUT the wrapper (baseline OPEN) AND still reachable THROUGH it
++    (wrapped OPEN). Any other result is NOT a demonstrated passthrough → False:
++      * baseline DENIED/ERROR → the target is unreachable regardless of the wrapper
++        (offline / egress-filtered CI / firewall), so DENIED-through-the-wrapper is
++        UN-attributable — we must not read it as enforcement (the false-positive the
++        re-check found), and equally cannot call it a passthrough → False.
++      * wrapped DENIED → the wrapper blocked at least the probe → not a passthrough.
++    This probe NEVER confirms enforcement (a wrapper is operator-ATTESTED, labeled
++    ``declared-sandbox`` — never runner-verified ``orchestrated`` — and the probe
++    cannot cover the check's real argv anyway). It only refuses an OBVIOUS
++    online passthrough. Cached per wrapper string."""
++    wrapper = _declared_wrapper()
++    if not wrapper:
++        return False
++    key = " ".join(wrapper)
++    if key in _wrapper_probe_cache:
++        return _wrapper_probe_cache[key]
++    result = False
++    if _net_probe([]) == "OPEN":              # baseline: target genuinely reachable
++        result = _net_probe(wrapper) == "OPEN"  # still reachable through wrapper → passthrough
++    _wrapper_probe_cache[key] = result
++    return result
++
++
++def enforcement_backend(network: str) -> str | None:
++    """The backend that will ENFORCE ``network`` for a check, or None (→ refuse).
++    ``deny`` is enforceable by macOS sandbox-exec / native Linux unshare (both
++    runner-VERIFIED → ``orchestrated``) or a declared ``ORA_EVIDENCE_SANDBOX``
++    wrapper (operator-ATTESTED → ``declared-sandbox``; used unless it is a
++    demonstrable online passthrough). ``local`` and ``allow`` are NOT enforceable in
++    P5 (no localhost scoping, no egress-logging proxy) → None → refuse (spec §7)."""
++    if network != "deny":
++        return None
++    if _macos_sandbox_available():
++        return "sandbox-exec"
++    # A declared wrapper is trusted (operator responsibility, like ORA_POSIX_SHELL)
++    # and recorded HONESTLY as declared-sandbox — but a DEMONSTRABLE online
++    # passthrough (e.g. `env`) is still refused.
++    if _declared_wrapper() is not None and not _wrapper_is_demonstrable_passthrough():
++        return "ora-evidence-sandbox"
++    if _linux_unshare_available():
++        return "unshare"
++    return None
++
++
++# enforcement_model recorded per backend: sandbox-exec / unshare are runner-VERIFIED
++# kernel isolation (orchestrated); a declared wrapper is operator-ATTESTED, not
++# runner-verified, so it is honestly a distinct, weaker label (§7/§17 — never
++# overclaim). No backend that RAN a check ever records less than this.
++_ENFORCEMENT_MODEL = {"sandbox-exec": "orchestrated", "unshare": "orchestrated",
++                      "ora-evidence-sandbox": "declared-sandbox"}
++
++
++# ── The macOS sandbox profile (generalized from code_execute for a repo_root) ──
++# SBPL string literals cannot safely carry a `"`, `\`, `(`, `)`, or newline (an
++# unescaped `"` closes the subpath string and lets a crafted path inject arbitrary
++# rules — e.g. `(allow network*)` — defeating the network-deny guarantee). Normal
++# git worktrees never contain these, so the runner REFUSES a check whose sandbox
++# paths are unsafe rather than escape-and-hope.
++_SBPL_UNSAFE = ('"', "\\", "(", ")", "\n", "\r")
++
++
++def _sbpl_path_safe(path: str) -> bool:
++    return not any(c in path for c in _SBPL_UNSAFE)
++
++
++def _private_deny_roots() -> list[str]:
++    roots = [os.path.realpath(os.path.expanduser("~"))]
++    for root in (_rp.WORKSPACE, _rp.VAULT_STR, _rp.CONVERSATIONS_STR):
++        try:
++            r = os.path.realpath(os.path.expanduser(str(root)))
++        except Exception:
++            continue
++        if r and r != "/" and r not in roots:
++            roots.append(r)
++    return roots
++
++
++def _is_within(child: str, parent: str) -> bool:
++    """True if ``child`` is ``parent`` or nested under it (realpath'd)."""
++    c = os.path.realpath(child)
++    p = os.path.realpath(parent)
++    return c == p or c.startswith(p.rstrip(os.sep) + os.sep)
++
++
++def sandbox_worktree_unsafe(worktree: str, tmpdir: str) -> str | None:
++    """Return a refusal reason if the worktree/tmp cannot be safely sandboxed under
++    the macOS profile, else None. Refuses (SEC-1) any path carrying an SBPL-unsafe
++    character, and (SEC-2) a worktree that is EQUAL TO or an ANCESTOR OF a sensitive
++    private root ($HOME / vault / conversations) — re-allowing such a worktree would
++    re-expose that root. A worktree UNDER a private root (the ~/ora self-review case)
++    is fine; only an ancestor-of-a-sensitive-root is refused."""
++    real_wt = os.path.realpath(worktree)
++    real_tmp = os.path.realpath(tmpdir)
++    for p in (real_wt, real_tmp):
++        if not _sbpl_path_safe(p):
++            return ("sandbox path contains a character unsafe for the sandbox "
++                    "profile (\" \\ ( ) or newline); refusing rather than risk "
++                    "profile injection")
++    for sensitive in (os.path.realpath(os.path.expanduser("~")),
++                      os.path.realpath(_rp.VAULT_STR),
++                      os.path.realpath(_rp.CONVERSATIONS_STR)):
++        if _is_within(sensitive, real_wt):
++            return (f"worktree is equal to or an ancestor of a sensitive root "
++                    f"({sensitive}); re-allowing it would re-expose that root — refused")
++    return None
++
++
++def _macos_profile(worktree: str, tmpdir: str, allow_write_repo: bool) -> str:
++    """Deny reads under $HOME + every Ora private root, RE-ALLOW reads (and, for a
++    mutating check, writes) under the SPECIFIC worktree, then RE-DENY any private
++    root nested under the worktree (belt-and-suspenders for SEC-2 — the runner also
++    refuses an ancestor worktree pre-flight). ``(deny network*)`` enforces
++    ``network: deny``. Callers pass only SBPL-safe paths (``sandbox_worktree_unsafe``
++    is checked first)."""
++    real_wt = os.path.realpath(worktree)
++    real_tmp = os.path.realpath(tmpdir)
++    deny_roots = _private_deny_roots()
++    denies = "".join(f'(deny file-read* (subpath "{r}"))' for r in deny_roots)
++    # Re-deny any private root nested UNDER the worktree, AFTER the worktree allow,
++    # so last-match-wins keeps it denied even though the worktree is re-allowed.
++    nested = [r for r in deny_roots
++              if r != real_wt and r.startswith(real_wt.rstrip(os.sep) + os.sep)]
++    re_denies = "".join(f'(deny file-read* (subpath "{r}"))' for r in nested)
++    parts = [
++        "(version 1)", "(allow default)", "(deny network*)", denies,
++        f'(allow file-read* (subpath "{real_wt}"))',
++        f'(allow file-read* (subpath "{real_tmp}"))',
++        re_denies,                       # nested private roots stay denied
++        "(deny file-write*)",
++        f'(allow file-write* (subpath "{real_tmp}"))',
++        '(allow file-write* (subpath "/dev"))',
++    ]
++    if allow_write_repo:
++        parts.append(f'(allow file-write* (subpath "{real_wt}"))')
++    return "".join(parts)
++
++
++def _wrap_argv(backend: str, argv: list[str], worktree: str, tmpdir: str,
++               allow_write_repo: bool) -> list[str]:
++    """Build the OS argv that runs ``argv`` UNDER the enforcing backend."""
++    if backend == "sandbox-exec":
++        profile = _macos_profile(worktree, tmpdir, allow_write_repo)
++        return [shutil.which("sandbox-exec") or "sandbox-exec", "-p", profile, *argv]
++    if backend == "unshare":
++        # Unprivileged user+net namespace: no network interfaces → deny enforced.
++        return ["unshare", "-rn", *argv]
++    if backend == "ora-evidence-sandbox":
++        wrapper = _declared_wrapper() or []
++        return [*wrapper, *argv]
++    return list(argv)
++
++
++# ── run_check — ENFORCE-OR-REFUSE + the Phase-1 gate ──────────────────────────
++def _refused(check: Check, argv_or_cmd: list[str] | str | None, reason: str) -> CheckResult:
++    gen = (list(argv_or_cmd) if isinstance(argv_or_cmd, list)
++           else [argv_or_cmd] if argv_or_cmd else [])
++    return CheckResult(name=check.name, generated_by=gen, skipped=True,
++                       skip_reason=reason, mutates=check.mutates)
++
++
++def _redact_tail(text: str, runner: Runner) -> str:
++    """Cap + tail captured output; drive secret redaction by the §7 sensitivity
++    axis via the existing recorder redaction (best-effort)."""
++    if not text:
++        return ""
++    tail = text[-_STDOUT_TAIL_CAP:]
++    if len(text) > _STDOUT_TAIL_CAP:
++        tail = "…[capped]\n" + tail
++    try:
++        # Secret-redaction driven by the §7 sensitivity axis, via the existing
++        # recorder scrub (returns (scrubbed_text, found_bool)).
++        scrub = getattr(_te, "scrub_content", None)
++        if callable(scrub):
++            scrubbed, _found = scrub(tail)
++            tail = scrubbed
++    except Exception:
++        pass
++    return tail
++
++
++def _gate_check(check: Check, backend: str | None) -> tuple[bool, str | None]:
++    """Route the check through the Phase-1 manifest via a DIRECT
++    ``tool_events.gate`` call (NOT ``dispatcher.dispatch`` — which would inherit
++    the ``approve-each`` ``input()`` prompt a programmatic runner can't answer).
++    An unenforceable check is mapped to ``unknown`` → the gate fails closed."""
++    if backend is None:
++        # No enforcing backend → treat as unknown so the gate blocks fail-closed.
++        axes = {"category": "execute", "mutability": "irreversible",
++                "sensitivity": "secret", "egress": "external", "unknown": True,
++                "enforcement": "boundary_only"}
++    else:
++        # A check EXECUTES repo code, so even a non-mutating check is
++        # reversible_write, not read (matches code_execute_axes; ⚖ code-F6). The
++        # enforcement is the HONEST per-backend level (declared-sandbox for a
++        # wrapper, orchestrated for verified kernel isolation) — never overclaimed.
++        axes = {"category": "execute", "mutability": "reversible_write",
++                "sensitivity": "private", "egress": "none",
++                "enforcement": _ENFORCEMENT_MODEL.get(backend, "orchestrated")}
++    try:
++        decision = _te.gate(f"evidence_check:{check.name}", axes,
++                            params={"check": check.name},
++                            description=f"evidence check {check.name}",
++                            model_facing=True, interactive_approver=None)
++        return bool(decision.allowed), decision.why
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_gate")
++        return False, f"gate error: {e}"
++
++
++def _record_check_event(check: Check, result: CheckResult) -> None:
++    """Leave a DURABLE tool-event for the check — reality contact is OBSERVED, not
++    narrated (§16-3). ``tool_events.gate`` records only on a BLOCK, and the runner
++    returns preflight refusals directly, so WITHOUT this a check (ran or refused)
++    would be invisible to the tool-event log. Every outcome records exactly one
++    event. Never raises."""
++    try:
++        ran = not result.skipped
++        _te.record({
++            "event": "evidence_check",
++            "action": f"evidence_check:{check.name}",
++            "category": "execute",
++            "mutability": "reversible_write" if ran else "read",
++            "sensitivity": "private", "egress": "none",
++            # A RAN check carries the backend's honest enforcement level; a REFUSED
++            # check was refused by the runner itself → in_harness.
++            "enforcement_model": (result.enforcement_model if ran else "in_harness"),
++            "mutates": bool(check.mutates),
++            "network": check.network,
++            "exit": {"ok": bool(result.passed), "code": result.exit_code},
++            "gate": {"decision": ("allowed" if ran else "blocked"),
++                     "why": (result.skip_reason or "ran under "
++                             + str(result.backend or "?"))},
++        })
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_record")
++
++
++def run_check(check: Check, runner: Runner, repo_root: str, *,
++              worktree: str | None = None, mode: str | None = None) -> CheckResult:
++    """Run ONE check ENFORCE-OR-REFUSE, and RECORD a tool-event for the outcome
++    (observed, not narrated — §16-3). Returns a CheckResult; never raises."""
++    result = _run_check_impl(check, runner, repo_root, worktree=worktree, mode=mode)
++    _record_check_event(check, result)
++    return result
++
++
++def _run_check_impl(check: Check, runner: Runner, repo_root: str, *,
++                    worktree: str | None = None, mode: str | None = None) -> CheckResult:
++    """The enforce-or-refuse body. A check runs only under a backend that enforces
++    its declared network policy; else it refuses cleanly. ``mutates: true`` runs
++    only under an explicit ``clean_worktree``."""
++    try:
++        argv, cmd, shell = resolve_command(check)
++
++        # 1. mutates:true only under clean_worktree (never mutate a tree the user
++        # owns). Absence of an explicit mode FAILS SAFE — a missing mode context
++        # REFUSES a mutating check rather than permitting it (SEC-3).
++        if check.mutates and mode != "clean_worktree":
++            return _refused(check, argv or cmd,
++                            f"mutates:true refused under mode={mode!r} "
++                            "(only an explicit clean_worktree may run a mutating check)")
++
++        # 2. A shell check needs a POSIX shell. On POSIX that is /bin/sh; on Windows
++        # it is a declared ORA_POSIX_SHELL, and the check refuses cleanly (never
++        # cmd.exe) when unset (PORT-1: /bin/sh must be used on the primary targets,
++        # not bash_execute._posix_shell_path which is the Windows-only resolver).
++        if cmd is not None and shell:
++            if os.name == "nt":
++                try:
++                    import bash_execute as _be
++                except ImportError:  # pragma: no cover
++                    from orchestrator.tools import bash_execute as _be
++                sh = _be._posix_shell_path()
++            else:
++                sh = shutil.which("sh") or "/bin/sh"
++            if sh is None:
++                return _refused(check, cmd,
++                                f"shell:true check needs {_ENV_POSIX_SHELL} "
++                                "(a real POSIX shell); refused (never cmd.exe)")
++            argv = [sh, "-c", cmd]
++        elif cmd is not None and not shell:
++            # A bare cmd string with no shell is ambiguous — require argv or shell.
++            return _refused(check, cmd,
++                            "a 'cmd' string needs 'shell: true'; prefer an 'argv' list")
++
++        if not argv:
++            return _refused(check, None, "no runnable command (argv/cmd) for this platform")
++
++        # 3. ENFORCE-OR-REFUSE: is there a backend that enforces the network policy?
++        backend = enforcement_backend(check.network)
++        if backend is None:
++            return _refused(
++                check, argv,
++                f"network:{check.network} cannot be enforced on this platform; "
++                f"declare {_ENV_SANDBOX} (a network-isolating wrapper) or run where "
++                "a native backend exists — the check is NOT run unenforced (§7)")
++
++        # 4. Gate through the Phase-1 manifest (direct gate; never dispatch).
++        allowed, why = _gate_check(check, backend)
++        if not allowed:
++            return _refused(check, argv, f"gated: {why}")
++
++        # 5. Sandbox setup — worktree cwd + a scratch home/tmp, all runtime_paths-derived.
++        wt = worktree or repo_root
++        scratch_base = os.path.join(_rp.SCRATCH_DIR_STR, "evidence-runner")
++        os.makedirs(scratch_base, exist_ok=True)
++        run_home = tempfile.mkdtemp(prefix="home-", dir=scratch_base)
++        run_tmp = tempfile.mkdtemp(prefix="tmp-", dir=scratch_base)
++        # SEC-1/SEC-2: for the macOS profile, refuse an SBPL-unsafe or
++        # ancestor-of-a-sensitive-root worktree BEFORE building the profile — a
++        # subverted profile could otherwise record a FALSE `orchestrated` claim.
++        if backend == "sandbox-exec":
++            _bad = sandbox_worktree_unsafe(wt, run_tmp)
++            if _bad:
++                shutil.rmtree(run_home, ignore_errors=True)
++                shutil.rmtree(run_tmp, ignore_errors=True)
++                return _refused(check, argv, _bad)
++        # SEC-5: always run under the credential-stripping clean env. `env: inherit`
++        # is not offered in P5 (it would pass SSH_AUTH_SOCK / API keys through); a
++        # future dedicated-HOME variant can add a SAFE inherit that still strips
++        # credentials.
++        env = _clean_env(run_home, run_tmp)
++        os_argv = _wrap_argv(backend, argv, wt, run_tmp, allow_write_repo=check.mutates)
++
++        # 6. Run, capture, redact. enforcement_model is the HONEST level of the
++        # backend that ran it (orchestrated for verified kernel isolation;
++        # declared-sandbox for an operator-attested wrapper) — never overclaimed.
++        enf = _ENFORCEMENT_MODEL.get(backend, "orchestrated")
++        import time as _time
++        t0 = _time.time()
++        try:
++            r = subprocess.run(os_argv, capture_output=True, text=True,
++                               timeout=check.timeout, cwd=wt, env=env)
++            dur = int((_time.time() - t0) * 1000)
++            out = (r.stdout or "") + (("\n[stderr]\n" + r.stderr) if r.stderr else "")
++            return CheckResult(
++                name=check.name, generated_by=argv, exit_code=r.returncode,
++                passed=(r.returncode == 0), stdout_tail=_redact_tail(out, runner),
++                duration_ms=dur, enforcement_model=enf, backend=backend,
++                mutates=check.mutates)
++        except subprocess.TimeoutExpired:
++            dur = int((_time.time() - t0) * 1000)
++            return CheckResult(
++                name=check.name, generated_by=argv, exit_code=None, passed=False,
++                stdout_tail=f"[timeout after {check.timeout}s]", duration_ms=dur,
++                enforcement_model=enf, backend=backend, mutates=check.mutates)
++        finally:
++            shutil.rmtree(run_home, ignore_errors=True)
++            shutil.rmtree(run_tmp, ignore_errors=True)
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_run_check")
++        return _refused(check, None, f"runner error: {e}")
++
++
++# ── The planning-stage Evidence Contract producer (sibling to apply_criteria) ──
++def run_evidence_contract_pass(instruction: str, catalog: Catalog | None,
++                               criteria: str | None, *, invoker=None
++                               ) -> tuple[dict | None, str | None]:
++    """Produce the task-specific Evidence Contract BEFORE + SEPARATE FROM execution
++    (spec §16-2). ``invoker(system, user)`` is a model-call callback (sidebar
++    slot), injected for testability; no-op when absent. Returns (contract, error).
++    Never raises."""
++    if invoker is None:
++        return None, "no-invoker"
++    try:
++        available = sorted((catalog.checks or {}).keys()) if catalog else []
++        system = (
++            "You author an Evidence Contract for a task BEFORE it is executed. Do "
++            "NOT attempt the task. Given the task and the repo's available checks, "
++            "output THREE short sections:\n"
++            "REQUIRED CHECKS: a subset of the available checks that matter for THIS "
++            "task (names only; empty if none apply).\n"
++            "BESPOKE PROBE: one line describing what would demonstrate THIS feature "
++            "actually works (a description, not a command).\n"
++            "SUFFICIENCY: one line — what result counts as enough.")
++        user = (f"TASK:\n{instruction}\n\nAVAILABLE CHECKS: "
++                f"{', '.join(available) if available else '(none — no catalog found)'}\n"
++                f"ACCEPTANCE CRITERIA (for context):\n{criteria or '(none)'}\n")
++        out = invoker(system, user)
++        if not out or not out.strip():
++            return None, "empty"
++        required, probe, suff = _parse_contract(out, available)
++        return ({"required_standard_checks": required, "bespoke_probes": probe,
++                 "sufficiency": suff, "repo_less": not available}, None)
++    except Exception as e:
++        return None, f"contract: {e}"
++
++
++def _parse_contract(text: str, available: list[str]) -> tuple[list[str], list[str], str]:
++    required: list[str] = []
++    probe: list[str] = []
++    suff = ""
++    section = None
++    for line in text.splitlines():
++        s = line.strip()
++        low = s.lower()
++        if low.startswith("required checks"):
++            section = "req"
++            rest = s.split(":", 1)[1] if ":" in s else ""
++            required += [t.strip() for t in rest.replace(",", " ").split() if t.strip()]
++            continue
++        if low.startswith("bespoke probe"):
++            section = "probe"
++            rest = s.split(":", 1)[1].strip() if ":" in s else ""
++            if rest:
++                probe.append(rest)
++            continue
++        if low.startswith("sufficiency"):
++            section = "suff"
++            suff = s.split(":", 1)[1].strip() if ":" in s else ""
++            continue
++        if not s:
++            continue
++        if section == "req":
++            required += [t.strip() for t in s.lstrip("-*").replace(",", " ").split() if t.strip()]
++        elif section == "probe":
++            probe.append(s.lstrip("-* "))
++        elif section == "suff" and not suff:
++            suff = s
++    # Only keep declared checks (executor cannot invent a check that isn't in the catalog).
++    required = [c for c in required if c in available]
++    return required, probe, suff
++
++
++def apply_evidence_contract(context_pkg: dict, instruction: str, risk_tier: str, *,
++                            invoker=None, repo_root: str | None = None) -> str | None:
++    """The sibling to ``risk_gate.apply_criteria`` — run at the SAME planning point,
++    standard+ only. Discovers a catalog (repo_root → ORA_PROJECT_ROOT → pathlib
++    walk); produces the Contract (a repo-less one when no catalog is found) and
++    stashes it on ``context_pkg['evidence_contract']``. Returns a directive
++    (None/``WARN:``/``HOLD:``), mirroring ``apply_criteria``. Never raises."""
++    try:
++        if risk_tier == "light":
++            return None
++        catalog = None
++        cat_path = discover_catalog(repo_root)
++        if cat_path:
++            try:
++                catalog = parse_catalog(cat_path)
++            except Exception as e:
++                _mark_failure(e, "evidence_runner_apply_contract_parse")
++                catalog = None
++        criteria = context_pkg.get("acceptance_criteria")
++        contract, err = run_evidence_contract_pass(
++            instruction, catalog, criteria, invoker=invoker)
++        if contract and not err:
++            context_pkg["evidence_contract"] = contract
++            try:
++                _te.record({"event": "evidence_contract", "action": "evidence_contract",
++                            "category": "execute", "mutability": "read",
++                            "sensitivity": "public", "egress": "none",
++                            "enforcement_model": "in_harness", "risk_tier": risk_tier})
++            except Exception:
++                pass
++            return None
++        if err == "no-invoker":
++            return None
++        try:
++            _te.record({"event": "evidence_contract", "action": "evidence_contract",
++                        "category": "execute", "mutability": "read",
++                        "sensitivity": "public", "egress": "none",
++                        "enforcement_model": "in_harness", "risk_tier": risk_tier,
++                        "contract_error": err})
++        except Exception:
++            pass
++        msg = f"Evidence Contract could not be generated for this {risk_tier} task ({err})."
++        try:
++            if _rgate_tier_at_least(risk_tier, "high-risk"):
++                return "HOLD:" + msg + " Holding for your review."
++        except Exception:
++            pass
++        return "WARN:" + msg + " Proceeding without a pre-set evidence contract."
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_apply_contract")
++        return None
++
++
++def _rgate_tier_at_least(tier: str, floor: str) -> bool:
++    try:
++        try:
++            import risk_gate as _rg
++        except ImportError:  # pragma: no cover
++            from orchestrator import risk_gate as _rg
++        return _rg.tier_at_least(tier, floor)
++    except Exception:
++        return False
++
++
++# ── Dirty-state modes + git state snapshots (§9/§11) ──────────────────────────
++def _git(repo: str, args: list[str]) -> tuple[int, str]:
++    """``git -C <repo> <args>`` (mirrors ``engram_promotion._git``). Returns
++    (exit, stdout). Never raises."""
++    try:
++        r = subprocess.run(["git", "-C", repo, *args],
++                           capture_output=True, text=True, timeout=30)
++        return r.returncode, (r.stdout or "").strip()
++    except Exception as e:
++        return 1, str(e)
++
++
++def _git_state(repo_root: str) -> dict:
++    """A small, flat git state snapshot (§9: git → commit/tree hash)."""
++    _, head = _git(repo_root, ["rev-parse", "HEAD"])
++    _, tree = _git(repo_root, ["rev-parse", "HEAD^{tree}"])
++    _, dirty = _git(repo_root, ["status", "--porcelain"])
++    import hashlib
++    dirty_hash = hashlib.sha1(dirty.encode("utf-8", "replace")).hexdigest()[:16] if dirty else None
++    return {"head": head or None, "tree": tree or None, "dirty_hash": dirty_hash}
++
++
++def snapshot_before(repo_root: str, mode: str) -> dict:
++    """``state_before`` per §11 mode — git SHAs/tree-hashes only (small, flat)."""
++    st = _git_state(repo_root)
++    st["mode"] = mode
++    return st
++
++
++def snapshot_after(repo_root: str, mode: str, trace_dir: str | None,
++                   before: dict | None) -> tuple[dict, str | None]:
++    """``state_after`` + a ``delta.ref`` (the ``git diff`` written trace-local, a
++    reference — never inlined, §9). The git-state helper + diff-writer run OUTSIDE
++    any sandbox (they operate on the repo directly)."""
++    st = _git_state(repo_root)
++    st["mode"] = mode
++    delta_ref = None
++    if trace_dir:
++        try:
++            base = (before or {}).get("head") or "HEAD"
++            _, diff = _git(repo_root, ["diff", base])
++            os.makedirs(trace_dir, exist_ok=True)
++            path = os.path.join(trace_dir, "evidence-diff.patch")
++            with open(path, "w") as f:
++                f.write(diff)
++            delta_ref = path
++        except Exception as e:
++            _mark_failure(e, "evidence_runner_snapshot_after")
++    return st, delta_ref
++
++
++# ── Lane fill — attach filled evidence to the Phase-4 packet (additive) ────────
++def contract_sufficient(results: list[CheckResult], contract: dict | None) -> bool:
++    """Sufficiency judged against the Evidence Contract, never self-asserted
++    (§10/§16-2). True only when EVERY Contract-required check ran and passed. A
++    refused/failed/absent required check → not sufficient. A green run means
++    nothing broke that you knew to check — NOT that the right problem was solved."""
++    if not contract:
++        return False
++    required = contract.get("required_standard_checks") or []
++    if not required:
++        # No required checks declared → nothing was proven sufficient.
++        return False
++    by_name = {r.name: r for r in results}
++    for name in required:
++        r = by_name.get(name)
++        if r is None or r.skipped or not r.passed:
++            return False
++    return True
++
++
++def fill_evidence_lanes(packet: Any, results: list[CheckResult],
++                        contract: dict | None = None, delta_ref: str | None = None) -> Any:
++    """Fill the Phase-4 diff_validate ``EvidenceLane`` from runner results —
++    additive, never raises, returns the packet. ``generated_by`` ties each lane to
++    the DECLARED commands actually run (not an executor self-report); ``sufficient``
++    is judged against the Contract."""
++    try:
++        lanes = getattr(packet, "evidence_lanes", None) or []
++        suff = contract_sufficient(results, contract)
++        payload = [r.to_dict() for r in results]
++        cmds: list[str] = []
++        for r in results:
++            cmds += [" ".join(map(str, r.generated_by))] if r.generated_by else []
++        for lane in lanes:
++            if getattr(lane, "lane", None) == "diff_validate":
++                lane.generated_by = cmds
++                lane.result = {"checks": payload, "delta_ref": delta_ref}
++                lane.sufficient = suff
++        return packet
++    except Exception as e:
++        _mark_failure(e, "evidence_runner_fill_lanes")
++        return packet
++
++
++# ── Terminal convenience: run a Contract's required checks over a repo ─────────
++def run_contract(catalog: Catalog, contract: dict, repo_root: str, *,
++                 worktree: str | None = None, mode: str | None = None
++                 ) -> list[CheckResult]:
++    """Run the Contract's ``required_standard_checks`` (a subset of the catalog).
++    A required check missing from the catalog is recorded as refused (the executor
++    cannot invent checks). Never raises."""
++    results: list[CheckResult] = []
++    for name in (contract.get("required_standard_checks") or []):
++        check = (catalog.checks or {}).get(name)
++        if check is None:
++            # A declared-required check missing from the catalog is a refusal that
++            # must ALSO be OBSERVED, not narrated (§16-3) — record a tool-event, the
++            # same as run_check does for its own outcomes (the P2 recording gap).
++            missing = CheckResult(name=name, skipped=True,
++                                  skip_reason="declared-required but not in catalog")
++            _record_check_event(Check(name=name), missing)
++            results.append(missing)
++            continue
++        results.append(run_check(check, catalog.runner, repo_root,
++                                 worktree=worktree, mode=mode))
++    return results
+diff --git a/orchestrator/tests/test_evidence_runner.py b/orchestrator/tests/test_evidence_runner.py
+new file mode 100644
+index 00000000..d491414a
+--- /dev/null
++++ b/orchestrator/tests/test_evidence_runner.py
+@@ -0,0 +1,662 @@
++"""Tests for orchestrator/evidence_runner.py — Execution Review Phase 5.
++
++Covers: catalog parse/validate/discover, ENFORCE-OR-REFUSE runner semantics, the
++Phase-1 gate integration, mutates:true handling, dirty-state git snapshots, the
++planning-stage Evidence Contract producer, lane fill + sufficiency, and — per the
++release-blocking portability amendment — Windows-behaviour SIMULATIONS that run on
++mac/Linux CI (never skip-green). Real kernel-sandbox enforcement is the only
++mac-gated part; enforce-or-refuse behaviour is tested on every platform.
++"""
++
++from __future__ import annotations
++
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path, PureWindowsPath
++from unittest import mock
++
++# __file__-relative sys.path (the house convention; a worktree imports its own
++# modules regardless of cwd).
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import evidence_runner as er  # noqa: E402
++from evidence_runner import Check, Runner, Catalog, CheckResult  # noqa: E402
++
++
++def _reset_probe():
++    er._unshare_probe_cache = None
++    er._wrapper_probe_cache.clear()
++
++
++# ── Catalog ───────────────────────────────────────────────────────────────────
++class TestCatalog(unittest.TestCase):
++    def _write(self, text: str) -> str:
++        d = tempfile.mkdtemp()
++        p = os.path.join(d, ".ora")
++        os.makedirs(p, exist_ok=True)
++        fp = os.path.join(p, "evidence.yaml")
++        with open(fp, "w") as f:
++            f.write(text)
++        return fp
++
++    def test_parse_valid_argv_catalog(self):
++        fp = self._write(
++            "checks:\n"
++            "  test: {argv: [python, -m, unittest], mutates: false, timeout: 60, network: deny}\n"
++            "runner: {working_dir: <repo-root>, env: isolated, network: deny, redact: by-sensitivity, on_unknown: gated}\n")
++        cat = er.parse_catalog(fp)
++        self.assertIn("test", cat.checks)
++        self.assertEqual(cat.checks["test"].argv, ["python", "-m", "unittest"])
++        self.assertEqual(cat.runner.redact, "by-sensitivity")
++
++    def test_malformed_yaml_raises_loudly(self):
++        fp = self._write("checks: [this is not a mapping]\n")
++        with self.assertRaises(ValueError):
++            er.parse_catalog(fp)
++
++    def test_missing_redact_is_invalid(self):
++        fp = self._write(
++            "checks:\n  t: {argv: [python, -c, pass]}\n"
++            "runner: {working_dir: x, env: isolated, network: deny, on_unknown: gated}\n")
++        with self.assertRaises(ValueError) as ctx:
++            er.parse_catalog(fp)
++        self.assertIn("redact", str(ctx.exception))
++
++    def test_check_needs_argv_or_cmd(self):
++        errs = er.validate_check("t", {"mutates": False})
++        self.assertTrue(any("argv" in e for e in errs))
++
++    def test_shell_true_only_with_cmd(self):
++        errs = er.validate_check("t", {"argv": ["x"], "shell": True})
++        self.assertTrue(any("shell" in e for e in errs))
++
++    def test_cmd_without_shell_rejected(self):
++        # P3: a cmd form always refuses at runtime without shell:true → invalid.
++        errs = er.validate_check("t", {"cmd": "echo x"})
++        self.assertTrue(any("shell: true" in e for e in errs))
++        # with shell:true it's valid
++        self.assertEqual(er.validate_check("t", {"cmd": "echo x", "shell": True}), [])
++
++    def test_mixed_argv_and_cmd_families_rejected(self):
++        # P3: cannot mix an argv form with a cmd form.
++        errs = er.validate_check("t", {"argv": ["x"], "cmd_windows": "y",
++                                       "cmd_posix": "z", "shell": True})
++        self.assertTrue(any("mix" in e for e in errs))
++
++    def test_base_cmd_must_be_a_string(self):
++        # P3 (last detail): base 'cmd' is type-checked (a list is invalid).
++        errs = er.validate_check("t", {"cmd": ["echo"], "shell": True})
++        self.assertTrue(any("'cmd' must be a string" in e for e in errs))
++        # a string cmd + shell is valid
++        self.assertEqual(er.validate_check("t", {"cmd": "echo x", "shell": True}), [])
++
++    def test_bad_network_rejected(self):
++        errs = er.validate_check("t", {"argv": ["x"], "network": "wat"})
++        self.assertTrue(any("network" in e for e in errs))
++
++    def test_per_platform_variants_must_be_matched_pair(self):
++        # P2-2: a POSIX-only variant with no base + no windows side is invalid
++        # (would silently refuse on Windows).
++        errs = er.validate_check("t", {"argv_posix": ["make"]})
++        self.assertTrue(any("matched pair" in e for e in errs))
++        # a matched pair is valid
++        self.assertEqual(er.validate_check("t", {"argv_posix": ["make"], "argv_windows": ["nmake"]}), [])
++        # a base argv alone is valid (works on both)
++        self.assertEqual(er.validate_check("t", {"argv": ["python", "-V"]}), [])
++        # a per-platform variant of the wrong type is rejected (argv → list, cmd → str)
++        self.assertTrue(any("must be a list" in e
++                            for e in er.validate_check("t", {"argv_posix": "make", "argv_windows": ["nmake"]})))
++        self.assertTrue(any("must be a string" in e
++                            for e in er.validate_check("t", {"cmd_posix": ["x"], "cmd_windows": "y"})))
++
++    def test_shipped_ora_catalog_parses_and_validates(self):
++        # The catalog is parse+validate ONLY here — NEVER executed (its `discover
++        # -s orchestrator/tests` would recurse into this very test file).
++        cat_path = _ORCH.parent / ".ora" / "evidence.yaml"
++        if not cat_path.is_file():
++            self.skipTest("no shipped ~/ora catalog in this worktree")
++        cat = er.parse_catalog(str(cat_path))
++        self.assertIn("test", cat.checks)
++        self.assertEqual(cat.checks["test"].network, "deny")
++        # argv form (shell-free) — no `cmd`/shell POSIX assumption.
++        self.assertIsNotNone(cat.checks["test"].argv)
++        self.assertIsNone(cat.checks["test"].cmd)
++
++    def test_discover_from_repo_root_and_walk(self):
++        d = tempfile.mkdtemp()
++        os.makedirs(os.path.join(d, ".ora"))
++        with open(os.path.join(d, ".ora", "evidence.yaml"), "w") as f:
++            f.write("checks: {}\nrunner: {working_dir: x, env: isolated, network: deny, redact: by-sensitivity, on_unknown: gated}\n")
++        self.assertEqual(er.discover_catalog(d), os.path.join(d, ".ora", "evidence.yaml"))
++        # nested subdir → upward walk finds it
++        sub = os.path.join(d, "a", "b")
++        os.makedirs(sub)
++        with mock.patch("os.getcwd", return_value=sub):
++            self.assertTrue(er.discover_catalog(None))
++
++
++# ── resolve_command ───────────────────────────────────────────────────────────
++class TestResolveCommand(unittest.TestCase):
++    def test_python_resolves_to_sys_executable(self):
++        argv, cmd, sh = er.resolve_command(Check(name="t", argv=["python3", "-c", "print(1)"]))
++        self.assertEqual(argv[0], sys.executable)
++        self.assertIsNone(cmd)
++        self.assertFalse(sh)
++
++    def test_argv_is_shell_free(self):
++        argv, cmd, sh = er.resolve_command(Check(name="t", argv=["node", "x.js"]))
++        self.assertEqual(argv, ["node", "x.js"])
++        self.assertFalse(sh)
++
++    def test_per_platform_variant_selected(self):
++        c = Check(name="t", argv_posix=["make"], argv_windows=["nmake"])
++        with mock.patch.object(os, "name", "posix"):
++            argv, _, _ = er.resolve_command(c)
++            self.assertEqual(argv, ["make"])
++        with mock.patch.object(os, "name", "nt"):
++            argv, _, _ = er.resolve_command(c)
++            self.assertEqual(argv, ["nmake"])
++
++
++# ── ENFORCE-OR-REFUSE ─────────────────────────────────────────────────────────
++class TestEnforceOrRefuse(unittest.TestCase):
++    def setUp(self):
++        _reset_probe()
++
++    def test_backend_deny_only(self):
++        # local/allow are never enforceable in P5 → None → refuse.
++        self.assertIsNone(er.enforcement_backend("local"))
++        self.assertIsNone(er.enforcement_backend("allow"))
++
++    def test_no_backend_refuses_cleanly_not_run(self):
++        # Simulate a platform with NO enforcing backend at all.
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_declared_wrapper", return_value=None), \
++             mock.patch.object(er, "_linux_unshare_available", return_value=False):
++            self.assertIsNone(er.enforcement_backend("deny"))
++            res = er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
++                               Runner(), tempfile.mkdtemp())
++            self.assertTrue(res.skipped)
++            self.assertIsNone(res.enforcement_model)      # NEVER orchestrated when refused
++            self.assertIn("ORA_EVIDENCE_SANDBOX", res.skip_reason or "")
++
++    def test_declared_wrapper_runs_declared_sandbox(self):
++        # A declared wrapper (not a demonstrable passthrough) makes the check RUN and
++        # records enforcement_model='declared-sandbox' (operator-ATTESTED, NOT the
++        # runner-verified 'orchestrated' — §7/§17, the fold re-check).
++        repo = tempfile.mkdtemp()
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            self.assertEqual(er.enforcement_backend("deny"), "ora-evidence-sandbox")
++            res = er.run_check(Check(name="ok", argv=["python", "-c", "print('hi')"]),
++                               Runner(), repo)
++            self.assertFalse(res.skipped)
++            self.assertTrue(res.passed)
++            self.assertEqual(res.exit_code, 0)
++            self.assertEqual(res.enforcement_model, "declared-sandbox")  # NOT orchestrated
++            self.assertEqual(res.backend, "ora-evidence-sandbox")
++
++    def test_demonstrable_passthrough_refused(self):
++        # SEC-4 + re-check: a wrapper PROVEN not to isolate network (baseline OPEN
++        # AND wrapped OPEN) is refused — never used as a backend, never records an
++        # enforcement claim.
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_linux_unshare_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=True), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            self.assertIsNone(er.enforcement_backend("deny"))
++            res = er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
++                               Runner(), tempfile.mkdtemp())
++            self.assertTrue(res.skipped)
++            self.assertIsNone(res.enforcement_model)
++
++    def test_passthrough_probe_is_reject_only_and_attributive(self):
++        # The re-check's core fold: DENIED must be ATTRIBUTABLE to the wrapper.
++        # baseline OPEN + wrapped OPEN → demonstrable passthrough (True/reject).
++        # baseline OPEN + wrapped DENIED → wrapper blocked → not a passthrough (False).
++        # baseline DENIED (offline/egress-filtered) → un-attributable → False (the
++        #   false-positive the re-check found; must NOT be read as enforcement).
++        with mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            for baseline, wrapped, expected in [("OPEN", "OPEN", True),
++                                                ("OPEN", "DENIED", False),
++                                                ("DENIED", "OPEN", False),
++                                                ("DENIED", "DENIED", False),
++                                                ("ERROR", "DENIED", False)]:
++                er._wrapper_probe_cache.clear()
++                with mock.patch.object(er, "_net_probe",
++                                       side_effect=[baseline, wrapped]):
++                    self.assertEqual(er._wrapper_is_demonstrable_passthrough(), expected,
++                                     f"baseline={baseline} wrapped={wrapped}")
++
++    def test_exit_nonzero_is_failed(self):
++        repo = tempfile.mkdtemp()
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            res = er.run_check(Check(name="bad", argv=["python", "-c", "import sys; sys.exit(3)"]),
++                               Runner(), repo)
++            self.assertFalse(res.passed)
++            self.assertEqual(res.exit_code, 3)
++            self.assertEqual(res.enforcement_model, "declared-sandbox")
++
++    def test_timeout_is_failed_with_reason(self):
++        repo = tempfile.mkdtemp()
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            res = er.run_check(
++                Check(name="slow", argv=["python", "-c", "import time; time.sleep(5)"], timeout=1),
++                Runner(), repo)
++            self.assertFalse(res.passed)
++            self.assertIn("timeout", res.stdout_tail.lower())
++
++    def test_invalid_wrapper_counts_as_no_backend(self):
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_linux_unshare_available", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "/nonexistent/definitely/not/here"}):
++            self.assertIsNone(er._declared_wrapper())
++            self.assertIsNone(er.enforcement_backend("deny"))
++
++    def test_clean_env_strips_ssh_auth_sock(self):
++        env = er._clean_env("/x/home", "/x/tmp")
++        self.assertNotIn("SSH_AUTH_SOCK", env)
++        self.assertNotIn("AWS_SECRET_ACCESS_KEY", env)
++
++    def test_env_inherit_is_rejected_by_validation(self):
++        # SEC-5: a catalog cannot declare env: inherit (it would leak credentials).
++        errs = er.validate_runner_block(
++            {"working_dir": "x", "env": "inherit", "network": "deny",
++             "redact": "by-sensitivity", "on_unknown": "gated"})
++        self.assertTrue(any("env" in e for e in errs))
++
++    def test_sandbox_refuses_unsafe_worktree_path(self):
++        # SEC-1: a worktree path with an SBPL-unsafe char is refused (no profile
++        # injection). enforcement backend is sandbox-exec on mac.
++        if not er._macos_sandbox_available():
++            self.skipTest("macOS sandbox-exec only")
++        evil = tempfile.mkdtemp() + '/a") (allow network*) ("'
++        os.makedirs(evil, exist_ok=True)
++        res = er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
++                           Runner(), evil)
++        self.assertTrue(res.skipped)
++        self.assertIn("unsafe", (res.skip_reason or "").lower())
++
++    def test_sandbox_refuses_ancestor_of_sensitive_root(self):
++        # SEC-2: a worktree equal-to/ancestor-of $HOME/vault/conversations is
++        # refused (re-allowing it would re-expose that root).
++        bad = er.sandbox_worktree_unsafe(os.path.expanduser("~"), tempfile.mkdtemp())
++        self.assertIsNotNone(bad)
++        self.assertIn("ancestor", bad)
++        # a normal repo (a fresh tmp dir, not an ancestor of a sensitive root) is fine
++        self.assertIsNone(er.sandbox_worktree_unsafe(tempfile.mkdtemp(), tempfile.mkdtemp()))
++
++    @unittest.skipUnless(er._macos_sandbox_available(), "macOS sandbox-exec only")
++    def test_macos_sandbox_denies_network(self):
++        # The kernel guarantee — mac-gated. A network:deny check under sandbox-exec
++        # cannot open a socket.
++        repo = tempfile.mkdtemp()
++        code = ("import socket,sys\n"
++                "try:\n socket.create_connection(('1.1.1.1',80),timeout=3); print('OPEN')\n"
++                "except Exception: print('DENIED')\n")
++        res = er.run_check(Check(name="net", argv=["python", "-c", code]), Runner(), repo)
++        self.assertFalse(res.skipped)
++        self.assertIn("DENIED", res.stdout_tail)
++        self.assertEqual(res.enforcement_model, "orchestrated")
++
++
++# ── Gate integration ──────────────────────────────────────────────────────────
++class TestGateIntegration(unittest.TestCase):
++    def test_deny_check_passes_gate(self):
++        allowed, why = er._gate_check(Check(name="t", network="deny"), "sandbox-exec")
++        self.assertTrue(allowed)
++
++    def test_no_backend_gate_blocks(self):
++        allowed, why = er._gate_check(Check(name="t"), None)
++        self.assertFalse(allowed)
++
++    def test_gate_axes_enforcement_is_per_backend(self):
++        # P1-3: the gate axes must carry the HONEST per-backend enforcement — a
++        # wrapper is declared-sandbox, NOT a hardcoded orchestrated.
++        captured = {}
++        def _fake_gate(action, axes, **kw):
++            captured.update(axes)
++            from tool_events import GateDecision
++            return GateDecision(True, "allowed", "ok")
++        with mock.patch.object(er._te, "gate", _fake_gate):
++            er._gate_check(Check(name="t"), "ora-evidence-sandbox")
++            self.assertEqual(captured["enforcement"], "declared-sandbox")
++            er._gate_check(Check(name="t"), "sandbox-exec")
++            self.assertEqual(captured["enforcement"], "orchestrated")
++
++
++# ── Observability — every check leaves a tool-event (§16-3) ───────────────────
++class TestObservability(unittest.TestCase):
++    def setUp(self):
++        _reset_probe()
++
++    def test_refused_check_records_tool_event(self):
++        # P1-2: a refused check must be VISIBLE in the tool-event log.
++        with mock.patch.object(er._te, "record") as rec, \
++             mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_declared_wrapper", return_value=None), \
++             mock.patch.object(er, "_linux_unshare_available", return_value=False):
++            er.run_check(Check(name="t", argv=["python", "-c", "print(1)"]),
++                         Runner(), tempfile.mkdtemp())
++        evs = [c.args[0] for c in rec.call_args_list
++               if c.args and isinstance(c.args[0], dict)
++               and c.args[0].get("event") == "evidence_check"]
++        self.assertEqual(len(evs), 1)
++        self.assertEqual(evs[0]["gate"]["decision"], "blocked")
++        self.assertEqual(evs[0]["enforcement_model"], "in_harness")   # runner refused
++
++    def test_ran_check_records_tool_event_with_honest_enforcement(self):
++        # P1-2 + P1-3: a check that RAN records exactly one event with the honest
++        # backend enforcement (declared-sandbox for a wrapper).
++        with mock.patch.object(er._te, "record") as rec, \
++             mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            er.run_check(Check(name="ok", argv=["python", "-c", "print(1)"]),
++                         Runner(), tempfile.mkdtemp())
++        evs = [c.args[0] for c in rec.call_args_list
++               if c.args and isinstance(c.args[0], dict)
++               and c.args[0].get("event") == "evidence_check"]
++        self.assertEqual(len(evs), 1)
++        self.assertEqual(evs[0]["gate"]["decision"], "allowed")
++        self.assertEqual(evs[0]["enforcement_model"], "declared-sandbox")
++        self.assertIn(evs[0]["enforcement_model"], er._te.ENFORCEMENT)   # in the vocabulary
++
++    def test_run_contract_missing_check_records_event(self):
++        # P2: a declared-required check MISSING from the catalog is a refusal that
++        # must also leave a tool-event (it bypassed run_check).
++        cat = Catalog(checks={})   # empty catalog
++        contract = {"required_standard_checks": ["ghost"]}
++        with mock.patch.object(er._te, "record") as rec:
++            results = er.run_contract(cat, contract, tempfile.mkdtemp())
++        self.assertTrue(results[0].skipped)
++        evs = [c.args[0] for c in rec.call_args_list
++               if c.args and isinstance(c.args[0], dict)
++               and c.args[0].get("event") == "evidence_check"]
++        self.assertEqual(len(evs), 1)
++        self.assertEqual(evs[0]["action"], "evidence_check:ghost")
++        self.assertEqual(evs[0]["gate"]["decision"], "blocked")
++
++
++# ── mutates:true ──────────────────────────────────────────────────────────────
++class TestMutatesTrue(unittest.TestCase):
++    def test_mutates_refused_in_dirty_modes(self):
++        for mode in ("review_dirty_diff", "continue_user_changes"):
++            res = er.run_check(Check(name="m", argv=["python", "-c", "pass"], mutates=True),
++                               Runner(), tempfile.mkdtemp(), mode=mode)
++            self.assertTrue(res.skipped)
++            self.assertIn("mutates", res.skip_reason)
++
++    def test_mutates_refused_under_default_mode(self):
++        # SEC-3: absence of an explicit mode FAILS SAFE — a mutating check with the
++        # default mode=None is REFUSED, not permitted.
++        res = er.run_check(Check(name="m", argv=["python", "-c", "pass"], mutates=True),
++                           Runner(), tempfile.mkdtemp())   # mode defaults to None
++        self.assertTrue(res.skipped)
++        self.assertIn("mutates", res.skip_reason)
++
++    def test_mutates_allowed_under_clean_worktree(self):
++        repo = tempfile.mkdtemp()
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            res = er.run_check(Check(name="m", argv=["python", "-c", "print('ok')"], mutates=True),
++                               Runner(), repo, mode="clean_worktree")
++            self.assertFalse(res.skipped)
++            self.assertTrue(res.passed)
++
++    def test_shell_true_runs_on_posix(self):
++        # PORT-1: a shell:true check must be runnable on POSIX (/bin/sh), not always
++        # refused. Verified under an enforcing (mocked) wrapper backend.
++        if os.name == "nt":
++            self.skipTest("POSIX shell path")
++        repo = tempfile.mkdtemp()
++        with mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.object(er, "_wrapper_is_demonstrable_passthrough", return_value=False), \
++             mock.patch.dict(os.environ, {er._ENV_SANDBOX: "env"}):
++            res = er.run_check(Check(name="sh", cmd="echo hi", shell=True), Runner(), repo)
++            self.assertFalse(res.skipped)
++            self.assertTrue(res.passed)
++
++
++# ── Dirty-state git snapshots ─────────────────────────────────────────────────
++class TestDirtyState(unittest.TestCase):
++    def _repo(self) -> str:
++        d = tempfile.mkdtemp()
++        subprocess.run(["git", "-C", d, "init", "-q"], check=True)
++        subprocess.run(["git", "-C", d, "config", "user.email", "t@t"], check=True)
++        subprocess.run(["git", "-C", d, "config", "user.name", "t"], check=True)
++        with open(os.path.join(d, "a.txt"), "w") as f:
++            f.write("hello\n")
++        subprocess.run(["git", "-C", d, "add", "-A"], check=True)
++        subprocess.run(["git", "-C", d, "commit", "-qm", "init"], check=True)
++        return d
++
++    def test_snapshot_forms_are_git_hashes(self):
++        repo = self._repo()
++        st = er.snapshot_before(repo, "review_dirty_diff")
++        self.assertTrue(st["head"] and len(st["head"]) == 40)
++        self.assertTrue(st["tree"] and len(st["tree"]) == 40)
++        self.assertIsNone(st["dirty_hash"])   # clean tree
++
++    def test_dirty_hash_present_when_dirty(self):
++        repo = self._repo()
++        with open(os.path.join(repo, "a.txt"), "a") as f:
++            f.write("more\n")
++        st = er.snapshot_before(repo, "continue_user_changes")
++        self.assertIsNotNone(st["dirty_hash"])
++
++    def test_delta_ref_is_a_path_not_inlined(self):
++        repo = self._repo()
++        before = er.snapshot_before(repo, "review_dirty_diff")
++        with open(os.path.join(repo, "a.txt"), "a") as f:
++            f.write("change\n")
++        trace = tempfile.mkdtemp()
++        after, ref = er.snapshot_after(repo, "review_dirty_diff", trace, before)
++        self.assertTrue(ref and os.path.isfile(ref))          # a REF (path), not a blob
++        self.assertTrue(after["head"])
++
++
++# ── Contract producer ─────────────────────────────────────────────────────────
++class TestContractProducer(unittest.TestCase):
++    def test_light_tier_no_contract(self):
++        ctx = {}
++        self.assertIsNone(er.apply_evidence_contract(ctx, "do x", "light", invoker=lambda s, u: "x"))
++        self.assertNotIn("evidence_contract", ctx)
++
++    def test_no_invoker_is_noop(self):
++        ctx = {}
++        self.assertIsNone(er.apply_evidence_contract(ctx, "do x", "standard", invoker=None))
++
++    def test_standard_produces_contract_subset(self):
++        cat = Catalog(checks={"test": Check(name="test", argv=["python"])})
++        out = ("REQUIRED CHECKS: test, nonexistent\n"
++               "BESPOKE PROBE: the feature returns 42\n"
++               "SUFFICIENCY: test passes and the probe holds\n")
++        contract, err = er.run_evidence_contract_pass("do x", cat, "crit", invoker=lambda s, u: out)
++        self.assertIsNone(err)
++        # only declared checks kept; 'nonexistent' dropped (executor can't invent checks)
++        self.assertEqual(contract["required_standard_checks"], ["test"])
++        self.assertTrue(contract["bespoke_probes"])
++        self.assertFalse(contract["repo_less"])
++
++    def test_repo_less_contract_when_no_catalog(self):
++        out = "REQUIRED CHECKS:\nBESPOKE PROBE: shows the thing\nSUFFICIENCY: it works\n"
++        contract, err = er.run_evidence_contract_pass("do x", None, None, invoker=lambda s, u: out)
++        self.assertIsNone(err)
++        self.assertEqual(contract["required_standard_checks"], [])
++        self.assertTrue(contract["repo_less"])
++
++    def test_apply_stashes_on_context_pkg(self):
++        out = "REQUIRED CHECKS:\nBESPOKE PROBE: p\nSUFFICIENCY: s\n"
++        ctx = {}
++        # No catalog discoverable → repo-less contract, still stashed (never skipped).
++        with mock.patch.object(er, "discover_catalog", return_value=None):
++            self.assertIsNone(er.apply_evidence_contract(ctx, "do x", "standard",
++                                                         invoker=lambda s, u: out))
++        self.assertIn("evidence_contract", ctx)
++
++
++# ── Lane fill + sufficiency ───────────────────────────────────────────────────
++class TestLaneFill(unittest.TestCase):
++    def test_contract_sufficient_all_required_passed(self):
++        results = [CheckResult(name="a", passed=True), CheckResult(name="b", passed=True)]
++        self.assertTrue(er.contract_sufficient(results, {"required_standard_checks": ["a", "b"]}))
++
++    def test_failed_required_not_sufficient(self):
++        results = [CheckResult(name="a", passed=True), CheckResult(name="b", passed=False)]
++        self.assertFalse(er.contract_sufficient(results, {"required_standard_checks": ["a", "b"]}))
++
++    def test_refused_required_not_sufficient(self):
++        results = [CheckResult(name="a", skipped=True)]
++        self.assertFalse(er.contract_sufficient(results, {"required_standard_checks": ["a"]}))
++
++    def test_empty_required_not_vacuously_sufficient(self):
++        self.assertFalse(er.contract_sufficient([], {"required_standard_checks": []}))
++        self.assertFalse(er.contract_sufficient([], None))
++
++    def test_fill_evidence_lanes_fills_diff_validate(self):
++        from execution_packet import EvidenceLane, ExecutionPacket
++        pkt = ExecutionPacket(evidence_lanes=[EvidenceLane(target="state_change", lane="diff_validate")])
++        results = [CheckResult(name="test", generated_by=["python", "-m", "unittest"], passed=True)]
++        er.fill_evidence_lanes(pkt, results, {"required_standard_checks": ["test"]}, delta_ref="/x/d.patch")
++        lane = pkt.evidence_lanes[0]
++        self.assertTrue(lane.generated_by)
++        self.assertTrue(lane.sufficient)
++        self.assertEqual(lane.result["delta_ref"], "/x/d.patch")
++
++    def test_fill_unfilled_when_required_failed(self):
++        from execution_packet import EvidenceLane, ExecutionPacket
++        pkt = ExecutionPacket(evidence_lanes=[EvidenceLane(target="state_change", lane="diff_validate")])
++        results = [CheckResult(name="test", passed=False)]
++        er.fill_evidence_lanes(pkt, results, {"required_standard_checks": ["test"]})
++        self.assertFalse(pkt.evidence_lanes[0].sufficient)
++
++
++# ── Portability — Windows-behaviour SIMULATION (run on mac/Linux CI) ──────────
++class TestPortabilityWindowsSim(unittest.TestCase):
++    def setUp(self):
++        _reset_probe()
++
++    def test_no_backend_on_simulated_windows_refuses(self):
++        # Simulated Windows with no declared wrapper → refuse cleanly, never
++        # runs unenforced, never records orchestrated.
++        with mock.patch.object(sys, "platform", "win32"), \
++             mock.patch.object(os, "name", "nt"), \
++             mock.patch.object(er, "_macos_sandbox_available", return_value=False), \
++             mock.patch.dict(os.environ, {}, clear=False):
++            os.environ.pop(er._ENV_SANDBOX, None)
++            self.assertIsNone(er.enforcement_backend("deny"))
++            res = er.run_check(Check(name="t", argv=["python", "-c", "pass"]),
++                               Runner(), tempfile.mkdtemp())
++            self.assertTrue(res.skipped)
++            self.assertIsNone(res.enforcement_model)
++
++    def test_shell_true_without_posix_shell_refuses_no_cmd_exe(self):
++        # A shell:true check on Windows (os.name='nt') with no ORA_POSIX_SHELL
++        # refuses cleanly — never falls back to cmd.exe. (On POSIX it uses /bin/sh;
++        # see test_shell_true_runs_on_posix.)
++        try:
++            import bash_execute as be
++        except ImportError:
++            from orchestrator.tools import bash_execute as be
++        with mock.patch.object(os, "name", "nt"), \
++             mock.patch.object(be, "_posix_shell_path", return_value=None):
++            res = er.run_check(Check(name="s", cmd="echo x | tee y", shell=True),
++                               Runner(), tempfile.mkdtemp())
++            self.assertTrue(res.skipped)
++            self.assertIn("POSIX", (res.skip_reason or "").upper())
++            # never falls back to cmd.exe
++            self.assertNotIn("cmd.exe", " ".join(res.generated_by))
++
++    def test_windows_clean_env_has_windows_vars(self):
++        with mock.patch.object(os, "name", "nt"), \
++             mock.patch.dict(os.environ, {"USERPROFILE": "C:\\Users\\a", "SystemRoot": "C:\\Windows",
++                                          "COMSPEC": "C:\\Windows\\cmd.exe", "PATHEXT": ".EXE",
++                                          "SSH_AUTH_SOCK": "/leak"}, clear=False):
++            env = er._clean_env("C:\\scratch\\home", "C:\\scratch\\tmp")
++            self.assertEqual(env["USERPROFILE"], "C:\\scratch\\home")
++            self.assertIn("SystemRoot", env)
++            self.assertIn("COMSPEC", env)
++            self.assertNotIn("SSH_AUTH_SOCK", env)   # still credential-stripped
++            self.assertNotIn("HOME", env)            # POSIX var not set on Windows
++
++    def test_windows_style_repo_root_path_handling(self):
++        # A PureWindowsPath repo_root flows through discovery/snapshot logic without
++        # a POSIX-only path assumption (the runner's own paths are pathlib).
++        win = PureWindowsPath("C:\\Users\\a\\repo")
++        self.assertEqual(win.name, "repo")
++        # discover joins .ora/evidence.yaml with pathlib (separator-agnostic)
++        self.assertTrue(str(win / ".ora" / "evidence.yaml").endswith("evidence.yaml"))
++
++    def test_per_platform_argv_windows_selected_under_nt(self):
++        c = Check(name="t", argv_windows=["nmake"], argv_posix=["make"])
++        with mock.patch.object(os, "name", "nt"):
++            argv, _, _ = er.resolve_command(c)
++            self.assertEqual(argv, ["nmake"])
++
++    def test_wrapper_with_spaces_parsed_correctly(self):
++        # P2-1: a wrapper path WITH SPACES (quoted) — e.g. Windows "Program Files"
++        # — must not be mangled, on BOTH POSIX (posix=True strips quotes) and
++        # simulated-Windows (posix=False keeps quotes → the runner strips a balanced
++        # surrounding pair; the re-check catch). Uses a real space-containing exe.
++        import tempfile as tf, shutil as sh
++        d = tf.mkdtemp(prefix="Program Files ")   # a dir with a space
++        exe = os.path.join(d, "wrap")
++        sh.copy(sh.which("env") or "/usr/bin/env", exe)
++        os.chmod(exe, 0o755)
++        for simulated in ("posix", "nt"):
++            with mock.patch.object(os, "name", simulated), \
++                 mock.patch.dict(os.environ, {er._ENV_SANDBOX: f'"{exe}" --flag'}):
++                parts = er._declared_wrapper()
++                self.assertIsNotNone(parts, f"os.name={simulated}")
++                self.assertEqual(parts[0], exe, f"quotes not stripped on {simulated}")
++                self.assertEqual(parts[1], "--flag")
++
++    def test_wrapper_malformed_returns_none_not_crash(self):
++        with mock.patch.dict(os.environ, {er._ENV_SANDBOX: 'unbalanced "quote'}):
++            self.assertIsNone(er._declared_wrapper())
++
++    def test_unshare_cache_is_platform_gated(self):
++        # PORT-2: a cached True unshare probe must NOT leak across platforms — the
++        # platform check happens BEFORE the cache is consulted.
++        er._unshare_probe_cache = True   # pretend a Linux host probed True
++        with mock.patch.object(sys, "platform", "darwin"):
++            self.assertFalse(er._linux_unshare_available())
++        with mock.patch.object(sys, "platform", "win32"):
++            self.assertFalse(er._linux_unshare_available())
++        _reset_probe()
++
++
++class TestNoHardcodedPaths(unittest.TestCase):
++    def test_module_has_no_hardcoded_user_or_tmp_paths(self):
++        src = (_ORCH / "evidence_runner.py").read_text()
++        # No hardcoded /tmp, /Users, /private literals in the module's own paths.
++        # (Docstrings/comments may reference them as anti-patterns; strip lines that
++        # are clearly prose about NOT hardcoding.)
++        import re
++        offenders = []
++        for i, line in enumerate(src.splitlines(), 1):
++            for pat in ("/tmp/", "/Users/", "/private/"):
++                if pat in line and "never" not in line.lower() and "no " not in line.lower():
++                    offenders.append((i, pat, line.strip()[:60]))
++        self.assertEqual(offenders, [], f"hardcoded paths: {offenders}")
++
++    def test_green_not_right_problem_sentence_present(self):
++        src = (_ORCH / "evidence_runner.py").read_text()
++        self.assertIn("nothing broke that you knew to check", src)
++        self.assertIn("right problem", src)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/orchestrator/tool_events.py b/orchestrator/tool_events.py
+index d923c055..10957fb0 100644
+--- a/orchestrator/tool_events.py
++++ b/orchestrator/tool_events.py
+@@ -90,7 +90,10 @@ FUNCTION_CATEGORIES = frozenset({"read", "write", "execute"})
+ MUTABILITY = ("read", "reversible_write", "external_write", "irreversible")
+ SENSITIVITY = ("public", "private", "sensitive", "secret")
+ EGRESS = ("none", "local", "external")
+-ENFORCEMENT = frozenset({"in_harness", "boundary_only", "orchestrated"})
++# "declared-sandbox" (Phase 5): a check ran under an operator-DECLARED sandbox
++# wrapper (ORA_EVIDENCE_SANDBOX) that the runner trusts but cannot itself verify —
++# honestly weaker than the runner-VERIFIED "orchestrated" (§7/§17 no-overclaim).
++ENFORCEMENT = frozenset({"in_harness", "boundary_only", "orchestrated", "declared-sandbox"})
+ 
+ _MUT_RANK = {v: i for i, v in enumerate(MUTABILITY)}
+ _SENS_RANK = {v: i for i, v in enumerate(SENSITIVITY)}
+diff --git a/server/server.py b/server/server.py
+index 413be556..af9e4e44 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -2857,6 +2857,17 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+                 return
+         elif _crit and _crit.startswith("WARN:"):
+             _risk_warn = _crit[5:]
++        # Execution Review Phase 5: the Evidence Contract (planning-stage sibling
++        # to apply_criteria, spec §15/§16-2), produced IN THE LIVE PLANNING PATH
++        # (standard+). Writes context_pkg['evidence_contract'] + records a
++        # tool-event. Additive + never-raises (response text unchanged; the Phase-6
++        # loop acts on the directive).
++        try:
++            from evidence_runner import apply_evidence_contract as _aec
++        except ImportError:  # pragma: no cover
++            from orchestrator.evidence_runner import apply_evidence_contract as _aec
++        _aec(context_pkg, _enriched, _tier,
++             invoker=_make_server_criteria_invoker(config, config_name))
+     except Exception as _rge_srv:
+         print(f"[risk-gate] server tier/hold skipped: {_rge_srv}")
+ 

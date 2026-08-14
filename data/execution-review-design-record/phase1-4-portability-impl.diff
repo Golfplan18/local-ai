@@ -1,0 +1,565 @@
+diff --git a/orchestrator/dispatcher.py b/orchestrator/dispatcher.py
+index ac4c8291..976f2272 100644
+--- a/orchestrator/dispatcher.py
++++ b/orchestrator/dispatcher.py
+@@ -428,11 +428,7 @@ def request_permission(tool_name: str, parameters: dict,
+ 
+ # ── Path validation ───────────────────────────────────────────────────────
+ 
+-ALLOWED_BASES = [
+-    os.path.realpath(WORKSPACE),
+-    os.path.realpath(VAULT),
+-    os.path.realpath(CONVERSATIONS),
+-]
++ALLOWED_BASES = [WORKSPACE, VAULT, CONVERSATIONS]
+ 
+ DENY_LIST = [".ssh", ".gnupg", ".env", "id_rsa", "id_ed25519", ".netrc",
+              "credentials", "secrets", "token", ".aws/credentials"]
+@@ -446,20 +442,24 @@ def validate_path(file_path: str, operation: str = "read") -> tuple[bool, str]:
+     if ".." in file_path:
+         return False, f"Path traversal not allowed: {file_path}"
+ 
+-    # Block deny-listed patterns
+-    path_lower = resolved.lower()
++    # Block deny-listed patterns. Normalize separators to '/' and case-fold so a
++    # Windows backslash path (``C:\\Users\\a\\.aws\\credentials``) still matches
++    # the '/'-shaped patterns (``.aws/credentials``) — a raw ``resolved.lower()``
++    # substring test misses them (the W1 separator-anchoring class, §7).
++    path_match = resolved.replace("\\", "/").lower()
+     for pattern in DENY_LIST:
+-        if pattern in path_lower:
++        if pattern in path_match:
+             return False, f"Access denied to sensitive path: {pattern}"
+ 
+     if operation == "read":
+         # Reads are allowed more broadly
+         return True, "allowed"
+ 
+-    # Writes must be within allowed bases
+-    for base in ALLOWED_BASES:
+-        if resolved.startswith(base):
+-            return True, "allowed"
++    # Writes must be within allowed bases — boundary-anchored + case-normalized
++    # (runtime_paths.within_any_base), so a mere-prefix SIBLING (``ora-project``
++    # next to ``ora``) can't be treated as inside, on Windows or POSIX.
++    if _rp.within_any_base(resolved, ALLOWED_BASES):
++        return True, "allowed"
+ 
+     return False, f"Path outside allowed locations: {resolved}"
+ 
+diff --git a/orchestrator/execution_packet.py b/orchestrator/execution_packet.py
+index b80a6d59..573428b8 100644
+--- a/orchestrator/execution_packet.py
++++ b/orchestrator/execution_packet.py
+@@ -425,7 +425,7 @@ def write_packet(packet: ExecutionPacket | None, trace_dir: str | None) -> str |
+     try:
+         os.makedirs(str(trace_dir), exist_ok=True)
+         path = os.path.join(str(trace_dir), _PACKET_FILENAME)
+-        with open(path, "w") as f:
++        with open(path, "w", encoding="utf-8") as f:
+             json.dump(packet.to_dict(), f, default=str, indent=2)
+         return path
+     except Exception as e:
+diff --git a/orchestrator/risk_gate.py b/orchestrator/risk_gate.py
+index d0fec730..ba754b61 100644
+--- a/orchestrator/risk_gate.py
++++ b/orchestrator/risk_gate.py
+@@ -576,7 +576,7 @@ def fold_route_observed(events_path: str | None, *,
+     _src_channels: set[str] = set()
+     _src_candidates: list[dict] = []
+     try:
+-        with open(events_path) as f:
++        with open(events_path, encoding="utf-8") as f:
+             for line in f:
+                 line = line.strip()
+                 if not line:
+@@ -657,7 +657,7 @@ def _sticky_path() -> str:
+ 
+ def _load_sticky() -> dict:
+     try:
+-        with open(_sticky_path()) as f:
++        with open(_sticky_path(), encoding="utf-8") as f:
+             return json.load(f)
+     except Exception:
+         return {}
+@@ -682,7 +682,7 @@ def set_sticky(conversation_id: str | None, tier: str | None) -> None:
+             data[conversation_id] = tier
+         os.makedirs(os.path.dirname(_sticky_path()), exist_ok=True)
+         tmp = _sticky_path() + ".tmp"
+-        with open(tmp, "w") as f:
++        with open(tmp, "w", encoding="utf-8") as f:
+             json.dump(data, f)
+         os.replace(tmp, _sticky_path())
+     except Exception:
+diff --git a/orchestrator/runtime_paths.py b/orchestrator/runtime_paths.py
+index 3820afad..e5ad6aa6 100644
+--- a/orchestrator/runtime_paths.py
++++ b/orchestrator/runtime_paths.py
+@@ -58,6 +58,27 @@ def norm_key(path) -> str:
+         return os.path.normcase(str(path))
+ 
+ 
++def within_base(path, base) -> bool:
++    """True iff ``path`` IS ``base`` or a descendant of it, compared through the
++    case- and separator-normalized key (:func:`norm_key`) with a **directory
++    boundary**. Boundary-anchoring is what makes this safe: a raw
++    ``resolved.startswith(base)`` treats a mere-prefix SIBLING as inside — e.g.
++    ``~/ora-project/x`` starts with ``~/ora`` (POSIX), and
++    ``C:\\Users\\a\\ora-project`` starts with ``C:\\Users\\a\\ora`` (Windows).
++    Requiring the next character after ``base`` to be a separator closes that.
++    Correct on Windows (backslash + case-insensitive) and POSIX alike."""
++    pk = norm_key(path).replace("\\", "/").rstrip("/")
++    bk = norm_key(base).replace("\\", "/").rstrip("/")
++    if not bk:
++        return False
++    return pk == bk or pk.startswith(bk + "/")
++
++
++def within_any_base(path, bases) -> bool:
++    """True iff ``path`` is inside ANY of ``bases`` (see :func:`within_base`)."""
++    return any(within_base(path, b) for b in bases)
++
++
+ # ── Cross-platform advisory file lock ──────────────────────────────────────
+ # fcntl (POSIX) / msvcrt (Windows); guarded imports so neither platform
+ # crashes at import. Shared by tool_events (approval grant/consume) and
+diff --git a/orchestrator/slash_commands.py b/orchestrator/slash_commands.py
+index de90baf6..f60676ac 100644
+--- a/orchestrator/slash_commands.py
++++ b/orchestrator/slash_commands.py
+@@ -48,6 +48,11 @@ import re
+ import shlex
+ from typing import Optional
+ 
++# Repo root (…/ora), derived from THIS file's location so the historical-tool
++# import fallbacks below resolve wherever Ora is installed — never a hardcoded
++# /Users/<name>/ora path, which is neither cross-platform nor a safe default.
++_ORA_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++
+ from slash_command_registry import (
+     categories as registry_categories,
+     find_command,
+@@ -57,8 +62,20 @@ from slash_command_registry import (
+ )
+ 
+ 
+-VAULT_DIR = os.path.expanduser("~/Documents/vault/")
+-ORA_DIR = os.path.expanduser("~/ora/")
++# Search roots for path resolution + default output dirs come from the single
++# cross-platform source (honor ORA_HOME / ORA_VAULT), not hardcoded ~/ paths.
++# Guarded import mirrors the other orchestrator modules; falls back to the
++# __file__-derived root + expanduser only if runtime_paths can't be imported.
++try:
++    try:
++        import runtime_paths as _rp
++    except ImportError:
++        from orchestrator import runtime_paths as _rp
++    ORA_DIR = os.path.join(_rp.WORKSPACE, "")
++    VAULT_DIR = os.path.join(_rp.VAULT_STR, "")
++except Exception:  # pragma: no cover - defensive
++    ORA_DIR = os.path.join(_ORA_ROOT, "")
++    VAULT_DIR = os.path.expanduser("~/Documents/vault/")
+ DEFAULT_INSTANCE_DIR = os.path.join(VAULT_DIR, "Corpus Instances")
+ DEFAULT_OUTPUT_DIR = os.path.join(VAULT_DIR, "Outputs")
+ 
+@@ -795,7 +812,7 @@ def _cmd_cleaning(args: list[str]) -> str:
+         except ImportError:
+             # Fall back: try via orchestrator package path
+             import sys as _sys
+-            _sys.path.insert(0, "/Users/oracle/ora")
++            _sys.path.insert(0, _ORA_ROOT)
+             from orchestrator.historical.run_engram_cleaning_detection import run_detection
+ 
+         result = run_detection(
+@@ -829,7 +846,7 @@ def _cmd_cleaning(args: list[str]) -> str:
+             from historical.run_engram_cleaning_resolver import run_resolver
+         except ImportError:
+             import sys as _sys
+-            _sys.path.insert(0, "/Users/oracle/ora")
++            _sys.path.insert(0, _ORA_ROOT)
+             from orchestrator.historical.run_engram_cleaning_resolver import run_resolver
+ 
+         try:
+@@ -966,7 +983,7 @@ def _cmd_news(args: list[str]) -> str:
+             from historical.run_news_supersession_detection import run_detection
+         except ImportError:
+             import sys as _sys
+-            _sys.path.insert(0, "/Users/oracle/ora")
++            _sys.path.insert(0, _ORA_ROOT)
+             from orchestrator.historical.run_news_supersession_detection import (
+                 run_detection,
+             )
+@@ -1006,7 +1023,7 @@ def _cmd_news(args: list[str]) -> str:
+             from historical.run_news_supersession_resolver import run_resolver
+         except ImportError:
+             import sys as _sys
+-            _sys.path.insert(0, "/Users/oracle/ora")
++            _sys.path.insert(0, _ORA_ROOT)
+             from orchestrator.historical.run_news_supersession_resolver import (
+                 run_resolver,
+             )
+diff --git a/orchestrator/tests/test_portability.py b/orchestrator/tests/test_portability.py
+index e45ae4f9..a7b28fe3 100644
+--- a/orchestrator/tests/test_portability.py
++++ b/orchestrator/tests/test_portability.py
+@@ -719,5 +719,242 @@ class TestCentralPathLayer(unittest.TestCase):
+                              os.path.expanduser(runtime_paths.VAULT_STR))
+ 
+ 
++# ══════════════════════════════════════════════════════════════════════════
++# Phase 2-4 portability (this pass): write-containment boundary, root sourcing,
++# server ORA_HOME bootstrap, slash-command repo root, _clean_env Windows vars,
++# packet trace-path + risk_gate event-log encoding. These surfaces landed AFTER
++# the Phase-1 portability hardening and were reviewed for correctness, not for
++# Windows behavior.
++# ══════════════════════════════════════════════════════════════════════════
++
++
++class TestWithinBaseBoundary(unittest.TestCase):
++    """runtime_paths.within_base / within_any_base: boundary-anchored +
++    case-normalized containment. A raw ``resolved.startswith(base)`` treats a
++    mere-prefix SIBLING as inside (``ora-project`` next to ``ora``) and ignores
++    Windows case-insensitivity — both closed here."""
++
++    def test_posix_self_descendant_and_sibling(self):
++        home = os.path.expanduser("~")
++        base = os.path.join(home, "ora")
++        self.assertTrue(runtime_paths.within_base(base, base))                       # self
++        self.assertTrue(runtime_paths.within_base(os.path.join(base, "config", "x"), base))  # descendant
++        self.assertFalse(runtime_paths.within_base(os.path.join(home, "ora-worktrees", "x"), base))  # sibling-prefix
++        self.assertFalse(runtime_paths.within_base(os.path.join(home, "orang", "x"), base))          # prefix
++        self.assertFalse(runtime_paths.within_base(os.path.join(home, "elsewhere"), base))           # unrelated
++
++    def test_within_any_base(self):
++        home = os.path.expanduser("~")
++        bases = [os.path.join(home, "ora"), os.path.join(home, "Documents", "vault")]
++        self.assertTrue(runtime_paths.within_any_base(os.path.join(home, "Documents", "vault", "n.md"), bases))
++        self.assertFalse(runtime_paths.within_any_base(os.path.join(home, "ora-x", "n.md"), bases))
++
++    def test_windows_case_insensitive_and_sibling(self):
++        # Simulate Windows normalization: norm_key becomes ntpath.normcase
++        # (case-fold + backslashes), which within_base then '/'-normalizes.
++        with mock.patch.object(runtime_paths, "norm_key",
++                               side_effect=lambda p: ntpath.normcase(str(p))):
++            base = r"C:\Users\bob\ora"
++            self.assertTrue(runtime_paths.within_base(r"C:\Users\Bob\ORA\config\x.json", base))  # case
++            self.assertTrue(runtime_paths.within_base(base, base))
++            self.assertFalse(runtime_paths.within_base(r"C:\Users\bob\ora-project\x", base))      # sibling
++            self.assertFalse(runtime_paths.within_base(r"D:\Users\bob\ora\x", base))              # other drive
++
++
++class TestValidatePathContainment(unittest.TestCase):
++    """dispatcher.validate_path + file_ops._validate_path: the write-containment
++    boundary and the separator-normalized deny-list, on both platforms."""
++
++    def test_dispatcher_blocks_posix_sibling_write(self):
++        import dispatcher
++        home = os.path.expanduser("~")
++        ok, _ = dispatcher.validate_path(os.path.join(home, "ora", "config", "models.json"), "write")
++        self.assertTrue(ok)
++        ok, reason = dispatcher.validate_path(os.path.join(home, "ora-worktrees", "evil.txt"), "write")
++        self.assertFalse(ok, reason)   # sibling of WORKSPACE must NOT be writable
++
++    def test_fileops_blocks_posix_sibling_write(self):
++        import file_ops
++        home = os.path.expanduser("~")
++        ok, _ = file_ops._validate_path(os.path.join(home, "ora", "notes.md"))
++        self.assertTrue(ok)
++        ok, reason = file_ops._validate_path(os.path.join(home, "ora-project", "evil.md"))
++        self.assertFalse(ok, reason)
++
++    def test_deny_list_matches_backslash_paths(self):
++        # A Windows-shaped secret path must hit the '/'-shaped DENY_LIST patterns
++        # once separators are normalized — a raw resolved.lower() substring test
++        # would miss `.aws/credentials` on a backslash path.
++        import dispatcher, file_ops
++        for p in (r"C:\Users\alice\.aws\credentials",
++                  r"C:\Users\alice\.ssh\id_rsa",
++                  r"C:\Users\alice\.gnupg\secring"):
++            ok, _ = dispatcher.validate_path(p, "read")
++            self.assertFalse(ok, p)
++            ok, _ = file_ops._validate_path(p)
++            self.assertFalse(ok, p)
++
++    def test_path_with_spaces_within_base_allowed(self):
++        import dispatcher
++        home = os.path.expanduser("~")
++        ok, reason = dispatcher.validate_path(
++            os.path.join(home, "ora", "my notes", "a file.md"), "write")
++        self.assertTrue(ok, reason)
++
++
++class TestFileOpsRootsFromRuntimePaths(unittest.TestCase):
++    """file_ops core roots come from runtime_paths (honor ORA_HOME / a
++    relocation), not the old hardcoded ~/ora, ~/Documents defaults."""
++
++    def test_roots_agree_with_runtime_paths(self):
++        import file_ops
++        self.assertEqual(file_ops.WORKSPACE, runtime_paths.WORKSPACE)
++        self.assertEqual(file_ops.VAULT, runtime_paths.VAULT_STR)
++        self.assertEqual(file_ops.CONVERSATIONS, runtime_paths.CONVERSATIONS_STR)
++
++    def test_no_hardcoded_user_path_in_source(self):
++        src = (_ORCH / "tools" / "file_ops.py").read_text()
++        self.assertNotIn("/Users/", src)
++        self.assertNotIn('expanduser("~/ora', src)
++
++
++class TestCleanEnvWindowsVars(unittest.TestCase):
++    """bash_execute._clean_env must propagate the Windows-essential system
++    variables (SystemRoot etc.) — without %SystemRoot% even a declared POSIX
++    shell fails to spawn on Windows (DLL load) — while leaving POSIX identical."""
++
++    def test_windows_propagates_system_vars(self):
++        import bash_execute
++        fake = {"PATH": r"C:\Windows;C:\Windows\System32",
++                "SystemRoot": r"C:\Windows", "SystemDrive": "C:",
++                "windir": r"C:\Windows", "COMSPEC": r"C:\Windows\System32\cmd.exe",
++                "PATHEXT": ".COM;.EXE;.BAT", "TEMP": r"C:\Users\a\AppData\Local\Temp",
++                "USERPROFILE": r"C:\Users\a"}
++        with mock.patch.object(os, "name", "nt"), \
++             mock.patch.dict(os.environ, fake, clear=True):
++            env = bash_execute._clean_env()
++        for k in ("SystemRoot", "SystemDrive", "windir", "COMSPEC", "PATHEXT",
++                  "TEMP", "USERPROFILE"):
++            self.assertEqual(env.get(k), fake[k], k)
++
++    def test_posix_env_unchanged(self):
++        import bash_execute
++        with mock.patch.object(os, "name", "posix"), \
++             mock.patch.dict(os.environ, {"PATH": "/usr/bin", "HOME": "/home/a"},
++                             clear=True):
++            env = bash_execute._clean_env()
++        # No Windows keys leak into a POSIX environment.
++        for k in ("SystemRoot", "COMSPEC", "PATHEXT", "windir"):
++            self.assertNotIn(k, env)
++        self.assertEqual(env.get("PATH"), "/usr/bin")
++
++
++class TestServerRootHonorsOraHome(unittest.TestCase):
++    """server.py's WORKSPACE / CONVERSATIONS_DIR must derive from ORA_HOME /
++    ORA_CONVERSATIONS (Windows installs + relocations), not a hardcoded ~/ora.
++    Run in a subprocess so the module-level bootstrap is exercised fresh with
++    the env set — independent of whether another test already imported server."""
++
++    def test_workspace_and_conversations_relocate(self):
++        import json
++        import subprocess
++        import tempfile
++        with tempfile.TemporaryDirectory(prefix="ora home ") as ora_home, \
++             tempfile.TemporaryDirectory(prefix="ora conv ") as ora_conv:
++            boot = (
++                "import sys, os, json\n"
++                f"REPO = {str(_REPO)!r}\n"
++                "for p in (os.path.join(REPO,'orchestrator','tools'), "
++                "os.path.join(REPO,'orchestrator'), os.path.join(REPO,'server'), REPO):\n"
++                "    sys.path.insert(0, p)\n"
++                "import server\n"
++                "print('RESULT ' + json.dumps({'ws': server.WORKSPACE, "
++                "'conv': server.CONVERSATIONS_DIR}))\n"
++            )
++            env = dict(os.environ)
++            env.update({"ORA_HOME": ora_home, "ORA_CONVERSATIONS": ora_conv,
++                        "ORA_TOOL_EVENTS": "off", "ORA_PIPELINE_TRACE": "off"})
++            proc = subprocess.run([sys.executable, "-c", boot], env=env,
++                                  capture_output=True, text=True, timeout=180)
++            marker = [l for l in proc.stdout.splitlines() if l.startswith("RESULT ")]
++            self.assertTrue(marker, f"server import failed:\nSTDOUT{proc.stdout}\nSTDERR{proc.stderr}")
++            data = json.loads(marker[0][len("RESULT "):])
++        # Both roots honor the relocated env (path with a space, too).
++        self.assertEqual(os.path.realpath(data["ws"]), os.path.realpath(ora_home))
++        self.assertEqual(os.path.realpath(data["conv"]), os.path.realpath(ora_conv))
++
++
++class TestSlashCommandRepoRoot(unittest.TestCase):
++    """slash_commands historical-tool import fallbacks must use a __file__-derived
++    repo root, never a hardcoded /Users/<name>/ora path."""
++
++    def test_ora_root_is_file_derived(self):
++        import slash_commands
++        expected = os.path.dirname(os.path.dirname(os.path.abspath(slash_commands.__file__)))
++        self.assertEqual(slash_commands._ORA_ROOT, expected)
++
++    def test_no_hardcoded_user_path_in_source(self):
++        src = (_ORCH / "slash_commands.py").read_text()
++        self.assertNotIn("/Users/oracle/ora", src)
++
++
++class TestExecutionPacketTracePathPortable(unittest.TestCase):
++    """execution_packet.write_packet builds its path with os.path.join and
++    writes UTF-8 — a trace dir with spaces / nested segments and a non-ASCII
++    deliverable must round-trip."""
++
++    def test_write_and_read_back_with_spaces_and_unicode(self):
++        import json
++        import tempfile
++        import execution_packet as ep
++        with tempfile.TemporaryDirectory(prefix="ora trace ") as td:
++            trace = os.path.join(td, "conv 1", "ts 2")   # spaces + nesting
++            signals = {"any_mutation": True, "max_mutability": "reversible_write",
++                       "source_read_suspected": False, "source_candidate_reads": []}
++            ref = ep.construct_and_write(
++                signals=signals, context_pkg={"conversation_id": "c1"},
++                output_text="a real deliverable body — café / 例文",
++                risk_tier="standard", trace_dir=trace)
++            self.assertTrue(ref and os.path.exists(ref), ref)
++            with open(ref, encoding="utf-8") as f:
++                data = json.load(f)
++        self.assertEqual(data["risk_tier"], "standard")
++        self.assertEqual(data["execution"]["delta"]["max_mutability"], "reversible_write")
++
++
++class TestRiskGateEventLogEncoding(unittest.TestCase):
++    """risk_gate reads the tool-event log and the sticky store as UTF-8, so a
++    non-ASCII path/URL in the log (or a relocated DATA_DIR) never crashes the
++    fold on a non-UTF-8 default-locale host (Windows)."""
++
++    def test_fold_reads_utf8_event_log(self):
++        import json
++        import tempfile
++        import risk_gate as rgate
++        with tempfile.TemporaryDirectory() as td:
++            ev = os.path.join(td, "tool-events.jsonl")
++            with open(ev, "w", encoding="utf-8") as f:
++                # ensure_ascii=False → real multibyte UTF-8 bytes on disk.
++                f.write(json.dumps({
++                    "action": "web_fetch", "mutability": "read",
++                    "reads": [{"what": "https://例え.jp/café", "where": "network"}],
++                    "exit": {"ok": True}, "sensitivity": "public", "mutated": False,
++                }, ensure_ascii=False) + "\n")
++            sig = rgate.fold_route_observed(ev, output_text="a substantive grounded answer body")
++        self.assertTrue(sig["source_read_suspected"])
++        self.assertIn("web_fetch", sig["source_read_channels"])
++
++    def test_sticky_round_trip_relocated_data_dir(self):
++        import tempfile
++        import risk_gate as rgate
++        with tempfile.TemporaryDirectory(prefix="ora data ") as td:
++            sticky = os.path.join(td, "risk-sticky.json")
++            with mock.patch.object(rgate, "_sticky_path", lambda: sticky):
++                rgate.set_sticky("conv-1", "high-risk")
++                self.assertEqual(rgate.get_sticky("conv-1"), "high-risk")
++                rgate.set_sticky("conv-1", "auto")            # clear
++                self.assertIsNone(rgate.get_sticky("conv-1"))
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/orchestrator/tools/bash_execute.py b/orchestrator/tools/bash_execute.py
+index 9829b301..87690206 100644
+--- a/orchestrator/tools/bash_execute.py
++++ b/orchestrator/tools/bash_execute.py
+@@ -687,6 +687,18 @@ def _clean_env() -> dict:
+                 "TMPDIR", "SSH_AUTH_SOCK"):
+         if key in parent:
+             env[key] = parent[key]
++    # On Windows, spawning ANY process (even a declared Git Bash / WSL sh via
++    # ORA_POSIX_SHELL) needs the core system variables — most critically
++    # %SystemRoot%, without which winsock/crypto DLLs fail to load and
++    # CreateProcess errors out. COMSPEC/PATHEXT/SystemDrive/windir + the temp
++    # and profile roots are required for realistic command resolution. Adding
++    # them only under os.name=='nt' leaves the POSIX environment byte-identical.
++    if os.name == "nt":
++        for key in ("SystemRoot", "SystemDrive", "windir", "COMSPEC", "PATHEXT",
++                    "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA",
++                    "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE"):
++            if key in parent:
++                env[key] = parent[key]
+     env["WORKSPACE"] = WORKSPACE
+     return env
+ 
+diff --git a/orchestrator/tools/file_ops.py b/orchestrator/tools/file_ops.py
+index c19f4020..e4dc24da 100644
+--- a/orchestrator/tools/file_ops.py
++++ b/orchestrator/tools/file_ops.py
+@@ -2,9 +2,17 @@
+ 
+ import os
+ 
+-WORKSPACE = os.path.expanduser("~/ora/")
+-VAULT = os.path.expanduser("~/Documents/vault/")
+-CONVERSATIONS = os.path.expanduser("~/Documents/conversations/")
++# Roots come from the single cross-platform source (runtime_paths), so a Windows
++# install or an ORA_HOME/ORA_VAULT relocation is honored — not the old hardcoded
++# ~/ora, ~/Documents/vault defaults. Guarded import mirrors dispatcher.py.
++try:
++    import runtime_paths as _rp
++except ImportError:  # pragma: no cover - package-qualified fallback
++    from orchestrator import runtime_paths as _rp
++
++WORKSPACE = _rp.WORKSPACE
++VAULT = _rp.VAULT_STR
++CONVERSATIONS = _rp.CONVERSATIONS_STR
+ 
+ DENY_LIST = [".ssh", ".gnupg", ".env", "id_rsa", "id_ed25519", ".netrc",
+              "credentials", "secrets", "token", ".aws/credentials"]
+@@ -20,16 +28,17 @@ def _validate_path(path: str) -> tuple[bool, str]:
+     if ".." in path:
+         return False, f"Path traversal not allowed: {path}"
+ 
+-    # Block deny-listed patterns
+-    path_lower = path.lower()
++    # Block deny-listed patterns — separator-normalized + case-folded so Windows
++    # backslash paths still match the '/'-shaped patterns (W1 class, §7).
++    path_match = path.replace("\\", "/").lower()
+     for pattern in DENY_LIST:
+-        if pattern in path_lower:
++        if pattern in path_match:
+             return False, f"Access denied to sensitive path: {pattern}"
+ 
+-    # Must be within an allowed base
+-    for base in ALLOWED_BASES:
+-        if path.startswith(os.path.realpath(base)):
+-            return True, "allowed"
++    # Must be within an allowed base — boundary-anchored + case-normalized, so a
++    # mere-prefix sibling can't slip through (runtime_paths.within_any_base).
++    if _rp.within_any_base(path, ALLOWED_BASES):
++        return True, "allowed"
+ 
+     return False, f"Path outside allowed locations: {path}"
+ 
+diff --git a/server/server.py b/server/server.py
+index 413be556..25d28498 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -13,9 +13,13 @@ from datetime import datetime, timezone
+ from urllib.parse import urlparse
+ import requests
+ 
+-WORKSPACE         = os.path.expanduser("~/ora/")
+-CONVERSATIONS_DIR = os.path.expanduser("~/Documents/conversations/")
+-CONVERSATIONS_RAW = os.path.expanduser("~/Documents/conversations/raw/")
++# WORKSPACE must honor ORA_HOME (Windows installs / relocations) BEFORE
++# runtime_paths can be imported — runtime_paths lives under orchestrator/, which
++# the sys.path bootstrap below has to add first (chicken-and-egg). Mirror
++# runtime_paths.ORA_HOME's own derivation so the two never disagree.
++# os.path.join(root, "") appends the platform separator, preserving the
++# trailing-separator semantics the rest of this module relies on.
++WORKSPACE         = os.path.join(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"), "")
+ MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
+ INTERFACE_JSON = os.path.join(WORKSPACE, "config/interface.json")
+ LAYOUTS_DIR  = os.path.join(WORKSPACE, "config/layouts/")
+@@ -25,13 +29,20 @@ MAX_ITERATIONS = 10
+ 
+ sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/tools/"))
+ sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+-# Also expose ~/ora itself so package-qualified imports
++# Also expose the repo root itself so package-qualified imports
+ # (`from orchestrator.<module>`) resolve regardless of cwd / PYTHONPATH —
+-# the launch.json invocation doesn't set either.
+-sys.path.insert(0, WORKSPACE.rstrip("/"))
++# the launch.json invocation doesn't set either. Strip either separator so a
++# Windows trailing backslash is handled too.
++sys.path.insert(0, WORKSPACE.rstrip("/\\") or WORKSPACE)
+ 
+ import runtime_paths as rp
+ 
++# Conversation roots come from the single cross-platform source (honors
++# ORA_CONVERSATIONS / a relocation), not a hardcoded ~/Documents path. They are
++# used only below this point, so sourcing them post-import is safe.
++CONVERSATIONS_DIR = os.path.join(rp.CONVERSATIONS_STR, "")
++CONVERSATIONS_RAW = os.path.join(rp.CONVERSATIONS_STR, "raw", "")
++
+ 
+ def _routing_config_path() -> str:
+     return str(rp.routing_config_path())

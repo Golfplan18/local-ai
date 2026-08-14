@@ -1,0 +1,3256 @@
+diff --git a/.gitignore b/.gitignore
+index 40913bb1..d439d59a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -157,6 +157,7 @@ data/tool-events.jsonl
+ data/execution-approvals.json
+ data/execution-approvals.json.lock
+ data/execution-records/
++data/trace-debug/
+ data/lifecycle-locks/
+ 
+ # Per-machine runtime pointers + user stores (like data/active-configuration.json).
+diff --git a/frameworks/book/process-inference.md b/frameworks/book/process-inference.md
+index b91eb641..410f3ee3 100644
+--- a/frameworks/book/process-inference.md
++++ b/frameworks/book/process-inference.md
+@@ -44,7 +44,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
+ 
+ **Mode P-Infer:** You have inputs and a desired output but no process. You will describe your current state, desired end state, constraints, and available resources. The AI will infer a viable transformation path.
+ 
+-**Mode P-Debug:** You have a process that fails somewhere unknown. Describe the process, the expected behavior, and the actual behavior. The AI will identify the hidden failure point and infer a corrected path.
++**Mode P-Debug:** You have a process or captured Ora trace to investigate. The process may be defective, faithful-but-disappointing, a bad draw, or clean. For trace-backed investigations, provide the exact trace-debug context; the AI diagnoses only against captured evidence and the execution-time contract, and recommends correction only when DEFECT_LOCALIZED.
+ 
+ **Mode P-Decompose:** You have a complex endpoint and need it broken into solvable subproblems. Describe the endpoint. The AI will decompose it into manageable parts with dependency ordering.
+ 
+@@ -137,13 +137,13 @@ PIF is a multi-mode framework with five modes (P-Infer / P-Debug / P-Decompose /
+ #### Milestone 1: Failure diagnosis
+ 
+ - **Mode:** P-Debug
+-- **Endpoint produced:** Identified failure point within a broken process plus corrected path specification.
+-- **Verification criterion:** The failure point is isolated to a specific step or interaction; the corrected path removes the failure under the same constraints.
++- **Endpoint produced:** Trace-backed diagnostic verdict with evidence boundary and recommend-only correction bundle when, and only when, a defect is localized.
++- **Verification criterion:** The report identifies the execution-time contract, separates structural from semantic evidence, assigns pass/fail/unknown boundaries, emits exactly one of DEFECT_LOCALIZED, BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, and includes a correction bundle only for DEFECT_LOCALIZED. If the exact contract is unavailable, it emits the separate terminal diagnostic CONTRACT_UNAVAILABLE and withholds the four-way verdict.
+ - **Layers covered:** 1, 2, 3, 4, 5, 6, 7, 8, 9
+ - **Required prior milestones:** None
+ - **Gear:** 4
+-- **Output format:** Diagnosis bundle — failing-step isolation (with expected vs. actual divergence point), root cause statement, and corrected path specification produced via the same Layer 4-6 candidate-generation / probe / evaluation cycle as P-Infer, then packaged through Layer 7's handoff structure.
+-- **Drift check question:** Does the diagnosis pin the failure to a specific step or interaction — not a vague systemic explanation — and does the corrected path actually remove the failure under the same constraints rather than relaxing them implicitly?
++- **Output format:** Trace Diagnostic Report — verdict, confidence, contract checked, evidence walked, boundary table with structural and semantic pass/fail/unknown, root cause from the finite taxonomy, probe recommendation with cost/risk before execution, and recommend-only correction bundle when applicable.
++- **Drift check question:** Did this diagnosis stay inside captured trace evidence and the execution-time contract, without inventing a defect or requiring a correction for BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT? If the contract was unavailable, did it withhold the four-way verdict?
+ 
+ ### Milestones for Mode P-Decompose
+ 
+@@ -254,6 +254,40 @@ Your operating mode shifts across layers as indicated by Role Shift markers. You
+ 
+ ---
+ 
++## P-Debug Trace-Backed Verdict Discipline
++
++When operating in P-Debug from a trace-debug turn, the framework is not a generic defect hunter. It is an evidence classifier over an executed trace package. The only admissible primary evidence is the supplied TRACE_DEBUG_CONTEXT_JSON: execution-time contract snapshot, manifest, all manifest-listed steps, step-health, model-call configs, child traces, verification probes, and the explicit three-valued boundary table. Prior learning entries are advisory context only and cannot establish a current finding.
++
++Allowed verdicts:
++- DEFECT_LOCALIZED: the executed process violated its preserved contract and the trace localizes the defect boundary. A correction bundle is required only for this verdict.
++- BAD_DRAW: the trace shows the process executed its contract but the sampled/model output was poor or unlucky rather than contract-breaking.
++- CONTRACT_MISMATCH: the executed contract was available and differs from the user's current expectation or requested standard.
++- NO_DEFECT: the trace and contract do not support a defect claim. This is a complete and honest endpoint.
++- CONTRACT_UNAVAILABLE is not a verdict. It is a separate terminal diagnostic used when the execution-time contract was not captured exactly or cannot be trusted. Withhold the four-way verdict and do not substitute the current framework text.
++
++Seven-class root-cause taxonomy for P-Debug:
++- retrieval gap: required source/context evidence was absent or insufficient before the model call.
++- instruction conflict: preserved instructions or contract clauses pulled the process in incompatible directions.
++- evaluator miss: a verifier, health check, or drift check failed to detect or correctly classify the relevant outcome.
++- consolidation compression loss: a later synthesis or formatting step discarded material evidence needed by the contract.
++- model bad-draw: the request was contract-faithful but the sampled/provider output was poor or unlucky.
++- config mismatch: the effective endpoint, gear, parameters, or runtime configuration differed from the required execution setup.
++- framework underspecification: the preserved framework contract did not specify enough to determine or enforce the desired outcome.
++
++CONTRACT_UNAVAILABLE is a terminal diagnostic, not a root-cause class or verdict. Prior learning is advisory context only and can never outrank the current trace walk, execution-time contract, boundary table, or evaluator evidence.
++
++PIF Evidence Lock (PEF Lock): every claim must cite a trace boundary, contract field, child trace, step-health marker, model-call config, verification probe, or prior learning entry from TRACE_DEBUG_CONTEXT_JSON. This lock is inherited by every layer, every candidate path, every probe recommendation, and every correction bundle. Do not use current framework files, current mode files, memory, or reconstructed expectations unless the context says their fingerprint matches the execution-time contract.
++
++Silent Non-Solution Substitution guard: never replace an unavailable trace fact with a plausible current file, remembered behavior, generic framework expectation, or user-restated desired behavior. If the exact evidence needed for a verdict is absent, label that boundary unknown or emit CONTRACT_UNAVAILABLE; do not silently substitute.
++
++P-Debug No-Punt escalation: do not answer "cannot determine" as a terminal punt while evidence remains walkable. First exhaust manifest steps, step-health, model-call configs, child traces, contract fingerprints, prior learning, and eligible model-only probes. If the contract is unavailable, emit CONTRACT_UNAVAILABLE and withhold the four-way verdict. Otherwise emit NO_DEFECT when the walked evidence does not support a defect claim.
++
++Fabricated-finding failure mode: a diagnosis fails verification if it invents a defect boundary from missing semantic evidence, assumes P-Debug implies a broken process, requires a correction bundle for BAD_DRAW / CONTRACT_MISMATCH / NO_DEFECT, treats CONTRACT_UNAVAILABLE as a four-way verdict, or cites evidence that is not present in TRACE_DEBUG_CONTEXT_JSON.
++
++Substitution guard: if the preserved contract is unavailable, oversized, redacted, truncated, or fingerprint-mismatched, emit CONTRACT_UNAVAILABLE. Do not diagnose against a partial, current, or guessed contract.
++
++Fabricated-finding guard: absence of semantic evidence is unknown, not failure. A readable step file proves structural presence only. Do not invent a bad boundary because the mode name is P-Debug.
++
+ ## LAYER 1: ENDPOINT ELICITATION AND PROBLEM CLASSIFICATION
+ 
+ **Stage Focus**: Establish the current state and desired end state with observable precision. Classify the problem type. Determine operating mode.
+@@ -285,9 +319,10 @@ Your operating mode shifts across layers as indicated by Role Shift markers. You
+    - Feedback is immediate or delayed.
+    - The process is deterministic or exploratory.
+ 
+-6. IF P-Debug mode: request the expected behavior, the actual behavior, and the point at which divergence is first observed.
+-7. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
+-8. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
++6. IF P-Debug mode: do not request user-narrated expected/actual behavior as the primary evidence. Use the supplied TRACE_DEBUG_CONTEXT_JSON as the evidence record. Treat the execution-time contract, manifest, step projections, step-health, model-call configs, and child traces as the admissible boundary. Optional user symptom text may orient attention, but it must not substitute for trace evidence.
++7. IF P-Debug mode: emit exactly one line matching `VERDICT: DEFECT_LOCALIZED`, `VERDICT: BAD_DRAW`, `VERDICT: CONTRACT_MISMATCH`, or `VERDICT: NO_DEFECT` when the contract is available. If it is unavailable, emit `CONTRACT_UNAVAILABLE` as the terminal diagnostic and emit no `VERDICT:` line. Always include `FAILING STEP:` and `VERIFICATION PROBE:` fields, using `none` when they do not apply.
++8. IF P-Feasibility mode: run per standard instructions. The endpoint is the candidate milestone (Verify sub-mode) or the Resolution Statement provided by the calling framework (Suggest sub-mode). Current state description is inherited from the calling framework's context (typically the PED and conversation history).
++9. Conduct proactive endpoint elicitation. Based on the problem type classification, identify endpoint dimensions the user likely has not specified. Present these as questions, not assumptions. Wait for user response before proceeding.
+ 
+ ### Output Format for This Layer
+ 
+@@ -417,7 +452,7 @@ ASSUMPTIONS LOG (initialized):
+    - Which states require prior states to be completed first (sequential)?
+    - Are there circular dependencies? IF so, flag as a structural problem requiring decomposition.
+ 
+-5. IF P-Debug mode: the decomposition focuses on the process segment between the last known-good state and the first observed failure. Decompose this segment into the finest granularity possible to isolate the failure point.
++5. IF P-Debug mode: build the boundary table from the supplied trace walk. Each boundary has two separate states: structural evidence (pass, fail, unknown) and semantic evidence (pass, fail, unknown). Do not infer last-known-good from successful execution alone; a structurally present step with unknown semantic validity remains semantically unknown. Identify a defect boundary only when the trace evidence supports DEFECT_LOCALIZED. If the trace instead supports BAD_DRAW, CONTRACT_MISMATCH, or NO_DEFECT, preserve that verdict honestly and do not force a failure point. If the contract is unavailable, emit the separate CONTRACT_UNAVAILABLE diagnostic and withhold the four-way verdict.
+ 6. IF P-Decompose mode: the decomposition continues recursively until every subproblem is either solvable with known methods or identified as a distinct unknown requiring its own P-Infer cycle.
+ 7. Update the assumptions log with any assumptions made during decomposition.
+ 
+@@ -546,7 +581,7 @@ PATH RANKING:
+    - IF probe fails (assumption disconfirmed) → [what happens next: switch to alternate path, redesign probe, revisit decomposition].
+    - IF probe is ambiguous (result does not clearly confirm or disconfirm) → [what happens next: design a more targeted probe, gather additional information].
+ 
+-5. IF P-Debug mode: the probes should isolate the failure point through binary elimination. Design probes that bisect the suspected failure region, confirming which side of the split the failure lies on.
++5. IF P-Debug mode: probes are optional model-only counterfactuals, not tool or external-action replay. Use them only when the trace walk cannot discriminate between admissible verdicts and only after prepare/approve/execute authorization is available. A probe may test a bounded hypothesis about a semantic boundary, but it must remain inert and must not be used to manufacture a defect. Modified prompts are counterfactual probes, not replays.
+ 6. Assess the total probe budget. IF the combined cost of all recommended probes exceeds the cost of executing the cheapest candidate path, THEN flag this and recommend executing the cheapest path directly with monitoring rather than probing.
+ 
+ ### Output Format for This Layer
+@@ -938,7 +973,7 @@ NEW ASSUMPTIONS LOGGED:
+ 1. Confirm you have fully processed this framework and all associated input materials.
+ 2. Identify the operating mode from the user's input:
+    - **Mode P-Infer:** User describes endpoints without a known process. Execute Layers 1-9.
+-   - **Mode P-Debug:** User describes a failing process. Execute Layers 1-9 with P-Debug modifications noted in each layer.
++   - **Mode P-Debug:** User supplies a process or exact captured trace to investigate; it may be defective, faithful-but-disappointing, a bad draw, or clean. Execute Layers 1-9 with P-Debug modifications noted in each layer.
+    - **Mode P-Decompose:** User describes a complex endpoint needing reduction. Execute Layers 1-3, then return Layer 3 output as the primary deliverable. Continue to Layers 4-9 only if the user requests path generation for specific subproblems.
+    - **Mode P-Formalize:** User provides a discovered process. Skip Layers 3-5. Execute Layer 1 (to formalize endpoints), Layer 2 (to capture constraints), Layer 6 (to refine the step sequence), Layer 7 (to produce the handoff package), Layers 8-9.
+    - **Mode P-Feasibility:** User or calling framework provides an endpoint and current state description (Verify sub-mode), or a Resolution Statement and current state with no candidate endpoint (Suggest sub-mode). Execute Layer 1 (endpoint formalization), Layer 2 (constraint modeling), Feasibility Assessment, Layer 8 (with P-Feasibility criteria), Layer 9 (with P-Feasibility output format). Skip Layers 3 through 7. See P-Feasibility Mode Specification section for details.
+@@ -953,7 +988,7 @@ NEW ASSUMPTIONS LOGGED:
+ 
+ ## USER INPUT
+ 
+-[State Mode P-Infer (discover unknown process), Mode P-Debug (diagnose failing process), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for PFF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
++[State Mode P-Infer (discover unknown process), Mode P-Debug (investigate a process or captured trace), Mode P-Decompose (reduce complex endpoint), or Mode P-Formalize (structure discovered process for PFF handoff) — or let the AI auto-detect from your input. Then describe your current state, desired end state, and any constraints, resources, non-solutions, or uncertainties you can provide.]
+ 
+ ---
+ 
+diff --git a/orchestrator/boot.py b/orchestrator/boot.py
+index f79c61f0..75eb7f62 100755
+--- a/orchestrator/boot.py
++++ b/orchestrator/boot.py
+@@ -7272,7 +7272,6 @@ def _run_step2_context_assembly_impl(step1_result: dict, config: dict,
+     mode_name = step1_result["mode"]
+     mode_text = load_mode(mode_name)
+     gear = extract_default_gear(mode_text)
+-
+     # Phase A produces three forms of the prompt:
+     #   - raw_prompt: what the user actually typed (kept for audit/fallback)
+     #   - cleaned_prompt: natural-language prompt after Phase A's typo
+@@ -9241,6 +9240,7 @@ def run_pipeline(user_input: str, history: list = None,
+         "tool_events_context_token": None,
+         "tool_events_module": None,
+         "framework_id": None, "milestone_id": None, "child_refs": [],
++        "mode_text": None,
+     }
+     effective_tag = conversation_tag or ("stealth" if stealth else "")
+     tag_token = set_conversation_tag_context(effective_tag)
+@@ -9391,6 +9391,109 @@ def _run_pipeline_impl(user_input: str, history: list = None,
+     except Exception as _rge:
+         print(f"[risk-gate] turn-head skipped: {_rge}")
+ 
++    # --- Trace-backed P-Debug deterministic CLI command ---
++    try:
++        try:
++            import trace_debug as _tdbg
++        except ImportError:
++            from orchestrator import trace_debug as _tdbg
++        _trace_probe_payload = _tdbg.parse_probe_cli_command(user_input)
++        _trace_debug_payload = _tdbg.parse_cli_command(user_input)
++        if _trace_debug_payload is None:
++            _trace_debug_payload = _tdbg.parse_natural_language_request(user_input)
++    except Exception:
++        _trace_probe_payload = None
++        _trace_debug_payload = None
++    if isinstance(_trace_probe_payload, dict):
++        turn_state["kind"] = "trace-probe-control"
++        action = _trace_probe_payload.get("action")
++        if action == "error":
++            turn_state["status"] = "error"
++            return str(_trace_probe_payload.get("error") or "trace probe error")
++        if action == "prepare":
++            _trace_probe_payload["conversation_tag"] = conversation_tag or ("stealth" if stealth else "")
++            result = _tdbg.prepare_probe(_trace_probe_payload, conversation_id=conversation_id or "_orphan")
++            turn_state["status"] = "completed" if result.get("ok") else "error"
++            return json.dumps(result, indent=2, default=str)
++        if action == "approve":
++            result = _tdbg.approve_probe(_trace_probe_payload.get("approval_id") or "", _trace_probe_payload.get("approval_digest") or "")
++            turn_state["status"] = "completed" if result.get("ok") else "error"
++            return json.dumps(result, indent=2, default=str)
++        if action == "execute":
++            endpoint = get_endpoint(config)
++            if endpoint is None:
++                turn_state["status"] = "error"
++                return "Trace probe error: no AI endpoints configured"
++            def _probe_executor(req):
++                envelope = req.get("envelope") or {}
++                probe_endpoint = _tdbg.endpoint_from_probe_envelope(envelope, endpoint)
++                if probe_endpoint is None:
++                    raise RuntimeError("recorded probe endpoint is unavailable or has changed")
++                return call_model(envelope.get("messages") or [], probe_endpoint)
++            result = _tdbg.execute_probe(
++                _trace_probe_payload.get("approval_id") or "",
++                _trace_probe_payload.get("approval_digest") or "",
++                conversation_id=conversation_id or "_orphan",
++                model_executor=_probe_executor,
++                conversation_tag=conversation_tag or ("stealth" if stealth else ""))
++            turn_state["status"] = "completed" if result.get("ok") else "error"
++            return json.dumps(result, indent=2, default=str)
++    if isinstance(_trace_debug_payload, dict):
++        if _trace_debug_payload.get("error"):
++            turn_state["kind"] = "trace-debug"
++            turn_state["status"] = "error"
++            return str(_trace_debug_payload["error"])
++        _debug_prompt, _debug_meta = _tdbg.build_debug_prompt(
++            _trace_debug_payload, conversation_id=conversation_id or "_orphan")
++        turn_state["kind"] = "trace-debug"
++        if trace_dir:
++            pipeline_trace.update_manifest_fields(
++                trace_dir, trace_kind="trace-debug",
++                investigates_trace_ref=_trace_debug_payload.get("trace_ref"))
++            pipeline_trace.write_step(
++                trace_dir,
++                "step-debug-request",
++                {k: _trace_debug_payload.get(k) for k in
++                 ("trace_ref", "step_hint", "symptom", "source")},
++            )
++        if not _debug_prompt:
++            turn_state["status"] = "error"
++            if trace_dir:
++                pipeline_trace.write_step(
++                    trace_dir, "step-debug-result",
++                    {"status": "error", "error": (_debug_meta or {}).get("error") or "unknown"},
++                )
++            return "Trace debug error: " + str((_debug_meta or {}).get("error") or "unknown")
++        try:
++            from milestone_executor import run_framework_command
++            _trace_ctx = {"conversation_tag": conversation_tag or ("stealth" if stealth else "")}
++            result_text = run_framework_command(
++                _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
++                config, trace_dir=trace_dir, conversation_tag=conversation_tag,
++                trace_context=_trace_ctx)
++            try:
++                _tdbg.record_diagnosis_learning(conversation_id or "_orphan", _trace_debug_payload.get("trace_ref"), result_text, stealth=bool(stealth))
++            except Exception:
++                pass
++            turn_state["status"] = _trace_ctx.get("status") or "completed"
++            turn_state["framework_id"] = _trace_ctx.get("framework_id")
++            turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
++            turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
++            if trace_dir:
++                pipeline_trace.write_step(
++                    trace_dir, "step-debug-result",
++                    {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
++                )
++            return result_text
++        except Exception as exc:
++            turn_state["status"] = "error"
++            if trace_dir:
++                pipeline_trace.write_step(
++                    trace_dir, "step-debug-result",
++                    {"status": "error", "error": str(exc)},
++                )
++            return f"Trace debug framework error: {exc}"
++
+     # --- Runtime slash-command short-circuit ---
+     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+     # meta-layer runtime operations. No model endpoint or pipeline state
+@@ -9522,6 +9625,7 @@ def _run_pipeline_impl(user_input: str, history: list = None,
+     context_pkg.setdefault("execution_context", execution_context)
+     gear = context_pkg["gear"]
+     turn_state["mode"] = step1.get("mode")
++    turn_state["mode_text"] = context_pkg.get("mode_text")
+     # Pre-dispatch prediction only — run_gear3/run_gear4 may silently
+     # degrade to a lower gear internally (single-endpoint / unrecoverable-
+     # analyst fallback); finalize_manifest re-derives the ACTUAL gear from
+@@ -9557,6 +9661,26 @@ def _run_pipeline_impl(user_input: str, history: list = None,
+             turn_state["gear"] = gear
+         degradation_signal = format_degradation_signal(deg_state)
+ 
++    # Capture the exact mode contract after runtime gear degradation has been
++    # resolved. ``context_pkg["mode_text"]`` is the text loaded for this
++    # execution; do not reload a potentially edited mode file.
++    if trace_dir and PIPELINE_TRACE_AVAILABLE:
++        try:
++            try:
++                import trace_debug as _tdbg
++            except ImportError:
++                from orchestrator import trace_debug as _tdbg
++            _tdbg.record_contract_snapshot(
++                trace_dir,
++                _tdbg.mode_contract_snapshot(
++                    context_pkg.get("mode_name") or step1.get("mode") or "",
++                    context_pkg.get("mode_text") or "",
++                    gear,
++                ),
++            )
++        except Exception:
++            pass
++
+     # --- Execution Review Phase 2: assign risk tier + pre-executor hold ---
+     # The before-clock's final step: Stage-B mode floor + sticky, tier stamped
+     # into the turn context so the per-call gate sees it, an irreversible-tier
+@@ -9756,6 +9880,20 @@ def _run_pipeline_impl(user_input: str, history: list = None,
+     # source for gear-1/2 turns, which write no step-health.json. A later
+     # exception on the way out overwrites this with "error" in the
+     # generator-level wrapper.
++    if trace_dir and PIPELINE_TRACE_AVAILABLE:
++        try:
++            try:
++                import trace_debug as _tdbg_end
++            except ImportError:
++                from orchestrator import trace_debug as _tdbg_end
++            _tdbg_end.refresh_mode_contract_snapshot(
++                trace_dir,
++                context_pkg.get("mode_name") or step1.get("mode") or "",
++                context_pkg.get("mode_text") or "",
++                gear,
++            )
++        except Exception:
++            pass
+     turn_state["status"] = "completed"
+     return route_output(response, output_target, context_pkg)
+ 
+diff --git a/orchestrator/conversation_closeout.py b/orchestrator/conversation_closeout.py
+index 3ffe669b..0465ff4c 100644
+--- a/orchestrator/conversation_closeout.py
++++ b/orchestrator/conversation_closeout.py
+@@ -2727,6 +2727,20 @@ def _purge_stealth_unlocked(
+     except Exception as e:
+         _record_error(errors, "execution_records", e)
+ 
++    # --- Layer 10b: Trace-debug learning library -----------------------------
++    deleted["trace_debug_learning"] = {}
++    try:
++        try:
++            import trace_debug as _tdbg
++        except ImportError:  # pragma: no cover
++            from orchestrator import trace_debug as _tdbg
++        _td_res = _tdbg.purge_conversation_unlocked(conversation_id)
++        deleted["trace_debug_learning"] = _td_res
++        for _e in (_td_res.get("errors") or []):
++            _record_error(errors, "trace_debug_learning", _e)
++    except Exception as e:
++        _record_error(errors, "trace_debug_learning", e)
++
+     # --- Layer 11: sticky risk-floor state ---------------------------------
+     # This small JSON map is another conversation-keyed persistence surface.
+     # Rewrite it directly (using risk_gate's authoritative sandbox-aware
+diff --git a/orchestrator/milestone_executor.py b/orchestrator/milestone_executor.py
+index 6f004557..78fa82fa 100644
+--- a/orchestrator/milestone_executor.py
++++ b/orchestrator/milestone_executor.py
+@@ -271,6 +271,13 @@ def execute_framework(
+         if trace_context is not None:
+             trace_context["mode"] = selected_mode
+         milestones = fw.milestones_by_mode.get(selected_mode, [])
++        if trace_dir:
++            try:
++                import trace_debug as _tdbg
++            except ImportError:
++                from orchestrator import trace_debug as _tdbg
++            _tdbg.record_contract_snapshot(
++                trace_dir, _tdbg.framework_contract_bundle(fw, milestones, selected_mode=selected_mode))
+         if not milestones:
+             raise FrameworkParseError(
+                 f"Framework {fw.name!r} has no milestones declared for mode "
+@@ -289,6 +296,13 @@ def execute_framework(
+         if trace_context is not None:
+             trace_context["mode"] = selected_mode
+         milestones = fw.milestones_by_mode.get("all", [])
++        if trace_dir:
++            try:
++                import trace_debug as _tdbg
++            except ImportError:
++                from orchestrator import trace_debug as _tdbg
++            _tdbg.record_contract_snapshot(
++                trace_dir, _tdbg.framework_contract_bundle(fw, milestones, selected_mode=selected_mode))
+         if not milestones:
+             raise FrameworkParseError(
+                 f"Framework {fw.name!r} declared no milestones to execute."
+@@ -461,7 +475,7 @@ def _run_milestone(
+     last_exception: Optional[Exception] = None
+     for attempt in range(1, MAX_RETRIES + 1):
+         child_trace_dir = _start_child_trace(
+-            parent_trace_dir, handoff, framework.name, milestone.id,
++            parent_trace_dir, handoff, framework, milestone,
+             parent_trace_ref, selected_mode, milestone.gear,
+             conversation_tag, trace_context)
+         child_status = "error"
+@@ -709,8 +723,8 @@ def _build_context_pkg(handoff_packet: str, milestone: Milestone,
+ 
+ def _start_child_trace(parent_trace_dir: Optional[str],
+                        handoff_packet: str,
+-                       framework_id: str,
+-                       milestone_id: str,
++                       framework: Framework,
++                       milestone: Milestone,
+                        parent_trace_ref: Optional[str],
+                        selected_mode: Optional[str],
+                        gear: int,
+@@ -724,6 +738,17 @@ def _start_child_trace(parent_trace_dir: Optional[str],
+         except ImportError:
+             from orchestrator import pipeline_trace
+         parent_manifest = pipeline_trace.read_manifest(parent_trace_dir) or {}
++        framework_name = getattr(framework, "name", str(framework))
++        milestone_id = getattr(milestone, "id", str(milestone))
++        if not hasattr(milestone, "id"):
++            milestone = type("MilestoneRef", (), {
++                "id": milestone_id, "name": "", "mode": selected_mode,
++                "endpoint_produced": "", "verification_criterion": "",
++                "drift_check_question": "", "output_format": "",
++                "gear": gear, "layers_covered": [], "required_prior": [],
++                "conditional_layers": None})()
++        if not hasattr(framework, "name"):
++            framework = type("FrameworkRef", (), {"name": framework_name, "file_path": ""})()
+         child_dir = pipeline_trace.start_trace(
+             conversation_id=parent_manifest.get("conversation_id"),
+             raw_input=handoff_packet,
+@@ -738,15 +763,27 @@ def _start_child_trace(parent_trace_dir: Optional[str],
+                 refs = trace_context.setdefault("child_trace_refs", [])
+                 if child_ref not in refs:
+                     refs.append(child_ref)
+-        pipeline_trace.update_manifest_fields(
+-            child_dir,
++        snapshot = None
++        try:
++            try:
++                import trace_debug as _tdbg
++            except ImportError:
++                from orchestrator import trace_debug as _tdbg
++            snapshot = _tdbg.framework_contract_snapshot(
++                framework, milestone, selected_mode=selected_mode)
++        except Exception:
++            snapshot = None
++        fields = dict(
+             trace_kind="framework-milestone",
+             mode=selected_mode or "all",
+             gear=gear,
+             parent_trace_ref=parent_trace_ref,
+-            framework_id=framework_id,
++            framework_id=framework_name,
+             milestone_id=milestone_id,
+         )
++        if snapshot:
++            fields["contract_snapshot"] = snapshot
++        pipeline_trace.update_manifest_fields(child_dir, **fields)
+         return child_dir
+     except Exception:
+         return None
+diff --git a/orchestrator/pipeline_trace.py b/orchestrator/pipeline_trace.py
+index 31b26a42..26124a35 100644
+--- a/orchestrator/pipeline_trace.py
++++ b/orchestrator/pipeline_trace.py
+@@ -807,7 +807,7 @@ MANIFEST_SCHEMA_VERSION = 1
+ SHORT_CIRCUIT_KINDS = frozenset({
+     "runtime_command", "risk_hold", "resolution_continuation",
+     "framework_elicitation", "framework_command", "no_endpoint_error",
+-    "direct",
++    "direct", "trace-probe-control",
+ })
+ 
+ # Required (always-written on a clean run) step files per gear for full
+@@ -973,6 +973,27 @@ def append_child_trace_ref(parent_trace_dir: str | None,
+               file=sys.stderr)
+ 
+ 
++def append_probe_trace_ref(source_trace_dir: str | None,
++                           probe_trace_ref: str | None) -> None:
++    """Record a probe relationship without treating the probe as a child."""
++    if not source_trace_dir or not probe_trace_ref:
++        return
++    try:
++        manifest = read_manifest(source_trace_dir)
++        if manifest is None:
++            return
++        refs = manifest.get("probe_trace_refs")
++        if not isinstance(refs, list):
++            refs = []
++        refs = [ref for ref in refs if isinstance(ref, str)]
++        if probe_trace_ref not in refs:
++            refs.append(probe_trace_ref)
++        update_manifest_fields(source_trace_dir, probe_trace_refs=refs)
++    except Exception as exc:
++        print(f"[pipeline_trace] append_probe_trace_ref failed: {exc}",
++              file=sys.stderr)
++
++
+ def set_retention_state(trace_ref: str, state: str) -> dict[str, Any] | None:
+     """Set retention_state for a resolved turn trace ref."""
+     if state not in {"default", "pinned"}:
+@@ -1020,6 +1041,10 @@ def _manifest_skeleton(conversation_id: str | None,
+         "parent_trace_ref": None,
+         "child_trace_refs": [],
+         "finalized_at": None,
++        "investigates_trace_ref": None,
++        "probe_trace_refs": [],
++        "contract_snapshot": None,
++        "contract_capture_error": None,
+     }
+ 
+ 
+@@ -1038,6 +1063,10 @@ def _expected_steps_for(kind: str, gear: int | None,
+     false missing-step warning). Unknown gear → empty list (never guess).
+     Lists are sorted so expected/actual diff cleanly.
+     """
++    if kind == "trace-debug":
++        return ["step-debug-request", "step-debug-result"]
++    if kind == "trace-probe":
++        return ["step-probe-prepare", "step-probe-approval", "step-probe-model-attempt", "step-probe-result", "step-health"]
+     if kind == "direct":
+         return sorted(_REQUIRED_STEPS_COMMON)
+     if kind in SHORT_CIRCUIT_KINDS or kind == "clarification_pending":
+@@ -1283,7 +1312,8 @@ def _manifest_step_sets(manifest: dict[str, Any]) -> tuple[list[str], list[str],
+     expected = _dedupe_strings(manifest.get("expected_steps"))
+     actual = _dedupe_strings(manifest.get("actual_steps"))
+     derived = _dedupe_strings(manifest.get("derived_artifacts"))
+-    missing = [step for step in expected if step not in actual]
++    observed = set(actual) | set(derived)
++    missing = [step for step in expected if step not in observed]
+     unexpected = [step for step in actual if step not in expected]
+     return expected, actual, derived, missing, unexpected
+ 
+@@ -1326,6 +1356,7 @@ def _trace_manifest_projection_from_manifest(trace_ref: str, manifest: dict[str,
+             "trace_kind", "terminal_status", "gear", "mode", "framework_id",
+             "milestone_id", "redaction_level", "retention_state",
+             "parent_trace_ref", "child_trace_refs", "finalized_at",
++            "investigates_trace_ref", "probe_trace_refs", "contract_capture_error",
+         )
+     }
+     fields.update({
+diff --git a/orchestrator/tests/test_trace_manifest.py b/orchestrator/tests/test_trace_manifest.py
+index 048995b4..2fd5f1ad 100644
+--- a/orchestrator/tests/test_trace_manifest.py
++++ b/orchestrator/tests/test_trace_manifest.py
+@@ -1743,5 +1743,747 @@ class TestExecutionGateTraceRefs(TraceManifestBase):
+         self.assertEqual(captured["event"]["trace_ref"], ref)
+ 
+ 
++class TestTraceDebugChunk3(TraceManifestBase):
++    def test_contract_snapshot_preserves_complete_fields_and_survives_mutation(self):
++        import trace_debug
++        milestone = SimpleNamespace(
++            id="M1", name="Failure diagnosis", mode="P-Debug",
++            endpoint_produced="Trace-backed verdict",
++            verification_criterion="Use execution-time contract only",
++            drift_check_question="Stayed inside trace evidence?",
++            output_format="Trace Diagnostic Report",
++            gear=4,
++            layers_covered=["1", "2"],
++            required_prior=[],
++            conditional_layers="Only if probe needed",
++        )
++        framework = SimpleNamespace(name="process-inference", file_path="/tmp/process-inference.md")
++        snap = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
++        self.assertEqual(snap["capture_status"], "captured")
++        fields = snap["canonical_fields"]
++        self.assertEqual(fields["verification_criterion"], "Use execution-time contract only")
++        self.assertEqual(fields["conditional_layers"], "Only if probe needed")
++        before = snap["fingerprint"]
++        milestone.verification_criterion = "MUTATED CONTRACT"
++        after = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
++        self.assertNotEqual(before, after["fingerprint"])
++
++    def test_oversize_contract_records_failure_not_truncated_contract(self):
++        import trace_debug
++        milestone = SimpleNamespace(
++            id="M1", name="Huge", mode="P-Debug",
++            endpoint_produced="x", verification_criterion="x" * (trace_debug.MAX_CONTRACT_BYTES + 1),
++            drift_check_question="x", output_format="x", gear=4,
++            layers_covered=[], required_prior=[], conditional_layers=None,
++        )
++        framework = SimpleNamespace(name="fw", file_path="/tmp/fw.md")
++        snap = trace_debug.framework_contract_snapshot(framework, milestone, selected_mode="P-Debug")
++        self.assertEqual(snap["capture_status"], "failed")
++        self.assertNotIn("fingerprint", snap)
++
++    def test_debug_prompt_rejects_cross_conversation_and_unavailable_contract(self):
++        import trace_debug
++        d = self.start("conv-debug")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        ok, msg = trace_debug.validate_same_conversation(ref, "other-conv")
++        self.assertFalse(ok)
++        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-debug")
++        self.assertIn("CONTRACT_UNAVAILABLE", prompt)
++        self.assertFalse(meta["contract_available"])
++
++    def test_probe_approval_is_server_authoritative_one_shot(self):
++        import trace_debug
++        d = self.start("conv-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        payload = {"model_request": {
++            "messages": [{"role": "user", "content": "hi"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
++        }}
++        pipeline_trace.write_step(d, "step1-phase-a", payload)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "cost_ceiling": 1000}, conversation_id="conv-probe")
++        self.assertTrue(prepared["ok"])
++        forged = trace_debug.consume_probe_approval(prepared["approval_id"], "bad", conversation_id="conv-probe")
++        self.assertFalse(forged["ok"])
++        approved = trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        self.assertTrue(approved["ok"])
++        first = trace_debug.consume_probe_approval(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-probe")
++        self.assertTrue(first["ok"])
++        second = trace_debug.consume_probe_approval(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-probe")
++        self.assertFalse(second["ok"])
++
++    def test_not_replayable_probe_creates_no_probe_trace(self):
++        import trace_debug
++        d = self.start("conv-noreplay")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"not": "an envelope"})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        before = set(pipeline_trace.list_trace_refs("conv-noreplay"))
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-noreplay")
++        after = set(pipeline_trace.list_trace_refs("conv-noreplay"))
++        self.assertEqual(prepared["status"], "NOT_REPLAYABLE")
++        self.assertEqual(before, after)
++
++    def test_execute_probe_consumes_before_trace_and_records_completed_probe(self):
++        import trace_debug
++        d = self.start("conv-exec-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        payload = {"model_request": {
++            "messages": [{"role": "user", "content": "hi"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
++        }}
++        pipeline_trace.write_step(d, "step1-phase-a", payload)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-exec-probe")
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        result = trace_debug.execute_probe(
++            prepared["approval_id"], prepared["approval_digest"],
++            conversation_id="conv-exec-probe",
++            model_executor=lambda req: "probe result")
++        self.assertTrue(result["ok"])
++        probe_dir = pipeline_trace.resolve_trace_ref(result["trace_ref"])
++        probe = self.manifest(probe_dir)
++        self.assertEqual(probe["trace_kind"], "trace-probe")
++        self.assertEqual(probe["terminal_status"], "completed")
++        self.assertEqual(probe["investigates_trace_ref"], ref)
++        replay = trace_debug.execute_probe(
++            prepared["approval_id"], prepared["approval_digest"],
++            conversation_id="conv-exec-probe",
++            model_executor=lambda req: "second")
++        self.assertFalse(replay["ok"])
++
++    def test_framework_contract_bundle_fails_if_any_child_unavailable(self):
++        import trace_debug
++        framework = SimpleNamespace(name="fw", file_path="/tmp/fw.md")
++        ok = SimpleNamespace(
++            id="M1", name="OK", mode="P-Debug", endpoint_produced="x",
++            verification_criterion="x", drift_check_question="x", output_format="x",
++            gear=4, layers_covered=[], required_prior=[], conditional_layers=None,
++        )
++        huge = SimpleNamespace(
++            id="M2", name="Huge", mode="P-Debug", endpoint_produced="x",
++            verification_criterion="x" * (trace_debug.MAX_CONTRACT_BYTES + 1),
++            drift_check_question="x", output_format="x", gear=4,
++            layers_covered=[], required_prior=[], conditional_layers=None,
++        )
++        bundle = trace_debug.framework_contract_bundle(framework, [ok, huge], selected_mode="P-Debug")
++        self.assertEqual(bundle["capture_status"], "failed")
++        self.assertIn("child_statuses", bundle)
++
++    def test_debug_prompt_walks_all_steps_health_and_children(self):
++        import trace_debug
++        parent = self.start("conv-walk")
++        child = self.start("conv-walk")
++        child_ref = pipeline_trace.trace_ref_for_dir(child)
++        pipeline_trace.write_step(child, "step1-phase-a", {"semantic_status": "pass"})
++        pipeline_trace.finalize_manifest(child, kind="framework-milestone", status_hint="completed", gear=1)
++        pipeline_trace.write_step(parent, "step1-phase-a", {"system_prompt": "s", "user_message": "u", "semantic_status": "pass"})
++        pipeline_trace.write_step(parent, "step1-phase-b", {"semantic_status": "fail"})
++        pipeline_trace.write_step_health(parent, {"step1-phase-a": (True, "ok"), "step1-phase-b": (False, "bad")}, 1, [])
++        pipeline_trace.append_jsonl(parent, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        parent_fields = {"mode": "P-Debug"}
++        pipeline_trace.update_manifest_fields(parent, contract_snapshot={"capture_status": "captured", "canonical_fields": parent_fields, "fingerprint": trace_debug.digest(parent_fields)})
++        pipeline_trace.finalize_manifest(parent, kind="chat", status_hint="completed", gear=1, child_trace_refs=[child_ref])
++        ref = pipeline_trace.trace_ref_for_dir(parent)
++        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-walk")
++        self.assertTrue(meta["contract_available"])
++        self.assertIn('"step_name": "step1-phase-a"', prompt)
++        self.assertIn('"step_name": "step1-phase-b"', prompt)
++        self.assertIn('"step_health"', prompt)
++        self.assertIn(child_ref, prompt)
++        self.assertIn('"boundary_table"', prompt)
++        self.assertIn('"semantic_evidence": "fail"', prompt)
++
++    def test_prepare_probe_uses_production_step_and_model_call_config(self):
++        import trace_debug
++        d = self.start("conv-prod-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
++        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {
++            "step": "step1-phase-a", "endpoint_id": "production-test", "provider": "openrouter", "model_id": "model-x",
++            "effective_max_tokens": 123, "sampling": {"temperature": 0.1},
++        })
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-prod-probe")
++        self.assertTrue(prepared["ok"], prepared)
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        seen = {}
++        result = trace_debug.execute_probe(
++            prepared["approval_id"], prepared["approval_digest"],
++            conversation_id="conv-prod-probe",
++            model_executor=lambda req: (seen.__setitem__("req", req) or "ok"))
++        self.assertTrue(result["ok"])
++        env = seen["req"]["envelope"]
++        self.assertEqual(env["provider"], "openrouter")
++        self.assertEqual(env["model"], "model-x")
++        self.assertEqual(env["max_tokens"], 123)
++        self.assertEqual(env["messages"][0]["role"], "system")
++
++    def test_execute_probe_fails_closed_if_trace_creation_fails(self):
++        import trace_debug
++        d = self.start("conv-failclosed")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
++            "messages": [{"role": "user", "content": "hi"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m", "parameters": {}, "max_tokens": 10,
++        }})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-failclosed")
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        called = {"value": False}
++        with mock.patch.object(pipeline_trace, "start_trace", return_value=None):
++            result = trace_debug.execute_probe(
++                prepared["approval_id"], prepared["approval_digest"],
++                conversation_id="conv-failclosed",
++                model_executor=lambda req: called.__setitem__("value", True))
++        self.assertFalse(result["ok"])
++        self.assertFalse(called["value"])
++
++    def test_learning_library_schema_redacts_and_rejects_cross_conversation(self):
++        import trace_debug
++        d = self.start("conv-learn-schema")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
++            self.assertFalse(trace_debug.append_learning_entry({
++                "conversation_id": "other", "trace_ref": ref, "verdict": "NO_DEFECT",
++            }))
++            self.assertTrue(trace_debug.append_learning_entry({
++                "conversation_id": "conv-learn-schema", "trace_ref": ref,
++                "verdict": "DEFECT_LOCALIZED", "root_cause": "retrieval gap",
++                "extra": "must not persist", "correction_summary": "api_key=SECRET123",
++            }))
++            entries = trace_debug.list_learning_entries()
++        self.assertEqual(len(entries), 1)
++        self.assertNotIn("extra", entries[0])
++        self.assertIn("[REDACTED]", entries[0]["correction_summary"])
++
++    def test_natural_language_routing_is_exact_ref_and_default_off(self):
++        import trace_debug
++        with mock.patch.dict(os.environ, {}, clear=False):
++            os.environ.pop(trace_debug.TRACE_DEBUG_NL_ENABLED_ENV, None)
++            self.assertIsNone(trace_debug.parse_natural_language_request("please investigate conv-a/turn-a"))
++        with mock.patch.dict(os.environ, {trace_debug.TRACE_DEBUG_NL_ENABLED_ENV: "1"}):
++            payload = trace_debug.parse_natural_language_request("please investigate trace conv-a/turn-a")
++            self.assertEqual(payload["trace_ref"], "conv-a/turn-a")
++            self.assertIsNone(trace_debug.parse_natural_language_request("please investigate trace conv-a/turn-a and conv-b/turn-b"))
++
++    def test_trace_debug_purge_unlocked_does_not_reacquire_lifecycle_lock(self):
++        import trace_debug
++        d = self.start("conv-deadlock")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
++            self.assertTrue(trace_debug.append_learning_entry({
++                "conversation_id": "conv-deadlock", "trace_ref": ref,
++                "verdict": "NO_DEFECT",
++            }))
++            with mock.patch.object(trace_debug._rp, "conversation_lifecycle_lock", side_effect=AssertionError("would deadlock")):
++                result = trace_debug.purge_conversation_unlocked("conv-deadlock")
++        self.assertEqual(result["removed"], 1)
++
++    def test_debug_prompt_is_aggregate_bounded_and_marks_truncation(self):
++        import trace_debug
++        d = self.start("conv-bound")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {
++            "system_prompt": "s" * 300000,
++            "user_message": "u" * 300000,
++            "raw_response": "r" * 300000,
++        }, markdown="m" * 300000)
++        fields = {"mode": "P-Debug"}
++        pipeline_trace.update_manifest_fields(d, contract_snapshot={"capture_status": "captured", "canonical_fields": fields, "fingerprint": trace_debug.digest(fields)})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-bound")
++        self.assertTrue(meta["contract_available"])
++        self.assertLess(len(prompt), trace_debug.MAX_DEBUG_CONTEXT_CHARS + 25000)
++        self.assertIn('"evidence_budget"', prompt)
++        self.assertIn("TRACE_DEBUG_EVIDENCE_TRUNCATED", prompt)
++
++    def test_framework_parent_debug_walks_child_steps_and_boundary(self):
++        import trace_debug
++        parent = self.start("conv-parent")
++        child = self.start("conv-parent")
++        child_ref = pipeline_trace.trace_ref_for_dir(child)
++        pipeline_trace.write_step(child, "step1-phase-a", {"semantic_status": "fail", "user_message": "child evidence"})
++        pipeline_trace.write_step_health(child, {"step1-phase-a": (False, "bad child")}, 1, [])
++        pipeline_trace.append_jsonl(child, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        child_fields = {"mode": "P-Debug"}
++        pipeline_trace.update_manifest_fields(child, contract_snapshot={"capture_status": "captured", "canonical_fields": child_fields, "fingerprint": trace_debug.digest(child_fields)})
++        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
++        pipeline_trace.finalize_manifest(child, kind="framework-milestone", status_hint="completed", gear=1, parent_trace_ref=parent_ref)
++        parent_fields = {"mode": "P-Debug"}
++        pipeline_trace.update_manifest_fields(parent, contract_snapshot={"capture_status": "captured", "canonical_fields": parent_fields, "fingerprint": trace_debug.digest(parent_fields)})
++        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed", child_trace_refs=[child_ref])
++        ref = pipeline_trace.trace_ref_for_dir(parent)
++        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-parent")
++        self.assertIn(child_ref, prompt)
++        self.assertIn('"user_message": "child evidence"', prompt)
++        self.assertIn('"semantic_evidence": "fail"', prompt)
++        self.assertIn('"model_call_configs"', prompt)
++
++    def test_child_walk_rejects_foreign_and_nonreciprocal_children(self):
++        import trace_debug
++        parent = self.start("conv-a")
++        foreign = self.start("conv-b")
++        foreign_ref = pipeline_trace.trace_ref_for_dir(foreign)
++        pipeline_trace.write_step(foreign, "step1-secret", {"secret": "SECRET_FROM_B"})
++        pipeline_trace.finalize_manifest(foreign, kind="framework-milestone", status_hint="completed", gear=1)
++        pipeline_trace.update_manifest_fields(parent, child_trace_refs=[foreign_ref])
++        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed")
++        parent_ref = pipeline_trace.trace_ref_for_dir(parent)
++        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": parent_ref}, conversation_id="conv-a")
++        self.assertNotIn("SECRET_FROM_B", prompt)
++        self.assertIn("child trace conversation mismatch", prompt)
++
++    def test_child_walk_marks_omitted_child_limit(self):
++        import trace_debug
++        parent = self.start("conv-limit")
++        refs = [f"conv-limit/missing-{i}" for i in range(trace_debug.MAX_DEBUG_CHILDREN + 1)]
++        pipeline_trace.update_manifest_fields(parent, child_trace_refs=refs)
++        pipeline_trace.finalize_manifest(parent, kind="framework-run", status_hint="completed")
++        ref = pipeline_trace.trace_ref_for_dir(parent)
++        prompt, _meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-limit")
++        self.assertIn("child trace count limit reached", prompt)
++
++    def test_probe_provider_failure_is_error_not_completed(self):
++        import trace_debug
++        d = self.start("conv-provider-error")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
++            "messages": [{"role": "user", "content": "hi"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
++            "parameters": {}, "max_tokens": 10,
++        }})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-provider-error")
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        result = trace_debug.execute_probe(
++            prepared["approval_id"], prepared["approval_digest"],
++            conversation_id="conv-provider-error",
++            model_executor=lambda _req: "[Error] provider unavailable",
++        )
++        self.assertFalse(result["ok"])
++        self.assertEqual(result["status"], "error")
++        probe = self.manifest(pipeline_trace.resolve_trace_ref(result["trace_ref"]))
++        self.assertEqual(probe["terminal_status"], "error")
++
++    def test_contract_budget_preserves_exact_captured_clause(self):
++        import trace_debug
++        d = self.start("conv-contract-exact")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        fields = {"mode": "P-Debug", "verification_criteria": "x" * 20000}
++        pipeline_trace.update_manifest_fields(
++            d,
++            contract_snapshot={
++                "capture_status": "captured",
++                "canonical_fields": fields,
++                "fingerprint": trace_debug.digest(fields),
++            },
++        )
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prompt, meta = trace_debug.build_debug_prompt({"trace_ref": ref}, conversation_id="conv-contract-exact")
++        self.assertTrue(meta["contract_available"])
++        self.assertIn("x" * 20000, prompt)
++        self.assertNotIn("TRACE_DEBUG_EVIDENCE_TRUNCATED", prompt.split('"contract_snapshot"', 1)[-1].split('"selected_step"', 1)[0])
++
++    def test_step_health_boolean_false_is_semantic_failure(self):
++        import trace_debug
++        boundary = trace_debug._boundary_table(
++            {"expected_steps": ["step1"], "actual_steps": ["step1"], "derived_artifacts": ["step-health"]},
++            [
++                {"step_name": "step1", "json_present": True, "payload": {"ok": False}, "errors": []},
++                {"step_name": "step-health", "payload": {"step_health": {"step1": {"ok": False, "reason": "bad"}}}},
++            ],
++        )
++        self.assertEqual(boundary[0]["semantic_evidence"], "fail")
++
++    def test_trace_debug_and_probe_expected_artifacts_are_explicit(self):
++        d = self.start("conv-kinds")
++        pipeline_trace.write_step(d, "step-debug-request", {"trace_ref": "conv-kinds/target"})
++        pipeline_trace.write_step(d, "step-debug-result", {"status": "completed"})
++        pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed")
++        debug_manifest = self.manifest(d)
++        self.assertEqual(debug_manifest["expected_steps"], ["step-debug-request", "step-debug-result"])
++        p = self.start("conv-kinds")
++        for name in ("step-probe-prepare", "step-probe-approval", "step-probe-model-attempt", "step-probe-result"):
++            pipeline_trace.write_step(p, name, {"ok": True})
++        pipeline_trace.write_step_health(p, {"step-probe-result": (True, "ok")}, 0, [])
++        pipeline_trace.finalize_manifest(p, kind="trace-probe", status_hint="completed")
++        probe_manifest = self.manifest(p)
++        self.assertIn("step-health", probe_manifest["expected_steps"])
++        self.assertEqual(probe_manifest["missing_steps"] if "missing_steps" in probe_manifest else [], [])
++
++    def test_private_conversation_cannot_write_learning_entry(self):
++        import trace_debug
++        d = self.start("conv-private-learning", conversation_tag="private")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        self.assertFalse(trace_debug.append_learning_entry({
++            "conversation_id": "conv-private-learning",
++            "trace_ref": ref,
++            "verdict": "NO_DEFECT",
++        }))
++
++    def test_boundary_last_known_good_stops_before_first_failure(self):
++        import trace_debug
++        manifest = {"expected_steps": ["step1", "step2", "step3"], "actual_steps": ["step1", "step2", "step3"], "derived_artifacts": []}
++        steps = [
++            {"step_name": "step1", "json_present": True, "payload": {"semantic_status": "pass"}, "errors": []},
++            {"step_name": "step2", "json_present": True, "payload": {"semantic_status": "fail"}, "errors": []},
++            {"step_name": "step3", "json_present": True, "payload": {"semantic_status": "pass"}, "errors": []},
++        ]
++        boundary = trace_debug._boundary_table(manifest, steps)
++        self.assertEqual(trace_debug._last_before_first_failure(boundary, "semantic_evidence"), "step1")
++
++    def test_probe_rejects_ambiguous_or_incomplete_call_mapping(self):
++        import trace_debug
++        d = self.start("conv-ambig-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
++        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {"step": "other", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
++        self.assertEqual(prepared["status"], "NOT_REPLAYABLE")
++        d2 = self.start("conv-ambig-probe")
++        ref2 = pipeline_trace.trace_ref_for_dir(d2)
++        pipeline_trace.write_step(d2, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
++        for _ in range(2):
++            pipeline_trace.append_jsonl(d2, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        pipeline_trace.finalize_manifest(d2, kind="chat", status_hint="completed", gear=1)
++        prepared2 = trace_debug.prepare_probe({"trace_ref": ref2, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
++        self.assertEqual(prepared2["status"], "NOT_REPLAYABLE")
++        d3 = self.start("conv-ambig-probe")
++        ref3 = pipeline_trace.trace_ref_for_dir(d3)
++        pipeline_trace.write_step(d3, "step1-phase-a", {"system_prompt": "sys only"})
++        pipeline_trace.append_jsonl(d3, "model-call-config.jsonl", {"step": "step1-phase-a", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        pipeline_trace.finalize_manifest(d3, kind="chat", status_hint="completed", gear=1)
++        prepared3 = trace_debug.prepare_probe({"trace_ref": ref3, "step_name": "step1-phase-a"}, conversation_id="conv-ambig-probe")
++        self.assertEqual(prepared3["status"], "NOT_REPLAYABLE")
++
++    def test_probe_applies_prompt_delta_and_enforces_cost_ceiling(self):
++        import trace_debug
++        d = self.start("conv-delta-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
++        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {"step": "step1-phase-a", "endpoint_id": "test-endpoint", "provider": "p", "model_id": "m", "effective_max_tokens": 10})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        too_low = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "cost_ceiling": 1}, conversation_id="conv-delta-probe")
++        self.assertEqual(too_low["status"], "COST_EXCEEDED")
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a", "prompt_delta": "try shorter", "cost_ceiling": 1000}, conversation_id="conv-delta-probe")
++        self.assertTrue(prepared["ok"], prepared)
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        seen = {}
++        result = trace_debug.execute_probe(prepared["approval_id"], prepared["approval_digest"], conversation_id="conv-delta-probe", model_executor=lambda req: (seen.__setitem__("req", req) or "ok"))
++        self.assertTrue(result["ok"])
++        contents = [m["content"] for m in seen["req"]["envelope"]["messages"]]
++        self.assertTrue(any("try shorter" in c for c in contents))
++
++    def test_learning_records_require_single_verdict_field_and_store_fingerprints(self):
++        import trace_debug
++        d = self.start("conv-verdict-safe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        fields = {"framework_fingerprint": "ffp"}
++        pipeline_trace.update_manifest_fields(d, framework_id="fw", mode="P-Debug", contract_snapshot={"capture_status": "captured", "fingerprint": trace_debug.digest(fields), "canonical_fields": fields})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
++            self.assertFalse(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "Could be NO_DEFECT but maybe DEFECT_LOCALIZED"))
++            self.assertFalse(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "VERDICT: NO_DEFECT\nVERDICT: BAD_DRAW"))
++            self.assertTrue(trace_debug.record_diagnosis_learning("conv-verdict-safe", ref, "VERDICT: NO_DEFECT\nFAILING STEP: none\nVERIFICATION PROBE: not needed"))
++            entries = trace_debug.list_learning_entries()
++        self.assertEqual(entries[0]["verdict"], "NO_DEFECT")
++        self.assertEqual(entries[0]["contract_fingerprint"], trace_debug.digest(fields))
++        self.assertEqual(entries[0]["framework_fingerprint"], "ffp")
++        self.assertEqual(entries[0]["verification_probe"], "not needed")
++
++    def test_learning_library_purge_physically_removes_conversation_records(self):
++        import trace_debug
++        d1 = self.start("conv-learn")
++        ref1 = pipeline_trace.trace_ref_for_dir(d1)
++        pipeline_trace.finalize_manifest(d1, kind="chat", status_hint="completed", gear=1)
++        d2 = self.start("other")
++        ref2 = pipeline_trace.trace_ref_for_dir(d2)
++        pipeline_trace.finalize_manifest(d2, kind="chat", status_hint="completed", gear=1)
++        store = Path(self.tmp.name) / "data" / "trace-debug" / "learning-library.jsonl"
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
++            self.assertTrue(trace_debug.append_learning_entry({
++                "conversation_id": "conv-learn", "trace_ref": ref1,
++                "verdict": "NO_DEFECT", "root_cause": "none",
++            }))
++            self.assertTrue(trace_debug.append_learning_entry({
++                "conversation_id": "other", "trace_ref": ref2,
++                "verdict": "DEFECT_LOCALIZED", "root_cause": "retrieval gap",
++            }))
++            result = trace_debug.purge_conversation("conv-learn")
++            self.assertEqual(result["removed"], 1)
++            text = store.read_text(encoding="utf-8")
++            self.assertNotIn("conv-learn", text)
++            self.assertIn("other", text)
++
++    def test_debug_budget_marks_omitted_child_contracts_unavailable(self):
++        import trace_debug
++        contract = {
++            "capture_status": "captured",
++            "canonical_fields": {"verification_criterion": "x" * 50000},
++            "fingerprint": trace_debug.digest({"verification_criterion": "x" * 50000}),
++        }
++        context = {
++            "contract_snapshot": contract,
++            "contract_unavailable": None,
++            "trace_walk": {
++                "trace_ref": "conv-budget/turn",
++                "manifest": {"trace_ref": "conv-budget/turn"},
++                "raw_manifest_fields": {"contract_snapshot": contract},
++                "boundary_table": [],
++                "boundary_summary": {},
++                "child_traces": [
++                    {"trace_ref": f"conv-budget/child-{i}", "manifest": {},
++                     "raw_manifest_fields": {"contract_snapshot": contract},
++                     "boundary_table": [], "boundary_summary": {},
++                     "steps": [{"markdown": "x" * 100000}]}
++                    for i in range(4)
++                ],
++            },
++        }
++        bounded = trace_debug._apply_debug_budget(context)
++        self.assertIsNotNone(bounded.get("contract_unavailable"))
++        children = bounded["trace_walk"]["child_traces"]
++        self.assertTrue(all(c["raw_manifest_fields"]["contract_snapshot"] is None for c in children))
++        self.assertTrue(all(c["raw_manifest_fields"]["contract_capture_error"] for c in children))
++
++    def test_mode_contract_refresh_uses_recorded_final_gear(self):
++        import trace_debug
++        d = self.start("conv-mode-gear")
++        pipeline_trace.write_step_health(d, {"step3": (True, "ok")}, 3, [])
++        trace_debug.refresh_mode_contract_snapshot(
++            d, "P-Debug", "## VERIFICATION CRITERIA\n\n- criteria", 4)
++        manifest = self.manifest(d)
++        self.assertEqual(manifest["contract_snapshot"]["canonical_fields"]["gear"], 3)
++
++    def test_framework_fingerprint_changes_with_source_content(self):
++        import trace_debug
++        source = Path(self.tmp.name) / "framework.md"
++        source.write_text("contract one", encoding="utf-8")
++        framework = SimpleNamespace(name="fw", file_path=str(source), raw_markdown="contract one")
++        milestone = SimpleNamespace(id="m", name="M", verification_criterion="ok")
++        first = trace_debug.framework_contract_snapshot(framework, milestone)
++        source.write_text("contract two", encoding="utf-8")
++        second = trace_debug.framework_contract_snapshot(framework, milestone)
++        self.assertEqual(
++            first["canonical_fields"]["framework_fingerprint"],
++            second["canonical_fields"]["framework_fingerprint"],
++        )
++        framework.raw_markdown = "contract two"
++        third = trace_debug.framework_contract_snapshot(framework, milestone)
++        self.assertNotEqual(
++            first["canonical_fields"]["framework_fingerprint"],
++            third["canonical_fields"]["framework_fingerprint"],
++        )
++
++    def test_prior_learning_requires_matching_contract_versions(self):
++        import trace_debug
++        records = [
++            {"trace_ref": "old/one", "framework_id": "fw", "framework_fingerprint": "new-fw", "contract_fingerprint": "new-contract", "verdict": "NO_DEFECT"},
++            {"trace_ref": "old/two", "framework_id": "fw", "framework_fingerprint": "old-fw", "contract_fingerprint": "new-contract", "verdict": "NO_DEFECT"},
++        ]
++        with mock.patch.object(trace_debug, "list_learning_entries", return_value=records):
++            kept = trace_debug._prior_learning(
++                "current/turn", {"framework_id": "fw", "mode": "P-Debug"},
++                framework_fingerprint="new-fw", contract_fingerprint="new-contract",
++            )
++        self.assertEqual([entry["trace_ref"] for entry in kept], ["old/one"])
++
++    def test_probe_cli_delta_does_not_consume_cost_option(self):
++        import trace_debug
++        parsed = trace_debug.parse_probe_cli_command(
++            "/trace-probe prepare conv/turn step1 --delta try shorter --cost-ceiling 100"
++        )
++        self.assertEqual(parsed["prompt_delta"], "try shorter")
++        self.assertEqual(parsed["cost_ceiling"], "100")
++        with mock.patch.object(
++            trace_debug,
++            "_replay_envelope",
++            return_value=({"messages": [{"role": "user", "content": "hello"}], "endpoint_id": "e", "provider": "p", "model": "m", "parameters": {}, "max_tokens": 1}, ""),
++        ):
++            rejected = trace_debug.prepare_probe(
++                {"trace_ref": "conv-delta/turn", "step_name": "step1", "prompt_delta": "x" * (trace_debug.MAX_PROBE_DELTA_CHARS + 1)},
++                conversation_id="conv-delta",
++            )
++        self.assertEqual(rejected["status"], "REJECTED")
++
++    def test_probe_binds_physical_context_and_records_non_lineage_ref(self):
++        import trace_debug
++        d = self.start("conv-probe-context")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"system_prompt": "sys", "user_message": "hello"})
++        pipeline_trace.append_jsonl(d, "model-call-config.jsonl", {
++            "step": "step1-phase-a", "endpoint_id": "test-endpoint",
++            "provider": "p", "model_id": "m", "effective_max_tokens": 10,
++        })
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-probe-context")
++        self.assertTrue(prepared["ok"], prepared)
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        seen = {}
++        def executor(request):
++            import boot
++            seen["trace_dir"] = boot._TURN_TRACE_DIR_CV.get()
++            return "ok"
++        result = trace_debug.execute_probe(
++            prepared["approval_id"], prepared["approval_digest"],
++            conversation_id="conv-probe-context", model_executor=executor,
++        )
++        self.assertTrue(result["ok"], result)
++        probe_dir = pipeline_trace.resolve_trace_ref(result["trace_ref"])
++        self.assertEqual(seen["trace_dir"], probe_dir)
++        source = self.manifest(d)
++        self.assertIn(result["trace_ref"], source["probe_trace_refs"])
++        self.assertNotIn(result["trace_ref"], source["child_trace_refs"])
++
++    def test_probe_origin_requires_same_conversation_debug_reciprocity(self):
++        import trace_debug
++        target = self.start("conv-origin-a")
++        target_ref = pipeline_trace.trace_ref_for_dir(target)
++        pipeline_trace.write_step(target, "step1-phase-a", {"model_request": {
++            "messages": [{"role": "user", "content": "hello"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
++            "parameters": {}, "max_tokens": 10,
++        }})
++        pipeline_trace.finalize_manifest(target, kind="chat", status_hint="completed", gear=1)
++        foreign_origin = self.start("conv-origin-b")
++        foreign_ref = pipeline_trace.trace_ref_for_dir(foreign_origin)
++        pipeline_trace.update_manifest_fields(
++            foreign_origin, trace_kind="trace-debug", investigates_trace_ref=target_ref)
++        pipeline_trace.finalize_manifest(foreign_origin, kind="trace-debug", status_hint="completed")
++        prepared = trace_debug.prepare_probe({
++            "trace_ref": target_ref, "step_name": "step1-phase-a",
++            "origin_trace_ref": foreign_ref,
++        }, conversation_id="conv-origin-a")
++        self.assertEqual(prepared["status"], "REJECTED")
++        self.assertEqual(self.manifest(foreign_origin).get("probe_trace_refs"), [])
++
++    def test_probe_required_result_artifact_fails_closed(self):
++        import trace_debug
++        d = self.start("conv-required-probe")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
++            "messages": [{"role": "user", "content": "hello"}],
++            "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
++            "parameters": {}, "max_tokens": 10,
++        }})
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        prepared = trace_debug.prepare_probe({"trace_ref": ref, "step_name": "step1-phase-a"}, conversation_id="conv-required-probe")
++        trace_debug.approve_probe(prepared["approval_id"], prepared["approval_digest"])
++        original_write = pipeline_trace.write_step
++        def drop_result(trace_dir, step_name, payload, markdown=None):
++            if step_name != "step-probe-result":
++                original_write(trace_dir, step_name, payload, markdown)
++        with mock.patch.object(pipeline_trace, "write_step", side_effect=drop_result):
++            result = trace_debug.execute_probe(
++                prepared["approval_id"], prepared["approval_digest"],
++                conversation_id="conv-required-probe", model_executor=lambda _req: "ok")
++        self.assertFalse(result["ok"])
++        self.assertEqual(result["status"], "error")
++        probe = self.manifest(pipeline_trace.resolve_trace_ref(result["trace_ref"]))
++        self.assertEqual(probe["terminal_status"], "error")
++
++    def test_probe_execute_rejection_is_recorded_on_latest_debug_trace(self):
++        import trace_debug
++        d = self.start("conv-rejection-events")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.update_manifest_fields(d, trace_kind="trace-debug", investigates_trace_ref="conv-rejection-events/target")
++        pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed")
++        rejected = trace_debug.consume_probe_approval("forged", "bad", conversation_id="conv-rejection-events")
++        self.assertFalse(rejected["ok"])
++        events = trace_debug._read_jsonl_records_locked(Path(d), "trace-probe-events.jsonl")
++        self.assertTrue(any(event.get("event") == "execute_rejected" for event in events))
++
++    def test_learning_boundary_redacts_bounds_and_reports_corruption(self):
++        import trace_debug
++        d = self.start("conv-learning-boundary")
++        ref = pipeline_trace.trace_ref_for_dir(d)
++        pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++        data_dir = Path(self.tmp.name) / "data"
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(data_dir)):
++            self.assertFalse(trace_debug.append_learning_entry({
++                "conversation_id": "conv-learning-boundary", "trace_ref": ref,
++                "verdict": "NO_DEFECT", "root_cause": "invented class",
++            }))
++            self.assertTrue(trace_debug.append_learning_entry({
++                "conversation_id": "conv-learning-boundary", "trace_ref": ref,
++                "verdict": "NO_DEFECT", "root_cause": "none",
++                "failing_step": "api_key=SECRET " + "x" * 1000,
++            }))
++            store = Path(trace_debug.learning_library_path())
++            with store.open("a", encoding="utf-8") as handle:
++                handle.write("not-json\n")
++                handle.write(json.dumps({"schema_version": 999, "conversation_id": "bad"}) + "\n")
++            entries = trace_debug.list_learning_entries()
++            status = trace_debug.learning_library_status()
++        self.assertEqual(len(entries), 1)
++        self.assertNotIn("SECRET", json.dumps(entries))
++        self.assertLessEqual(len(entries[0]["failing_step"]), 200)
++        self.assertEqual(status["malformed_records"], 1)
++        self.assertEqual(status["unsupported_schema_records"], 1)
++
++    def test_seeded_four_verdict_learning_paths_are_unambiguous(self):
++        import trace_debug
++        outputs = {
++            "DEFECT_LOCALIZED": "retrieval gap",
++            "BAD_DRAW": "model bad-draw",
++            "CONTRACT_MISMATCH": "framework underspecification",
++            "NO_DEFECT": "none",
++        }
++        with mock.patch.object(trace_debug._rp, "DATA_DIR_STR", str(Path(self.tmp.name) / "data")):
++            for index, (verdict, root_cause) in enumerate(outputs.items()):
++                d = self.start("conv-seeded-verdicts")
++                ref = pipeline_trace.trace_ref_for_dir(d)
++                fields = {"framework_fingerprint": "fw-v1", "mode": "P-Debug"}
++                pipeline_trace.update_manifest_fields(
++                    d, framework_id="fw", mode="P-Debug",
++                    contract_snapshot={"capture_status": "captured", "canonical_fields": fields,
++                                       "fingerprint": trace_debug.digest(fields)})
++                pipeline_trace.finalize_manifest(d, kind="trace-debug", status_hint="completed", gear=1)
++                self.assertTrue(trace_debug.record_diagnosis_learning(
++                    "conv-seeded-verdicts", ref,
++                    f"VERDICT: {verdict}\nROOT CAUSE: {root_cause}\nFAILING STEP: none\nVERIFICATION PROBE: none"))
++            entries = trace_debug.list_learning_entries()
++        self.assertEqual({entry["verdict"] for entry in entries}, set(outputs))
++
++    def test_probe_expiry_mutation_and_concurrent_execution_are_rejected_once(self):
++        import trace_debug
++        def make_source(conversation):
++            d = self.start(conversation)
++            ref = pipeline_trace.trace_ref_for_dir(d)
++            pipeline_trace.write_step(d, "step1-phase-a", {"model_request": {
++                "messages": [{"role": "user", "content": "hello"}],
++                "endpoint_id": "test-endpoint", "provider": "test", "model": "m",
++                "parameters": {}, "max_tokens": 10,
++            }})
++            pipeline_trace.finalize_manifest(d, kind="chat", status_hint="completed", gear=1)
++            return d, ref
++        expired_dir, expired_ref = make_source("conv-expiry")
++        expired = trace_debug.prepare_probe({"trace_ref": expired_ref, "step_name": "step1-phase-a"}, conversation_id="conv-expiry")
++        trace_debug._APPROVALS[expired["approval_id"]]["request"]["expires_at"] = 0
++        self.assertFalse(trace_debug.approve_probe(expired["approval_id"], expired["approval_digest"])["ok"])
++        mutated_dir, mutated_ref = make_source("conv-mutation")
++        mutated = trace_debug.prepare_probe({"trace_ref": mutated_ref, "step_name": "step1-phase-a"}, conversation_id="conv-mutation")
++        trace_debug.approve_probe(mutated["approval_id"], mutated["approval_digest"])
++        pipeline_trace.append_jsonl(mutated_dir, "model-call-config.jsonl", {"step": "step1-phase-a", "endpoint_id": "changed"})
++        self.assertEqual(trace_debug.execute_probe(mutated["approval_id"], mutated["approval_digest"], conversation_id="conv-mutation").get("status"), "REJECTED")
++        _concurrent_dir, concurrent_ref = make_source("conv-concurrent")
++        concurrent = trace_debug.prepare_probe({"trace_ref": concurrent_ref, "step_name": "step1-phase-a"}, conversation_id="conv-concurrent")
++        trace_debug.approve_probe(concurrent["approval_id"], concurrent["approval_digest"])
++        results = []
++        threads = [threading.Thread(target=lambda: results.append(trace_debug.execute_probe(
++            concurrent["approval_id"], concurrent["approval_digest"],
++            conversation_id="conv-concurrent", model_executor=lambda _req: "ok"))) for _ in range(2)]
++        for thread in threads:
++            thread.start()
++        for thread in threads:
++            thread.join()
++        self.assertEqual(sum(bool(result.get("ok")) for result in results), 1)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/orchestrator/tests/test_trace_walk_ui.py b/orchestrator/tests/test_trace_walk_ui.py
+index db097412..f1a43ac0 100644
+--- a/orchestrator/tests/test_trace_walk_ui.py
++++ b/orchestrator/tests/test_trace_walk_ui.py
+@@ -72,6 +72,8 @@ class TraceWalkUiTests(unittest.TestCase):
+             window.URL.createObjectURL = () => 'blob:trace';
+             window.URL.revokeObjectURL = () => {};
+             window.HTMLAnchorElement.prototype.click = function () { window.__downloaded = this.download; };
++            window.prompt = () => 'looked wrong';
++            window.OraConversation = { getActiveConversationId: () => 'conv-d' };
+ 
+             const pending = [];
+             const deferred = () => {
+@@ -178,6 +180,26 @@ class TraceWalkUiTests(unittest.TestCase):
+               assert.strictEqual(window.location.href, beforeHref, 'failed export does not navigate page');
+               assert(window.document.querySelector('[data-role="status"]').textContent.includes('gone'), 'export failure is visible');
+ 
++              const investigate = window.document.querySelector('[data-role="investigate"]');
++              assert(investigate && !investigate.disabled, 'loaded trace enables investigate');
++              investigate.click();
++              const invReq = pending.pop();
++              const invBody = JSON.parse(invReq.opts.body);
++              assert.strictEqual(invReq.url, '/chat');
++              assert.strictEqual(invBody.panel_id, 'conv-d');
++              assert.strictEqual(invBody.trace_debug.trace_ref, 'conv-d/turn-d');
++              assert.strictEqual(invBody.trace_debug.step_hint, '');
++              assert.strictEqual(invBody.trace_debug.symptom, 'looked wrong');
++              invReq.d.resolve(jsonResponse({ ok: true }));
++              await flush();
++              assert(window.document.querySelector('[data-role="status"]').textContent.includes('submitted'), 'successful investigation is visible');
++
++              investigate.click();
++              const invFailReq = pending.pop();
++              invFailReq.d.resolve(jsonResponse({ error: 'trace expired' }, 404));
++              await flush();
++              assert(window.document.querySelector('[data-role="status"]').textContent.includes('trace expired'), 'failed investigation is visible');
++
+               window.OraTraceWalk.close();
+               assert.strictEqual(window.document.activeElement, launch, 'focus restored on close');
+             })().catch((err) => {
+@@ -230,6 +252,9 @@ class TraceWalkUiTests(unittest.TestCase):
+               if (url.includes('/engagement')) {
+                 return Promise.resolve(new Response('{}', { status: 200 }));
+               }
++              if (url === '/chat') {
++                return Promise.resolve(new Response('{}', { status: 200 }));
++              }
+               throw new Error('unexpected fetch ' + url);
+             };
+             const run = (rel) => vm.runInContext(
+@@ -263,6 +288,10 @@ class TraceWalkUiTests(unittest.TestCase):
+               openTrace.click();
+               assert.strictEqual(opened.trace_ref, 'conv-paused/turn-paused');
+               assert.strictEqual(opened.step, 'step4-tools');
++              const investigate = buttons.find((btn) => btn.textContent === 'Investigate trace');
++              assert(investigate, 'paused entry renders Investigate trace');
++              investigate.click();
++              await flush();
+               process.exit(0);
+             })().catch((err) => {
+               console.error(err && err.stack || err);
+diff --git a/orchestrator/trace_debug.py b/orchestrator/trace_debug.py
+new file mode 100644
+index 00000000..d95e58c0
+--- /dev/null
++++ b/orchestrator/trace_debug.py
+@@ -0,0 +1,1447 @@
++"""Trace-backed P-Debug support for Chunk 3.
++
++This module is intentionally mechanical: exact trace refs in, bounded debug
++context out. It never guesses a trace target, never applies corrections, and
++never executes tool/external-action replay.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import re
++import shlex
++import threading
++import time
++from urllib.parse import urlparse
++from datetime import datetime
++from pathlib import Path
++from typing import Any
++
++try:
++    import runtime_paths as _rp  # type: ignore
++except ImportError:  # pragma: no cover
++    from orchestrator import runtime_paths as _rp  # type: ignore
++try:
++    import pipeline_trace  # type: ignore
++except ImportError:  # pragma: no cover
++    from orchestrator import pipeline_trace  # type: ignore
++
++CONTRACT_SCHEMA_VERSION = 1
++MAX_CONTRACT_BYTES = 64 * 1024
++TRACE_DEBUG_LIBRARY_ENABLED_ENV = "ORA_TRACE_DEBUG_LIBRARY"
++TRACE_DEBUG_NL_ENABLED_ENV = "ORA_TRACE_DEBUG_NL"
++_APPROVAL_TTL_SECONDS = 10 * 60
++MAX_DEBUG_CONTEXT_CHARS = 180_000
++MAX_DEBUG_STRING_CHARS = 8_000
++MAX_DEBUG_CHILDREN = 8
++MAX_DEBUG_DEPTH = 2
++MAX_PROBE_DELTA_CHARS = 2000
++_APPROVALS: dict[str, dict[str, Any]] = {}
++_APPROVAL_LOCK = threading.Lock()
++
++
++def _utc_now() -> str:
++    return datetime.utcnow().isoformat() + "Z"
++
++
++def _enabled(name: str, default: bool = True) -> bool:
++    value = os.environ.get(name)
++    if value is None:
++        return default
++    return value.strip().lower() not in {"0", "false", "off", "no", "disabled"}
++
++
++def trace_debug_nl_enabled() -> bool:
++    return _enabled(TRACE_DEBUG_NL_ENABLED_ENV, default=False)
++
++
++def _canonical(data: Any) -> str:
++    return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
++
++
++def digest(data: Any) -> str:
++    return hashlib.sha256(_canonical(data).encode("utf-8")).hexdigest()
++
++
++def _framework_source_digest(framework: Any) -> str | None:
++    """Hash the execution-time framework source without persisting its body."""
++    source = None
++    for attr in ("raw_markdown", "text", "content", "source", "raw_text"):
++        value = getattr(framework, attr, None)
++        if isinstance(value, str) and value:
++            source = value.encode("utf-8")
++            break
++    if source is None:
++        return None
++    return hashlib.sha256(source).hexdigest()
++
++
++def _framework_fingerprint(framework: Any) -> str:
++    return digest({
++        "framework_id": getattr(framework, "name", ""),
++        "framework_path": getattr(framework, "file_path", ""),
++        "framework_source_sha256": _framework_source_digest(framework),
++    })
++
++
++def _contract_or_failure(kind: str, fields: dict[str, Any]) -> dict[str, Any]:
++    encoded = _canonical(fields).encode("utf-8")
++    if len(encoded) > MAX_CONTRACT_BYTES:
++        return {
++            "schema_version": CONTRACT_SCHEMA_VERSION,
++            "kind": kind,
++            "capture_status": "failed",
++            "error": f"contract too large: {len(encoded)} bytes > {MAX_CONTRACT_BYTES}",
++        }
++    return {
++        "schema_version": CONTRACT_SCHEMA_VERSION,
++        "kind": kind,
++        "capture_status": "captured",
++        "fingerprint": hashlib.sha256(encoded).hexdigest(),
++        "canonical_fields": fields,
++    }
++
++
++def framework_contract_snapshot(framework: Any, milestone: Any, *, selected_mode: str | None = None,
++                                framework_fingerprint: str | None = None) -> dict[str, Any]:
++    framework_id = getattr(framework, "name", "")
++    framework_path = getattr(framework, "file_path", "")
++    fields = {
++        "framework_id": framework_id,
++        "framework_path": framework_path,
++        "framework_fingerprint": framework_fingerprint or _framework_fingerprint(framework),
++        "mode": selected_mode or getattr(milestone, "mode", None) or "all",
++        "milestone_id": getattr(milestone, "id", ""),
++        "milestone_name": getattr(milestone, "name", ""),
++        "endpoint_produced": getattr(milestone, "endpoint_produced", ""),
++        "verification_criterion": getattr(milestone, "verification_criterion", ""),
++        "drift_check_question": getattr(milestone, "drift_check_question", ""),
++        "output_format": getattr(milestone, "output_format", ""),
++        "gear": getattr(milestone, "gear", None),
++        "layers_covered": list(getattr(milestone, "layers_covered", []) or []),
++        "required_prior": list(getattr(milestone, "required_prior", []) or []),
++        "conditional_layers": getattr(milestone, "conditional_layers", None),
++    }
++    return _contract_or_failure("framework-milestone", fields)
++
++
++def framework_contract_bundle(framework: Any, milestones: list[Any], *, selected_mode: str | None = None) -> dict[str, Any]:
++    framework_fingerprint = _framework_fingerprint(framework)
++    child_snapshots = [framework_contract_snapshot(
++        framework, m, selected_mode=selected_mode,
++        framework_fingerprint=framework_fingerprint,
++    ) for m in milestones]
++    failures = [s for s in child_snapshots if s.get("capture_status") != "captured"]
++    if failures:
++        return {
++            "schema_version": CONTRACT_SCHEMA_VERSION,
++            "kind": "framework-run",
++            "capture_status": "failed",
++            "error": "one or more milestone contracts unavailable",
++            "child_statuses": [
++                {
++                    "milestone_id": (s.get("canonical_fields") or {}).get("milestone_id"),
++                    "capture_status": s.get("capture_status"),
++                    "error": s.get("error"),
++                }
++                for s in child_snapshots
++            ],
++        }
++    fields = {
++        "framework_id": getattr(framework, "name", ""),
++        "framework_path": getattr(framework, "file_path", ""),
++        "framework_fingerprint": framework_fingerprint,
++        "mode": selected_mode or "all",
++        "milestones": [s["canonical_fields"] for s in child_snapshots],
++    }
++    return _contract_or_failure("framework-run", fields)
++
++
++def extract_markdown_section(text: str, heading: str) -> str:
++    pattern = re.compile(rf"^##\s+{re.escape(heading)}\s*$", re.M | re.I)
++    match = pattern.search(text or "")
++    if not match:
++        return ""
++    start = match.end()
++    next_h2 = re.search(r"^##\s+", text[start:], re.M)
++    end = start + next_h2.start() if next_h2 else len(text)
++    return text[start:end].strip()
++
++
++def mode_contract_snapshot(mode_name: str, mode_text: str, gear: int | None) -> dict[str, Any]:
++    criteria = extract_markdown_section(mode_text, "VERIFICATION CRITERIA")
++    fields = {
++        "mode": mode_name,
++        "gear": gear,
++        "verification_criteria": criteria,
++    }
++    if not criteria:
++        return {
++            "schema_version": CONTRACT_SCHEMA_VERSION,
++            "kind": "mode-verification",
++            "capture_status": "failed",
++            "error": "mode verification criteria unavailable",
++            "canonical_fields": fields,
++        }
++    return _contract_or_failure("mode-verification", fields)
++
++
++def refresh_mode_contract_snapshot(trace_dir: str | None, mode_name: str,
++                                   mode_text: str, fallback_gear: int | None) -> None:
++    """Capture the loaded mode against the gear actually written by the run."""
++    gear = fallback_gear
++    try:
++        path = Path(trace_dir or "") / "step-health.json"
++        if path.is_file() and not path.is_symlink():
++            payload, error = pipeline_trace._read_json_limited_no_follow(path, 256 * 1024)  # type: ignore[attr-defined]
++            if not error and isinstance(payload, dict) and isinstance(payload.get("gear"), int):
++                gear = payload["gear"]
++    except Exception:
++        pass
++    record_contract_snapshot(trace_dir, mode_contract_snapshot(mode_name, mode_text, gear))
++
++
++def record_contract_snapshot(trace_dir: str | None, snapshot: dict[str, Any]) -> None:
++    if not trace_dir:
++        return
++    if snapshot.get("capture_status") == "captured":
++        pipeline_trace.update_manifest_fields(trace_dir, contract_snapshot=snapshot, contract_capture_error=None)
++    else:
++        pipeline_trace.update_manifest_fields(trace_dir, contract_snapshot=None, contract_capture_error=snapshot)
++
++
++def _parts(trace_ref: str | None) -> tuple[str, str] | None:
++    if not isinstance(trace_ref, str):
++        return None
++    ref = trace_ref.strip().replace("\\", "/")
++    bits = [b for b in ref.split("/") if b]
++    if len(bits) != 2 or any(b in {".", ".."} for b in bits):
++        return None
++    if ref.startswith("/") or ref.startswith("../") or "/../" in ref:
++        return None
++    return bits[0], bits[1]
++
++
++def _validate_same_conversation_ref(trace_ref: str, conversation_id: str | None) -> tuple[bool, str]:
++    parts = _parts(trace_ref)
++    if parts is None:
++        return False, "malformed trace_ref"
++    if (conversation_id or "") != parts[0]:
++        return False, "trace_debug conversation_id must match trace_ref conversation"
++    return True, ""
++
++
++def validate_same_conversation(trace_ref: str, conversation_id: str | None) -> tuple[bool, str]:
++    ok, error = _validate_same_conversation_ref(trace_ref, conversation_id)
++    if not ok:
++        return ok, error
++    with _rp.conversation_lifecycle_lock(conversation_id or ""):
++        if pipeline_trace.resolve_trace_ref(trace_ref) is None:
++            return False, "trace_ref not found"
++    return True, ""
++
++
++def _contract_from_manifest(manifest: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
++    snap = manifest.get("contract_snapshot")
++    if isinstance(snap, dict) and snap.get("capture_status") == "captured":
++        fields = snap.get("canonical_fields")
++        if not isinstance(fields, dict):
++            return None, "captured contract has no canonical fields"
++        encoded = _canonical(fields).encode("utf-8")
++        if len(encoded) > MAX_CONTRACT_BYTES:
++            return None, "execution-time contract exceeds preservation limit"
++        expected = hashlib.sha256(encoded).hexdigest()
++        if snap.get("fingerprint") != expected:
++            return None, "execution-time contract fingerprint mismatch"
++        return snap, None
++    err = manifest.get("contract_capture_error")
++    if isinstance(err, dict):
++        return None, err.get("error") or "contract unavailable"
++    return None, "execution-time contract unavailable"
++
++
++_ALLOWED_VERDICTS = {"DEFECT_LOCALIZED", "BAD_DRAW", "CONTRACT_MISMATCH", "NO_DEFECT"}
++_LEARNING_SCHEMA_KEYS = {
++    "schema_version", "created_at", "conversation_id", "trace_ref", "framework_id",
++    "framework_fingerprint", "contract_fingerprint", "mode", "gear", "verdict",
++    "failing_step", "verification_probe", "root_cause", "correction_lane",
++    "symptom_signature", "correction_summary", "escalation_boundary",
++}
++_LEARNING_SCHEMA_VERSION = 1
++_LEARNING_ROOT_CAUSES = frozenset({
++    "retrieval gap", "instruction conflict", "evaluator miss",
++    "consolidation compression loss", "model bad-draw", "config mismatch",
++    "framework underspecification", "none", "unknown",
++})
++_LEARNING_TEXT_LIMITS = {
++    "framework_id": 200, "mode": 100, "failing_step": 200,
++    "verification_probe": 400, "correction_lane": 200,
++    "escalation_boundary": 400, "symptom_signature": 600,
++    "correction_summary": 1000,
++}
++_LEARNING_STATUS = {
++    "malformed_records": 0,
++    "unsupported_schema_records": 0,
++}
++
++
++def _read_jsonl_records_locked(trace_dir: Path, name: str, limit: int = 256 * 1024) -> list[dict[str, Any]]:
++    path = trace_dir / name
++    if not path.exists() or path.is_symlink() or not path.is_file():
++        return []
++    text, error = pipeline_trace._read_text_limited_no_follow(path, limit)  # type: ignore[attr-defined]
++    if error or text is None:
++        return [{"_read_error": error or "unavailable"}]
++    records: list[dict[str, Any]] = []
++    for line in text.splitlines():
++        try:
++            rec = json.loads(line)
++        except Exception:
++            continue
++        if isinstance(rec, dict):
++            records.append(rec)
++    return records
++
++
++def _semantic_state_from_step(step: dict[str, Any]) -> str:
++    payload = step.get("payload") if isinstance(step, dict) else None
++    if not isinstance(payload, dict):
++        return "unknown"
++    if isinstance(payload.get("ok"), bool):
++        return "pass" if payload["ok"] else "fail"
++    for key in ("semantic_status", "semantic_boundary", "evaluation", "verdict"):
++        value = payload.get(key)
++        if isinstance(value, str):
++            low = value.strip().lower()
++            if low in {"pass", "passed", "ok", "healthy", "success", "satisfied"}:
++                return "pass"
++            if low in {"fail", "failed", "error", "unhealthy", "unsatisfied"}:
++                return "fail"
++    return "unknown"
++
++
++def _step_health_states(steps: list[dict[str, Any]]) -> dict[str, str]:
++    health_step = next((s for s in steps if s.get("step_name") == "step-health"), None)
++    payload = health_step.get("payload") if isinstance(health_step, dict) else None
++    health = payload.get("step_health") if isinstance(payload, dict) else None
++    if not isinstance(health, dict):
++        return {}
++    states: dict[str, str] = {}
++    for name, value in health.items():
++        ok = value.get("ok") if isinstance(value, dict) else (
++            value[0] if isinstance(value, (list, tuple)) and value else None)
++        if isinstance(ok, bool):
++            states[str(name)] = "pass" if ok else "fail"
++    return states
++
++
++def _boundary_table(manifest: dict[str, Any], steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
++    expected, actual, _derived, missing, unexpected = pipeline_trace._manifest_step_sets(manifest)  # type: ignore[attr-defined]
++    by_name = {s.get("step_name"): s for s in steps if isinstance(s, dict)}
++    health_states = _step_health_states(steps)
++    ordered: list[str] = []
++    for name in expected + actual:
++        if name.startswith("step") and name != "step-health" and name not in ordered:
++            ordered.append(name)
++    rows: list[dict[str, Any]] = []
++    for idx, name in enumerate(ordered):
++        step = by_name.get(name)
++        if name in missing:
++            structural = "fail"
++            evidence = ["manifest expected this step but it is absent"]
++        elif not step:
++            structural = "unknown"
++            evidence = ["step projection unavailable"]
++        elif step.get("errors"):
++            structural = "fail"
++            evidence = list(step.get("errors") or [])[:3]
++        elif step.get("json_present") or step.get("markdown_present"):
++            structural = "pass"
++            evidence = ["manifest lists step and bounded projection is readable"]
++        else:
++            structural = "unknown"
++            evidence = ["manifest lists step but no readable artifact was projected"]
++        health_state = health_states.get(name)
++        semantic = _semantic_state_from_step(step or {})
++        if health_state is not None:
++            semantic = health_state
++            evidence.append(f"step-health: {health_state}")
++        rows.append({
++            "boundary_index": idx,
++            "step_name": name,
++            "structural_evidence": structural,
++            "semantic_evidence": semantic,
++            "unexpected": name in unexpected,
++            "evidence": evidence,
++        })
++    return rows
++
++
++def _last_before_first_failure(boundary: list[dict[str, Any]], evidence_key: str) -> str | None:
++    last_good = None
++    for row in boundary:
++        state = row.get(evidence_key)
++        if state == "fail":
++            return last_good
++        if state == "pass":
++            last_good = row.get("step_name")
++    return last_good
++
++
++def _trace_walk_snapshot_locked(trace_ref: str, *, depth: int = 0,
++                                expected_conversation_id: str | None = None,
++                                expected_parent_ref: str | None = None) -> tuple[dict[str, Any] | None, str | None]:
++    ctx = pipeline_trace._safe_projection_context_locked(trace_ref)  # type: ignore[attr-defined]
++    if ctx is None:
++        return None, "trace_ref not found"
++    trace_dir, raw_manifest, conversation_id, _turn = ctx
++    if expected_conversation_id and conversation_id != expected_conversation_id:
++        return None, "child trace conversation mismatch"
++    if expected_parent_ref and raw_manifest.get("parent_trace_ref") != expected_parent_ref:
++        return None, "child trace reciprocal parent ref missing"
++    if raw_manifest.get("conversation_id") not in (None, conversation_id):
++        return None, "trace manifest conversation mismatch"
++    manifest = pipeline_trace._trace_manifest_projection_from_manifest(trace_ref, raw_manifest)  # type: ignore[attr-defined]
++    steps: list[dict[str, Any]] = []
++    for item in manifest.get("steps") or []:
++        name = item.get("step_name") if isinstance(item, dict) else None
++        if not name:
++            continue
++        projection = pipeline_trace._trace_step_projection_locked(trace_ref, name, trace_dir, raw_manifest)  # type: ignore[attr-defined]
++        if projection is not None:
++            steps.append(projection)
++    model_calls = _read_jsonl_records_locked(trace_dir, "model-call-config.jsonl")
++    children: list[dict[str, Any]] = []
++    child_refs = raw_manifest.get("child_trace_refs")
++    if not isinstance(child_refs, list):
++        child_refs = []
++    if depth < MAX_DEBUG_DEPTH:
++        for child_ref in child_refs[:MAX_DEBUG_CHILDREN]:
++            if not isinstance(child_ref, str):
++                continue
++            child_parts = _parts(child_ref)
++            if child_parts is None or child_parts[0] != conversation_id:
++                children.append({
++                    "trace_ref": child_ref,
++                    "status": "stale_or_unavailable",
++                    "error": "child trace conversation mismatch",
++                })
++                continue
++            child_walk, child_error = _trace_walk_snapshot_locked(
++                child_ref,
++                depth=depth + 1,
++                expected_conversation_id=conversation_id,
++                expected_parent_ref=trace_ref,
++            )
++            if child_walk is None:
++                children.append({"trace_ref": child_ref, "status": "stale_or_unavailable", "error": child_error})
++            else:
++                children.append(child_walk)
++        if len(child_refs) > MAX_DEBUG_CHILDREN:
++            children.append({
++                "_evidence_unavailable": "child trace count limit reached",
++                "omitted_child_count": len(child_refs) - MAX_DEBUG_CHILDREN,
++            })
++    elif raw_manifest.get("child_trace_refs"):
++        children.append({"_evidence_unavailable": "child trace recursion depth limit reached"})
++    probe_traces: list[dict[str, Any]] = []
++    probe_refs = raw_manifest.get("probe_trace_refs")
++    if not isinstance(probe_refs, list):
++        probe_refs = []
++    if depth < MAX_DEBUG_DEPTH:
++        for probe_ref in probe_refs[:MAX_DEBUG_CHILDREN]:
++            if not isinstance(probe_ref, str):
++                continue
++            probe_walk, probe_error = _trace_walk_snapshot_locked(
++                probe_ref,
++                depth=depth + 1,
++                expected_conversation_id=conversation_id,
++            )
++            if probe_walk is None:
++                probe_traces.append({"trace_ref": probe_ref, "status": "stale_or_unavailable", "error": probe_error})
++            elif probe_walk.get("manifest", {}).get("investigates_trace_ref") != trace_ref:
++                probe_traces.append({"trace_ref": probe_ref, "status": "stale_or_unavailable", "error": "probe reciprocal investigation ref missing"})
++            else:
++                probe_traces.append(probe_walk)
++        if len(probe_refs) > MAX_DEBUG_CHILDREN:
++            probe_traces.append({
++                "_evidence_unavailable": "probe trace count limit reached",
++                "omitted_probe_count": len(probe_refs) - MAX_DEBUG_CHILDREN,
++            })
++    elif probe_refs:
++        probe_traces.append({"_evidence_unavailable": "probe trace recursion depth limit reached"})
++    boundary = _boundary_table(raw_manifest, steps)
++    return {
++        "trace_ref": trace_ref,
++        "manifest": manifest,
++        "raw_manifest_fields": {
++            "contract_snapshot": (
++                raw_manifest.get("contract_snapshot")
++                if _contract_from_manifest(raw_manifest)[0] is not None
++                else None
++            ),
++            "contract_capture_error": (
++                raw_manifest.get("contract_capture_error")
++                or (_contract_from_manifest(raw_manifest)[1]
++                    if raw_manifest.get("contract_snapshot") is not None else None)
++            ),
++        },
++        "steps": steps,
++        "step_health": next((s for s in steps if s.get("step_name") == "step-health"), None),
++        "model_call_configs": model_calls,
++        "probe_events": _read_jsonl_records_locked(trace_dir, "trace-probe-events.jsonl"),
++        "child_traces": children,
++        "probe_traces": probe_traces,
++        "boundary_table": boundary,
++        "boundary_summary": {
++            "structural_last_known_good": _last_before_first_failure(boundary, "structural_evidence"),
++            "first_structural_failure": next((r.get("step_name") for r in boundary if r.get("structural_evidence") == "fail"), None),
++            "semantic_last_known_good": _last_before_first_failure(boundary, "semantic_evidence"),
++            "first_semantic_failure": next((r.get("step_name") for r in boundary if r.get("semantic_evidence") == "fail"), None),
++        },
++    }, None
++
++
++def _bounded_string(value: str, markers: list[dict[str, Any]], path: str, limit: int = MAX_DEBUG_STRING_CHARS) -> str:
++    if len(value) <= limit:
++        return value
++    markers.append({"path": path, "reason": "string truncated", "original_chars": len(value), "kept_chars": limit})
++    return value[:limit] + "\n[TRACE_DEBUG_EVIDENCE_TRUNCATED]"
++
++
++def _bound_value(value: Any, markers: list[dict[str, Any]], path: str = "$") -> Any:
++    if "contract_snapshot" in path:
++        return value
++    if isinstance(value, str):
++        return _bounded_string(value, markers, path)
++    if isinstance(value, list):
++        return [_bound_value(v, markers, f"{path}[{i}]") for i, v in enumerate(value)]
++    if isinstance(value, dict):
++        return {k: _bound_value(v, markers, f"{path}.{k}") for k, v in value.items()}
++    return value
++
++
++def _strip_heavy_payloads(value: Any, markers: list[dict[str, Any]]) -> Any:
++    if isinstance(value, list):
++        return [_strip_heavy_payloads(v, markers) for v in value]
++    if isinstance(value, dict):
++        out = {}
++        for k, v in value.items():
++            if k == "contract_snapshot":
++                out[k] = v
++                continue
++            if k in {"markdown", "raw_response", "system_prompt", "user_message", "messages"}:
++                text = json.dumps(v, ensure_ascii=False, default=str) if not isinstance(v, str) else v
++                out[k] = _bounded_string(text, markers, f"aggregate.{k}", 1200)
++                if len(text) > 1200:
++                    markers.append({"path": f"aggregate.{k}", "reason": "aggregate budget pressure"})
++            elif k == "payload" and isinstance(v, dict):
++                light = {pk: pv for pk, pv in v.items() if pk in {"semantic_status", "verdict", "ok", "reason", "endpoint"}}
++                out[k] = light or {"_evidence_unavailable": "payload omitted by aggregate trace-debug budget"}
++            else:
++                out[k] = _strip_heavy_payloads(v, markers)
++        return out
++    return value
++
++
++def _apply_debug_budget(context: dict[str, Any]) -> dict[str, Any]:
++    markers: list[dict[str, Any]] = []
++    bounded = _bound_value(context, markers)
++    encoded = json.dumps(bounded, ensure_ascii=False, default=str)
++    if len(encoded) > MAX_DEBUG_CONTEXT_CHARS:
++        bounded = _strip_heavy_payloads(bounded, markers)
++        encoded = json.dumps(bounded, ensure_ascii=False, default=str)
++    if len(encoded) > MAX_DEBUG_CONTEXT_CHARS:
++        markers.append({"path": "$", "reason": "aggregate context truncated", "original_chars": len(encoded), "kept_chars": MAX_DEBUG_CONTEXT_CHARS})
++        # Last-resort deterministic contraction preserves the manifest, boundary tables, children summaries, and markers.
++        walk = bounded.get("trace_walk") if isinstance(bounded.get("trace_walk"), dict) else {}
++        walk_raw = walk.get("raw_manifest_fields") if isinstance(walk.get("raw_manifest_fields"), dict) else {}
++        child_summaries = []
++        child_contract_omitted = False
++        for index, child in enumerate(walk.get("child_traces") or []):
++            if not isinstance(child, dict):
++                continue
++            child_raw = child.get("raw_manifest_fields") if isinstance(child.get("raw_manifest_fields"), dict) else {}
++            child_raw = dict(child_raw)
++            if child_raw.get("contract_snapshot") is not None:
++                child_contract_omitted = True
++                child_raw["contract_snapshot"] = None
++                child_raw["contract_capture_error"] = "execution-time contract omitted by aggregate trace-debug budget"
++                markers.append({
++                    "path": f"trace_walk.child_traces[{index}].raw_manifest_fields.contract_snapshot",
++                    "reason": "contract unavailable after aggregate budget contraction",
++                })
++            child_summaries.append({
++                "trace_ref": child.get("trace_ref"),
++                "manifest": child.get("manifest"),
++                "raw_manifest_fields": child_raw,
++                "boundary_table": child.get("boundary_table"),
++                "boundary_summary": child.get("boundary_summary"),
++            })
++        bounded["trace_walk"] = {
++            "trace_ref": walk.get("trace_ref"),
++            "manifest": walk.get("manifest"),
++            "raw_manifest_fields": walk_raw,
++            "boundary_table": walk.get("boundary_table"),
++            "boundary_summary": walk.get("boundary_summary"),
++            "child_traces": child_summaries,
++            "probe_traces": [
++                {"trace_ref": p.get("trace_ref"), "manifest": p.get("manifest"), "boundary_table": p.get("boundary_table"), "boundary_summary": p.get("boundary_summary")}
++                for p in (walk.get("probe_traces") or []) if isinstance(p, dict)
++            ],
++            "_evidence_unavailable": "heavy step payloads omitted by aggregate trace-debug budget",
++        }
++        if child_contract_omitted and not bounded.get("contract_unavailable"):
++            bounded["contract_unavailable"] = "one or more child execution-time contracts omitted by aggregate trace-debug budget"
++    bounded["evidence_budget"] = {
++        "max_context_chars": MAX_DEBUG_CONTEXT_CHARS,
++        "markers": markers,
++        "truncated_or_unavailable": bool(markers),
++    }
++    return bounded
++
++
++def _load_trace_walk_locked(trace_ref: str, conversation_id: str) -> tuple[dict[str, Any] | None, str | None]:
++    with _rp.conversation_lifecycle_lock(conversation_id):
++        return _trace_walk_snapshot_locked(trace_ref, depth=0)
++
++
++def _prior_learning(trace_ref: str, manifest: dict[str, Any], limit: int = 5,
++                    *, framework_fingerprint: str | None = None,
++                    contract_fingerprint: str | None = None) -> list[dict[str, Any]]:
++    framework_id = manifest.get("framework_id")
++    mode = manifest.get("mode")
++    out: list[dict[str, Any]] = []
++    for rec in list_learning_entries():
++        if rec.get("trace_ref") == trace_ref:
++            continue
++        if framework_id and rec.get("framework_id") != framework_id:
++            continue
++        if framework_fingerprint and rec.get("framework_fingerprint") != framework_fingerprint:
++            continue
++        if contract_fingerprint and rec.get("contract_fingerprint") != contract_fingerprint:
++            continue
++        if mode and rec.get("mode") not in (None, "", mode):
++            continue
++        out.append({k: rec.get(k) for k in _LEARNING_SCHEMA_KEYS | {"recurrence_count"} if k in rec})
++        if len(out) >= limit:
++            break
++    return out
++
++
++def parse_natural_language_request(text: str) -> dict[str, Any] | None:
++    if not trace_debug_nl_enabled():
++        return None
++    raw = text or ""
++    if not re.search(r"\b(trace|debug|investigate|diagnos(?:e|is)|why)\b", raw, re.I):
++        return None
++    refs = re.findall(r"\b([A-Za-z0-9_.:-]+/[A-Za-z0-9_.:-]+)\b", raw)
++    unique = []
++    for ref in refs:
++        if ref not in unique:
++            unique.append(ref)
++    if len(unique) != 1:
++        return None
++    return {"trace_ref": unique[0], "source": "natural-language"}
++
++
++def build_debug_prompt(payload: dict[str, Any], *, conversation_id: str) -> tuple[str | None, dict[str, Any]]:
++    trace_ref = str(payload.get("trace_ref") or "").strip()
++    ok, error = _validate_same_conversation_ref(trace_ref, conversation_id)
++    if not ok:
++        return None, {"error": error, "trace_ref": trace_ref}
++    walk, walk_error = _load_trace_walk_locked(trace_ref, conversation_id)
++    if walk is None:
++        return None, {"error": walk_error or "trace_ref not found", "trace_ref": trace_ref}
++    raw_fields = walk.get("raw_manifest_fields") or {}
++    contract, contract_error = _contract_from_manifest(raw_fields)
++    step_hint = str(payload.get("step_hint") or payload.get("step") or "").strip()
++    step_projection = None
++    if step_hint:
++        step_projection = next((s for s in walk.get("steps") or [] if s.get("step_name") == step_hint), None)
++        if step_projection is None:
++            return None, {"error": "malformed or unavailable step_hint", "trace_ref": trace_ref, "step_hint": step_hint}
++    symptom = str(payload.get("symptom") or "").strip()[:2000]
++    manifest = walk.get("manifest") or {}
++    contract_fields = (contract or {}).get("canonical_fields") if isinstance(contract, dict) else {}
++    debug_context = {
++        "trace_ref": trace_ref,
++        "symptom": symptom,
++        "trace_walk": walk,
++        "contract_snapshot": contract,
++        "contract_unavailable": contract_error,
++        "selected_step": step_projection,
++        "prior_learning": _prior_learning(
++            trace_ref,
++            manifest,
++            framework_fingerprint=(contract_fields or {}).get("framework_fingerprint"),
++            contract_fingerprint=(contract or {}).get("fingerprint") if isinstance(contract, dict) else None,
++        ),
++    }
++    debug_context = _apply_debug_budget(debug_context)
++    prompt = (
++        "Mode P-Debug. Perform a trace-backed process investigation using ONLY the structured evidence below.\n"
++        "You must walk every manifest-listed step, step-health artifact, model-call config, and child trace before verdict.\n"
++        "If contract_unavailable is non-empty, emit CONTRACT_UNAVAILABLE and withhold DEFECT_LOCALIZED/BAD_DRAW/CONTRACT_MISMATCH/NO_DEFECT.\n"
++        "Separate structural evidence from semantic evidence. Each boundary must be pass, fail, or unknown.\n"
++        "Do not infer last-known-good from mere execution when semantic evidence is unknown.\n"
++        "Valid four-way verdicts are DEFECT_LOCALIZED, BAD_DRAW, CONTRACT_MISMATCH, and NO_DEFECT. CONTRACT_UNAVAILABLE is a terminal diagnostic, not a verdict; emit it without a four-way verdict when the exact contract is unavailable.\n"
++        "Correction bundles are recommend-only and only required for DEFECT_LOCALIZED.\n\n"
++        "TRACE_DEBUG_CONTEXT_JSON:\n"
++        + json.dumps(debug_context, indent=2, default=str)
++    )
++    return prompt, {"trace_ref": trace_ref, "step_hint": step_hint, "contract_available": contract is not None}
++
++
++def parse_cli_command(text: str) -> dict[str, Any] | None:
++    raw = (text or "").strip()
++    if not raw.startswith("/trace-debug"):
++        return None
++    tokens = raw.split()
++    if len(tokens) < 2:
++        return {"error": "usage: /trace-debug <conversation/turn> [--step <step>] [--symptom <text>]"}
++    payload: dict[str, Any] = {"trace_ref": tokens[1], "source": "cli"}
++    if "--step" in tokens:
++        idx = tokens.index("--step")
++        if idx + 1 < len(tokens):
++            payload["step_hint"] = tokens[idx + 1]
++    if "--symptom" in tokens:
++        idx = tokens.index("--symptom")
++        payload["symptom"] = " ".join(tokens[idx + 1:])
++    return payload
++
++
++
++def parse_probe_cli_command(text: str) -> dict[str, Any] | None:
++    raw = (text or "").strip()
++    if not raw.startswith("/trace-probe"):
++        return None
++    try:
++        tokens = shlex.split(raw)
++    except ValueError:
++        return {"action": "error", "error": "malformed trace-probe command quoting"}
++    if len(tokens) < 2:
++        return {"action": "error", "error": "usage: /trace-probe prepare|approve|execute ..."}
++    action = tokens[1]
++    if action == "prepare":
++        if len(tokens) < 4:
++            return {"action": "error", "error": "usage: /trace-probe prepare <conversation/turn> <step> [--delta <text>] [--cost-ceiling <tokens>]"}
++        payload: dict[str, Any] = {"action": "prepare", "trace_ref": tokens[2], "step_name": tokens[3]}
++        if "--cost-ceiling" in tokens:
++            idx = tokens.index("--cost-ceiling")
++            if idx + 1 < len(tokens):
++                payload["cost_ceiling"] = tokens[idx + 1]
++        if "--delta" in tokens:
++            idx = tokens.index("--delta")
++            end = tokens.index("--cost-ceiling", idx + 1) if "--cost-ceiling" in tokens[idx + 1:] else len(tokens)
++            payload["prompt_delta"] = " ".join(tokens[idx + 1:end])
++        return payload
++    if action == "approve":
++        if len(tokens) < 4:
++            return {"action": "error", "error": "usage: /trace-probe approve <approval_id> <approval_digest>"}
++        return {"action": "approve", "approval_id": tokens[2], "approval_digest": tokens[3]}
++    if action == "execute":
++        if len(tokens) < 4:
++            return {"action": "error", "error": "usage: /trace-probe execute <approval_id> <approval_digest>"}
++        return {"action": "execute", "approval_id": tokens[2], "approval_digest": tokens[3]}
++    return {"action": "error", "error": "unknown /trace-probe action"}
++
++def build_framework_command(debug_prompt: str, config_name: str | None = None) -> str:
++    cfg = f" --config {config_name}" if config_name else ""
++    return f"/framework process-inference{cfg} {debug_prompt}"
++
++
++def _manifest_digest(trace_ref: str) -> str:
++    parts = _parts(trace_ref)
++    conv = parts[0] if parts else ""
++    with _rp.conversation_lifecycle_lock(conv):
++        trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
++        manifest = pipeline_trace.read_manifest(trace_dir) if trace_dir else None
++        return digest(manifest or {})
++
++
++def _step_digest(trace_ref: str, step_name: str) -> str:
++    parts = _parts(trace_ref)
++    conv = parts[0] if parts else ""
++    with _rp.conversation_lifecycle_lock(conv):
++        ctx = pipeline_trace._safe_projection_context_locked(trace_ref)  # type: ignore[attr-defined]
++        if ctx is None:
++            return digest({})
++        trace_dir, manifest, _c, _t = ctx
++        projection = pipeline_trace._trace_step_projection_locked(trace_ref, step_name, trace_dir, manifest)  # type: ignore[attr-defined]
++        call_records = [
++            record for record in _read_jsonl_records_locked(trace_dir, "model-call-config.jsonl")
++            if record.get("step") == step_name and not record.get("_read_error")
++        ]
++        return digest({"projection": projection or {}, "model_call_configs": call_records})
++
++
++def _messages_from_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
++    messages = payload.get("messages")
++    if isinstance(messages, list) and messages:
++        return [m for m in messages if isinstance(m, dict) and m.get("role") and m.get("content")]
++    out: list[dict[str, str]] = []
++    if payload.get("system_prompt"):
++        out.append({"role": "system", "content": str(payload.get("system_prompt"))})
++    user = payload.get("user_message") or payload.get("prompt") or payload.get("input")
++    if user:
++        out.append({"role": "user", "content": str(user)})
++    return out
++
++
++def _complete_messages(messages: list[dict[str, str]]) -> bool:
++    return bool(messages) and any(m.get("role") == "user" and str(m.get("content") or "").strip() for m in messages)
++
++
++def _effective_call_for_step(trace_dir: Path, step_name: str) -> tuple[dict[str, Any] | None, str]:
++    records = [r for r in _read_jsonl_records_locked(trace_dir, "model-call-config.jsonl") if not r.get("_read_error")]
++    matches = [r for r in records if r.get("step") == step_name]
++    if not matches:
++        return None, "no exact model-call configuration for step"
++    if len(matches) != 1:
++        return None, "ambiguous model-call configuration for step"
++    return matches[0], ""
++
++
++def _replay_envelope(trace_ref: str, step_name: str, conversation_id: str) -> tuple[dict[str, Any] | None, str]:
++    with _rp.conversation_lifecycle_lock(conversation_id):
++        ctx = pipeline_trace._safe_projection_context_locked(trace_ref)  # type: ignore[attr-defined]
++        if ctx is None:
++            return None, "trace unavailable"
++        trace_dir, manifest, _c, _t = ctx
++        projection = pipeline_trace._trace_step_projection_locked(trace_ref, step_name, trace_dir, manifest)  # type: ignore[attr-defined]
++        if not projection:
++            return None, "step unavailable"
++        payload = projection.get("payload") if isinstance(projection.get("payload"), dict) else {}
++        if isinstance(payload.get("model_request"), dict):
++            env = dict(payload["model_request"])
++            env.setdefault("messages", _messages_from_payload(payload))
++            if not env.get("endpoint_id"):
++                call, call_error = _effective_call_for_step(trace_dir, step_name)
++                if not call:
++                    return None, call_error or "effective model-call configuration absent"
++                env["endpoint_id"] = call.get("endpoint_id")
++        else:
++            call, call_error = _effective_call_for_step(trace_dir, step_name)
++            if not call:
++                return None, call_error or "effective model-call configuration absent"
++            env = {
++                "messages": _messages_from_payload(payload),
++                "provider": call.get("provider") or call.get("service") or call.get("endpoint_type"),
++                "model": call.get("model_id") or call.get("endpoint_name") or call.get("endpoint_id"),
++                "endpoint_id": call.get("endpoint_id"),
++                "base_url_host": call.get("base_url_host"),
++                "parameters": call.get("sampling") or {},
++                "max_tokens": call.get("effective_max_tokens"),
++                "physical_attempt": call.get("physical_attempt"),
++                "attempt_index": call.get("attempt_index"),
++                "endpoint_type": call.get("endpoint_type"),
++            }
++        if env.get("tools") or env.get("external_actions"):
++            return None, "tool/external-action replay refused in Chunk 3"
++        if not _complete_messages(env.get("messages") or []):
++            return None, "complete replay messages absent"
++        required = ["messages", "endpoint_id", "provider", "model", "parameters", "max_tokens"]
++        missing = [k for k in required if env.get(k) in (None, "", [])]
++        if missing:
++            return None, "missing replay fields: " + ", ".join(missing)
++        return env, ""
++
++
++def _estimate_probe_cost(envelope: dict[str, Any]) -> dict[str, Any]:
++    text = json.dumps(envelope.get("messages") or [], ensure_ascii=False, default=str)
++    return {
++        "estimated_input_tokens": max(1, len(text) // 4),
++        "max_output_tokens": envelope.get("max_tokens"),
++        "estimated_total_tokens": max(1, len(text) // 4) + int(envelope.get("max_tokens") or 0),
++        "currency_cost": None,
++        "cost_known": False,
++    }
++
++
++def _apply_prompt_delta(envelope: dict[str, Any], prompt_delta: str) -> dict[str, Any]:
++    if not prompt_delta:
++        return envelope
++    if len(prompt_delta) > MAX_PROBE_DELTA_CHARS:
++        raise ValueError(f"prompt_delta exceeds {MAX_PROBE_DELTA_CHARS} characters")
++    updated = dict(envelope)
++    messages = [dict(m) for m in (updated.get("messages") or []) if isinstance(m, dict)]
++    messages.append({"role": "user", "content": "Counterfactual probe delta:\n" + prompt_delta})
++    updated["messages"] = messages
++    return updated
++
++def _risk_gate_for_probe(request: dict[str, Any]) -> dict[str, Any]:
++    description = "trace probe model-only replay for " + str(request.get("trace_ref") or "")
++    try:
++        try:
++            import risk_gate as _rgate  # type: ignore
++        except ImportError:  # pragma: no cover
++            from orchestrator import risk_gate as _rgate  # type: ignore
++        assigned = _rgate.assign_tier(description, request.get("conversation_id"), surface="trace-probe", record=True)
++        hold, fp = _rgate.evaluate_hold(
++            assigned.get("risk_tier") or "high-risk",
++            conversation_id=request.get("conversation_id"),
++            prompt=description,
++            surface="trace-probe",
++            description=description,
++        )
++        return {
++            "risk_tier": assigned.get("risk_tier"),
++            "fingerprint": fp,
++            "hold": hold,
++            "cleared": hold is None,
++            "source": "risk_gate",
++        }
++    except Exception as exc:
++        return {"risk_tier": "high-risk", "cleared": False, "hold": str(exc), "source": "risk_gate_error"}
++
++
++def conversation_tag_for_trace_ref(trace_ref: str | None) -> str:
++    parts = _parts(trace_ref)
++    if parts is None:
++        return ""
++
++
++def _validate_probe_origin(trace_ref: str, origin_trace_ref: str | None,
++                           conversation_id: str) -> tuple[str | None, str | None]:
++    """Validate an explicit trace-debug origin and its reciprocal target."""
++    if not origin_trace_ref:
++        return trace_ref, None
++    origin = str(origin_trace_ref).strip()
++    parts = _parts(origin)
++    if parts is None or parts[0] != conversation_id:
++        return None, "origin_trace_ref conversation mismatch"
++    try:
++        with _rp.conversation_lifecycle_lock(conversation_id):
++            origin_ctx = pipeline_trace._safe_projection_context_locked(origin)  # type: ignore[attr-defined]
++            target_ctx = pipeline_trace._safe_projection_context_locked(trace_ref)  # type: ignore[attr-defined]
++            if origin_ctx is None or target_ctx is None:
++                return None, "origin or investigated trace unavailable"
++            origin_manifest = origin_ctx[1]
++            if origin_manifest.get("trace_kind") != "trace-debug":
++                return None, "origin_trace_ref must identify a trace-debug trace"
++            if origin_manifest.get("investigates_trace_ref") != trace_ref:
++                return None, "origin trace does not investigate trace_ref"
++    except Exception as exc:
++        return None, f"origin validation failed: {exc}"
++    return origin, None
++    try:
++        with _rp.conversation_lifecycle_lock(parts[0]):
++            ctx = pipeline_trace._safe_projection_context_locked(trace_ref)  # type: ignore[attr-defined]
++            if ctx is None:
++                return ""
++            redaction = ctx[1].get("redaction_level")
++            return redaction if redaction in {"private", "stealth"} else ""
++    except Exception:
++        return ""
++
++
++def approval_conversation_tag(approval_id: str, approval_digest: str) -> str:
++    with _APPROVAL_LOCK:
++        rec = _APPROVALS.get(approval_id)
++        if not rec or rec.get("request", {}).get("approval_digest") != approval_digest:
++            return ""
++        return str(rec.get("request", {}).get("conversation_tag") or "")
++
++
++def _record_probe_event(trace_ref: str | None, event: str, **fields: Any) -> None:
++    parts = _parts(trace_ref)
++    if parts is None:
++        return
++    try:
++        with _rp.conversation_lifecycle_lock(parts[0]):
++            trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
++            if trace_dir:
++                pipeline_trace.append_jsonl(trace_dir, "trace-probe-events.jsonl", {
++                    "timestamp": _utc_now(), "event": event, **fields,
++                })
++    except Exception:
++        pass
++
++
++def _latest_debug_origin(conversation_id: str) -> str | None:
++    try:
++        for ref in reversed(pipeline_trace.list_trace_refs(conversation_id)):
++            trace_dir = pipeline_trace.resolve_trace_ref(ref)
++            manifest = pipeline_trace.read_manifest(trace_dir) if trace_dir else None
++            if isinstance(manifest, dict) and manifest.get("trace_kind") == "trace-debug":
++                return ref
++    except Exception:
++        pass
++    return None
++
++
++def _record_probe_rejection(conversation_id: str, req: dict[str, Any] | None,
++                            error: str) -> None:
++    origin = (req or {}).get("origin_trace_ref") or _latest_debug_origin(conversation_id)
++    _record_probe_event(origin, "execute_rejected", status="REJECTED", error=error)
++
++
++def prepare_probe(payload: dict[str, Any], *, conversation_id: str) -> dict[str, Any]:
++    trace_ref = str(payload.get("trace_ref") or "").strip()
++    ok, error = _validate_same_conversation_ref(trace_ref, conversation_id)
++    if not ok:
++        return {"ok": False, "status": "REJECTED", "error": error}
++    origin_ref, origin_error = _validate_probe_origin(
++        trace_ref, payload.get("origin_trace_ref"), conversation_id)
++    if origin_error:
++        _record_probe_event(
++            trace_ref, "prepare_rejected", status="REJECTED", error=origin_error)
++        return {"ok": False, "status": "REJECTED", "error": origin_error}
++    step = str(payload.get("step_name") or payload.get("step_hint") or "").strip()
++    envelope, reason = _replay_envelope(trace_ref, step, conversation_id)
++    if not envelope:
++        _record_probe_event(payload.get("origin_trace_ref") or trace_ref, "prepare_rejected", status="NOT_REPLAYABLE", error=reason)
++        return {"ok": False, "status": "NOT_REPLAYABLE", "reason": reason or "complete model request envelope absent"}
++    prompt_delta = str(payload.get("prompt_delta") or "")
++    if len(prompt_delta) > MAX_PROBE_DELTA_CHARS:
++        _record_probe_event(payload.get("origin_trace_ref") or trace_ref, "prepare_rejected", status="REJECTED", error="prompt_delta too large")
++        return {"ok": False, "status": "REJECTED", "error": f"prompt_delta exceeds {MAX_PROBE_DELTA_CHARS} characters"}
++    envelope = _apply_prompt_delta(envelope, prompt_delta)
++    cost_estimate = _estimate_probe_cost(envelope)
++    ceiling = payload.get("cost_ceiling")
++    if ceiling is not None:
++        try:
++            if cost_estimate.get("estimated_total_tokens", 0) > int(ceiling):
++                _record_probe_event(payload.get("origin_trace_ref") or trace_ref, "prepare_rejected", status="COST_EXCEEDED")
++                return {"ok": False, "status": "COST_EXCEEDED", "cost_estimate": cost_estimate, "cost_ceiling": ceiling}
++        except Exception:
++            _record_probe_event(payload.get("origin_trace_ref") or trace_ref, "prepare_rejected", status="REJECTED", error="invalid cost_ceiling")
++            return {"ok": False, "status": "REJECTED", "error": "invalid cost_ceiling"}
++    request = {
++        "trace_ref": trace_ref,
++        "conversation_id": conversation_id,
++        "step_name": step,
++        "prompt_delta": prompt_delta,
++        "counterfactual_probe": bool(prompt_delta),
++        "envelope": envelope,
++        "envelope_digest": digest(envelope),
++        "manifest_digest": _manifest_digest(trace_ref),
++        "step_digest": _step_digest(trace_ref, step),
++        "cost_ceiling": payload.get("cost_ceiling"),
++        "cost_estimate": cost_estimate,
++        "expires_at": time.time() + _APPROVAL_TTL_SECONDS,
++        "origin_trace_ref": origin_ref,
++        "conversation_tag": str(payload.get("conversation_tag") or ""),
++    }
++    request["risk_decision"] = _risk_gate_for_probe(request)
++    if not request["risk_decision"].get("cleared"):
++        _record_probe_event(request.get("origin_trace_ref"), "prepare_rejected", status="RISK_HELD")
++        return {"ok": False, "status": "RISK_HELD", "risk_decision": request["risk_decision"]}
++    request["approval_digest"] = digest({k: request[k] for k in request if k != "envelope"})
++    approval_id = hashlib.sha256(f"{request['approval_digest']}:{time.time_ns()}".encode()).hexdigest()[:24]
++    with _APPROVAL_LOCK:
++        _APPROVALS[approval_id] = {"request": request, "approved": False, "consumed": False}
++    _record_probe_event(request.get("origin_trace_ref"), "prepared", status="PREPARED", approval_id=approval_id)
++    return {
++        "ok": True,
++        "status": "PREPARED",
++        "approval_id": approval_id,
++        "approval_digest": request["approval_digest"],
++        "expires_at": request["expires_at"],
++        "cost_estimate": request["cost_estimate"],
++        "risk_decision": request["risk_decision"],
++    }
++
++
++def approve_probe(approval_id: str, approval_digest: str) -> dict[str, Any]:
++    with _APPROVAL_LOCK:
++        rec = _APPROVALS.get(approval_id)
++        if not rec or rec.get("request", {}).get("approval_digest") != approval_digest:
++            return {"ok": False, "error": "approval not found"}
++        if rec.get("consumed"):
++            _record_probe_event(rec["request"].get("origin_trace_ref"), "approval_rejected", status="REJECTED", error="approval already consumed")
++            return {"ok": False, "error": "approval already consumed"}
++        if rec["request"].get("expires_at", 0) < time.time():
++            _record_probe_event(rec["request"].get("origin_trace_ref"), "approval_rejected", status="REJECTED", error="approval expired")
++            return {"ok": False, "error": "approval expired"}
++        if not rec["request"].get("risk_decision", {}).get("cleared"):
++            _record_probe_event(rec["request"].get("origin_trace_ref"), "approval_rejected", status="REJECTED", error="risk gate not cleared")
++            return {"ok": False, "error": "risk gate not cleared"}
++        rec["approved"] = True
++        _record_probe_event(rec["request"].get("origin_trace_ref"), "approved", status="APPROVED", approval_id=approval_id)
++        return {"ok": True, "approval_id": approval_id}
++
++
++def consume_probe_approval(approval_id: str, approval_digest: str, *, conversation_id: str) -> dict[str, Any]:
++    rejection: tuple[dict[str, Any] | None, str] | None = None
++    with _APPROVAL_LOCK:
++        rec = _APPROVALS.get(approval_id)
++        if not rec or rec.get("request", {}).get("approval_digest") != approval_digest:
++            rejection = (rec.get("request") if rec else None, "approval not found")
++        else:
++            req = rec["request"]
++            if req.get("conversation_id") != conversation_id:
++                rejection = (req, "conversation mismatch")
++            elif not rec.get("approved"):
++                rejection = (req, "approval not granted")
++            elif rec.get("consumed"):
++                rejection = (req, "approval already consumed")
++            elif req.get("expires_at", 0) < time.time():
++                rejection = (req, "approval expired")
++            elif req.get("manifest_digest") != _manifest_digest(req["trace_ref"]):
++                rejection = (req, "trace mutated")
++            elif req.get("step_digest") != _step_digest(req["trace_ref"], req["step_name"]):
++                rejection = (req, "step mutated")
++            else:
++                rec["consumed"] = True
++                return {"ok": True, "request": dict(req)}
++    if rejection is not None:
++        _record_probe_rejection(conversation_id, rejection[0], rejection[1])
++        return {"ok": False, "error": rejection[1]}
++    return {"ok": False, "error": "approval rejected"}
++
++
++def execute_probe(approval_id: str, approval_digest: str, *, conversation_id: str,
++                  model_executor=None, conversation_tag: str = "") -> dict[str, Any]:
++    consumed = consume_probe_approval(approval_id, approval_digest, conversation_id=conversation_id)
++    if not consumed.get("ok"):
++        return {"ok": False, "status": "REJECTED", "error": consumed.get("error")}
++    req = consumed["request"]
++    if not conversation_tag:
++        conversation_tag = str(req.get("conversation_tag") or conversation_tag_for_trace_ref(req.get("trace_ref")))
++    trace_dir = pipeline_trace.start_trace(
++        conversation_id=conversation_id,
++        raw_input="trace-probe " + req.get("trace_ref", ""),
++        ambiguity_mode="assume",
++        stealth=(conversation_tag == "stealth"),
++        conversation_tag=conversation_tag,
++    )
++    if not trace_dir:
++        return {"ok": False, "status": "REJECTED", "error": "probe trace creation failed; refusing untraced model request"}
++    trace_dir = str(Path(trace_dir).resolve(strict=False))
++    status = "error"
++
++    def _required_step(step_name: str, payload: dict[str, Any]) -> None:
++        pipeline_trace.write_step(trace_dir, step_name, payload)
++        path = Path(trace_dir) / f"{step_name}.json"
++        if not path.is_file() or path.is_symlink():
++            raise RuntimeError(f"required probe artifact not captured: {step_name}")
++
++    try:
++        pipeline_trace.update_manifest_fields(
++            trace_dir,
++            trace_kind="trace-probe",
++            investigates_trace_ref=req.get("trace_ref"),
++        )
++        _required_step("step-probe-prepare", {
++            "approval_id": approval_id,
++            "approval_digest": approval_digest,
++            "request": {k: req.get(k) for k in (
++                "trace_ref", "step_name", "counterfactual_probe", "cost_ceiling",
++                "cost_estimate", "manifest_digest", "step_digest", "envelope_digest")},
++        })
++        _required_step("step-probe-approval", {
++            "server_authoritative": True,
++            "consumed": True,
++            "risk_decision": req.get("risk_decision") or {},
++        })
++        if model_executor is None:
++            raise RuntimeError("probe model executor unavailable")
++        _required_step("step-probe-model-attempt", {
++            "status": "started",
++            "envelope_digest": req.get("envelope_digest"),
++            "provider": (req.get("envelope") or {}).get("provider"),
++            "model": (req.get("envelope") or {}).get("model"),
++            "max_tokens": (req.get("envelope") or {}).get("max_tokens"),
++        })
++        trace_token = step_token = call_token = tag_token = tool_token = None
++        tool_module = None
++        try:
++            try:
++                import boot as _boot
++            except ImportError:
++                from orchestrator import boot as _boot
++            trace_token = _boot.set_turn_trace_context(trace_dir)
++            step_token = _boot._CURRENT_STEP_CV.set("trace-probe-model-attempt")
++            call_token = _boot._CALL_METADATA_CV.set({
++                "step": "trace-probe-model-attempt",
++                "slot": "probe",
++                "gear": 0,
++                "config_name": None,
++                "invocation_id": f"probe-{approval_id}",
++            })
++            tag_token = _boot.set_conversation_tag_context(conversation_tag)
++            try:
++                import tool_events as tool_module
++            except ImportError:
++                from orchestrator import tool_events as tool_module
++            tool_token = tool_module.set_turn_context(
++                trace_dir=trace_dir,
++                conversation_id=conversation_id,
++                stealth=conversation_tag == "stealth",
++                surface="trace-probe",
++            )
++            result = model_executor({"envelope": req.get("envelope"), "metadata": {k: req.get(k) for k in req if k != "envelope"}})
++        finally:
++            if tool_module is not None and tool_token is not None:
++                tool_module.reset_turn_context(tool_token)
++            if tag_token is not None:
++                _boot.reset_conversation_tag_context(tag_token)
++            if call_token is not None:
++                _boot._CALL_METADATA_CV.reset(call_token)
++            if step_token is not None:
++                _boot._CURRENT_STEP_CV.reset(step_token)
++            if trace_token is not None:
++                _boot.reset_turn_trace_context(trace_token)
++        if not isinstance(result, str) or not result.strip() or result.lstrip().startswith("[Error"):
++            error = str(result or "empty model response")
++            pipeline_trace.write_step(trace_dir, "step-probe-result", {
++                "error": error[:2000], "inert": True, "provider_failure": True,
++            })
++            return {"ok": False, "status": "error", "trace_ref": pipeline_trace.trace_ref_for_dir(trace_dir), "error": error}
++        inert = {
++            "counterfactual_probe": bool(req.get("counterfactual_probe")),
++            "result_text": str(result or "")[:8000],
++            "inert": True,
++        }
++        _required_step("step-probe-result", inert)
++        pipeline_trace.write_step_health(
++            trace_dir, {"step-probe-result": (True, "completed")}, 0, [])
++        if not (Path(trace_dir) / "step-health.json").is_file():
++            raise RuntimeError("required probe artifact not captured: step-health")
++        status = "completed"
++        return {"ok": True, "status": "completed", "trace_ref": pipeline_trace.trace_ref_for_dir(trace_dir), "result": inert}
++    except BaseException as exc:
++        status = "abandoned" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "error"
++        pipeline_trace.write_step(trace_dir, "step-probe-result", {"error": str(exc), "inert": True})
++        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
++            raise
++        return {"ok": False, "status": "error", "trace_ref": pipeline_trace.trace_ref_for_dir(trace_dir), "error": str(exc)}
++    finally:
++        try:
++            pipeline_trace.write_step_health(
++                trace_dir,
++                {"step-probe-result": (status == "completed", status)},
++                0,
++                [],
++            )
++        except Exception:
++            pass
++        pipeline_trace.finalize_manifest(trace_dir, kind="trace-probe", status_hint=status, parent_trace_ref=None)
++        probe_ref = pipeline_trace.trace_ref_for_dir(trace_dir)
++        origin_ref = req.get("origin_trace_ref") or req.get("trace_ref")
++        origin_dir = pipeline_trace.resolve_trace_ref(origin_ref) if isinstance(origin_ref, str) else None
++        if probe_ref and origin_dir:
++            pipeline_trace.append_probe_trace_ref(origin_dir, probe_ref)
++
++
++def learning_library_path() -> str:
++    return os.path.join(_rp.DATA_DIR_STR, "trace-debug", "learning-library.jsonl")
++
++
++def _redact_secret_text(value: Any, limit: int = 1000) -> str:
++    text = str(value or "")
++    text = re.sub(r"(?i)(api[_-]?key|token|secret|password)\s*[:=]\s*[^\s,;]+", r"\1=[REDACTED]", text)
++    text = re.sub(r"https?://[^\s/@:]+:[^\s/@]+@", "https://[REDACTED]@", text)
++    text = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[REDACTED_EMAIL]", text)
++    return text[:limit]
++
++
++def append_learning_entry(entry: dict[str, Any], *, stealth: bool = False) -> bool:
++    if stealth or not _enabled(TRACE_DEBUG_LIBRARY_ENABLED_ENV, default=True):
++        return False
++    if not isinstance(entry, dict):
++        return False
++    conversation_id = str(entry.get("conversation_id") or "")
++    trace_ref = str(entry.get("trace_ref") or "")
++    if not conversation_id or not trace_ref:
++        return False
++    verdict = str(entry.get("verdict") or "").strip()
++    if verdict not in _ALLOWED_VERDICTS:
++        return False
++    root_cause = str(entry.get("root_cause") or "unknown").strip().lower()
++    if root_cause not in _LEARNING_ROOT_CAUSES:
++        return False
++    rec: dict[str, Any] = {
++        "schema_version": _LEARNING_SCHEMA_VERSION,
++        "created_at": _utc_now(),
++        "conversation_id": conversation_id,
++        "trace_ref": trace_ref,
++        "verdict": verdict,
++        "root_cause": root_cause,
++    }
++    for key in ("framework_fingerprint", "contract_fingerprint"):
++        if key in entry and entry.get(key) is not None:
++            rec[key] = entry.get(key)
++    for key, limit in _LEARNING_TEXT_LIMITS.items():
++        if key in entry and entry.get(key) is not None:
++            rec[key] = _redact_secret_text(entry.get(key), limit)
++    if entry.get("gear") is not None:
++        try:
++            rec["gear"] = int(entry["gear"])
++        except (TypeError, ValueError):
++            return False
++    with _rp.conversation_lifecycle_lock(conversation_id):
++        ok, _error = _validate_same_conversation_unlocked(trace_ref, conversation_id)
++        if not ok:
++            return False
++        trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
++        manifest = pipeline_trace.read_manifest(trace_dir) if trace_dir else None
++        if not isinstance(manifest, dict) or manifest.get("redaction_level") == "private":
++            return False
++        path = learning_library_path()
++        os.makedirs(os.path.dirname(path), exist_ok=True)
++        line = (json.dumps(rec, sort_keys=True, default=str) + "\n").encode("utf-8")
++        with _rp.locked_file(path):
++            _rp.append_bytes_no_follow(path, line, mode=0o600)
++    return True
++
++
++def list_learning_entries() -> list[dict[str, Any]]:
++    path = learning_library_path()
++    if not os.path.exists(path):
++        return []
++    out: list[dict[str, Any]] = []
++    _LEARNING_STATUS["malformed_records"] = 0
++    _LEARNING_STATUS["unsupported_schema_records"] = 0
++    with _rp.locked_file(path):
++        with open(path, encoding="utf-8") as f:
++            for line in f:
++                try:
++                    rec = json.loads(line)
++                except Exception:
++                    _LEARNING_STATUS["malformed_records"] += 1
++                    continue
++                if not isinstance(rec, dict):
++                    _LEARNING_STATUS["malformed_records"] += 1
++                    continue
++                if rec.get("schema_version") != _LEARNING_SCHEMA_VERSION:
++                    _LEARNING_STATUS["unsupported_schema_records"] += 1
++                    continue
++                out.append({k: rec.get(k) for k in _LEARNING_SCHEMA_KEYS if k in rec})
++    counts: dict[tuple[Any, Any, Any], int] = {}
++    for rec in out:
++        key = (rec.get("framework_id"), rec.get("root_cause"), rec.get("verdict"))
++        counts[key] = counts.get(key, 0) + 1
++    for rec in out:
++        rec["recurrence_count"] = counts.get((rec.get("framework_id"), rec.get("root_cause"), rec.get("verdict")), 1)
++    return out
++
++
++def learning_library_status() -> dict[str, int]:
++    """Return current valid-record and corruption counters for oversight."""
++    entries = list_learning_entries()
++    return {
++        "records": len(entries),
++        **_LEARNING_STATUS,
++    }
++
++
++def record_diagnosis_learning(conversation_id: str, trace_ref: str, result_text: str, *, stealth: bool = False) -> bool:
++    verdicts = re.findall(r"^\s*VERDICT\s*:\s*(DEFECT_LOCALIZED|BAD_DRAW|CONTRACT_MISMATCH|NO_DEFECT)\s*$", result_text or "", re.I | re.M)
++    if len(verdicts) != 1:
++        return False
++    trace_dir = pipeline_trace.resolve_trace_ref(trace_ref)
++    manifest = pipeline_trace.read_manifest(trace_dir) if trace_dir else {}
++    snap = (manifest or {}).get("contract_snapshot") if isinstance(manifest, dict) else None
++    return append_learning_entry({
++        "conversation_id": conversation_id,
++        "trace_ref": trace_ref,
++        "framework_id": (manifest or {}).get("framework_id"),
++        "mode": (manifest or {}).get("mode"),
++        "gear": (manifest or {}).get("gear"),
++        "verdict": verdicts[0].upper(),
++        "contract_fingerprint": snap.get("fingerprint") if isinstance(snap, dict) else None,
++        "framework_fingerprint": ((snap.get("canonical_fields") or {}).get("framework_fingerprint") if isinstance(snap, dict) else None),
++        "failing_step": _redact_secret_text(_extract_label(result_text, "FAILING STEP"), 200),
++        "verification_probe": _redact_secret_text(_extract_label(result_text, "VERIFICATION PROBE"), 400),
++        "root_cause": _redact_secret_text(_extract_label(result_text, "ROOT CAUSE"), 400),
++        "correction_lane": _redact_secret_text(_extract_label(result_text, "CORRECTION LANE"), 200),
++        "symptom_signature": _redact_secret_text(_extract_label(result_text, "SYMPTOM SIGNATURE"), 600),
++        "correction_summary": _redact_secret_text(_extract_label(result_text, "CORRECTION SUMMARY"), 1000),
++        "escalation_boundary": _redact_secret_text(_extract_label(result_text, "ESCALATION BOUNDARY"), 400),
++    }, stealth=stealth)
++
++
++def _extract_label(text: str, label: str) -> str:
++    pattern = re.compile(rf"^\s*{re.escape(label)}\s*:\s*(.+)$", re.I | re.M)
++    match = pattern.search(text or "")
++    return match.group(1).strip() if match else ""
++
++
++def _validate_same_conversation_unlocked(trace_ref: str, conversation_id: str | None) -> tuple[bool, str]:
++    ok, error = _validate_same_conversation_ref(trace_ref, conversation_id)
++    if not ok:
++        return ok, error
++    if pipeline_trace.resolve_trace_ref(trace_ref) is None:
++        return False, "trace_ref not found"
++    return True, ""
++
++
++def purge_conversation_unlocked(conversation_id: str) -> dict[str, Any]:
++    path = learning_library_path()
++    result = {"removed": 0, "errors": []}
++    if not os.path.exists(path):
++        return result
++    identity = str(conversation_id or "").casefold()
++    try:
++        with _rp.locked_file(path):
++            kept: list[str] = []
++            with open(path, encoding="utf-8") as f:
++                for line in f:
++                    raw = line.rstrip("\n")
++                    if not raw.strip():
++                        continue
++                    try:
++                        rec = json.loads(raw)
++                    except Exception:
++                        kept.append(raw)
++                        continue
++                    owner = str(rec.get("conversation_id") or "").casefold()
++                    if owner == identity:
++                        result["removed"] += 1
++                    else:
++                        kept.append(raw)
++            _rp.atomic_write_text(path, "".join(line + "\n" for line in kept))
++    except Exception as exc:
++        result["errors"].append(str(exc))
++    return result
++
++
++def purge_conversation(conversation_id: str) -> dict[str, Any]:
++    with _rp.conversation_lifecycle_lock(conversation_id):
++        return purge_conversation_unlocked(conversation_id)
++
++
++def endpoint_from_probe_envelope(envelope: dict[str, Any], fallback_endpoint: dict[str, Any]) -> dict[str, Any] | None:
++    endpoint_id = envelope.get("endpoint_id")
++    if not endpoint_id:
++        return None
++    try:
++        try:
++            import boot as _boot
++        except ImportError:
++            from orchestrator import boot as _boot
++        endpoint = _boot.get_endpoint_by_id(str(endpoint_id))
++    except Exception:
++        endpoint = None
++    if not isinstance(endpoint, dict):
++        return None
++    resolved_id = endpoint.get("id") or endpoint.get("name")
++    if resolved_id != endpoint_id:
++        return None
++    for key, endpoint_key in (("endpoint_type", "type"), ("provider", "provider"), ("model", "model_id")):
++        recorded = envelope.get(key)
++        current = (
++            (endpoint.get("model_id") or endpoint.get("model"))
++            if endpoint_key == "model_id" else endpoint.get(endpoint_key)
++        )
++        if recorded not in (None, "") and current not in (recorded, None):
++            return None
++    recorded_host = envelope.get("base_url_host")
++    if recorded_host:
++        current_url = endpoint.get("base_url") or endpoint.get("url") or ""
++        parsed = urlparse(str(current_url))
++        current_host = parsed.hostname or ""
++        if parsed.port:
++            current_host = f"{current_host}:{parsed.port}"
++        if current_host != recorded_host:
++            return None
++    if envelope.get("max_tokens") is not None:
++        endpoint["max_tokens"] = envelope.get("max_tokens")
++    for key, value in (envelope.get("parameters") or {}).items():
++        if key not in {"api_key", "authorization", "headers"}:
++            endpoint[key] = value
++    return endpoint
+diff --git a/server/server.py b/server/server.py
+index 9b51837a..6f1e00af 100644
+--- a/server/server.py
++++ b/server/server.py
+@@ -3338,6 +3338,26 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+             yield _sse("pipeline_stage", stage="degradation",
+                         gear=gear, label=f"Degradation: level {deg_state.degradation_level}")
+ 
++    # Capture the exact mode contract after runtime gear degradation has been
++    # resolved. The mode text is already in this turn's context package, so
++    # this never reloads a potentially edited mode file.
++    if trace_dir:
++        try:
++            try:
++                from trace_debug import mode_contract_snapshot, record_contract_snapshot
++            except ImportError:
++                from orchestrator.trace_debug import mode_contract_snapshot, record_contract_snapshot
++            record_contract_snapshot(
++                trace_dir,
++                mode_contract_snapshot(
++                    context_pkg.get("mode_name") or step1.get("mode") or "",
++                    context_pkg.get("mode_text") or "",
++                    gear,
++                ),
++            )
++        except Exception:
++            pass
++
+     # Phase 9 — emit dispatch announcement at Stage 4 entry per Decision E.
+     # _run_pipeline_from_step2 is the resume path after clarification, so the
+     # announcement fires here for the resumed flow as well as the direct flow.
+@@ -3417,6 +3437,20 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
+         # honest source for gear-1/2 turns, which write no step-health. A
+         # later exception on the way out overwrites this with "error" in
+         # the generator-level wrapper.
++        if trace_dir:
++            try:
++                try:
++                    from trace_debug import refresh_mode_contract_snapshot
++                except ImportError:
++                    from orchestrator.trace_debug import refresh_mode_contract_snapshot
++                refresh_mode_contract_snapshot(
++                    trace_dir,
++                    context_pkg.get("mode_name") or step1.get("mode") or "",
++                    context_pkg.get("mode_text") or "",
++                    gear,
++                )
++            except Exception:
++                pass
+         turn_state["status"] = "completed"
+     yield _sse("pipeline_stage", stage="complete", gear=gear,
+                mode=step1["mode"], label="Pipeline complete")
+@@ -3700,6 +3734,91 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
+     except Exception as _rge_head:
+         print(f"[risk-gate] server turn-head skipped: {_rge_head}")
+ 
++    # --- Trace-backed P-Debug structured route ---
++    _trace_debug_payload = (extra_context or {}).get("trace_debug") if isinstance(extra_context, dict) else None
++    try:
++        try:
++            import trace_debug as _tdbg
++        except ImportError:
++            from orchestrator import trace_debug as _tdbg
++        if not isinstance(_trace_debug_payload, dict):
++            _trace_debug_payload = _tdbg.parse_natural_language_request(user_input)
++    except Exception:
++        _tdbg = None
++    if isinstance(_trace_debug_payload, dict):
++        turn_state["kind"] = "trace-debug"
++        try:
++            if _tdbg is None:
++                try:
++                    import trace_debug as _tdbg
++                except ImportError:
++                    from orchestrator import trace_debug as _tdbg
++            _debug_prompt, _debug_meta = _tdbg.build_debug_prompt(
++                _trace_debug_payload, conversation_id=panel_id)
++            if trace_dir:
++                try:
++                    import pipeline_trace as _pt_dbg
++                except ImportError:
++                    from orchestrator import pipeline_trace as _pt_dbg
++                _pt_dbg.update_manifest_fields(
++                    trace_dir, trace_kind="trace-debug",
++                    investigates_trace_ref=_trace_debug_payload.get("trace_ref"))
++                _pt_dbg.write_step(
++                    trace_dir,
++                    "step-debug-request",
++                    {k: _trace_debug_payload.get(k) for k in
++                     ("trace_ref", "step_hint", "symptom", "source")},
++                )
++            if not _debug_prompt:
++                turn_state["status"] = "error"
++                if trace_dir:
++                    _pt_dbg.write_step(
++                        trace_dir, "step-debug-result",
++                        {"status": "error", "error": (_debug_meta or {}).get("error") or "unknown"},
++                    )
++                yield _sse("error", text="Trace debug error: " + str((_debug_meta or {}).get("error") or "unknown"))
++                return
++            config = load_config()
++            endpoint = get_endpoint(config)
++            if endpoint is None:
++                turn_state["status"] = "error"
++                yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
++                return
++            yield _sse("pipeline_stage", stage="trace_debug", label="Investigating trace via P-Debug...")
++            from milestone_executor import run_framework_command
++            _trace_ctx = {"conversation_tag": _conv_tag}
++            result_text = run_framework_command(
++                _tdbg.build_framework_command(_debug_prompt, config_name=config_name),
++                config, trace_dir=trace_dir, conversation_tag=_conv_tag,
++                trace_context=_trace_ctx)
++            try:
++                _tdbg.record_diagnosis_learning(panel_id, _trace_debug_payload.get("trace_ref"), result_text, stealth=(_conv_tag == "stealth"))
++            except Exception:
++                pass
++            turn_state["status"] = _trace_ctx.get("status") or "completed"
++            turn_state["framework_id"] = _trace_ctx.get("framework_id")
++            turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
++            turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
++            if trace_dir:
++                _pt_dbg.write_step(
++                    trace_dir, "step-debug-result",
++                    {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
++                )
++            yield _sse("response", text=result_text)
++            return
++        except Exception as exc:
++            turn_state["status"] = "error"
++            if trace_dir:
++                try:
++                    _pt_dbg.write_step(
++                        trace_dir, "step-debug-result",
++                        {"status": "error", "error": str(exc)},
++                    )
++                except Exception:
++                    pass
++            yield _sse("error", text=f"Trace debug framework error: {exc}")
++            return
++
+     # --- Runtime slash-command short-circuit ---
+     # /instance, /validate, /render, /queue, /approve, /deny — mechanical
+     # meta-layer runtime operations that don't need a model endpoint or
+@@ -7706,7 +7825,7 @@ def chat():
+     data       = request.get_json(force=True)
+     user_input = data.get("message","").strip()
+     history    = data.get("history", [])
+-    panel_id   = str(data.get("panel_id", "main") or "main").strip()
++    panel_id   = str(data.get("panel_id") or data.get("conversation_id") or "main").strip()
+     is_main    = data.get("is_main_feed", True)
+     tag        = _normalize_tag(data.get("tag", ""))
+     # V3 Phase 1 — alignment-prefilter inputs. ``manual_mode_selection`` is
+@@ -7736,7 +7855,8 @@ def chat():
+     # (e.g. "user-pipeline", "background-default", or a custom-saved name).
+     # When omitted, the legacy execution_context path applies.
+     config_name           = (data.get("config_name") or "").strip() or None
+-    if not user_input:
++    trace_debug_payload = data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
++    if not user_input and not trace_debug_payload:
+         return json.dumps({"error":"empty message"}), 400
+     if not _valid_live_conversation_id(panel_id):
+         return json.dumps({"error": "invalid conversation_id"}), 400
+@@ -7773,6 +7893,7 @@ def chat():
+             "framework_selected":    framework_selected,
+             "output_destination":    output_destination,
+             "attachments":           data.get("attachments", []),
++            "trace_debug":           trace_debug_payload,
+         })
+ 
+     # Process attachments: text content inlined, images passed separately
+@@ -7782,6 +7903,9 @@ def chat():
+         user_input = user_input + "\n\n" + "\n\n".join(text_parts)
+ 
+     extra_context = {"visual_kind": manual_visual_type} if manual_visual_type else None
++    if trace_debug_payload:
++        extra_context = dict(extra_context or {})
++        extra_context["trace_debug"] = trace_debug_payload
+     return _invoke_pipeline(user_input, history, panel_id, is_main, images=images,
+                              extra_context=extra_context,
+                              tag=tag,
+@@ -10282,6 +10406,83 @@ def api_trace_export(conversation_id, turn_ts):
+     return html_doc, 200, headers
+ 
+ 
++@app.route("/api/trace/probe/prepare", methods=["POST"])
++def api_trace_probe_prepare():
++    try:
++        body = request.get_json(force=True, silent=True)
++    except Exception:
++        body = None
++    if not isinstance(body, dict):
++        return json.dumps({"error": "expected JSON object"}), 400
++    trace_ref = str(body.get("trace_ref") or "").strip()
++    parts = trace_ref.split("/")
++    if len(parts) != 2:
++        return json.dumps({"error": "trace_ref must be conversation/turn"}), 400
++    conversation_id = parts[0]
++    if not _valid_existing_conversation_id(conversation_id):
++        return json.dumps({"error": "invalid conversation_id"}), 400
++    try:
++        import trace_debug as _tdbg
++    except ImportError:
++        from orchestrator import trace_debug as _tdbg
++    body = dict(body)
++    body["conversation_tag"] = _tdbg.conversation_tag_for_trace_ref(trace_ref)
++    result = _tdbg.prepare_probe(body, conversation_id=conversation_id)
++    status = 200 if result.get("ok") else 400
++    return json.dumps(result, default=str), status
++
++
++@app.route("/api/trace/probe/approve", methods=["POST"])
++def api_trace_probe_approve():
++    try:
++        body = request.get_json(force=True, silent=True)
++    except Exception:
++        body = None
++    if not isinstance(body, dict):
++        return json.dumps({"error": "expected JSON object"}), 400
++    try:
++        import trace_debug as _tdbg
++    except ImportError:
++        from orchestrator import trace_debug as _tdbg
++    result = _tdbg.approve_probe(str(body.get("approval_id") or ""), str(body.get("approval_digest") or ""))
++    return json.dumps(result, default=str), (200 if result.get("ok") else 400)
++
++
++@app.route("/api/trace/probe/execute", methods=["POST"])
++def api_trace_probe_execute():
++    try:
++        body = request.get_json(force=True, silent=True)
++    except Exception:
++        body = None
++    if not isinstance(body, dict):
++        return json.dumps({"error": "expected JSON object"}), 400
++    conversation_id = str(body.get("conversation_id") or "").strip()
++    if not _valid_existing_conversation_id(conversation_id):
++        return json.dumps({"error": "invalid conversation_id"}), 400
++    try:
++        import trace_debug as _tdbg
++    except ImportError:
++        from orchestrator import trace_debug as _tdbg
++    config = load_config()
++    fallback_endpoint = get_endpoint(config)
++    if fallback_endpoint is None:
++        return json.dumps({"error": "No AI endpoints configured."}), 400
++    def _executor(req):
++        envelope = req.get("envelope") or {}
++        endpoint = _tdbg.endpoint_from_probe_envelope(envelope, fallback_endpoint)
++        if endpoint is None:
++            raise RuntimeError("recorded probe endpoint is unavailable or has changed")
++        return call_model(envelope.get("messages") or [], endpoint)
++    result = _tdbg.execute_probe(
++        str(body.get("approval_id") or ""), str(body.get("approval_digest") or ""),
++        conversation_id=conversation_id, model_executor=_executor,
++        conversation_tag=_tdbg.approval_conversation_tag(
++            str(body.get("approval_id") or ""),
++            str(body.get("approval_digest") or ""),
++        ))
++    return json.dumps(result, default=str), (200 if result.get("ok") else 400)
++
++
+ @app.route("/api/trace/retention", methods=["POST"])
+ def api_trace_retention():
+     try:
+diff --git a/server/static/js/review-queue-panel.js b/server/static/js/review-queue-panel.js
+index b1f54b8e..6907a349 100644
+--- a/server/static/js/review-queue-panel.js
++++ b/server/static/js/review-queue-panel.js
+@@ -226,6 +226,16 @@
+           });
+         }
+       }));
++      actions.appendChild(actionButton('Investigate trace', async () => {
++        const ref = String(entry.trace_ref || '');
++        const conv = ref.split('/')[0] || entry.conversation_id || '';
++        try {
++          await sendChatTurn(conv, 'Investigate this trace.', { trace_ref: ref, step_hint: entry.trace_step || '', symptom: '', source: 'paused-card' });
++          setStatus('Trace investigation submitted.');
++        } catch (e) {
++          setStatus(e && e.message || String(e));
++        }
++      }));
+     }
+     actions.appendChild(actionButton('Approve', () => quickAction(entry, 'approve'), 'primary'));
+     actions.appendChild(actionButton('Deny', () => {
+@@ -369,12 +379,22 @@
+     }));
+   }
+ 
+-  async function sendChatTurn(conversationId, text) {
+-    await fetch('/chat', {
++  async function sendChatTurn(conversationId, text, traceDebug) {
++    const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
++    if (traceDebug) body.trace_debug = traceDebug;
++    const response = await fetch('/chat', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+-      body: JSON.stringify({ message: text, conversation_id: conversationId }),
++      body: JSON.stringify(body),
+     });
++    if (!response.ok) {
++      let msg = `Chat request failed (${response.status})`;
++      try {
++        const payload = await response.json();
++        msg = payload.error || payload.message || msg;
++      } catch (_) {}
++      throw new Error(msg);
++    }
+   }
+ 
+   function ageOf(isoTimestamp) {
+diff --git a/server/static/js/sidebar-oversight.js b/server/static/js/sidebar-oversight.js
+index dc288ba0..e598cd35 100644
+--- a/server/static/js/sidebar-oversight.js
++++ b/server/static/js/sidebar-oversight.js
+@@ -269,6 +269,25 @@
+         }
+       });
+       actions.appendChild(traceBtn);
++      const investigateBtn = document.createElement('button');
++      investigateBtn.type = 'button';
++      investigateBtn.textContent = 'Investigate trace';
++      investigateBtn.addEventListener('click', async (ev) => {
++        ev.stopPropagation();
++        const ref = String(entry.trace_ref || '');
++        const conv = ref.split('/')[0] || entry.conversation_id || '';
++        const original = investigateBtn.textContent;
++        investigateBtn.disabled = true;
++        investigateBtn.textContent = 'Submitting...';
++        try {
++          await sendChatTurn(conv, 'Investigate this trace.', { trace_ref: ref, step_hint: entry.trace_step || '', symptom: '', source: 'paused-card' });
++          investigateBtn.textContent = 'Investigation submitted';
++        } catch (e) {
++          investigateBtn.textContent = (e && e.message) || 'Investigation failed';
++          window.setTimeout(() => { investigateBtn.textContent = original; investigateBtn.disabled = false; }, 2500);
++        }
++      });
++      actions.appendChild(investigateBtn);
+     }
+ 
+     det.appendChild(actions);
+@@ -383,17 +402,26 @@
+     }));
+   };
+ 
+-  const sendChatTurn = async (conversationId, text) => {
++  const sendChatTurn = async (conversationId, text, traceDebug) => {
+     try {
+-      await fetch('/chat', {
++      const body = { message: text, conversation_id: conversationId, panel_id: conversationId };
++      if (traceDebug) body.trace_debug = traceDebug;
++      const response = await fetch('/chat', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({
+-          message: text,
+-          conversation_id: conversationId,
+-        }),
++        body: JSON.stringify(body),
+       });
+-    } catch (e) {}
++      if (!response.ok) {
++        let msg = `Chat request failed (${response.status})`;
++        try {
++          const payload = await response.json();
++          msg = payload.error || payload.message || msg;
++        } catch (_) {}
++        throw new Error(msg);
++      }
++    } catch (e) {
++      throw e;
++    }
+   };
+ 
+   // ── Render: Operating ─────────────────────────────────────────────────
+diff --git a/server/static/js/trace-walk.js b/server/static/js/trace-walk.js
+index 076bf2c2..2e7ecec0 100644
+--- a/server/static/js/trace-walk.js
++++ b/server/static/js/trace-walk.js
+@@ -97,11 +97,12 @@
+     document.head.appendChild(style);
+     backdrop = document.createElement('div');
+     backdrop.className = 'ora-trace-backdrop';
+-    backdrop.innerHTML = '<div class="ora-trace-modal" role="dialog" aria-modal="true" aria-labelledby="oraTraceTitle"><div class="ora-trace-head"><div><div class="ora-trace-title" id="oraTraceTitle">Trace Walk</div><div class="ora-trace-subtitle" data-role="subtitle"></div></div><button type="button" class="ora-trace-close" data-role="close" aria-label="Close trace walk">×</button></div><div class="ora-trace-body"><aside class="ora-trace-map" data-role="map"></aside><main class="ora-trace-detail" data-role="detail"></main></div><div class="ora-trace-actions"><button type="button" data-role="pin">Pin trace</button><button type="button" data-role="export">Export HTML</button><span data-role="status" aria-live="polite"></span></div></div>';
++    backdrop.innerHTML = '<div class="ora-trace-modal" role="dialog" aria-modal="true" aria-labelledby="oraTraceTitle"><div class="ora-trace-head"><div><div class="ora-trace-title" id="oraTraceTitle">Trace Walk</div><div class="ora-trace-subtitle" data-role="subtitle"></div></div><button type="button" class="ora-trace-close" data-role="close" aria-label="Close trace walk">×</button></div><div class="ora-trace-body"><aside class="ora-trace-map" data-role="map"></aside><main class="ora-trace-detail" data-role="detail"></main></div><div class="ora-trace-actions"><button type="button" data-role="pin">Pin trace</button><button type="button" data-role="investigate">Investigate</button><button type="button" data-role="export">Export HTML</button><span data-role="status" aria-live="polite"></span></div></div>';
+     backdrop.addEventListener('click', (event) => { if (event.target === backdrop) close(); });
+     backdrop.querySelector('[data-role="close"]').addEventListener('click', close);
+     backdrop.querySelector('[data-role="pin"]').addEventListener('click', pinTrace);
+     backdrop.querySelector('[data-role="export"]').addEventListener('click', exportTrace);
++    backdrop.querySelector('[data-role="investigate"]').addEventListener('click', investigateTrace);
+     document.body.appendChild(backdrop);
+     return backdrop;
+   };
+@@ -131,9 +132,11 @@
+   const setControls = (loaded, busy) => {
+     const pin = backdrop && backdrop.querySelector('[data-role="pin"]');
+     const exp = backdrop && backdrop.querySelector('[data-role="export"]');
++    const inv = backdrop && backdrop.querySelector('[data-role="investigate"]');
+     const openTrace = state.manifest && state.manifest.terminal_status === 'open';
+     if (pin) pin.disabled = !loaded || !!busy || !!openTrace;
+     if (exp) exp.disabled = !loaded || !!busy;
++    if (inv) inv.disabled = !loaded || !!busy;
+   };
+ 
+   const renderShell = (subtitle) => {
+@@ -259,6 +262,56 @@
+     }
+   };
+ 
++
++  const activeConversationId = () => {
++    try {
++      if (window.OraConversation && typeof window.OraConversation.getActiveConversationId === 'function') {
++        return window.OraConversation.getActiveConversationId();
++      }
++    } catch (_) {}
++    return parts(state.traceRef) ? parts(state.traceRef)[0] : '';
++  };
++
++  const investigateTrace = async () => {
++    if (!state.manifest || !state.traceRef) return;
++    const conv = activeConversationId();
++    const p = parts(state.traceRef);
++    if (!p || conv !== p[0]) {
++      setStatus('Investigation must stay in the trace conversation.');
++      return;
++    }
++    const symptom = window.prompt('What looked wrong? Optional:', '') || '';
++    setStatus('Starting trace investigation...');
++    try {
++      const response = await fetch('/chat', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          message: 'Investigate this trace.',
++          panel_id: conv,
++          conversation_id: conv,
++          trace_debug: {
++            trace_ref: state.traceRef,
++            step_hint: state.selectedStep || '',
++            symptom: symptom,
++            source: 'trace-walk',
++          },
++        }),
++      });
++      if (!response.ok) {
++        let msg = `Investigation failed (${response.status})`;
++        try {
++          const body = await response.json();
++          msg = body.error || body.message || msg;
++        } catch (_) {}
++        throw new Error(msg);
++      }
++      setStatus('Trace investigation submitted.');
++    } catch (e) {
++      setStatus(e && e.message || String(e));
++    }
++  };
++
+   const filenameFromDisposition = (value, fallback) => {
+     const m = /filename="?([^";]+)"?/i.exec(value || '');
+     return m ? m[1] : fallback;

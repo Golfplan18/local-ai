@@ -1,0 +1,1210 @@
+diff --git a/.gitignore b/.gitignore
+index 6796824f..d8fd3c9c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -142,10 +142,15 @@ config/model-registry.vendor-authoritative.json
+ 
+ # Execution Review runtime state (per-machine, regenerable). The tool-event log
+ # is the Phase-1 global sink (orchestrator/tool_events.py global_sink_path); the
+-# approval store + its lock are the Phase-2 task-approval tokens (risk_gate.py).
++# approval store + its lock are the Phase-2 task-approval tokens (risk_gate.py);
++# the execution-records store is the Phase-7 tiered-persistence ledger + durable
++# notes (orchestrator/execution_persistence.py). That store MUST stay git-ignored:
++# its stealth-purge (conversation_closeout) rmtree's records for TRUE zero-residue,
++# which a file committed to git history would defeat.
+ data/tool-events.jsonl
+ data/execution-approvals.json
+ data/execution-approvals.json.lock
++data/execution-records/
+ 
+ # Per-machine runtime pointers + user stores (like data/active-configuration.json).
+ data/active-project.json
+diff --git a/orchestrator/conversation_closeout.py b/orchestrator/conversation_closeout.py
+index 40feed5b..6f510dcd 100644
+--- a/orchestrator/conversation_closeout.py
++++ b/orchestrator/conversation_closeout.py
+@@ -557,6 +557,28 @@ def _purge_stealth(
+     except Exception as e:
+         errors.append(f"indexing_failures_log: {e}")
+ 
++    # --- Layer 10: Execution-review durable store (Phase 7) ------------------
++    # The non-git operational store data/execution-records/ holds the tiered-
++    # persistence ledger + per-conversation durable notes. Write-time stealth
++    # gating (execution_persistence.persist_packet) is primary; this is the
++    # post-hoc backstop for a conversation marked stealth AFTER a durable record
++    # was written for a normal turn. execution_persistence.purge_conversation
++    # reads its own roots at call time (the Layers 6a/8/9 idiom): it rmtree's the
++    # per-conversation note subdir (the store is git-ignored → no history residue)
++    # and scrubs the ledger jsonl by conversation_id (Layer-9 style).
++    deleted["execution_records"] = {}
++    try:
++        try:
++            import execution_persistence as _epersist
++        except ImportError:  # pragma: no cover
++            from orchestrator import execution_persistence as _epersist
++        _er_res = _epersist.purge_conversation(conversation_id)
++        deleted["execution_records"] = _er_res
++        for _e in (_er_res.get("errors") or []):
++            errors.append(f"execution_records: {_e}")
++    except Exception as e:
++        errors.append(f"execution_records: {e}")
++
+     return {
+         "conversation_id": conversation_id,
+         "tag": "stealth",
+diff --git a/orchestrator/execution_loop.py b/orchestrator/execution_loop.py
+index e466aa64..1d1b91bf 100644
+--- a/orchestrator/execution_loop.py
++++ b/orchestrator/execution_loop.py
+@@ -63,6 +63,11 @@ try:
+ except ImportError:  # pragma: no cover
+     from orchestrator import evidence_runner as _er
+ 
++try:  # Phase 7 — tiered persistence at the terminal (§14)
++    import execution_persistence as _epersist
++except ImportError:  # pragma: no cover
++    from orchestrator import execution_persistence as _epersist
++
+ 
+ # ── Provisional constants (flagged per house rule: retunable, not calibrated) ──
+ MAX_LOOP_ITERATIONS = 2          # matches the gear's own MAX_VERIFY_CYCLES intuition
+@@ -850,6 +855,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+         sig = signals if signals is not None else engage_signals(ro)
+         any_mut = bool(sig.get("any_mutation"))
+         src_read = bool(sig.get("source_read_suspected"))
++        # The FULL folded signals (carries max_sensitivity — the redaction driver, §7). engage_signals
++        # returns only the two §6 booleans, so source max_sensitivity from the full ro/signals dict.
++        full_signals = (signals if signals is not None else (ro or {}).get("signals")) or {}
+ 
+         # Thread the planning-stage acceptance criteria + contract into the packet so
+         # the renderer shows them (or fires its LOUD absence fence). At light there is
+@@ -876,6 +884,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+             _mark_failure(RuntimeError(
+                 "provenance evidence owed — the claim-to-source map is Phase 8"),
+                 "execution_loop_owed_provenance")
++            # Phase 7: set the §14 tier (source-read-only owed → git_only) BEFORE write_packet.
++            _epersist.persist_packet(packet, sig=full_signals, context_pkg=context_pkg,
++                                     trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
+             _ep.write_packet(packet, trace_dir)
+             return None
+ 
+@@ -1027,6 +1038,9 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+                 # The packet is recorded trace-local (never silently discarded).
+                 loop_state["stop_condition"] = None
+                 loop_state["escalation"] = None
++                # Phase-7 promotion signal: a hard non-convergence (tried to escalate, no §13 branch)
++                # is genuinely informative → durable_note. A structural flag, not a note-substring match.
++                loop_state["escalation_withheld"] = True
+                 loop_state["note"] = (
+                     "escalation WITHHELD — evidence escalation but no inspectable §13 "
+                     "abandoned-attempt branch could be created (base-unknown / no repo / "
+@@ -1057,6 +1071,11 @@ def run_loop(*, packet: Any, context_pkg: dict | None, response: str,
+         }
+         _ep.populate_loop_fields(packet, planning=planning, verification=verification,
+                                  execution=execution, loop=loop_state, now_iso=now_iso)
++        # Phase 7 (§14): decide the durable-memory tier + do the durable write (ledger / note) BEFORE
++        # write_packet, so the trace JSON records the final tier. Never raises; stealth-gated; a
++        # git_only turn writes nothing durable (parity). Reads max_sensitivity off full_signals.
++        _epersist.persist_packet(packet, sig=full_signals, context_pkg=context_pkg,
++                                 trace_dir=trace_dir, stealth=stealth, now_iso=now_iso)
+         packet_path = _ep.write_packet(packet, trace_dir)
+ 
+         if escalation is not None:
+diff --git a/orchestrator/execution_packet.py b/orchestrator/execution_packet.py
+index b28e0947..50f529b5 100644
+--- a/orchestrator/execution_packet.py
++++ b/orchestrator/execution_packet.py
+@@ -403,7 +403,11 @@ def build_execution_packet(*, signals: dict | None, context_pkg: dict | None = N
+             judgment_lanes=judgment_lanes,
+             verification=verification,
+             loop=None,
+-            persistence={"tier": "trace_local", "redacted": "phase3-public-safe-source-reads"},
++            # §14 default is the CHEAPEST tier ("do not default to durable"); Phase-7
++            # execution_persistence.persist_packet recomputes/promotes at the loop terminal
++            # (before write_packet, so the trace JSON records the final tier). "trace_local" was
++            # the Phase-4 placeholder — not one of the three §14 tiers.
++            persistence={"tier": "git_only", "redacted": None},
+             observed=observed,
+         )
+     except Exception as e:
+diff --git a/orchestrator/execution_persistence.py b/orchestrator/execution_persistence.py
+new file mode 100644
+index 00000000..aa4de3dd
+--- /dev/null
++++ b/orchestrator/execution_persistence.py
+@@ -0,0 +1,514 @@
++"""orchestrator/execution_persistence.py — Execution Review Phase 7 (tiered persistence, spec §14).
++
++Gives every ``ExecutionPacket`` a §14 durable-memory tier — ``git_only`` / ``ledger_line`` /
++``durable_note`` — computed from the packet's OWN already-populated signals (``status`` /
++``loop.stop_condition`` / ``loop.escalation`` / ``loop.escalation_withheld`` /
++``verification.findings[].class``), with sensitivity-driven redaction (§7 axis) before ANY durable
++write, routed THROUGH Ora's existing memory-pruning discipline rather than duplicating it.
++
++**Default is the cheapest tier** (``git_only`` = nothing beyond git history + the retention-swept
++trace packet). A turn is promoted ONLY when genuinely informative (§14): it **escalated**, **failed to
++converge** (hard — an evidence escalation with no creatable §13 branch), or carries a **plan-level
++finding**. Durable *writes* are loop-only in effect — a self-evidencing packet has no loop signals →
++``git_only`` by construction — but the tier field is universal (set on every packet).
++
++**One non-git operational store** ``data/execution-records/`` holds both durable sinks (kept out of
++git by a ``.gitignore`` rule Phase 7 adds, so a stealth ``rmtree`` leaves TRUE zero-residue):
++  * ``execution-ledger.jsonl``          — one compact line per non-``git_only`` turn (the consolidated
++                                          index; ``durable_note`` lines carry a ``note_ref``)
++  * ``<conv>/<task>__<ts>.md``          — a self-contained, NON-RAG-indexed markdown record (durable_note)
++
++Fired ONCE at the ``run_loop`` terminal, BEFORE ``write_packet`` (so the trace JSON records the correct
++§14 tier). NEVER raises (mirrors ``execution_loop.push_handback``): a caught failure stamps
++``tool_events._note_failure`` and returns a safe value. **Redaction is FAIL-CLOSED**: if the redactor
++cannot produce a provably-scrubbed copy, every durable write is SKIPPED (a persistence failure may
++degrade or skip durable writes — it must never fail open into an unredacted durable record). Stealth
++turns leave no durable residue — the write-time ``_is_stealth_context()`` gate is primary;
++``conversation_closeout`` calls ``purge_conversation()`` as the post-hoc backstop.
++
++Reuses (does NOT reinvent) the shipped primitives: ``tool_events.scrub_content`` /
++``resolve_path_sensitivity`` / ``max_sensitivity`` / the three-layer ``_redact_for_record`` model;
++``execution_packet.render_for_review``; ``runtime_paths`` roots; the ``tool_events.record`` O_APPEND
++single-line-append idiom; the ``conversation_closeout`` Layer-9 JSONL-scrub + Layer-5 rmtree idioms.
++"""
++
++from __future__ import annotations
++
++import copy
++import dataclasses
++import json
++import os
++import shutil
++from datetime import datetime, timezone
++from typing import Any
++
++try:  # runtime import shape mirrors the rest of orchestrator/
++    import runtime_paths as _rp
++except ImportError:  # pragma: no cover
++    from orchestrator import runtime_paths as _rp
++
++try:
++    import tool_events as _te
++except ImportError:  # pragma: no cover
++    from orchestrator import tool_events as _te
++
++try:
++    import execution_packet as _ep
++except ImportError:  # pragma: no cover
++    from orchestrator import execution_packet as _ep
++
++
++# ── §14 tier vocabulary ───────────────────────────────────────────────────────
++TIER_GIT_ONLY = "git_only"
++TIER_LEDGER_LINE = "ledger_line"
++TIER_DURABLE_NOTE = "durable_note"
++
++# ── Provisional constants (house rule: retunable, flagged not calibrated) ─────
++_LEDGER_SUMMARY_CAP = 200          # ledger one-line summary hard cap
++_DURABLE_SUMMARY_CAP = 4_000       # durable-note free-text cap (matches the handback precedent)
++_LEDGER_FILENAME = "execution-ledger.jsonl"
++_STORE_DIRNAME = "execution-records"
++
++_SENSITIVE_DESCRIPTOR = "[SENSITIVE — {n} chars withheld]"
++_SECRET_DESCRIPTOR = "[SECRET — content withheld]"
++
++
++def _now_iso() -> str:
++    return datetime.now(timezone.utc).isoformat()
++
++
++def _note_failure(err: Exception, where: str) -> None:
++    """Observable marker for a caught failure — never re-raises (mirrors execution_loop._mark_failure)."""
++    try:
++        _te._note_failure(err, where)
++    except Exception:
++        pass
++
++
++def _rank(level: str | None) -> int:
++    """Rank on the §7 axis (public<private<sensitive<secret); unknown → secret (fail-closed)."""
++    try:
++        return _te._SENS_RANK.get(level, _te._SENS_RANK["secret"])
++    except Exception:  # pragma: no cover
++        return 3
++
++
++# ── Store rooting (runtime_paths; env-overridable single source) ──────────────
++def execution_records_dir() -> str:
++    """The non-git operational store root. Kept out of git by a ``.gitignore`` rule so a stealth
++    ``rmtree`` leaves TRUE zero-residue (§7). ORA_HOME-relocatable + env-overridable."""
++    return os.environ.get("ORA_EXECUTION_RECORDS_DIR") or os.path.join(_rp.DATA_DIR_STR, _STORE_DIRNAME)
++
++
++def ledger_sink_path() -> str:
++    """Single-source ledger path shared by the writer + the closeout purge (mirrors
++    ``tool_events.global_sink_path``) so the file written is exactly the file purged."""
++    return os.environ.get("ORA_EXECUTION_LEDGER_PATH") or os.path.join(execution_records_dir(), _LEDGER_FILENAME)
++
++
++def _fs_safe(conversation_id: str) -> str:
++    """Filesystem-safe form of a conversation id, applied on BOTH the note-write AND the purge side so
++    they always agree (the write/purge invariant). A raw id can carry a Windows-invalid ``:`` or a path
++    separator; map any char outside ``[A-Za-z0-9._-]`` to ``_``. Deterministic; empty → ``unknown``.
++    A collision (two ids → same safe form) only ever OVER-purges, which is the safe direction for the
++    stealth zero-residue guarantee."""
++    cid = str(conversation_id or "").strip()
++    if not cid:
++        return "unknown"
++    return "".join(c if (c.isalnum() or c in "._-") else "_" for c in cid)
++
++
++# ── Stealth + conversation-id sourcing (the SAME machinery the tool-event sink uses) ──
++def _is_stealth() -> bool:
++    """The write-time stealth gate — the exact predicate ``push_handback`` consults, so a stealth turn
++    leaves no durable residue. Defense-in-depth over ``run_loop``'s own ``stealth`` early-return."""
++    try:
++        try:
++            from oversight_events import _is_stealth_context as _isc
++        except ImportError:  # pragma: no cover
++            from orchestrator.oversight_events import _is_stealth_context as _isc
++        return bool(_isc())
++    except Exception:
++        return False
++
++
++def _turn_conversation_id() -> str:
++    """The conversation id from the tool-event TURN CONTEXT — the SAME id ``tool_events.record`` stamps
++    and ``conversation_closeout`` Layer 9/6a keys on (seeded at step 2 from the trace dir). NOT
++    ``context_pkg`` (empty at the terminal in production) and NOT ``packet.task_id`` (may differ)."""
++    try:
++        return str((_te.get_turn_context() or {}).get("conversation_id") or "")
++    except Exception:
++        return ""
++
++
++# ── Promotion (§14) — decide_tier ─────────────────────────────────────────────
++def decide_tier(packet: Any) -> str:
++    """Compute the §14 tier from the packet's already-populated signals. Defensive ``.get()``
++    throughout; NEVER raises (``git_only`` on any error). The default is the cheapest tier."""
++    try:
++        if packet is None:
++            return TIER_GIT_ONLY
++        status = getattr(packet, "status", None)
++        loop = getattr(packet, "loop", None) or {}
++        verification = getattr(packet, "verification", None) or {}
++        observed = getattr(packet, "observed", None) or {}
++        findings = verification.get("findings") or []
++
++        stop = loop.get("stop_condition")
++        escalation = loop.get("escalation")
++        escalation_withheld = bool(loop.get("escalation_withheld"))
++        has_plan_level = any(
++            isinstance(f, dict) and f.get("class") == "plan_level" for f in findings)
++        any_mutation = bool(observed.get("any_mutation"))
++
++        # durable_note — the §14 triggers, verbatim: escalated OR failed-to-converge (hard) OR
++        # a plan-level finding worth remembering (even if the turn converged).
++        if status == "escalated" or escalation is not None or escalation_withheld:
++            return TIER_DURABLE_NOTE
++        if has_plan_level:
++            return TIER_DURABLE_NOTE
++
++        # ledger_line — a MUTATION turn that degraded without converging (the loop ran, mutated, but
++        # couldn't converge/verify and didn't escalate). A source-read-only owed-provenance turn
++        # (any_mutation False) is NOT this — it stays git_only (routine research; the Phase-8 provenance
++        # deferral is systemic, not per-turn signal).
++        if any_mutation and stop is None:
++            return TIER_LEDGER_LINE
++
++        # git_only — the default cheapest tier (self-evidencing, converged-clean, source-read-only-owed).
++        return TIER_GIT_ONLY
++    except Exception as e:
++        _note_failure(e, "execution_persistence_decide_tier")
++        return TIER_GIT_ONLY
++
++
++# ── Sensitivity-driven redaction (three-layer, keyed on the TRUE max sensitivity) ──
++def _scrub_free_text(text: Any, level: str, *, cap: int | None = None) -> Any:
++    """Three-layer free-text redaction (mirrors ``tool_events._redact_for_record``):
++    ``secret`` → existence-only marker (should be unreachable — upstream-gated); ``sensitive`` →
++    length descriptor (PII/regulated never written in the clear); ``private``/``public`` →
++    ``scrub_content`` (inline secret tokens stripped), kept and optionally capped."""
++    if text is None:
++        return None
++    s = str(text)
++    if _rank(level) >= _rank("secret"):
++        return _SECRET_DESCRIPTOR
++    if _rank(level) >= _rank("sensitive"):
++        return _SENSITIVE_DESCRIPTOR.format(n=len(s))
++    try:
++        scrubbed, _ = _te.scrub_content(s)
++    except Exception:
++        # FAIL CLOSED (same invariant as the redactor — judge P1 class): if the token scrub is
++        # unavailable, WITHHOLD the field rather than keep raw text a durable write would persist
++        # with a possibly-live secret token in it.
++        return _SENSITIVE_DESCRIPTOR.format(n=len(s))
++    if cap and len(scrubbed) > cap:
++        scrubbed = scrubbed[:cap] + "\n…[capped]"
++    return scrubbed
++
++
++def _scrub_free_value(val: Any, level: str, *, cap: int | None = None) -> Any:
++    """Scrub a free-text value that may be a str, a list of str, or None — acceptance_criteria can be
++    either (render_for_review joins a list). Each element passes through the three-layer scrub."""
++    if val is None:
++        return None
++    if isinstance(val, list):
++        return [_scrub_free_value(v, level, cap=cap) for v in val]
++    return _scrub_free_text(val, level, cap=cap)
++
++
++def _redaction_descriptor(level: str) -> str:
++    if _rank(level) >= _rank("secret"):
++        action, sec = "dropped", "dropped"
++    elif _rank(level) >= _rank("sensitive"):
++        action, sec = "descriptors", "none"
++    else:
++        action, sec = "scrub_content", "none"
++    return (f"three-layer@{level}: producer_claim/instruction/findings/planning→{action}; "
++            f"source_reads public-safe; secret={sec}")
++
++
++def redact_for_durable(packet: Any, *, max_sensitivity: str | None) -> Any | None:
++    """Return a scrubbed SHALLOW-COPY ``ExecutionPacket`` for durable storage — three-layer redaction
++    keyed on the TRUE ``max_sensitivity`` (from the folded signals, NOT the Phase-3-capped event
++    stamp). The live packet + its trace JSON are untouched (only the copy's mutated blocks differ).
++    NEVER raises. **FAIL-CLOSED (judge P1 fold): on any internal failure returns ``None`` — NEVER the
++    original unredacted packet — and the caller MUST skip every durable write.** A persistence failure
++    may degrade or skip durable writes; it must never fail open into an unredacted durable record."""
++    try:
++        level = max_sensitivity if max_sensitivity in _te.SENSITIVITY else "sensitive"  # unknown → conservative
++
++        # execution block — producer_claim free text + delta.ref path (source_reads already public-safe)
++        execu = copy.deepcopy(getattr(packet, "execution", None) or {})
++        pc = execu.get("producer_claim")
++        if isinstance(pc, dict):
++            pc["summary"] = _scrub_free_text(pc.get("summary"), level, cap=_DURABLE_SUMMARY_CAP)
++            pc["known_limitations"] = _scrub_free_text(pc.get("known_limitations"), level, cap=_DURABLE_SUMMARY_CAP)
++            execu["producer_claim"] = pc
++        delta = execu.get("delta")
++        if isinstance(delta, dict) and delta.get("ref"):
++            try:
++                path_level = _te.resolve_path_sensitivity(str(delta["ref"]))
++            except Exception:
++                path_level = "sensitive"
++            if _rank(path_level) >= _rank("sensitive"):
++                delta["ref"] = f"[{path_level} PATH withheld]"
++            execu["delta"] = delta
++
++        # task.instruction (free text)
++        task = copy.deepcopy(getattr(packet, "task", None) or {})
++        if "instruction" in task:
++            task["instruction"] = _scrub_free_text(task.get("instruction"), level, cap=_DURABLE_SUMMARY_CAP)
++
++        # verification.findings[].description (free text)
++        verif = copy.deepcopy(getattr(packet, "verification", None) or {})
++        finds = verif.get("findings")
++        if isinstance(finds, list):
++            out = []
++            for f in finds:
++                if isinstance(f, dict):
++                    f = dict(f)
++                    if "description" in f:
++                        f["description"] = _scrub_free_text(f.get("description"), level, cap=_DURABLE_SUMMARY_CAP)
++                out.append(f)
++            verif["findings"] = out
++
++        # planning block — converged_brief acceptance_criteria/approach/known_risks/review_questions
++        # are model-authored free text DERIVED from the (possibly sensitive) instruction, and
++        # render_for_review emits acceptance_criteria into the note body — so they must be scrubbed at
++        # the SAME level as the instruction (else a sensitive/secret turn leaks them in the clear;
++        # adversarial-precheck blocker fold). acceptance_criteria may be a str OR a list of bullets.
++        planning = getattr(packet, "planning", None)
++        if isinstance(planning, dict):
++            planning = copy.deepcopy(planning)
++            cb = planning.get("converged_brief")
++            if isinstance(cb, dict):
++                for _k in ("acceptance_criteria", "approach", "known_risks", "review_questions"):
++                    if _k in cb:
++                        cb[_k] = _scrub_free_value(cb.get(_k), level, cap=_DURABLE_SUMMARY_CAP)
++                planning["converged_brief"] = cb
++
++        persistence = dict(getattr(packet, "persistence", None) or {})
++        persistence["redacted"] = _redaction_descriptor(level)
++
++        return dataclasses.replace(
++            packet, execution=execu, task=task, verification=verif,
++            planning=planning, persistence=persistence)
++    except Exception as e:
++        _note_failure(e, "execution_persistence_redact")
++        return None   # FAIL CLOSED — the caller skips every durable write (judge P1)
++
++
++# ── The durable note (self-contained markdown; renders the ALREADY-REDACTED packet) ──
++def _render_note(redacted_packet: Any, conversation_id: str) -> str:
++    persistence = getattr(redacted_packet, "persistence", None) or {}
++    task_id = getattr(redacted_packet, "task_id", "") or "task"
++    fm = {
++        "task_id": task_id,
++        "conversation_id": conversation_id,
++        "created": getattr(redacted_packet, "created", None),
++        "status": getattr(redacted_packet, "status", None),
++        "risk_tier": getattr(redacted_packet, "risk_tier", None),
++        "reversible": getattr(redacted_packet, "reversible", None),
++        "tier": persistence.get("tier"),
++        "redacted": persistence.get("redacted"),
++    }
++    fm_lines = "\n".join(f"{k}: {json.dumps(v, default=str)}" for k, v in fm.items())
++    trace_ref = ((getattr(redacted_packet, "execution", None) or {}).get("delta") or {}).get("ref")
++    try:
++        body = _ep.render_for_review(redacted_packet)
++    except Exception:  # pragma: no cover — render is best-effort; a broken render never blocks the write
++        body = "(render unavailable)"
++    return (
++        f"---\n{fm_lines}\n---\n\n"
++        f"# Execution Record — {task_id}\n\n"
++        f"> Durable execution-review record (spec §14 `durable_note`). Evidence-first; the producer "
++        f"claim below is an UNVERIFIED claim, never elevated to evidence (§16-3). "
++        f"Redaction: {fm['redacted']}.\n\n"
++        f"{body}\n\n"
++        f"---\nTrace reference (ephemeral — may be swept after 30d): `{trace_ref}`\n")
++
++
++def write_durable_note(redacted_packet: Any, *, conversation_id: str, stealth: bool = False) -> str | None:
++    """Write ONE self-contained, NON-RAG-indexed markdown record into a per-conversation subdir
++    (``rmtree``-purgeable, mirroring closeout Layer 5). Renders the ALREADY-REDACTED packet (never the
++    raw one). write-tmp + ``os.replace`` (atomic on POSIX + Windows). Stealth-gated; NEVER raises;
++    returns the path or None."""
++    try:
++        if stealth or _is_stealth():
++            return None
++        subdir = os.path.join(execution_records_dir(), _fs_safe(conversation_id))
++        os.makedirs(subdir, exist_ok=True)
++        task_id = _fs_safe(str(getattr(redacted_packet, "task_id", "") or "task"))
++        ts = _now_iso().replace(":", "").replace("-", "").replace(".", "")   # fs-safe timestamp
++        path = os.path.join(subdir, f"{task_id}__{ts}.md")
++        body = _render_note(redacted_packet, conversation_id)
++        tmp = path + ".tmp"
++        with open(tmp, "w", encoding="utf-8") as f:
++            f.write(body)
++        os.replace(tmp, path)
++        return path
++    except Exception as e:
++        _note_failure(e, "execution_persistence_note")
++        return None
++
++
++# ── The consolidated ledger (O_APPEND, stealth-gated, conversation_id-stamped) ──
++def _ledger_line_from(packet: Any, redacted: Any, *, tier: str, trace_dir: str | None,
++                      note_ref: str | None, now_iso: str | None) -> dict:
++    loop = getattr(packet, "loop", None) or {}
++    verification = getattr(packet, "verification", None) or {}
++    findings = verification.get("findings") or []
++    finding_classes = sorted({f.get("class") for f in findings
++                              if isinstance(f, dict) and f.get("class")})
++    pc = (getattr(redacted, "execution", None) or {}).get("producer_claim") or {}
++    summary = str(pc.get("summary") or "").strip().replace("\n", " ")
++    if len(summary) > _LEDGER_SUMMARY_CAP:
++        summary = summary[:_LEDGER_SUMMARY_CAP] + "…"
++    trace_ref = os.path.join(str(trace_dir), _ep._PACKET_FILENAME) if trace_dir else None
++    status = getattr(packet, "status", None)
++    return {
++        "ts": now_iso or _now_iso(),
++        "task_id": getattr(packet, "task_id", ""),
++        "tier": tier,
++        "status": status,
++        "stop_condition": loop.get("stop_condition"),
++        "risk_tier": getattr(packet, "risk_tier", None),
++        "iteration": loop.get("iteration"),
++        "escalated": status == "escalated",
++        "finding_classes": finding_classes,
++        "summary": summary,
++        "trace_ref": trace_ref,
++        "note_ref": note_ref,
++    }
++
++
++def append_ledger_line(line: dict, *, conversation_id: str, stealth: bool = False) -> bool:
++    """Append ONE compact JSON line to the consolidated ledger via O_APPEND — the multi-process,
++    cross-platform single-line-append idiom from ``tool_events.record``. Stealth-gated +
++    ``conversation_id`` stamped TOP-LEVEL so the closeout backstop matcher reaches it. NEVER raises."""
++    try:
++        if stealth or _is_stealth():
++            return False
++        rec = dict(line)
++        rec["conversation_id"] = conversation_id
++        path = ledger_sink_path()
++        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
++        encoded = (json.dumps(rec, default=str) + "\n").encode("utf-8")
++        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
++        try:
++            os.write(fd, encoded)
++        finally:
++            os.close(fd)
++        return True
++    except Exception as e:
++        _note_failure(e, "execution_persistence_ledger")
++        return False
++
++
++# ── Stealth-purge backstop (called by conversation_closeout) ──────────────────
++def purge_conversation(conversation_id: str) -> dict:
++    """Stealth-purge backstop for the whole store (invoked by ``conversation_closeout._purge_stealth``).
++    Two actions, both keyed on the SAME ``_fs_safe`` transform used at write time: (1) ``rmtree`` the
++    per-conversation note subdir (TRUE zero-residue — the store is git-ignored, nothing survives in
++    history); (2) scrub the ledger jsonl, dropping lines whose ``conversation_id`` matches (Layer-9
++    atomic tmp+replace). NEVER raises; returns a per-action report."""
++    result: dict[str, Any] = {"note_dir_removed": False, "ledger_lines_removed": 0, "errors": []}
++    cid = str(conversation_id or "")
++    try:
++        subdir = os.path.join(execution_records_dir(), _fs_safe(cid))
++        if os.path.isdir(subdir):
++            shutil.rmtree(subdir)
++            result["note_dir_removed"] = True
++    except Exception as e:
++        result["errors"].append(f"note_dir: {e}")
++    try:
++        path = ledger_sink_path()
++        if os.path.exists(path):
++            kept: list[str] = []
++            removed = 0
++            with open(path, encoding="utf-8") as f:
++                for line in f:
++                    line = line.rstrip("\n")
++                    if not line.strip():
++                        continue
++                    try:
++                        rec = json.loads(line)
++                    except Exception:
++                        kept.append(line)
++                        continue
++                    if rec.get("conversation_id") == cid:
++                        removed += 1
++                        continue
++                    kept.append(line)
++            if removed:
++                tmp = path + ".tmp"
++                with open(tmp, "w", encoding="utf-8") as f:
++                    for line in kept:
++                        f.write(line + "\n")
++                os.replace(tmp, path)
++                result["ledger_lines_removed"] = removed
++    except Exception as e:
++        result["errors"].append(f"ledger: {e}")
++    return result
++
++
++# ── The entry point — fired at the run_loop terminal, BEFORE write_packet ─────
++def persist_packet(packet: Any, *, sig: dict | None = None, context_pkg: dict | None = None,
++                   trace_dir: str | None = None, stealth: bool = False,
++                   now_iso: str | None = None) -> str:
++    """Decide the §14 tier → set ``packet.persistence`` (so the trace JSON, written NEXT by
++    ``run_loop``, records the correct tier) → (if promoted) redact → write the durable note and/or
++    append the ledger line. Returns the tier. NEVER raises (``git_only`` on any failure). Loop-only in
++    effect: a self-evidencing packet computes ``git_only`` and writes nothing durable."""
++    try:
++        if packet is None:
++            return TIER_GIT_ONLY
++        tier = decide_tier(packet)
++        try:
++            p = dict(getattr(packet, "persistence", None) or {})
++            p["tier"] = tier
++            packet.persistence = p
++        except Exception:
++            pass
++
++        if tier == TIER_GIT_ONLY:
++            return TIER_GIT_ONLY
++
++        # Primary write-time stealth gate (defense-in-depth over run_loop's own stealth early-return).
++        if stealth or _is_stealth():
++            return tier
++
++        conversation_id = _turn_conversation_id()
++        redacted = redact_for_durable(packet, max_sensitivity=(sig or {}).get("max_sensitivity"))
++        if redacted is None:
++            # FAIL CLOSED (judge P1): the redactor could not produce a provably-scrubbed copy, so
++            # SKIP every durable write — never persist unredacted content. The trace-local packet
++            # (+ on escalation the handback, whose reference carries no packet body) still exist;
++            # the redactor stamped its own failure marker. Stamp a distinct skip marker too, so
++            # "redaction failed → durable write withheld" is observable as its own fact.
++            try:
++                packet.persistence["redacted"] = \
++                    "REDACTION FAILED — durable write withheld (fail-closed)"
++            except Exception:
++                pass
++            _note_failure(RuntimeError("redaction failed — durable write withheld"),
++                          "execution_persistence_fail_closed")
++            return tier
++        try:
++            packet.persistence["redacted"] = (getattr(redacted, "persistence", None) or {}).get("redacted")
++        except Exception:
++            pass
++
++        note_ref = None
++        if tier == TIER_DURABLE_NOTE:
++            note_ref = write_durable_note(redacted, conversation_id=conversation_id, stealth=stealth)
++
++        line = _ledger_line_from(packet, redacted, tier=tier, trace_dir=trace_dir,
++                                 note_ref=note_ref, now_iso=now_iso)
++        append_ledger_line(line, conversation_id=conversation_id, stealth=stealth)
++        return tier
++    except Exception as e:
++        _note_failure(e, "execution_persistence_persist")
++        return TIER_GIT_ONLY
+diff --git a/orchestrator/tests/test_execution_loop.py b/orchestrator/tests/test_execution_loop.py
+index ecd900f9..b63b9a12 100644
+--- a/orchestrator/tests/test_execution_loop.py
++++ b/orchestrator/tests/test_execution_loop.py
+@@ -20,6 +20,33 @@ if str(_ORCH) not in sys.path:
+ import execution_loop as el  # noqa: E402
+ import execution_packet as ep  # noqa: E402
+ import evidence_runner as er  # noqa: E402
++import execution_persistence as epx  # noqa: E402
++
++
++_STORE_ENV: dict = {}
++
++
++def setUpModule():
++    # Phase 7: run_loop's terminal now calls execution_persistence.persist_packet, which writes to
++    # the operational store data/execution-records/. Redirect it to a tempdir for the whole module so
++    # the suite never touches the real ~/ora store (or the live server's store).
++    d = tempfile.mkdtemp(prefix="er-loop-store-")
++    _STORE_ENV["dir"] = d
++    for k, v in (("ORA_EXECUTION_RECORDS_DIR", d),
++                 ("ORA_EXECUTION_LEDGER_PATH", os.path.join(d, "execution-ledger.jsonl"))):
++        _STORE_ENV[k] = os.environ.get(k)
++        os.environ[k] = v
++
++
++def tearDownModule():
++    import shutil
++    for k in ("ORA_EXECUTION_RECORDS_DIR", "ORA_EXECUTION_LEDGER_PATH"):
++        prev = _STORE_ENV.get(k)
++        if prev is None:
++            os.environ.pop(k, None)
++        else:
++            os.environ[k] = prev
++    shutil.rmtree(_STORE_ENV.get("dir", ""), ignore_errors=True)
+ 
+ 
+ # ── Fakes ─────────────────────────────────────────────────────────────────────
+@@ -513,6 +540,28 @@ class TestRunLoop(unittest.TestCase):
+         self.assertIsNone(revised)
+         self.assertEqual(pushes, [])
+ 
++    def test_converged_turn_is_git_only(self):
++        # Phase 7 parity: a clean converge earns the cheapest tier — no durable record.
++        pkt, _, _ = self._run({"any_mutation": True}, V_PASS, FakeRunner(sufficient=True))
++        self.assertEqual(pkt.status, "converged")
++        self.assertEqual(epx.decide_tier(pkt), epx.TIER_GIT_ONLY)
++
++    def test_escalation_persists_durable_note_and_ledger(self):
++        # Phase 7 end-to-end wiring: an escalated turn drives persist_packet at the run_loop
++        # terminal, writing a durable_note markdown record + its ledger index (into the redirected
++        # store). Proves the terminal actually reaches the persistence layer.
++        import json as _json
++        pkt, _, _ = self._run({"any_mutation": True}, V_FAIL_HIGH, FakeRunner(sufficient=False))
++        self.assertEqual(pkt.status, "escalated")
++        self.assertEqual(pkt.persistence["tier"], epx.TIER_DURABLE_NOTE)
++        lp = epx.ledger_sink_path()
++        self.assertTrue(os.path.exists(lp), "run_loop terminal did not write the ledger")
++        with open(lp) as _f:
++            durable = [_json.loads(l) for l in _f
++                       if l.strip() and _json.loads(l).get("tier") == "durable_note"]
++        self.assertTrue(durable, "no durable_note ledger line for the escalated turn")
++        self.assertTrue(os.path.exists(durable[-1]["note_ref"]))
++
+     def test_escalate_on_high_severity(self):
+         pkt, revised, pushes = self._run({"any_mutation": True}, V_FAIL_HIGH,
+                                          FakeRunner(sufficient=False))
+diff --git a/orchestrator/tests/test_execution_packet.py b/orchestrator/tests/test_execution_packet.py
+index 2dcbdd63..21b200f2 100644
+--- a/orchestrator/tests/test_execution_packet.py
++++ b/orchestrator/tests/test_execution_packet.py
+@@ -309,14 +309,16 @@ class TestConstruction(unittest.TestCase):
+                           output_text="   ", risk_tier="light", trace_dir=d))
+         self.assertFalse(os.path.exists(os.path.join(d, ep._PACKET_FILENAME)))
+ 
+-    def test_construct_and_write_writes_trace_local(self):
++    def test_construct_and_write_writes_git_only_tier(self):
+         d = tempfile.mkdtemp()
+         ref = ep.construct_and_write(signals=_sig(any_mutation=True), context_pkg={"raw_prompt": "p"},
+                                      output_text="deliverable", risk_tier="standard", trace_dir=d)
+         self.assertEqual(ref, os.path.join(d, ep._PACKET_FILENAME))
+         self.assertTrue(os.path.exists(ref))
+         pkt = json.load(open(ref))
+-        self.assertEqual(pkt["persistence"]["tier"], "trace_local")
++        # Phase 7: the build-time default §14 tier is git_only (was the "trace_local" placeholder);
++        # the common self-evidencing path never promotes above git_only. Nothing reads this value.
++        self.assertEqual(pkt["persistence"]["tier"], "git_only")
+ 
+     def test_write_failure_is_observable(self):
+         # a caught write failure stamps EXACTLY ONE marker (never silently vanishes).
+diff --git a/orchestrator/tests/test_execution_persistence.py b/orchestrator/tests/test_execution_persistence.py
+new file mode 100644
+index 00000000..b26e52d8
+--- /dev/null
++++ b/orchestrator/tests/test_execution_persistence.py
+@@ -0,0 +1,465 @@
++"""Execution Review Phase 7 — tiered persistence (spec §14), per the design packet §10 test plan.
++
++Hermetic: the operational store is redirected to a tempdir via ORA_EXECUTION_RECORDS_DIR /
++ORA_EXECUTION_LEDGER_PATH so nothing touches the real ~/ora/data/execution-records/. Covers the
++decide_tier truth table, the three-layer sensitivity redaction, the ledger + durable-note writers, the
++stealth zero-residue guarantee + the closeout purge backstop, never-raises, the flag-OFF parity of the
++common self-evidencing path, the .gitignore effective-ignore guard (Rev-3 P2), and cross-platform
++path handling.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++_ORCH = Path(__file__).resolve().parent.parent
++if str(_ORCH) not in sys.path:
++    sys.path.insert(0, str(_ORCH))
++
++import execution_persistence as epx  # noqa: E402
++import execution_packet as ep  # noqa: E402
++import tool_events as te  # noqa: E402
++
++
++def _pkt(**kw):
++    """Build an ExecutionPacket with §14-relevant defaults, overridable per test."""
++    base = dict(
++        task_id=kw.pop("task_id", "task-1"),
++        status=kw.pop("status", "in_progress"),
++        risk_tier=kw.pop("risk_tier", "standard"),
++        task={"instruction": kw.pop("instruction", "do the thing"),
++              "constraints": None, "non_goals": None},
++        execution={"producer_claim": {"summary": kw.pop("summary", "a clean deliverable"),
++                                       "known_limitations": None},
++                   "delta": {"any_mutation": kw.pop("any_mutation", False),
++                             "max_mutability": "read", "ref": kw.pop("delta_ref", None)},
++                   "source_reads": kw.pop("source_reads", [])},
++        verification={"findings": kw.pop("findings", [])},
++        observed={"any_mutation": kw.pop("observed_mutation", kw.get("any_mutation", False))},
++        loop=kw.pop("loop", None),
++    )
++    base.update(kw)
++    return ep.ExecutionPacket(**base)
++
++
++class _StoreTempMixin:
++    def setUp(self):
++        self._tmp = tempfile.mkdtemp(prefix="er-persist-")
++        self._prev = {k: os.environ.get(k) for k in
++                      ("ORA_EXECUTION_RECORDS_DIR", "ORA_EXECUTION_LEDGER_PATH")}
++        os.environ["ORA_EXECUTION_RECORDS_DIR"] = self._tmp
++        os.environ["ORA_EXECUTION_LEDGER_PATH"] = os.path.join(self._tmp, "execution-ledger.jsonl")
++        te.set_turn_context(conversation_id="conv-123", trace_dir=None, stealth=False)
++
++    def tearDown(self):
++        for k, v in self._prev.items():
++            if v is None:
++                os.environ.pop(k, None)
++            else:
++                os.environ[k] = v
++        te.set_turn_context()
++        import shutil
++        shutil.rmtree(self._tmp, ignore_errors=True)
++
++    def _ledger_lines(self):
++        path = epx.ledger_sink_path()
++        if not os.path.exists(path):
++            return []
++        with open(path) as f:
++            return [json.loads(l) for l in f if l.strip()]
++
++
++# ── decide_tier truth table (§3.5) ────────────────────────────────────────────
++class TestDecideTier(unittest.TestCase):
++    def test_self_evidencing_is_git_only(self):
++        self.assertEqual(epx.decide_tier(_pkt()), epx.TIER_GIT_ONLY)
++
++    def test_source_read_only_owed_is_git_only(self):
++        # any_mutation False, stop_condition None (owed provenance) → routine research → git_only
++        p = _pkt(observed_mutation=False, loop={"stop_condition": None, "iteration": 0})
++        self.assertEqual(epx.decide_tier(p), epx.TIER_GIT_ONLY)
++
++    def test_converged_clean_is_git_only(self):
++        p = _pkt(status="converged", observed_mutation=True,
++                 loop={"stop_condition": "criteria_met", "iteration": 1})
++        self.assertEqual(epx.decide_tier(p), epx.TIER_GIT_ONLY)
++
++    def test_converged_with_plan_level_finding_is_durable(self):
++        p = _pkt(status="converged", observed_mutation=True,
++                 loop={"stop_condition": "criteria_met"},
++                 findings=[{"class": "plan_level", "severity": "medium", "description": "x"}])
++        self.assertEqual(epx.decide_tier(p), epx.TIER_DURABLE_NOTE)
++
++    def test_converged_with_exec_level_finding_only_is_git_only(self):
++        p = _pkt(status="converged", observed_mutation=True,
++                 loop={"stop_condition": "criteria_met"},
++                 findings=[{"class": "execution_level", "severity": "low", "description": "x"}])
++        self.assertEqual(epx.decide_tier(p), epx.TIER_GIT_ONLY)
++
++    def test_escalated_is_durable(self):
++        p = _pkt(status="escalated", observed_mutation=True,
++                 loop={"stop_condition": "max_iterations_escalated",
++                       "escalation": {"reason": "did not converge"}})
++        self.assertEqual(epx.decide_tier(p), epx.TIER_DURABLE_NOTE)
++
++    def test_escalation_withheld_is_durable(self):
++        p = _pkt(status="in_progress", observed_mutation=True,
++                 loop={"stop_condition": None, "escalation": None, "escalation_withheld": True})
++        self.assertEqual(epx.decide_tier(p), epx.TIER_DURABLE_NOTE)
++
++    def test_mutation_degrade_to_text_is_ledger_line(self):
++        p = _pkt(status="in_progress", observed_mutation=True,
++                 loop={"stop_condition": None, "note": "degraded to text review"})
++        self.assertEqual(epx.decide_tier(p), epx.TIER_LEDGER_LINE)
++
++    def test_none_packet_is_git_only(self):
++        self.assertEqual(epx.decide_tier(None), epx.TIER_GIT_ONLY)
++
++    def test_malformed_packet_degrades_to_git_only(self):
++        class Bad:
++            @property
++            def status(self):
++                raise RuntimeError("boom")
++        self.assertEqual(epx.decide_tier(Bad()), epx.TIER_GIT_ONLY)
++
++
++# ── Three-layer sensitivity redaction (§5, Rev-1 folds #1/#2/#5) ──────────────
++class TestRedaction(unittest.TestCase):
++    SECRET_TEXT = "here is the key sk-ABCDEFGHIJKLMNOP1234 and password=hunter2xyz done"
++
++    def test_public_scrubs_inline_secret_but_keeps_text(self):
++        p = _pkt(summary=self.SECRET_TEXT, instruction=self.SECRET_TEXT)
++        red = epx.redact_for_durable(p, max_sensitivity="public")
++        s = red.execution["producer_claim"]["summary"]
++        self.assertIn("[SCRUBBED]", s)
++        self.assertNotIn("sk-ABCDEFGHIJKLMNOP1234", s)
++        self.assertNotIn("hunter2xyz", s)
++        # non-secret words survive (scrub-and-keep, not descriptor)
++        self.assertIn("done", s)
++
++    def test_sensitive_replaces_freetext_with_descriptor(self):
++        # PII/regulated content the secret-regex can't see must NOT be written in the clear.
++        pii = "patient John Doe SSN 123-45-6789 diagnosed with condition X"
++        p = _pkt(summary=pii, instruction=pii,
++                 findings=[{"class": "execution_level", "severity": "low", "description": pii}])
++        red = epx.redact_for_durable(p, max_sensitivity="sensitive")
++        s = red.execution["producer_claim"]["summary"]
++        self.assertIn("[SENSITIVE", s)
++        self.assertNotIn("123-45-6789", s)
++        self.assertNotIn("John Doe", red.task["instruction"])
++        self.assertNotIn("123-45-6789", red.verification["findings"][0]["description"])
++
++    def test_secret_drops_freetext_to_existence_only(self):
++        p = _pkt(summary=self.SECRET_TEXT)
++        red = epx.redact_for_durable(p, max_sensitivity="secret")
++        self.assertEqual(red.execution["producer_claim"]["summary"], epx._SECRET_DESCRIPTOR)
++
++    def test_unknown_level_is_conservative_sensitive(self):
++        p = _pkt(summary="patient data 123-45-6789")
++        red = epx.redact_for_durable(p, max_sensitivity=None)
++        self.assertIn("[SENSITIVE", red.execution["producer_claim"]["summary"])
++
++    def test_original_packet_is_not_mutated(self):
++        p = _pkt(summary=self.SECRET_TEXT)
++        _ = epx.redact_for_durable(p, max_sensitivity="secret")
++        self.assertEqual(p.execution["producer_claim"]["summary"], self.SECRET_TEXT)
++
++    def test_sensitive_delta_path_becomes_descriptor(self):
++        # Fixture paths built via tempfile + a Windows-shaped literal — no hardcoded /Users//tmp
++        # (portability rule); the point here IS path sensitivity, so cover both path shapes.
++        posix_fix = os.path.join(tempfile.gettempdir(), "er-fixture-home", ".ssh", "id_rsa")
++        red = epx.redact_for_durable(_pkt(delta_ref=posix_fix), max_sensitivity="public")
++        self.assertIn("withheld", red.execution["delta"]["ref"])
++        # A Windows-shaped secret path classifies identically (resolve_path_sensitivity
++        # normalizes backslashes before its boundary-anchored regexes).
++        red2 = epx.redact_for_durable(_pkt(delta_ref=r"C:\Users\x\.ssh\id_rsa"),
++                                      max_sensitivity="public")
++        self.assertIn("withheld", red2.execution["delta"]["ref"])
++
++    def test_redacted_descriptor_recorded(self):
++        p = _pkt(summary="x")
++        red = epx.redact_for_durable(p, max_sensitivity="sensitive")
++        self.assertIn("descriptors", red.persistence["redacted"])
++        self.assertIn("secret=none", red.persistence["redacted"])
++
++    def test_sensitive_scrubs_planning_acceptance_criteria(self):
++        # Pre-check blocker fold: acceptance_criteria is instruction-derived model prose that
++        # render_for_review emits into the note — it must be scrubbed like the instruction. Covers
++        # both the str and list-of-bullets shapes.
++        pii = "ship for patient SSN 123-45-6789"
++        p = _pkt(planning={"converged_brief": {"acceptance_criteria": [pii, "and be correct"],
++                                               "approach": pii, "known_risks": None}})
++        red = epx.redact_for_durable(p, max_sensitivity="sensitive")
++        ac = red.planning["converged_brief"]["acceptance_criteria"]
++        self.assertTrue(all("[SENSITIVE" in x for x in ac))
++        self.assertNotIn("123-45-6789", json.dumps(red.planning))
++        self.assertIn("planning", red.persistence["redacted"])
++        # the ORIGINAL packet's planning is untouched (copy semantics)
++        self.assertIn("123-45-6789", json.dumps(p.planning))
++
++
++# ── Ledger + durable note writers ─────────────────────────────────────────────
++class TestWriters(_StoreTempMixin, unittest.TestCase):
++    def test_append_ledger_line_stamps_conversation_id(self):
++        ok = epx.append_ledger_line({"tier": "ledger_line", "summary": "s"},
++                                    conversation_id="conv-xyz")
++        self.assertTrue(ok)
++        lines = self._ledger_lines()
++        self.assertEqual(len(lines), 1)
++        self.assertEqual(lines[0]["conversation_id"], "conv-xyz")
++
++    def test_append_ledger_line_stealth_writes_nothing(self):
++        ok = epx.append_ledger_line({"tier": "ledger_line"}, conversation_id="c", stealth=True)
++        self.assertFalse(ok)
++        self.assertEqual(self._ledger_lines(), [])
++
++    def test_write_durable_note_renders_scrubbed_copy(self):
++        p = _pkt(status="escalated", summary=TestRedaction.SECRET_TEXT)
++        red = epx.redact_for_durable(p, max_sensitivity="public")
++        path = epx.write_durable_note(red, conversation_id="conv-note")
++        self.assertIsNotNone(path)
++        body = Path(path).read_text()
++        self.assertNotIn("sk-ABCDEFGHIJKLMNOP1234", body)      # scrubbed
++        self.assertIn("UNVERIFIED PRODUCER CLAIM", body)        # §16-3 label preserved
++        # written into a per-conversation subdir (rmtree-purgeable)
++        self.assertEqual(Path(path).parent.name, epx._fs_safe("conv-note"))
++
++    def test_write_durable_note_stealth_writes_nothing(self):
++        red = epx.redact_for_durable(_pkt(status="escalated"), max_sensitivity="public")
++        self.assertIsNone(epx.write_durable_note(red, conversation_id="c", stealth=True))
++
++
++# ── persist_packet end-to-end (decide → set tier → redact → write) ────────────
++class TestPersistPacket(_StoreTempMixin, unittest.TestCase):
++    def test_git_only_writes_nothing_but_sets_tier(self):
++        p = _pkt()
++        tier = epx.persist_packet(p, sig={}, trace_dir=None)
++        self.assertEqual(tier, epx.TIER_GIT_ONLY)
++        self.assertEqual(p.persistence["tier"], epx.TIER_GIT_ONLY)
++        self.assertEqual(self._ledger_lines(), [])
++        self.assertFalse(os.path.isdir(os.path.join(self._tmp, "conv-123")))
++
++    def test_ledger_line_appends_one_line_no_note(self):
++        p = _pkt(status="in_progress", observed_mutation=True, any_mutation=True,
++                 loop={"stop_condition": None, "iteration": 1})
++        tier = epx.persist_packet(p, sig={"max_sensitivity": "public"}, trace_dir="/traces/conv-123/1")
++        self.assertEqual(tier, epx.TIER_LEDGER_LINE)
++        lines = self._ledger_lines()
++        self.assertEqual(len(lines), 1)
++        self.assertEqual(lines[0]["tier"], "ledger_line")
++        self.assertIsNone(lines[0]["note_ref"])
++        self.assertEqual(lines[0]["conversation_id"], "conv-123")
++        # trace_ref is the deterministic packet path
++        self.assertTrue(str(lines[0]["trace_ref"]).endswith("execution-packet.json"))
++
++    def test_durable_note_writes_note_and_ledger_index(self):
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True,
++                 summary="the risky change", risk_tier="high-risk",
++                 loop={"stop_condition": "max_iterations_escalated",
++                       "escalation": {"reason": "did not converge"}})
++        tier = epx.persist_packet(p, sig={"max_sensitivity": "private"}, trace_dir="/t/conv-123/1")
++        self.assertEqual(tier, epx.TIER_DURABLE_NOTE)
++        lines = self._ledger_lines()
++        self.assertEqual(len(lines), 1)
++        self.assertEqual(lines[0]["tier"], "durable_note")
++        self.assertIsNotNone(lines[0]["note_ref"])
++        self.assertTrue(os.path.exists(lines[0]["note_ref"]))
++
++    def test_stealth_persist_writes_nothing_durable(self):
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True,
++                 loop={"stop_condition": "max_iterations_escalated",
++                       "escalation": {"reason": "x"}})
++        tier = epx.persist_packet(p, sig={}, trace_dir=None, stealth=True)
++        self.assertEqual(tier, epx.TIER_DURABLE_NOTE)   # tier still computed
++        self.assertEqual(self._ledger_lines(), [])       # but nothing written
++        self.assertFalse(os.path.isdir(os.path.join(self._tmp, "conv-123")))
++
++    def test_persist_never_raises_on_bad_packet(self):
++        class Bad:
++            persistence = {}
++            @property
++            def status(self):
++                raise RuntimeError("boom")
++        # must not raise; degrades to git_only
++        self.assertEqual(epx.persist_packet(Bad(), sig={}), epx.TIER_GIT_ONLY)
++
++    def test_true_max_sensitivity_from_sig_drives_redaction(self):
++        # A sensitive-max turn must descriptor-ize the free text even though the summary itself
++        # has no regex-catchable secret — proves max_sensitivity is read from sig, not the packet.
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True,
++                 summary="ordinary looking prose with PII inside",
++                 loop={"stop_condition": "max_iterations_escalated",
++                       "escalation": {"reason": "x"}})
++        epx.persist_packet(p, sig={"max_sensitivity": "sensitive"}, trace_dir="/t/conv-123/1")
++        note_ref = self._ledger_lines()[0]["note_ref"]
++        body = Path(note_ref).read_text()
++        self.assertIn("[SENSITIVE", body)
++        self.assertNotIn("ordinary looking prose with PII inside", body)
++
++    def test_sensitive_planning_criteria_absent_from_note_body(self):
++        # The exact leak the adversarial pre-check caught: a sensitive turn whose acceptance_criteria
++        # (rendered into the note's ACCEPTANCE CRITERIA fence) carries PII must NOT appear in the note.
++        pii = "patient SSN 123-45-6789 must be migrated"
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True, instruction=pii,
++                 planning={"converged_brief": {"acceptance_criteria": pii}},
++                 loop={"stop_condition": "max_iterations_escalated", "escalation": {"reason": "x"}})
++        epx.persist_packet(p, sig={"max_sensitivity": "sensitive"}, trace_dir="/t/conv-123/1")
++        body = Path(self._ledger_lines()[0]["note_ref"]).read_text()
++        self.assertNotIn("123-45-6789", body)   # the leak — now sealed
++        self.assertIn("ACCEPTANCE CRITERIA", body)
++        self.assertIn("[SENSITIVE", body)        # descriptor present in the criteria fence
++
++
++# ── Fail-closed redaction (judge P1 fold) ─────────────────────────────────────
++class _BombDict(dict):
++    """A dict whose deepcopy raises — the judge's exact P1 repro (a packet whose execution block
++    fails during copy.deepcopy inside redact_for_durable)."""
++    def __deepcopy__(self, memo):
++        raise RuntimeError("deepcopy bomb")
++
++
++class TestFailClosedRedaction(_StoreTempMixin, unittest.TestCase):
++    PII = "patient SSN 123-45-6789 in the durable path"
++
++    def _bombed_escalated_pkt(self):
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True,
++                 instruction=self.PII, summary=self.PII,
++                 loop={"stop_condition": "max_iterations_escalated",
++                       "escalation": {"reason": "x"}})
++        p.execution = _BombDict(p.execution)   # deepcopy raises inside redact_for_durable
++        return p
++
++    def test_redactor_failure_returns_none_never_the_original(self):
++        # Judge P1: the old behavior returned the ORIGINAL unredacted packet on failure.
++        self.assertIsNone(
++            epx.redact_for_durable(self._bombed_escalated_pkt(), max_sensitivity="sensitive"))
++
++    def test_redaction_failure_fails_closed_no_sensitive_text_on_disk(self):
++        # Judge P1 end-to-end repro: a durable_note turn whose redaction fails must write NO note
++        # and NO ledger line — a persistence failure may skip durable writes, never fail open.
++        p = self._bombed_escalated_pkt()
++        tier = epx.persist_packet(p, sig={"max_sensitivity": "sensitive"},
++                                  trace_dir="/t/conv-123/1")
++        self.assertEqual(tier, epx.TIER_DURABLE_NOTE)   # tier still computed + stamped
++        self.assertIn("REDACTION FAILED", p.persistence["redacted"])
++        self.assertEqual(self._ledger_lines(), [])       # no ledger line
++        leaked = []
++        for root, _dirs, files in os.walk(self._tmp):    # no PII anywhere in the store
++            for fn in files:
++                if self.PII.split()[2] in Path(root, fn).read_text():
++                    leaked.append(os.path.join(root, fn))
++        self.assertEqual(leaked, [])
++
++    def test_broken_scrub_content_withholds_rather_than_keeps_raw(self):
++        # The second fail-open of the same class (self-found): scrub_content raising must not
++        # leave raw text in the private/public layer — the field is withheld instead.
++        secret_text = "deploy with key sk-ABCDEFGHIJKLMNOP1234 now"
++        orig = te.scrub_content
++        te.scrub_content = lambda s: (_ for _ in ()).throw(RuntimeError("scrub down"))
++        try:
++            out = epx._scrub_free_text(secret_text, "public")
++        finally:
++            te.scrub_content = orig
++        self.assertNotIn("sk-ABCDEFGHIJKLMNOP1234", out)
++        self.assertIn("withheld", out)
++
++
++# ── Stealth purge backstop (Rev-1 folds #4/#6/#8) ─────────────────────────────
++class TestPurgeConversation(_StoreTempMixin, unittest.TestCase):
++    def _seed(self, conversation_id):
++        p = _pkt(status="escalated", observed_mutation=True, any_mutation=True,
++                 loop={"stop_condition": "max_iterations_escalated", "escalation": {"reason": "x"}})
++        te.set_turn_context(conversation_id=conversation_id, stealth=False)
++        epx.persist_packet(p, sig={"max_sensitivity": "public"}, trace_dir=f"/t/{conversation_id}/1")
++
++    def test_purge_removes_note_subdir_and_ledger_lines(self):
++        self._seed("conv-A")
++        self._seed("conv-B")
++        self.assertEqual(len(self._ledger_lines()), 2)
++        res = epx.purge_conversation("conv-A")
++        self.assertTrue(res["note_dir_removed"])
++        self.assertEqual(res["ledger_lines_removed"], 1)
++        # conv-A gone, conv-B intact
++        remaining = self._ledger_lines()
++        self.assertEqual([l["conversation_id"] for l in remaining], ["conv-B"])
++        self.assertFalse(os.path.isdir(os.path.join(self._tmp, epx._fs_safe("conv-A"))))
++        self.assertTrue(os.path.isdir(os.path.join(self._tmp, epx._fs_safe("conv-B"))))
++
++    def test_purge_matches_write_transform_for_fs_unsafe_id(self):
++        # A Windows-invalid ':' in the id must be handled by the SAME transform on write + purge,
++        # so the backstop still reaches the note (Rev-1 fold #8).
++        cid = "panel:AB12/x"
++        self._seed(cid)
++        subdir = os.path.join(self._tmp, epx._fs_safe(cid))
++        self.assertTrue(os.path.isdir(subdir))
++        res = epx.purge_conversation(cid)
++        self.assertTrue(res["note_dir_removed"])
++        self.assertFalse(os.path.isdir(subdir))
++
++    def test_purge_of_absent_conversation_is_noop(self):
++        res = epx.purge_conversation("never-seen")
++        self.assertFalse(res["note_dir_removed"])
++        self.assertEqual(res["ledger_lines_removed"], 0)
++        self.assertEqual(res["errors"], [])
++
++
++# ── Common self-evidencing path stays git_only (parity, §7) ───────────────────
++class TestCommonPathParity(_StoreTempMixin, unittest.TestCase):
++    def test_construct_and_write_self_evidencing_is_git_only_no_durable(self):
++        with tempfile.TemporaryDirectory() as td:
++            path = ep.construct_and_write(
++                signals={"any_mutation": False, "source_read_suspected": False},
++                context_pkg={"raw_prompt": "hi"}, output_text="a plain answer",
++                risk_tier="light", trace_dir=td)
++            self.assertIsNotNone(path)
++            with open(path) as f:
++                pkt = json.load(f)
++            self.assertEqual(pkt["persistence"]["tier"], "git_only")   # not the old "trace_local"
++        # construct_and_write does NOT persist durably (loop-only): no ledger, no note dir
++        self.assertEqual(self._ledger_lines(), [])
++
++
++# ── Portability: fs_safe + the .gitignore effective-ignore guard (Rev-3 P2) ───
++class TestPortability(unittest.TestCase):
++    def test_fs_safe_maps_unsafe_chars_deterministically(self):
++        self.assertEqual(epx._fs_safe("a:b/c\\d e"), "a_b_c_d_e")
++        self.assertEqual(epx._fs_safe(""), "unknown")
++        self.assertEqual(epx._fs_safe("UUID-hex_123.ok"), "UUID-hex_123.ok")  # already safe
++
++    def test_store_path_derives_from_runtime_paths(self):
++        # No hardcoded mac/user path; env override respected. Fixture root is tempfile-derived
++        # (portability rule — no /tmp literal).
++        with tempfile.TemporaryDirectory() as td:
++            relocated = os.path.join(td, "relocated-store")
++            os.environ["ORA_EXECUTION_RECORDS_DIR"] = relocated
++            try:
++                self.assertEqual(epx.execution_records_dir(), relocated)
++                self.assertTrue(epx.ledger_sink_path().startswith(relocated))
++            finally:
++                os.environ.pop("ORA_EXECUTION_RECORDS_DIR", None)
++
++    def test_gitignore_effectively_ignores_store(self):
++        # Rev-3 P2: assert git ACTUALLY ignores the store paths (behavior, not text presence) —
++        # both the ledger and a nested note path.
++        repo = Path(__file__).resolve().parents[2]
++        try:
++            inside = subprocess.run(["git", "-C", str(repo), "rev-parse", "--is-inside-work-tree"],
++                                    capture_output=True, text=True)
++            if inside.returncode != 0:
++                self.skipTest("not a git work tree")
++        except FileNotFoundError:
++            self.skipTest("git not available")
++        for rel in ("data/execution-records/execution-ledger.jsonl",
++                    "data/execution-records/conv-123/task-1__20260101.md"):
++            r = subprocess.run(["git", "-C", str(repo), "check-ignore", "-q", rel])
++            self.assertEqual(r.returncode, 0, f"git does not ignore {rel}")
++
++
++if __name__ == "__main__":
++    unittest.main()
