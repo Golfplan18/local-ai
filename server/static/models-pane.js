@@ -150,8 +150,10 @@
       +   '<section class="ora-models-presets" data-section="presets"></section>'
       +   '<section class="ora-models-custom" data-section="custom"></section>'
       +   '<section class="ora-models-inventory" data-section="inventory"></section>'
-      +   '<section class="ora-models-hardware" data-section="hardware"></section>'
-      +   '<section class="ora-models-maintenance" data-section="maintenance"></section>'
+      +   '<div class="ora-models-bottom-grid">'
+      +     '<section class="ora-models-hardware" data-section="hardware"></section>'
+      +     '<section class="ora-models-maintenance" data-section="maintenance"></section>'
+      +   '</div>'
       +   '<aside class="ora-models-fallback-popout" data-section="popout" hidden></aside>'
       + '</div>';
 

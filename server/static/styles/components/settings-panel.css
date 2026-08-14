@@ -1807,6 +1807,40 @@ a.ora-settings-apikey-label:hover {
 
 /* ── Maintenance section: reachability-probe trigger ─────────────── */
 
+.ora-models-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ora-models-bottom-grid > section {
+  min-width: 0;
+}
+
+/* The maintenance section normally carries outer padding. In the paired
+   layout, move it below the header so both section headers share a top edge. */
+.ora-models-bottom-grid > .ora-models-maintenance {
+  padding: 0 0 16px;
+}
+
+.ora-models-bottom-grid > .ora-models-maintenance .ora-models-maintenance-body {
+  padding: 6px 12px 0;
+}
+
+.ora-models-bottom-grid .ora-models-section-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.ora-models-bottom-grid .ora-models-section-header .ora-models-section-hint {
+  flex: 1 1 240px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .ora-models-maintenance {
   padding: 6px 12px 16px;
 }
@@ -1860,6 +1894,21 @@ a.ora-settings-apikey-label:hover {
   font-size: 11px;
   color: var(--text-muted, #A89F8A);
   font-style: italic;
+}
+
+@media (max-width: 1200px) {
+  .ora-models-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .ora-models-bottom-grid > .ora-models-maintenance {
+    padding: 6px 12px 16px;
+  }
+
+  .ora-models-bottom-grid > .ora-models-maintenance .ora-models-maintenance-body {
+    padding: 0;
+  }
 }
 
 .ora-models-inventory-count {
