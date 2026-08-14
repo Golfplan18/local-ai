@@ -8,9 +8,16 @@
      widths via --ora-left-w / --ora-right-w. */
   display: grid;
   grid-template-columns: auto var(--ora-left-w, 1fr) 48px var(--ora-right-w, 1fr);
-  gap: 10px;
+  column-gap: 0;
   padding: 16px;
   height: 100vh;
+}
+
+/* The center track is the complete perceived spine corridor. Keep the
+   unrelated sidebar-to-workspace gutter without adding invisible width on
+   either side of the 48px spine. */
+.left-sidebar {
+  margin-right: 10px;
 }
 
 .left-column {
@@ -123,13 +130,25 @@ body.spine-dragging .spine {
   pointer-events: none;
 }
 
+/* The raised chevron remains the directly operable restore control while
+   the rest of Aside stays hidden inside the existing 40px rail. */
+.chat-zone.collapsed .chat-zone-minimize-btn {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.chat-zone.collapsed .chat-zone-minimize-btn svg {
+  transform: rotate(180deg);
+}
+
 /* When Aside is collapsed, its bridge occupies the same condensed 40px
    strip. The bridge remains logically separate, but the three visual-owned
    controls stay centered in the top rail instead of floating across the
-   Exhibits header. Blank rail clicks pass through to expand Aside. */
+   Exhibits header. */
 .chat-zone.collapsed + .bridge-strip-right {
   height: 40px;
   margin-top: -40px;
+  padding-right: 44px;
   z-index: 22;
   pointer-events: none;
 }

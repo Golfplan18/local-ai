@@ -1517,7 +1517,7 @@ body.pane-mode-video .visual-panel {
 .ora-excalidraw-island {
   position: absolute;
   inset: 0;
-  z-index: 30;
+  z-index: 32;
   background-color: var(--ora-visual-canvas-bg, #fff);
   background-image:
     radial-gradient(var(--ora-line-dot-color, rgba(0, 0, 0, 0.12)) 1.2px, transparent 1.4px);
@@ -1550,27 +1550,51 @@ body.pane-mode-video .visual-panel {
 .ora-excalidraw-island .excalidraw .App-toolbar-container {
   position: relative;
   z-index: 50;
-  transform: translate(36px, var(--ora-excal-toolbar-shift, -58px));
+  max-width: none;
+  overflow: visible;
+  transform: translate(18px, var(--ora-excal-toolbar-shift, -58px));
 }
 
-/* The native mobile island contributes eight vertical pixels around its
-   40px command row. Remove only that padding so the real toolbar centers in
-   Ora's 44px Exhibits band without scaling or rebuilding its controls. */
-.ora-excalidraw-island .excalidraw .App-toolbar--mobile {
+/* Only the main drawing toolbar borrows the Exhibits header's surface. Menu,
+   dropdown, and sidebar islands keep their native treatments. */
+.ora-excalidraw-island .excalidraw
+  .App-toolbar-container > .App-toolbar.Island {
   --padding: 0 !important;
+  padding: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-/* Ora owns image import in the right bridge. Suppress only Excalidraw's
-   generated image-tool label; the bridge and programmatic insert paths stay
-   active. The shipped test id is carried by the label's radio input. */
-.ora-excalidraw-island .excalidraw .App-toolbar label.ToolIcon:has(
-  > input[data-testid="toolbar-image"]
-) {
+/* Excalidraw's light-canvas icon color is too dark for Ora's header/footer
+   bands. Keep native selected colors, but give unselected exposed controls
+   the surrounding Ora text color. */
+.ora-excalidraw-island .excalidraw
+  .App-toolbar-container > .App-toolbar.Island
+  label.ToolIcon > input:not(:checked) + .ToolIcon__icon,
+.ora-excalidraw-island .excalidraw
+  .App-toolbar-container > .App-toolbar.Island
+  .App-toolbar__extra-tools-trigger,
+.ora-excalidraw-island .excalidraw
+  .ToolIcon__lock > input:not(:checked) + .ToolIcon__icon,
+.ora-excalidraw-island .excalidraw
+  label.ToolIcon:has(> input[data-testid="toolbar-hand"])
+  > input:not(:checked) + .ToolIcon__icon,
+.ora-excalidraw-island .excalidraw
+  .App-bottom-bar .App-toolbar-content
+  > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
+  button:not(:disabled) .ToolIcon__icon {
+  color: var(--text-normal) !important;
+}
+
+/* The floating instruction would spill below the 44px header. Native labels,
+   tooltips, shortcuts, and focus behavior continue to identify every tool. */
+.ora-excalidraw-island .excalidraw .HintViewer {
   display: none !important;
 }
 
-/* Keep Excalidraw's real main-menu trigger and dropdown React-owned while
-   docking them beside the Exhibits label. */
+/* The following selectors reposition native controls; none of their actions
+   or states are reproduced by Ora. */
 .ora-excalidraw-island .excalidraw .main-menu-trigger {
   width: 32px !important;
   height: 32px !important;
@@ -1580,9 +1604,26 @@ body.pane-mode-video .visual-panel {
   z-index: 60;
 }
 
-/* Excalidraw renders Undo/Redo in two native shapes: a named desktop group,
-   and an unclassed mobile group whose direct children carry the stable action
-   labels. Style the existing group in either shape; no action is duplicated. */
+.ora-excalidraw-island .excalidraw .sidebar-trigger__label-element {
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  pointer-events: auto;
+  z-index: 60;
+}
+
+.ora-excalidraw-island .excalidraw
+  .sidebar-trigger__label-element .default-sidebar-trigger {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 6px !important;
+}
+
+.ora-excalidraw-island .excalidraw
+  .sidebar-trigger__label-element .sidebar-trigger__label {
+  display: none;
+}
+
 .ora-excalidraw-island .excalidraw :is(
   .undo-redo-buttons,
   .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
@@ -1603,40 +1644,42 @@ body.pane-mode-video .visual-panel {
   padding: 0 !important;
 }
 
-@supports (position-anchor: --ora-exhibits-header) {
-  .ora-excalidraw-island .excalidraw .main-menu-trigger {
-    position: fixed;
-    position-anchor: --ora-exhibits-header;
-    top: calc(anchor(top) + 6px);
-    left: calc(anchor(left) + 72px);
-  }
-
-  .ora-excalidraw-island .excalidraw .main-menu-trigger
-    ~ [data-testid="dropdown-menu"] {
-    position: fixed;
-    position-anchor: --ora-excal-main-menu-trigger;
-    top: calc(anchor(bottom) + 6px);
-    bottom: auto;
-    left: anchor(left);
-    right: auto;
-    width: min(280px, calc(100vw - 24px));
-    margin: 0;
-    z-index: 70;
-  }
-
-  .ora-excalidraw-island .excalidraw :is(
-    .undo-redo-buttons,
-    .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
-  ) {
-    position: fixed;
-    position-anchor: --ora-exhibits-header;
-    top: calc(anchor(top) + 6px);
-    right: calc(anchor(right) + 12px);
-  }
+/* Compact the native footer controls without changing their hit areas or
+   splitting them from the React-owned footer semantics. */
+.ora-excalidraw-island .excalidraw .App-menu_bottom {
+  width: 220px;
+  height: 44px;
+  padding: 6px 0;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 60;
 }
 
-/* Keep viewport controls in their native locations while reducing the large
-   default bodies. A 32px square remains a practical pointer target. */
+.ora-excalidraw-island .excalidraw :is(
+  .App-menu_bottom .layer-ui__wrapper__footer-left,
+  .App-menu_bottom .layer-ui__wrapper__footer-left > .Stack,
+  .App-menu_bottom .layer-ui__wrapper__footer-left section,
+  .App-menu_bottom .layer-ui__wrapper__footer-right,
+  .App-menu_bottom .layer-ui__wrapper__footer-right > div
+) {
+  display: contents;
+}
+
+.ora-excalidraw-island .excalidraw .App-menu_bottom :is(
+  .zoom-actions,
+  .undo-redo-buttons,
+  .help-icon
+) {
+  position: static !important;
+  flex: 0 0 auto;
+  margin: 0;
+  pointer-events: auto;
+}
+
+/* A 32px control remains a practical pointer target while allowing the full
+   utility set to coexist with the Export menu in the structural footer. */
 .ora-excalidraw-island .excalidraw .zoom-actions .zoom-button {
   width: 32px !important;
   height: 32px !important;
@@ -1653,19 +1696,154 @@ body.pane-mode-video .visual-panel {
   padding: 6px;
 }
 
-.ora-excalidraw-island .excalidraw .App-menu_bottom {
-  bottom: 8px;
-  padding-inline: 8px;
+.ora-excalidraw-island .excalidraw
+  label.ToolIcon:has(> input[data-testid="toolbar-hand"]),
+.ora-excalidraw-island .excalidraw .ToolIcon__lock {
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  pointer-events: auto;
+  z-index: 60;
 }
 
-@container ora-visual-pane (max-width: 600px) {
+.ora-excalidraw-island .excalidraw :is(
+  label.ToolIcon:has(> input[data-testid="toolbar-hand"]),
+  .ToolIcon__lock
+) > .ToolIcon__icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+@supports (position-anchor: --ora-exhibits-header) {
   .ora-excalidraw-island .excalidraw .App-toolbar-container {
-    width: calc(100cqw - 208px);
-    max-width: calc(100cqw - 208px);
+    position: fixed;
+    position-anchor: --ora-exhibits-header;
+    position-area: center;
+    margin: 0;
+    transform: none;
+  }
+
+  .ora-excalidraw-island .excalidraw .main-menu-trigger {
+    position: fixed;
+    position-anchor: --ora-exhibits-footer;
+    top: calc(anchor(top) + 6px);
+    left: calc(anchor(left) + 6px);
+  }
+
+  .ora-excalidraw-island .excalidraw .main-menu-trigger
+    ~ [data-testid="dropdown-menu"] {
+    position: fixed;
+    position-anchor: --ora-excal-main-menu-trigger;
+    top: auto;
+    bottom: calc(anchor(top) + 6px);
+    left: anchor(left);
+    right: auto;
+    width: min(280px, calc(100vw - 24px));
+    margin: 0;
+    z-index: 70;
+  }
+
+  .ora-excalidraw-island .excalidraw .sidebar-trigger__label-element {
+    position: fixed;
+    position-anchor: --ora-exhibits-footer;
+    top: calc(anchor(top) + 6px);
+    left: calc(anchor(left) + 44px);
+  }
+
+  .ora-excalidraw-island .excalidraw .App-menu_bottom {
+    position: fixed;
+    position-anchor: --ora-exhibits-footer;
+    top: anchor(top);
+    right: auto;
+    bottom: auto;
+    left: calc(anchor(left) + 82px);
+  }
+
+  .ora-excalidraw-island .excalidraw
+    .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"]) {
+    position: fixed;
+    position-anchor: --ora-exhibits-footer;
+    top: calc(anchor(top) + 6px);
+    left: calc(anchor(left) + 82px);
+  }
+
+  .ora-excalidraw-island .excalidraw
+    label.ToolIcon:has(> input[data-testid="toolbar-hand"]) {
+    position: fixed;
+    position-anchor: --ora-exhibits-footer;
+    top: calc(anchor(top) + 6px);
+    left: calc(anchor(left) + 308px);
+  }
+
+  .ora-excalidraw-island .excalidraw .ToolIcon__lock {
+    position: fixed;
+    position-anchor: --ora-exhibits-header;
+    top: calc(anchor(top) + 6px);
+    right: calc(anchor(right) + 6px);
+  }
+}
+
+/* Mobile Excalidraw keeps Lock, Hand, and Library in a separate misc island.
+   Once the real controls are anchored in Ora's bands, suppress only that now
+   empty surface while keeping its interactive descendants visible. */
+.ora-excalidraw-island .excalidraw
+  .mobile-misc-tools-container,
+.ora-excalidraw-island .excalidraw
+  .App-bottom-bar > .Island {
+  visibility: hidden;
+}
+
+.ora-excalidraw-island .excalidraw
+  .mobile-misc-tools-container :is(
+    .sidebar-trigger__label-element,
+    label.ToolIcon:has(> input[data-testid="toolbar-hand"]),
+    .ToolIcon__lock
+  ),
+.ora-excalidraw-island .excalidraw
+  .App-bottom-bar > .Island :is(
+    .main-menu-trigger,
+    [data-testid="dropdown-menu"],
+    .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
+  ) {
+  visibility: visible;
+}
+
+/* At ordinary widths every drawing control fits without a scroll surface. At
+   genuinely narrow widths, retain every native tool in one focusable row and
+   let keyboard focus or direct scrolling reveal the off-screen controls. */
+@container ora-visual-pane (max-width: 420px) {
+  .ora-excalidraw-island .excalidraw .App-toolbar-container {
+    position-area: none;
+    top: calc(anchor(top) + 2px);
+    right: auto;
+    bottom: auto;
+    left: anchor(left);
+    width: calc(100cqw - 42px);
+    height: 40px;
+    max-width: calc(100cqw - 42px);
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+  }
+
+  .ora-excalidraw-island .excalidraw
+    .App-toolbar-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ora-excalidraw-island .excalidraw
+    .App-toolbar-container > .App-toolbar.Island {
+    min-width: max-content;
+  }
+}
+
+@supports (position-anchor: --ora-exhibits-footer) {
+  @container ora-visual-pane (max-width: 729px) {
+    .ora-excalidraw-island .excalidraw
+      label.ToolIcon:has(> input[data-testid="toolbar-hand"]) {
+      left: calc(anchor(left) + 152px);
+    }
   }
 }
 

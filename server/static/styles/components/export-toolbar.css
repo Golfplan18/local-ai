@@ -1,36 +1,41 @@
 /* ============================================================
    Output-pane export toolbar — G1.34 (§2.7)
-   A disappearing lower-right I/O cluster: hidden until the output
-   pane is hovered (or the menu is open / focused within). Theme
-   tokens only; light + dark both work.
+   A structural footer containing the existing Findings I/O controls.
+   Theme tokens only; light + dark both work.
    ============================================================ */
 
 .output-pane { position: relative; }
 
 .export-toolbar {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 9;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  height: var(--ora-pane-header-h);
+  padding: 0 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.14s ease, transform 0.14s ease;
   pointer-events: auto;
 }
-body.ora-auto-hide-controls .export-toolbar:not(:focus-within):not(.is-open) {
+body.ora-auto-hide-controls .export-toolbar:not(:focus-within):not(.is-open) > * {
   opacity: 0;
-  transform: translateY(4px);
   pointer-events: none;
 }
-body.ora-auto-hide-controls .output-pane:hover .export-toolbar,
-.export-toolbar:focus-within,
-.export-toolbar.is-open {
+body.ora-auto-hide-controls .output-pane:hover .export-toolbar > *,
+.export-toolbar:focus-within > *,
+.export-toolbar.is-open > * {
   opacity: 1;
-  transform: translateY(0);
   pointer-events: auto;
+}
+
+.export-toolbar > * {
+  transition: opacity 0.14s ease;
 }
 
 .export-toolbar__status {

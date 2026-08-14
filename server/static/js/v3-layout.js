@@ -254,6 +254,7 @@
   // Phase 5 mode dropdown calling OraLayout.collapseQQB()) and
   // re-expanded by clicking the collapsed border.
   const chatZone = document.querySelector('.chat-zone');
+  const minimizeBtn = document.getElementById('chatZoneMinimizeBtn');
   let qqbCollapsed       = false;
   let qqbLastUncollapsedH = null;
   let qqbCollapsedBy     = null;
@@ -272,6 +273,11 @@
     chatZone.classList.add('collapsed');
     qqbCollapsed   = true;
     qqbCollapsedBy = by;
+    if (minimizeBtn) {
+      minimizeBtn.setAttribute('aria-label', 'Restore Aside');
+      minimizeBtn.setAttribute('data-tooltip', 'Restore Aside');
+      minimizeBtn.setAttribute('aria-expanded', 'false');
+    }
   };
 
   const expandQQB = () => {
@@ -283,6 +289,11 @@
     // current position (which may have moved while collapsed).
     chatZone.style.height = '';
     qqbCollapsedBy = null;
+    if (minimizeBtn) {
+      minimizeBtn.setAttribute('aria-label', 'Minimize Aside');
+      minimizeBtn.setAttribute('data-tooltip', 'Minimize Aside');
+      minimizeBtn.setAttribute('aria-expanded', 'true');
+    }
     // Trigger the window-resize listener (clampAndPlace in index-v3.html),
     // which calls setMainHeight(input.offsetHeight) — that sets BOTH the
     // input pane and the chat-zone to the same height and re-runs
@@ -296,6 +307,7 @@
   if (chatZone) {
     chatZone.addEventListener('mousedown', (e) => {
       if (qqbCollapsed) {
+        if (minimizeBtn && minimizeBtn.contains(e.target)) return;
         e.stopPropagation();
         e.preventDefault();
         expandQQB();
@@ -306,12 +318,21 @@
   // Minimize button inside chat-input-pane — explicit collapse trigger
   // so the user can hide the chat-zone and let the visual pane fill
   // the right column.
-  const minimizeBtn = document.getElementById('chatZoneMinimizeBtn');
   if (minimizeBtn) {
+    const toggleQQB = () => {
+      if (qqbCollapsed) expandQQB();
+      else collapseQQB('button');
+    };
     minimizeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      collapseQQB('button');
+      toggleQQB();
+    });
+    minimizeBtn.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.stopPropagation();
+      e.preventDefault();
+      toggleQQB();
     });
   }
 
