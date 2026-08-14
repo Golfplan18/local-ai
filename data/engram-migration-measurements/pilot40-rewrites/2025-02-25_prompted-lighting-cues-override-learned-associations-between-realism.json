@@ -1,0 +1,14 @@
+{
+ "note_id": "2025-02-25_prompted-lighting-cues-override-learned-associations-between-realism",
+ "verdict": "KEEP",
+ "title": "AI image models tie photorealism to dark backgrounds, so lighting cues in the prompt must sever the link",
+ "body": "- AI image models trained on portraits with dramatic lighting have learned to associate photorealistic rendering with darker backgrounds.\n- A photorealistic prompt without intervention defaults to a dark or moody scene even when the intent is a brighter one.\n- Adding explicit brightness terms to the background — \"bright neutral background,\" \"soft white glow\" — breaks the association while preserving facial realism.\n- \"High-key lighting, soft gradient background, light neutral tones\" forces lighter background values while keeping subject contrast and facial detail.\n- Studio lighting terms — backlight, softbox, rim lighting — invoke professional photography setups where subject and background lighting are controlled independently, producing high subject contrast with a background that fades to lighter values.\n- Case: \"photorealistic, high-key lighting, soft gradient background, light neutral tones, studio backlight, softbox lighting, rim lighting.\"",
+ "conversion": "A request for photorealism in an AI image model inherits a dark background unless lighting cues break the model's learned link between the two.",
+ "domain_bound": true,
+ "split_second_note": null,
+ "source_files": [
+  "2025-02-25_explicit-background-brightness-instructions-must-be-added-to.md",
+  "2025-02-25_high-key-lighting-and-soft-gradient-background-prompts.md",
+  "2025-02-25_studio-lighting-cues-in-ai-image-prompts-separate.md"
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "note_id": "2025-05-28_a-trial-balloon-tests-tolerance-for-a-controversial",
+ "verdict": "KEEP",
+ "title": "An unattributed story about a proposed action lets its source test public tolerance before committing and still deny it was a test",
+ "body": "- A politician floats a controversial proposal through indirect media coverage — a leak, rumor, or unattributed story — rather than announcing it on the record.\n- Public reaction to the story functions as a measurement of tolerance for the underlying action.\n- The actor uses that measurement to decide whether to commit to a similar action in future votes.\n- The unattributed form leaves the actor's role off the record, so the testing carries no public commitment.\n- Case: Politicians float policy proposals through media stories to gauge public tolerance before committing to the legislation.",
+ "conversion": "An unattributed story about a possible action becomes a tolerance test, and the unattributed status turns the test into something the source can disavow.",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2025-05-28_trial-balloon-policy-stories-allow-politicians-to-gauge.md"
+ ]
+}

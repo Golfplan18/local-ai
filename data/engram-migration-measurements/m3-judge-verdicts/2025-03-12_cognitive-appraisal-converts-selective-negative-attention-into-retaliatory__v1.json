@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-03-12_cognitive-appraisal-converts-selective-negative-attention-into-retaliatory::v1",
+ "verdict": "SOUND",
+ "defect_kind": "none",
+ "reason": "The note faithfully restates the source content. The three bullet points mirror the source's three statements about: (1) focusing on a target and judging it undesirable, (2) zooming exclusively onto negative aspects while filtering out positive/neutral qualities to create perceptual distortion, and (3) culminating in external blame and an urge to attack or escape. The language ('narrows exclusively,' 'filtering out positive or neutral qualities,' 'producing a perceptual distortion,' 'assigning external blame,' 'urge to attack or escape') closely tracks the source wording without introducing unsupported claims, dropped qualifications, or imported concepts."
+}

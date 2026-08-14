@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-04-16_policy-uncertainty-prevents-high-cost-relocation-decisions-with::v2",
+ "verdict": "SOUND",
+ "defect_kind": "none",
+ "reason": "All claims in the note are supported by the sources. The multi-year timeline for capital expenditure, regulatory approvals, workforce training, and supply chain integration matches Source 3. The three conditions for business commitment (predictability over payback period, legal permanence, protection from near-term repeal) match Source 2 exactly. The auto supply chains optimized over thirty years and the two-year tariff window example are both directly from Source 3. The 'wait it out' conclusion matches Source 1. The note is a faithful synthesis with no fabrication, unsupported hardening, or dropped qualifications."
+}

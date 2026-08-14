@@ -1,0 +1,716 @@
+{
+ "grouping": {
+  "n": 40,
+  "one_claim": 29,
+  "split": 8,
+  "contradictory": 3,
+  "detail": [
+   {
+    "group_id": "2025-12-18_care-scarcity-creates-parentification-and-hyper-i",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Both notes assert one claim about care scarcity in special-needs households, with the second supplying the consequence (\"becomes parentified or hyper-independent\") that the first states as \"structurally on their own\"; the single-parent framing is an amplifying condition, not a second subject."
+   },
+   {
+    "group_id": "2025-07-06_inflation-targeting-caps-wage-led-growth-when-mon",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Near-verbatim restatements of the same three-step mechanism — wages raise demand, central banks raise rates, \"higher interest rates kill borrowing and investment\" — with the second only adding that the binding constraint is monetary rather than fiscal."
+   },
+   {
+    "group_id": "2025-07-23_synthetic-creative-personas-combine-specialized-l",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All three share the identical claim shape \"persona combines [named authorities] into a unified framework\" with Campbell and Jung recurring in every roster; the differing functions (story architecture, setting design, diagnosis) are instances of the one design pattern, not separate subjects."
+   },
+   {
+    "group_id": "2025-09-17_retrieval-augmented-generation-makes-curated-exte",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 2,
+    "why": "Two notes claim RAG beats weight-encoding for curated knowledge (\"superior to fine-tuning\", \"most practical near-term path\"), while the third makes an unrelated limitation claim that RAG \"cannot transfer improvements in context window depth, reasoning reliability, or adversarial robustness from newer model weights\" — an architecture recommendation and a capability-ceiling finding that one note would have to fudge."
+   },
+   {
+    "group_id": "2025-06-12_political-disillusionment-accelerates-through-seq",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Same claim about escalating catalyst sequences with the same beats — rationalizable tariff harm, the leaked \"suckers\" contempt, then harm to the daughter's friend — differing only in whether a VA-care betrayal step is listed."
+   },
+   {
+    "group_id": "2025-06-02_mirroring-self-deception-forces-a-choice-between-",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Both concern the same act and its consequence: reflecting \"the gap between their identity and their behavior\" forces integration or retreat, and the first note's \"cannot be unseen even if the person initially retreats\" is the same retreat outcome the second names."
+   },
+   {
+    "group_id": "2026-03-24_equivocation-hides-circular-reasoning-when-one-me",
+    "belong_together": false,
+    "verdict": "CONTRADICTORY",
+    "distinct_claims_count": 2,
+    "why": "The notes disagree about whether substrate difference licenses treating AI consciousness as a different phenomenon: the first says \"the categorical difference is so fundamental\" because AI states \"lack biological substrate\", while the second says \"dismissing AI consciousness claims because the substrate differs assumes the conclusion\" — i.e. it labels the first note's reasoning circular."
+   },
+   {
+    "group_id": "2026-02-15_cognitive-reappraisal-reduces-anger-by-changing-t",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "One claim — charitable reinterpretation of the same doctor's insensitivity \"allowed the author to feel compassion instead of\" rumination — though the attributed benign motive differs between notes (securing best care vs. the doctor's own unhappiness), a detail difference rather than a second claim."
+   },
+   {
+    "group_id": "2026-03-27_trade-secret-protection-forbids-improper-acquisit",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Both state the identical legal rule that reverse engineering and independent derivation are lawful, with the second's \"the legal boundary is the method of acquisition, not the knowledge itself\" being the general form of the first's distinction."
+   },
+   {
+    "group_id": "2025-08-10_idiosyncratic-attraction-raises-matching-stakes-b",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Effectively the same note twice: idiosyncratic (non-mimetic) attraction produces \"non-negotiable\" preferences, so a match is \"a direct embodiment\" rather than generic compatibility, raising the stakes."
+   },
+   {
+    "group_id": "2025-07-21_cognitive-dissonance-differs-according-to-whether",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Both draw the same contrast with the same terms and the same consequence — sudden external revelation versus \"gradual internal erosion\", the former \"enables redemption\" and the latter tragedy."
+   },
+   {
+    "group_id": "2026-02-15_fundamental-attribution-error-turns-structural-ec",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All three assert that moral framing of economic outcomes hides structural change; disadvantage-as-\"lack of responsibility\" and advantage-as-\"work ethic\" are the two faces of one rhetorical move, and all three name the same consequence of blocking policy examination."
+   },
+   {
+    "group_id": "2025-04-20_transactional-faith-replaces-intrinsic-spiritual-",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "One claim restated: transactional framing defers validation to a future reward and so \"positions the practitioner as separate from the goal\", displacing present-moment or intrinsic value."
+   },
+   {
+    "group_id": "2025-12-15_a-vow-of-invulnerability-can-encode-either-emotio",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 2,
+    "why": "The first note's claim is interpretive ambiguity (the same words can mean \"I can feel this pain again and remain intact\"), while the second's is etiology plus a default reading that cuts against it — such vows \"function as armor rather than expressions of genuine confidence\" because vulnerability was already punished; one note would have to hedge the second's denial against the first's resilience reading."
+   },
+   {
+    "group_id": "2025-08-03_reducing-timing-dependent-motion-improves-consist",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All four are facets of one claim about the 1980s rotational swing's timing dependency and its failure under pressure — mechanism (\"thousands of degrees per second\", ~1ms square window), symptom (snap hooks / block slices, 30-40 yards offline), and the fix of keeping the face square to body rotation; the tucked-elbow note names a different component of the same model and the same breakdown."
+   },
+   {
+    "group_id": "2025-05-01_romantic-polarity-signals-emerge-when-strength-ma",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 5,
+    "why": "Seven notes span at least five claims about different signal classes and opposite conclusions: strength-plus-softness indicates polarity; curated luxury status markers mean the woman \"lack[s] the feminine surrender energy\"; degrees and solo living predict egalitarian resistance that \"must be actively drawn out\"; a stated partner checklist signals wanting a masculine frame-holder; and vulnerable posture rather than performative display signals receptivity — plus a trait-definition note tying polarity to \"spiritual identification and liberal political orientation\" that sits against the traditional-values framing of another."
+   },
+   {
+    "group_id": "2025-09-05_state-serialization-preserves-editor-folding-only",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 2,
+    "why": "Three notes are about Creases persisting document fold state through in-file `%% fold %%` markers (including in templates), but the fourth is a different plugin doing a different thing — Quiet Outline remembering outline-pane expansion \"when switching between different notes\" with no markers at all, which also cuts against the group's stated principle that persistence \"requires explicit markers or metadata\"."
+   },
+   {
+    "group_id": "2025-05-06_contemptuous-composure-neutralizes-dominance-thea",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "One claim with mechanism, exemplar, and uptake facets — Carney's composure \"denies Trump attention, emotion, and relevance\", contrasted with Macron/Merkel, itemized as a four-part playbook, and projected as the template other leaders adopt."
+   },
+   {
+    "group_id": "2025-12-09_early-constraint-disclosure-uses-self-selection-t",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All four assert that early constraint disclosure makes incompatible partners \"self-select out before resource investment\"; the fantasy-versus-person diagnostic, the binary match/no-match framing, and the instant-unmatch anecdote are elaborations of that one mechanism."
+   },
+   {
+    "group_id": "2026-02-16_knowledge-aggregation-becomes-less-reliable-when-",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Four near-duplicate statements of the same claim about \"quality, reliability, and currency\" challenges when aggregating from proliferating heterogeneous digital sources, with the same supporting points about varying verification standards and asynchronous ageing."
+   },
+   {
+    "group_id": "2025-08-19_the-major-questions-doctrine-requires-explicit-co",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 4,
+    "why": "Beyond the shared doctrine label sit four separable claims: the rule itself (\"Agencies cannot regulate on issues of vast significance without explicit congressional authorization\"), a scope limit when the statute grants the power explicitly (\"the major question has already been answered by the legislature\"), a political-weaponization claim (\"selectively disable government agencies\" / \"as a sword to dismantle existing EPA authority\"), and a misapplication claim about scientific fact-findings being a \"category error\" — a single note stating the rule cannot carry the weaponization and category-error claims without fudging."
+   },
+   {
+    "group_id": "2025-05-16_civil-contempt-against-a-government-agency-gains-",
+    "belong_together": false,
+    "verdict": "CONTRADICTORY",
+    "distinct_claims_count": 3,
+    "why": "One original says agency fines work — \"Budget pressure creates institutional incentives for compliance\" — while another says they cannot, because \"The Treasury Department (controlled by the President) pays these fines,\" \"eliminating the financial coercion,\" a direct disagreement on whether contempt fines against federal agencies coerce at all; the personal-targeting/criminal-contempt claims form a third strand."
+   },
+   {
+    "group_id": "2025-03-27_narrative-coherence-depends-on-making-implicit-wo",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All four restate that story concepts carry implicit worldview assumptions (agency vs determinism, ordered vs chaotic reality) that must be surfaced — \"Making these implicit assumptions explicit prevents thematic contradiction\" — differing only in whether they name it foundation, extraction, or exploration."
+   },
+   {
+    "group_id": "2026-02-11_cost-reductions-become-competitive-threats-when-b",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "Every original is the same mechanism — AI cuts costs but also cuts entry barriers, so savings get competed away — including the conditional statement of it (\"AI cost savings accrue to incumbents as margin expansion only when barriers to entry remain high\") and the single-entrepreneur account of how barriers fall."
+   },
+   {
+    "group_id": "2024-12-31_hamiltonian-mechanics-can-incorporate-additional-",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All six describe the same additive extension — \"H(q, p, ω) = H₀(q, p) + H_w(q, p, ω)\" with \"canonical equations ... unchanged in form\" — with the many-body sum and the sinusoidal displacement/momentum terms as facets of that one formalism, though the wobble kinetic energy is parametrized inconsistently (½Iω² + μ·∇φ in one, ½Mω²r² in another)."
+   },
+   {
+    "group_id": "2026-01-29_control-over-implementing-legislation-gives-a-leg",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All six say the Commission negotiates but Parliament holds the legally operative step, so it can block — including the specific mechanism (\"refusing to unfreeze the legislative process rather than voting it down\") and the motive facet (\"the Commission cannot negotiate 'over their heads'\"); ratification and implementing regulations are complementary instruments here, not rival claims."
+   },
+   {
+    "group_id": "2026-04-04_the-feynman-technique-makes-plain-explanation-pre",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All four state one ordering rule — \"plain language first, then the technical term\" — with the dash-expansion example and the \"trades precision for accessibility\" appraisal as applications and consequence of the same rule."
+   },
+   {
+    "group_id": "2026-02-01_chemical-restraint-uses-medication-to-control-beh",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All seven turn on one distinction — medication \"used to control behavior rather than treat medical symptoms\" — with the missing Individual Program Plan and \"he's really calm\" chart notes as the evidentiary markers and dependent-adult abuse as the legal consequence of that same claim."
+   },
+   {
+    "group_id": "2025-09-10_usable-local-model-inference-requires-memory-scal",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All twelve are instances of one claim — memory must scale with parameter count plus OS/context buffer, or the machine swaps and becomes unusable — but the numeric thresholds conflict at the margins (one says 30B \"requires approximately 64GB\" while another says 32GB runs \"20B-36B parameter range without swapping\"), so any single note must state quantization level rather than bare GB figures."
+   },
+   {
+    "group_id": "2026-04-29_abstractions-reach-an-audience-only-through-concr",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All twelve assert that settings must make abstract themes physically concrete rather than decorate — \"Physical manifestation allows readers to see thematic content demonstrated in environmental structure\" — with \"organically rather than through forced symbolism\" and the four-stage design process as manner and method facets of that one prescription."
+   },
+   {
+    "group_id": "2026-03-01_when-the-cost-of-producing-software-approaches-ze",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All eight state that near-zero code production cost destroys the code moat and the recurring-subscription justification; the enterprise carve-out (\"operational moats (not just code moats) will endure\") is a qualifier and the reflexive case (\"AI tools face the same moat erosion dynamic\") is the same mechanism applied to a new target."
+   },
+   {
+    "group_id": "2025-05-23_sexual-polarity-requires-centered-rhythm-noncoerc",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 5,
+    "why": "Five separable prescriptions share only the word polarity: the man holds an unnegotiated direction (\"an unmoving axis that the feminine organizes around\"); polarity runs on approach/retreat rhythm with the masculine steady and not chasing; polarity requires non-coercion and sovereignty (\"certainty without coercion,\" no \"optimizing their choices\"); the feminine pole must be \"responsive rather than reactive\" and not performative submission; and evaluative frames kill it (\"a stage for expression rather than a jury box\") — the last two would be lost entirely by any note carrying the first three."
+   },
+   {
+    "group_id": "2025-07-21_categorizing-raw-notes-by-their-structural-functi",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All twelve state one protocol claim — classify author notes by narrative function (scene-specific, character-global, thematic, structural) and route each to its matching integration point — with the scene-specific case, defer decisions, and the residual \"reviewed-but-not-integrated\" meta-commentary all as facets of that routing rule."
+   },
+   {
+    "group_id": "2024-10-11_mett-seeks-another-s-flourishing-without-possessi",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All ten draw the same mettā/upādāna contrast — love \"seeks others' well-being without expectation\" and allows freedom, attachment is \"conditional and seeks to fulfill personal needs\" — with the liberation-vs-samsara consequence as a facet, not a second subject."
+   },
+   {
+    "group_id": "2026-04-29_an-assessment-must-be-staged-to-the-maturity.md",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 3,
+    "why": "The staging claim (\"Assessment expectations must flex according to how developed the narrative is\") is a different claim from the craft claim that dominates the group (\"Character agency over external events strengthens archetypal authenticity\"), and a third original demands sustained integration rather than \"isolated archetypal moments\" — the group's own assessment-staging title covers barely three of twelve originals."
+   },
+   {
+    "group_id": "2025-06-29_installing-a-political-loyalist-atop-the-central-",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All twelve state one causal claim — perceived loss of central bank independence triggers repricing, capital flight, higher term premiums and currency weakness — with the Fed-chair appointment, forced removal, prosecution, and Erdoğan/Lira cases as instances and \"markets ... before formal institutional changes occur\" as its timing facet."
+   },
+   {
+    "group_id": "2025-07-05_private-grief-becomes-collective-mission-only-thr",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All twelve describe one transformation — grief becomes collective mission only through a deliberate move out of isolated mourning — and its named stages (shared vulnerability, reframing loss from \"identity-defining event to mission-enabling foundation,\" then role assignment) read as steps in that single mechanism rather than rival claims."
+   },
+   {
+    "group_id": "2025-05-14_a-platform-overrides-the-user-s-own-stated.md",
+    "belong_together": false,
+    "verdict": "CONTRADICTORY",
+    "distinct_claims_count": 5,
+    "why": "On the same feature and the same app the originals point opposite ways — \"Bumble shows profiles that don't strictly meet user-specified criteria\" versus \"Bumble's dealbreaker feature hides matches that fall outside specified parameters\" and auto-removes existing matches — and the group also drags in unrelated subjects: user filter-relaxing behavior, post-filter-removal flood distorting perceived trait frequency, and anti-scam moderation friction."
+   },
+   {
+    "group_id": "2025-08-02_eliciting-in-the-order-the-artifact-is-causally.m",
+    "belong_together": false,
+    "verdict": "SPLIT",
+    "distinct_claims_count": 5,
+    "why": "Five distinct claims: elicit chronologically rather than thematically (\"Stories are built sequentially as chains of causally-linked events\"); structure should emerge from genre/foundations rather than be imposed; choices and universal human patterns outrank actions and beats; framework phases must be sequenced or iterated (and these disagree — one demands \"iterative development where outputs from one phase can loop back\" while another insists beats \"follow character choice architecture establishment, not occur simultaneously\"); and the essential-vs-optional beat taxonomy."
+   },
+   {
+    "group_id": "2025-06-02_a-search-engine-mental-model-hides-a-general.md",
+    "belong_together": true,
+    "verdict": "ONE_CLAIM",
+    "distinct_claims_count": 1,
+    "why": "All eight state that users' search-engine mental model caps what they attempt, so they mistake their ceiling for AI's — \"The limitation they experience feels like an intelligence ceiling rather than an architectural constraint\" — with lack of demonstration, novelty, and single-model architecture offered as causes of that one claim."
+   }
+  ]
+ },
+ "titles": {
+  "opus-batch8": [
+   {
+    "note_id": "n0",
+    "title": "Incumbents who spend heavily to destroy a challenger turn their own attacks into proof he threatens their power",
+    "conversion": "In: an incumbent's costly campaign to discredit a challenger. Out: evidence that the parties who know the machinery best judge him able to take their power. Perverse: the expenditure meant to make him look unfit is the best available testimony that he is not. Actor: incumbents; affected: the challenger. 18 words."
+   },
+   {
+    "note_id": "n1",
+    "title": "A reviewer who inherits the analyst's evidence and framing turns his verdict into an echo, not a test",
+    "conversion": "In: the first analyst's sources and reasoning, passed on so review is efficient and comparable. Out: a verdict that reproduces the framing it was appointed to test. Perverse: the shared evidence pool makes agreement cheap, so the check becomes confirmation of the thing it should have challenged. Actor: the reviewer; affected: the analyst whose work goes unchecked. LLM/RAG is costume, not subject. 18 words."
+   },
+   {
+    "note_id": "n2",
+    "title": "Collateral spares the lenders who financed a boom and drops its entire collapse on investors and the local economy",
+    "conversion": "In: collateral, taken so the lender survives a downturn. Out: the whole loss landing on individual investors and the trades and businesses around them, with the financier untouched. Perverse: the arrangement that keeps a collapse from becoming systemic does it by concentrating the entire loss on the party least able to absorb it, and leaves the boom's financier the one party unharmed. Actor: collateral, a thing; the power relationship (lenders financed it and set the terms) is load-bearing and named. 19 words."
+   },
+   {
+    "note_id": "n3",
+    "title": "A founder who builds his values into something people use turns his charisma into a system strangers copy",
+    "conversion": "In: a founder's personal authority, professed as values. Out: a working system that outlives him and is copied by people who never met him. Perverse: making the value real is what makes the founder dispensable — his own standing is the thing he converts away. Actor: the founder; affected: the members and the strangers who copy. Kindness widened to values; the domain is not the subject here. 18 words."
+   },
+   {
+    "note_id": "n4",
+    "title": "Central direction converts a movement's working time into coordination costs and hands its opponents a single target to remove",
+    "conversion": "In: central direction over aligned producers, adopted to multiply their effect. Out: hours spent on meetings, consensus and holding unity, plus one point whose removal stops everything. Perverse: the apparatus installed to amplify the effort subtracts from it and supplies the opponent's aim point. Actor: central direction, a thing; affected: the movement; beneficiary: its opponents. 19 words."
+   },
+   {
+    "note_id": "n5",
+    "title": "An approver who must clear each technique before others copy it replaces what works with what he recognizes",
+    "conversion": "In: a recognition or approval step before a discovered technique may spread, installed to ensure quality. Out: adoption decided by what the approver recognises rather than by what already succeeded in the hands of the person who tried it. Perverse: the quality gate displaces the only test that was working. Actor: the approver; affected: the practitioners who would copy. 18 words."
+   },
+   {
+    "note_id": "n6",
+    "title": "A platform that pays makers to waive their charge inside its bundle turns their audience into its subscribers",
+    "conversion": "In: payments to makers so their work carries no charge within the bundle. Out: the makers' own paying audience become the platform's subscribers. Perverse: the maker is paid for its work with money that buys away its direct relationship with its readers, and afterwards reaches them as the platform's guest. Actor: the platform; affected: the makers and their audience. Held to inside its bundle, since the makers keep charging outside it. 18 words."
+   },
+   {
+    "note_id": "n7",
+    "title": "A novelist who withholds the antagonist until the end makes his hero's victories feel unearned to the reader",
+    "conversion": "In: opposition held back so the protagonist's rise stays clean and momentum builds. Out: wins the reader discounts, and a sequence read as a list of topics rather than caused steps. Perverse: shielding the hero from resistance strips his victories of the only thing that makes them count. Actor: the novelist; affected: the reader. Domain-bound and kept — this is knowledge about writing, and a generic teller would leave the subject unrecognisable. 18 words."
+   }
+  ],
+  "sonnet-batch8": [
+   {
+    "note_id": "n0",
+    "title": "An incumbent's attacks on a challenger become proof of how much it fears them.",
+    "conversion": "Input: an incumbent's attacks meant to defeat/discredit a challenger. Output: evidence of the incumbent's own fear/threat-assessment of that challenger. Perverse because the weapon meant to weaken the challenger instead outs the attacker's fear. Actor: the incumbent (a thing/institution, not necessarily a person)."
+   },
+   {
+    "note_id": "n1",
+    "title": "A verifier that retrieves its own evidence catches omissions the party it checks missed, but cannot confirm that party's specific claims.",
+    "conversion": "Input: independence in evidence-gathering, adopted to make verification trustworthy/unbiased. Output: broader coverage and omission-catching, but loss of the capacity to confirm the specific claims of the party being checked. Perverse because the property meant to strengthen verification disables verification's core function (confirming claims)."
+   },
+   {
+    "note_id": "n2",
+    "title": "A lender that requires full collateral turns a systemic downturn into a loss that only its individual borrowers must absorb.",
+    "conversion": "Input: a collateral requirement, meant to protect the lender from downturn losses. Output: the entire loss concentrated onto individual borrowers while the lender/system stays insulated. Perverse because the safety mechanism for the aggregate system operates by sacrificing the least powerful single party."
+   },
+   {
+    "note_id": "n3",
+    "title": "A community's professed values gain credibility only once built into infrastructure that operates whether or not anyone believes the rhetoric.",
+    "conversion": "Input: a community's stated/spoken values (rhetoric). Output: no credibility, until depersonalized into a physical system that keeps operating independent of belief or the founder's continued presence. Perverse because sincerity and words count for nothing until stripped of the person and made mechanical."
+   },
+   {
+    "note_id": "n4",
+    "title": "A movement's lack of central coordination lets each independent creator deny responsibility for an effect that rivals what an organized campaign would produce.",
+    "conversion": "Input: absence of central coordination (apparent weakness/disorganization). Output: an aggregate effect matching or exceeding a coordinated campaign's, with no one accountable for it. Perverse because the missing chain of command isn't a limitation but what makes the effect undeniable and unattackable."
+   },
+   {
+    "note_id": "n5",
+    "title": "A network's formal process for approving successful techniques turns out to be the main thing slowing how fast they spread.",
+    "conversion": "Input: a formal recognition/approval process, ostensibly meant to legitimize and enable the spread of good techniques. Output: it functions mainly as the bottleneck slowing that spread; removing it produces compounding, exponential diffusion instead. Perverse because the mechanism's real effect inverts its professed purpose."
+   },
+   {
+    "note_id": "n6",
+    "title": "A platform that bundles publishers' content into one subscription pays each publisher for inclusion, not for what any subscriber actually reads.",
+    "conversion": "Input: a platform's pooled/lump-sum payment to publishers inside a bundle. Output: compensation decoupled from actual readership, paid instead for occupying a slot in the bundle. Perverse because publishers get paid whether or not anyone reads them, mirroring 'paid for releasing pieces, not for the work.'"
+   },
+   {
+    "note_id": "n7",
+    "title": "A novelist who concentrates a story's opposition at the climax turns the protagonist's victory from something earned into something merely inevitable.",
+    "conversion": "Input: saving/concentrating a story's antagonist opposition for the climax (the intuitive move for a big finish). Output: the same underlying events read as inevitable and flat rather than earned. Perverse because the technique that seems to maximize drama instead deflates it. Domain-bound: kept in fiction-craft terms (novelist, protagonist, climax) since the domain is the subject, not a costume."
+   }
+  ],
+  "haiku-batch8": [
+   {
+    "note_id": "n0",
+    "title": "Institutional opposition meant to discredit an opponent instead becomes proof of the opponent's genuine threat to power",
+    "conversion": "Institutional opposition meant to delegitimize (input) proves the candidate threatens existing power (output); opposition meant to deny the threat becomes evidence of it (perverse)",
+    "acting_party": "institutional opponents / political elites"
+   },
+   {
+    "note_id": "n1",
+    "title": "Independent retrieval widens the combined evidence base but prevents each verifier from verifying the other's source claims",
+    "conversion": "Verifier independence to catch missing evidence (input) creates mutual inability to cross-verify sources (output); pursuing thoroughness sacrifices certainty about the other's foundation (perverse)",
+    "acting_party": "verifiers / evaluators"
+   },
+   {
+    "note_id": "n2",
+    "title": "Strong collateral shields banks from sectoral downturns, keeping asset market losses localized to individual investors and regional economies",
+    "conversion": "Strong collateral to prevent systemic contagion (input) shields the system from feedback while preserving overleveraging conditions (output); protection enables the next overleveraged cycle (perverse)",
+    "acting_party": "collateral / lenders"
+   },
+   {
+    "note_id": "n3",
+    "title": "Operational systems that demonstrate values become copyable independent of the commitment behind them, so form spreads without substance",
+    "conversion": "Physical systems built to prove authentic commitment (input) become deployable by anyone without that commitment (output); the infrastructure works even when the commitment disappears (perverse)",
+    "acting_party": "community systems / operational infrastructure"
+   },
+   {
+    "note_id": "n4",
+    "title": "Uncoordinated aligned action accumulates more power than centralized campaigns because distributed networks lack a target for attack",
+    "conversion": "Decentralized action to preserve autonomy (input) produces power exceeding centralized alternatives and becomes harder to defeat (output); the path meant to stay free becomes strategically superior (perverse)",
+    "acting_party": "distributed aligned creators / uncoordinated networks"
+   },
+   {
+    "note_id": "n5",
+    "title": "Removing approval gates to ensure quality instead permits harmful methods to spread as fast as effective ones",
+    "conversion": "Removing permission gates to accelerate beneficial diffusion (input) lets bad and good techniques propagate equally fast (output); permission-free becomes unfiltered and indiscriminate (perverse)",
+    "acting_party": "network participants / distributed practitioners"
+   },
+   {
+    "note_id": "n6",
+    "title": "A subscription bundle paying pooled fees replaces direct publisher-reader relationships with publishers' dependence on the platform's discovery algorithms",
+    "conversion": "Bundling to guarantee publishers broad distribution (input) mediates the relationship through algorithmic gatekeeping (output); the platform meant to amplify publishers becomes their necessary intermediary (perverse)",
+    "acting_party": "subscription bundling platform"
+   },
+   {
+    "note_id": "n7",
+    "title": "Early antagonist responses meant to stop the protagonist instead establish escalating stakes that make later victories feel earned",
+    "conversion": "Antagonist resistance placed early to defeat the protagonist (input) creates credible stakes so later wins feel deserved (output); opposition meant to defeat instead legitimizes victory (perverse)",
+    "acting_party": "antagonist / structured opposition"
+   }
+  ],
+  "opus-batch1": [
+   {
+    "note_id": "n0",
+    "title": "Incumbents who mobilise against a challenger turn their own attacks into the measure of the threat he poses",
+    "conversion": "IN: the resources and intensity incumbents pour into destroying a challenger, spent to disqualify him. OUT: the best public measure of how dangerous they privately judge him. PERVERSE: the attack certifies the power it was meant to erase — incumbents cannot mount it without publishing the estimate they most want concealed, so the harder they work to bury him, the more they document his capacity to displace them. ACTOR: the incumbents (may be a thing — a party leadership, an incumbent firm, a guild, an entrenched department); affected party: the challenger. The hierarchy is load-bearing and 'incumbents' carries it: the attackers hold the position the challenger might take. Eighteen words, matching both owner-written standards."
+   },
+   {
+    "note_id": "n1",
+    "title": "A checker who gathers his own evidence instead of the maker's produces a second opinion, not a check",
+    "conversion": "In goes independence, granted to a checker so its judgment will not be captured by the maker's framing. Out comes a report that can only say what the checker itself found, never whether the maker's specific claims hold, because the checker never looked at the sources the maker used. The output is perverse because the independence was granted precisely to make scrutiny honest, and it converts scrutiny into a rival account: the very claims the checker was convened to test escape examination entirely. Acting party: the checker (a general role, may equally be an auditor, referee, or evaluating model); affected party: the maker whose claims go untested. Eighteen words, matching both owner-written standards."
+   },
+   {
+    "note_id": "n2",
+    "title": "A lender secured by collateral turns a market's collapse into its borrowers' loss and the system's proof of stability",
+    "conversion": "IN: the collapse of the market the lending financed. OUT: the entire loss borne by the borrowers and the local trades around them, plus an untouched lender balance sheet that the wider system reads as evidence it is sound. PERVERSE: the party that financed the overinvestment is the only one the failure cannot reach, and the loss is called 'contained' precisely because it was concentrated on the people least able to spread it — containment and offloading are the same act, so the borrowers' ruin becomes the system's proof of its own stability. ACTING PARTY: the lender, which sets the collateral terms and holds the senior claim (the power relationship is load-bearing: the lender's protection is what decides where the loss stops). AFFECTED: its borrowers. The defective attempt ('Well-collateralized lending limits financial contagion from asset-market corrections') states a mechanism with no actor — 'lending' is a nominalization — and no conversion at all; it is also domain jargon that only a reader who already knows finance can use. The new title replaces the field-locked nouns (bank, mortgage, housing) with general roles, the same edit the owner made turning 'saboteurs' into 'others'."
+   },
+   {
+    "note_id": "n3",
+    "title": "Kindness that runs on one person's character gives others someone to admire instead of something to copy",
+    "conversion": "IN: kindness that depends on one person's character rather than on equipment, routines, or norms anyone can use. OUT: admiration aimed at that person. PERVERSE: the expected output of kindness is more kindness — an arrangement others could reproduce — but character-borne kindness converts into the giver's standing and stops there, so the more remarkable the person carrying it, the less the kindness spreads. ACTING PARTY: the kindness-arrangement itself (a thing, per the actors-may-be-things rule; forcing a benefactor into the slot clouds it). AFFECTED, named once each: the one person whose character carries it, and the others watching. Grounded in the source bullet 'Physical infrastructure outlasts individual charisma and can be copied by others' plus both headlines' contrast against rhetoric and against individual acts. Rejected as false-under-compression: 'collects the credit without delivering it' — a speech does deliver some kindness. Rejected as vague: widening 'kindness' to 'a practice', which buys reach at the cost of ambiguity. The defective attempt stated a procedure (values in, repeatable use out) with no perverse output and no actor."
+   },
+   {
+    "note_id": "n4",
+    "title": "The command a movement builds to direct its members becomes the one point where an opponent ends it",
+    "conversion": "In: the coordinating authority a movement builds so it can direct its members and concentrate their effort. Out: a single removable node — the one place an opponent has to strike to end the whole movement. Perverse because the apparatus built to make the movement effective is precisely what makes it destructible, while members who merely share the aim and never coordinate leave an opponent nothing to remove. Acting parties: the movement (builds the command), the opponent (strikes and ends it), and the command itself, a thing, as the party that converts direction into vulnerability."
+   },
+   {
+    "note_id": "n5",
+    "title": "An organisation that requires approval before copying turns one member's success into a delay for everyone else",
+    "conversion": "IN: one participant's technique that has already worked in practice (the sources' \"successful approaches\", \"effective tactics\", \"techniques that prove effective\"). OUT: a request awaiting formal recognition or approval, and a delay before anyone else uses it (the sources' \"delays between discovery and widespread adoption\"). WHY PERVERSE: the recognition-and-approval process exists to identify and spread good technique, and it is exactly what withholds a technique whose value is already demonstrated, while the people who ask nobody are already running it and building on it. ACTING PARTY: the organisation that requires approval before its members copy each other; the sources equally license a thing as the actor (\"formal recognition processes\", \"permission structures\", \"recognition bureaucracy\", \"centralized distribution\"), and I chose the organisation because the perversity is that the requiring party and the delayed party are the same. SUBSTITUTION TEST: \"an organisation\" holds true of firms, armies, agencies and professional bodies (not too broad), and covers everything the mechanism reaches, whereas \"a company\" or \"a bureaucracy\" would cover less than the mechanism supports. \"Success\" rather than \"innovation\" because the sources describe copying what visibly worked, not novelty. 17 words, no named theory, no hedge, no absolute, no count."
+   },
+   {
+    "note_id": "n6",
+    "title": "A middleman who collects one fee and pays many makers from it makes their audience his customers, not theirs",
+    "conversion": "Acting party: the middleman — the party that collects the single fee from the audience and pays the makers out of it (a bundle or platform could serve as the actor, but the plain role noun carries the claim and the power position). Affected parties: the makers, and the audience, each named once. IN: a maker's own audience, and the money that audience pays for its work. OUT: the audience becomes the middleman's paying customers, and the maker's income becomes a share handed to it by the party now standing between it and the people it serves. WHY PERVERSE: the maker is paid out of its own audience's money in exchange for no longer being the party that audience pays — it funds its own replacement as the seller. The sources state this literally: publishers 'receive compensation from Apple's lump sum payments rather than direct subscriber fees,' while the subscriber's fee goes to the platform. Rejected alternative: 'pays each maker for being included, not for being read' — sharper in shape, but false of pro-rata bundles where the split does track use, and 'read' would relock the claim to publishing. Substitution test outward: streaming services paying labels, delivery apps paying restaurants, insurers paying clinics, wholesalers paying growers — true of each. It stops short of a payment processor, which also moves an audience's money to makers but leaves the shopper the maker's customer; 'one fee ... many makers' is what makes the collector the party the audience buys from, so that noun pair is load-bearing rather than decorative. Domain is costume, not subject, so publishing is generalized out."
+   },
+   {
+    "note_id": "n7",
+    "title": "A writer who lets each part settle what it raises hands the reader a list and an ending already won",
+    "conversion": "IN: the writer's completeness — each part resolving the tension it raised, and the antagonist's resistance saved up for the climax. OUT: a list of parallel topics the reader merely reads through, and a victory already banked before the scene that was supposed to win it. PERVERSE because both moves are made to protect the ending and are precisely what spend it: a part that settles its own question leaves the next part nothing it must do, so the reader has no reason to need the next page; and a success no antagonist answers arrives as a foregone conclusion rather than something earned. ACTING PARTY: the writer (arranging the parts). AFFECTED PARTY: the reader. Domain deliberately kept — this is craft knowledge about writing, unrecognizable without 'writer' and 'reader' — but generalised only within that domain: 'a writer' rather than 'a novelist', since the sources cover both a 20-chapter movement narrative and topic-organized expository sections. 20 words, in register with the owner's two eighteen-word standards."
+   }
+  ]
+ },
+ "judging": [
+  {
+   "notes": [
+    {
+     "note_id": "n0",
+     "ranking": [
+      "B",
+      "A",
+      "C",
+      "D"
+     ],
+     "best_letter": "B",
+     "any_at_bar": [
+      "B",
+      "A"
+     ],
+     "notes_on_failures": "B and A share the right shape (attacks turn into evidence of the threat, 18 words, incumbents acting); B wins because 'spend heavily to destroy' states the intent that makes the reversal perverse, and 'proof he threatens their power' is a harder product than A's abstract 'the measure of the threat he poses'. A's 'mobilise against' is bureaucratic and vague about what was done. C is 13 words, demotes the actor into a possessive ('An incumbent's attacks') so no one acts, and its pronouns disagree — 'an incumbent... it fears them'; it also converts to proof-of-fear, a softer and less falsifiable claim than proof-of-threat. D nominalizes the actor into 'Institutional opposition' so nothing acts, repeats opponent/opponent's, and pads with 'genuine threat to power'; it reads as a report line rather than speech."
+    },
+    {
+     "note_id": "n1",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A and B are structural twins — named actor, a turn, and an 'X, not Y' close that names the opposite of what the act should have produced. A is best because it matches the configuration the other three variants describe (a checker gathering its own evidence); B is well-formed but states the inverse setup (inherited evidence and framing), so on form it clears the bar while likely inverting the note's actual claim. C states a trade-off — catches omissions but cannot confirm claims — which is a limitation description, not something turning into its opposite; at 22 words 'the party it checks' and 'that party's specific claims' are clumsy. D is worst: 'Independent retrieval' is an actorless nominalization, 'widens... but prevents...' is again a trade-off rather than a conversion, and 'combined evidence base' is report jargon nobody would say aloud."
+    },
+    {
+     "note_id": "n2",
+     "ranking": [
+      "A",
+      "C",
+      "B",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "C"
+     ],
+     "notes_on_failures": "A carries two turns in one 19-word line — a market's collapse becomes the borrowers' loss and the system's evidence of stability — and the second turn is the perverse one. C clears the bar with a real conversion (systemic downturn into a loss individual borrowers absorb) but is 20 words, leans on the technical 'systemic downturn', and stops before the stability claim that makes the reversal bite. B has no conversion: collateral 'spares' and 'drops', which distributes a loss rather than turning it into its opposite, and 'its entire collapse' leaves the antecedent ambiguous. D fails on every count but length — no actor ('Strong collateral'), 'shields... keeping... localized' is a mechanism description, and 'sectoral downturns' and 'asset market losses localized to individual investors' are analyst register, not speech."
+    },
+    {
+     "note_id": "n3",
+     "ranking": [
+      "A",
+      "D",
+      "B",
+      "C"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A"
+     ],
+     "notes_on_failures": "A is the only one at bar: 17 words, a thing acting (kindness that runs on one person's character), and a genuine reversal — the good example produces admiration instead of the copying it was supposed to produce. D does carry a perverse turn ('form spreads without substance') but the subject is a category label rather than anything acting, and 'Operational systems that demonstrate values become copyable independent of the commitment behind them' is report register. B's conversion is not perverse at all — charisma becoming a system strangers copy is the wanted outcome, so nothing turns into its opposite — and 'something people use' is too vague to name the mechanism. C is worst: 'gain credibility only once built into infrastructure' states a precondition, i.e. a procedure, the actor is demoted to 'A community's professed values', and at 20 words it ends on 'the rhetoric', a critic's noun rather than the thing itself."
+    },
+    {
+     "note_id": "n4",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A is the cleanest instance of the bar in the set: 18 words, the thing that acts is the command a movement built to strengthen itself, and it becomes the single point where an opponent ends the movement. B clears the bar too but stacks two conversions into one line (working time into coordination costs, plus handing over a target) and 'coordination costs' is mild jargon. C is 23 words, makes the actor an absence ('A movement's lack of central coordination'), states an enabling condition rather than a conversion, and pads the close with the comparative 'an effect that rivals what an organized campaign would produce'. D is a comparative explanation with a because-clause, has no actor, uses 'distributed networks', and as an unqualified claim — uncoordinated action accumulates more power than centralized campaigns — the noun is broad enough that the sentence goes false."
+    },
+    {
+     "note_id": "n5",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A and B both clear the bar. A wins on fit: one member's success turning into a delay for everyone else is the harm the other variants also point at. B's conversion is arguably sharper — 'replaces what works with what he recognizes' — but it relocates the harm to the approver's recognition bias, a different claim from delay, and that claim is unsupported by the rest of the set. C hedges into a findings report: 'turns out to be the main thing slowing how fast they spread' is three padding phrases in a row, the actor sits in a possessive ('A network's formal process'), and it is 20 words. D is worst and incoherent on its face — gates are added to ensure quality, so 'Removing approval gates to ensure quality' cannot state an intent — plus it has no actor and describes the opposite intervention from the note."
+    },
+    {
+     "note_id": "n6",
+     "ranking": [
+      "B",
+      "A",
+      "D",
+      "C"
+     ],
+     "best_letter": "B",
+     "any_at_bar": [
+      "B",
+      "A"
+     ],
+     "notes_on_failures": "A and B make the same claim in the same shape and are near-equivalent; B is chosen only for being tighter at 18 words with a plainer mechanism ('pays makers to waive their charge inside its bundle'), where A spends words on 'collects one fee and pays many makers from it' and then needs 'not theirs' to land the same contrast. D does state a conversion — direct publisher-reader relationships replaced by dependence — but its subject is a noun stack ('A subscription bundle paying pooled fees'), nobody acts, 'discovery algorithms' narrows it to platform tech so it stops transferring, and no part of it reads as speech. C is last by a close margin: it names an actor and reads plainly, but 'pays each publisher for inclusion, not for what any subscriber actually reads' is a payment rule — a procedure — with nothing turning into its opposite, and 'actually' is padding at 21 words."
+    },
+    {
+     "note_id": "n7",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A is at bar and best: a writer acting, 19 words, and the reversal is exact — a structure meant to satisfy hands the reader a list and an ending that was already won. B is at bar but softer, hedging with 'feel unearned' and padding with 'to the reader'. C states the conversion most explicitly yet fails on two counts: 21 words with 'something earned into something merely inevitable' as filler, and inevitable is not the opposite of earned — a victory can be both — so the conversion lands off-target. D's outcome is favourable (later victories feel earned), so nothing perverse happens; the writer is absent behind 'Early antagonist responses', and 'establish escalating stakes' is craft jargon rather than speech."
+    }
+   ]
+  },
+  {
+   "notes": [
+    {
+     "note_id": "n0",
+     "ranking": [
+      "B",
+      "A",
+      "C",
+      "D"
+     ],
+     "best_letter": "B",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A and B are nearly the same sentence at 18 words each; B wins because \"turns their own attacks into proof he threatens their power\" lands the same hinge as the owner's \"into proof his enemies are real,\" while A's \"the measure of the threat he poses\" converts into a degree rather than a proof, which is softer. C (14 words) demotes the actor to a possessive so nothing acts — \"an incumbent's attacks ... become proof\" — falls well short of eighteen words, and mismatches pronouns (singular \"it\" fears plural \"them\"). D has the meant-to/instead frame but no acting party: \"Institutional opposition\" is a nominalization, and \"genuine threat to power\" is policy-abstract register, not speech."
+    },
+    {
+     "note_id": "n1",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A is best: named actor, 18 words, and the perverse result stated as the thing it fails to be — \"a second opinion, not a check.\" B is equally well formed (verdict into \"an echo, not a test\"), but it asserts the mirror mechanism — inheriting the analyst's evidence — where C and D both indicate the note is about a verifier retrieving its own evidence; it meets the form bar while possibly naming the opposite horn. C states a trade-off (\"catches omissions ... but cannot confirm\"), which is a description of behavior, not a conversion, at 21 words. D is worse on the same count: \"Independent retrieval\" is a nominalized subject, the sentence is pure procedure, and \"combined evidence base\" / \"source claims\" are jargon rather than transferable plain nouns."
+    },
+    {
+     "note_id": "n2",
+     "ranking": [
+      "A",
+      "C",
+      "B",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "C"
+     ],
+     "notes_on_failures": "A carries two perversities in one hinge — the collapse becomes the borrowers' loss AND the system's proof of stability — with a named actor and plain nouns. C meets the bar with the same conversion but stiffer wording (\"systemic downturn,\" \"must absorb\") and stops at the loss, missing the reading-as-stability half. B is vivid and names collateral as the acting thing, but \"spares ... and drops\" reports who pays rather than stating a conversion, and \"its entire collapse\" leaves the pronoun pointing at a boom. D fails on every count but length: nominalized subject, no actor with intent, no perversity at all (shielding banks reads as a feature), and \"sectoral downturns\" / \"asset market losses localized\" is analyst register."
+    },
+    {
+     "note_id": "n3",
+     "ranking": [
+      "A",
+      "D",
+      "B",
+      "C"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A"
+     ],
+     "notes_on_failures": "A is the only one that is both perverse and speech: virtue running on character \"gives others someone to admire instead of something to copy\" — the good example fails at exactly the job it should do, in plain nouns, at 17 words. D at least has the perversity (\"form spreads without substance\") but the subject is \"Operational systems\" and \"independent of the commitment behind them\" is seminar prose. B is a clean, well-shaped conversion whose result is the good one — charisma becomes a copyable system — so nothing is the opposite of what it should be; it fails the perversity requirement, not the craft one. C is worst: a condition (\"gain credibility only once built into infrastructure\"), i.e. a procedure, with no acting party and abstract nouns (\"infrastructure,\" \"rhetoric\")."
+    },
+    {
+     "note_id": "n4",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A is textbook: the apparatus a movement builds to coordinate itself becomes the single place an opponent can kill it, 18 words, plain nouns, reads aloud. B holds a real conversion (working time into coordination costs) but crams two payloads into one title, takes \"Central direction\" as a nominalized subject, and borrows economics vocabulary. C's subject is an absence — \"a movement's lack of central coordination\" — so no party acts; it describes an enabling mechanism rather than a conversion, runs 23 words, and the tail \"an effect that rivals what an organized campaign would produce\" is padding. D is a bare comparative with a because-clause, no conversion, and broad enough to go false: uncoordinated action does not simply out-accumulate centralized campaigns."
+    },
+    {
+     "note_id": "n5",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A and B are near-equivalent in form — both name an actor, both convert, both sit at 17-18 words. A edges it because \"turns one member's success into a delay for everyone else\" is the speed claim the sibling variants indicate the note actually makes; B's \"replaces what works with what he recognizes\" is arguably the sharper sentence but adds a selection-distortion claim that may exceed the note. C hedges the perversity into an empirical finding (\"turns out to be the main thing slowing how fast they spread\"), so it describes the process instead of naming a conversion, at 20 words. D is broken at the premise: \"Removing approval gates to ensure quality\" assigns the quality purpose to the removal, so the meant-to/instead frame collapses and the sentence says nothing coherent."
+    },
+    {
+     "note_id": "n6",
+     "ranking": [
+      "A",
+      "B",
+      "D",
+      "C"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A and B state the same claim and both meet the bar; the difference is small and worth naming rather than inflating. A (20 words) spells out the mechanism — one fee collected, many makers paid from it — and makes the dispossession explicit with \"not theirs\"; B (18 words) is tighter but \"turns their audience into its subscribers\" can be read as neutral service, leaving the perversity implicit. C describes the payment rule (paid for inclusion, not for what anyone reads) — a procedure, no conversion — at 21 words. D does contain a replacement conversion (direct relationships into dependence) but reads as a slide bullet: \"subscription bundle paying pooled fees,\" \"publisher-reader relationships,\" \"discovery algorithms,\" the last of which looks like an addition beyond the claim."
+    },
+    {
+     "note_id": "n7",
+     "ranking": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "best_letter": "A",
+     "any_at_bar": [
+      "A",
+      "B"
+     ],
+     "notes_on_failures": "A is best: the writer who resolves each part as it goes \"hands the reader a list and an ending already won\" — a conversion whose result is the exact opposite of the intended payoff, in plain nouns that transfer past novels. B meets the bar too, though \"to the reader\" is slack and \"withholds the antagonist\" narrows a structural claim to one character. C has the conversion but pads it — \"from something earned into something merely inevitable,\" 21 words — and picks the wrong opposite: unopposed victories read as unearned, not as fated. D fails perversity outright: its outcome is the desirable one (later victories feel earned), its subject \"Early antagonist responses\" does not act, and \"escalating stakes\" is craft jargon."
+    }
+   ]
+  }
+ ]
+}

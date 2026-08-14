@@ -1,0 +1,6 @@
+{
+ "case_id": "2026-01-26_procedural-misinformation-turns-scheduled-legal-events-into-completed::v2",
+ "verdict": "SOUND",
+ "defect_kind": "none",
+ "reason": "The note accurately reflects the source. The specific case ('A claim that a judge had ordered a halt to White House renovation confused an upcoming preliminary injunction hearing with an actual injunction') is directly stated in the source. The distinction between 'will consider' and 'has ordered' uses the source's exact language. The generalization to a pattern of 'viral misinformation' matches the source's claim that the temporal distinction is 'frequently collapsed in viral misinformation.' No fabrication, no dropped qualifications, no imported terms."
+}

@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-12-12_copyable-media-gets-optimized-toward-its-most-emotionally::v2",
+ "verdict": "DEFECT",
+ "defect_kind": "fabrication",
+ "reason": "The note's fourth bullet claims 'content with a high-reward element tends to be remembered and propagated only in that mode.' The source's body explicitly says only 'This pattern is predictable but not preventable by the original creator once content is released' \u2014 it never discusses memory or propagation. The source frames the phenomenon as users extracting/reducing content, not as content being remembered or propagated in any mode. This is a substantive claim fabricated in the note. (Separately, bullet 3 also fabricates a causal explanation by adding 'because copyability gives anyone the ability to isolate and redistribute any element,' which the source \u2014 which simply states 'not preventable' \u2014 never provides, and the note replaces the source's specific 'high-dopamine mode' framing with the broader 'high-emotional-reward element' throughout.)"
+}

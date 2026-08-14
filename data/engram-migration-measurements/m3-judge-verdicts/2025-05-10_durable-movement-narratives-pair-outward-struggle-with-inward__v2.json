@@ -1,0 +1,6 @@
+{
+ "case_id": "2025-05-10_durable-movement-narratives-pair-outward-struggle-with-inward::v2",
+ "verdict": "DEFECT",
+ "defect_kind": "unsupported_hardening",
+ "reason": "The source uses hedged language that the rewrite drops. Specifically: (1) Source bullet 1 says stories 'risk portraying movements as purely tactical rather than values-driven' \u2014 the 'risk' qualifier is removed and the rewrite states flatly that omission 'makes the actors' commitments read as tactics rather than values.' (2) Source bullet 3 says 'The balance between action and reflection shows how movements maintain coherence and avoid burnout' \u2014 a descriptive/narrative claim about what the balance reveals, which the rewrite hardens into the causal claim that 'Showing both action and renewal preserves the movement's coherence and keeps activists from burning out.' Both are clear unsupported hardenings."
+}

@@ -1,0 +1,6 @@
+{
+ "case_id": "2026-01-01_peak-activation-is-sustainable-when-the-system-returns::v1",
+ "verdict": "DEFECT",
+ "defect_kind": "unsupported_hardening",
+ "reason": "The source states the katsu 'mobilizes 100% vital energy in a split second followed by immediate return to silence' \u2014 explicitly sequential. The note hardens this into identity, claiming 'the mobilization of complete vital energy and the immediate return to silence are the same act.' The source also says lingering agitation 'indicates ordinary anger rather than Vajra precision' (a categorical statement about what the event is); the note reframes this as 'the diagnostic that the activation is no longer the technique,' which implies it was the technique and ceased to be, a temporal/transition claim absent from the source."
+}

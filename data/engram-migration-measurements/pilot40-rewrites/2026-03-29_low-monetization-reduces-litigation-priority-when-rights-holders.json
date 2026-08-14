@@ -1,0 +1,12 @@
+{
+ "note_id": "2026-03-29_low-monetization-reduces-litigation-priority-when-rights-holders",
+ "verdict": "KEEP",
+ "title": "A rights holder who weighs what a defendant can pay leaves non-monetized operators unlitigated even when their conduct matches a commercial rival's",
+ "body": "- Rights holders concentrate enforcement on commercial AI startups with significant valuations because litigation costs require damages large enough to justify the expense.\n- Non-monetized operations running on personal infrastructure fall beneath the threshold of corporate litigation interest even when their conduct is comparable to a commercial rival's.\n- For non-monetized operators, automated DMCA takedowns replace lawsuits as the practical risk when verbatim text is accidentally pulled.",
+ "conversion": "A non-monetized operator's identical conduct produces different enforcement outcomes than a commercial rival's because the calculus targets collectable damages, not the underlying violation.",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2026-03-29_non-monetized-ai-aggregation-projects-avoid-high-value.md"
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "note_id": "2025-09-11_content-moderation-can-permit-crude-satire-while-prohibiting",
+ "verdict": "KEEP",
+ "title": "A content policy permits crude rhetoric while prohibiting explicit material because vulgarity and explicitness are separate categories, not points on a spectrum",
+ "body": "- Crude analogies, scathing insults, violent metaphors, and exaggerated caricatures are permitted.\n- Sexually explicit or pornographic content remains prohibited even when offered as satire.\n- The boundary between vulgar rhetoric and sexual explicitness runs by category and primary function, so calling something satire does not move crude material into the prohibited category, and being crude does not move explicit material into the permitted one.",
+ "conversion": "none — standing condition: the categorical line lets a platform permit as much offensive speech as possible while still drawing an absolute prohibition at explicit content",
+ "domain_bound": false,
+ "split_second_note": null,
+ "source_files": [
+  "2025-09-11_ai-content-policies-distinguish-between-crude-satirical-language.md"
+ ]
+}
