@@ -48,6 +48,16 @@
   let leftCollapsedBy       = null;  // 'drag' | 'button'
   let rightCollapsedBy      = null;
 
+  const setBridgeOrientation = (side, orientation) => {
+    const strip = side === 'left'
+      ? document.getElementById('bridgeStrip')
+      : document.getElementById('bridgeStripRight');
+    if (strip) strip.setAttribute('aria-orientation', orientation);
+    document.dispatchEvent(new CustomEvent('ora:bridge-orientation-changed', {
+      detail: { side, orientation },
+    }));
+  };
+
   // Persist column widths to the shell as CSS custom properties. Stored as
   // `fr` ratios (not pixels) so the columns rescale proportionally when the
   // window resizes — keeping panes from leaving dead space on either side.
@@ -84,10 +94,12 @@
       leftCol.classList.remove('collapsed');
       leftCollapsed   = false;
       leftCollapsedBy = null;
+      setBridgeOrientation('left', 'horizontal');
     } else if (side === 'right' && rightCollapsed) {
       rightCol.classList.remove('collapsed');
       rightCollapsed   = false;
       rightCollapsedBy = null;
+      setBridgeOrientation('right', 'horizontal');
     }
   };
 
@@ -181,6 +193,7 @@
       rightCollapsedBy = by;
       applyWidths(total - COLLAPSED_W, COLLAPSED_W);
     }
+    setBridgeOrientation(side, 'vertical');
   };
 
   const expandPane = (side) => {
@@ -202,6 +215,7 @@
       rightCollapsedBy = null;
       applyWidths(total - target, target);
     }
+    setBridgeOrientation(side, 'horizontal');
   };
 
   // Click on a collapsed pane's border → expand. Use mousedown so the
@@ -209,6 +223,7 @@
   // hidden by CSS, but defensive) doesn't intercept.
   const onLeftMouseDown = (e) => {
     if (leftCollapsed) {
+      if (e.target.closest('button, input, [role="menu"], [role="dialog"]')) return;
       e.stopPropagation();
       e.preventDefault();
       expandPane('left');
@@ -216,6 +231,7 @@
   };
   const onRightMouseDown = (e) => {
     if (rightCollapsed) {
+      if (e.target.closest('button, input, [role="menu"], [role="dialog"]')) return;
       e.stopPropagation();
       e.preventDefault();
       expandPane('right');

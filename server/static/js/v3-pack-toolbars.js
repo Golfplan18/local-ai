@@ -75,6 +75,8 @@
       window.OraV3TemplateGallery.open(panel);
       return;
     }
+    if (panel && typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('new-canvas')) return;
     if (panel && typeof panel.clearUserInput === 'function') panel.clearUserInput();
     if (panel && typeof panel.clearArtifact === 'function') panel.clearArtifact();
   }
@@ -97,8 +99,9 @@
       return;
     }
     try {
-      Crop.apply(panel);
-      if (panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
+      var result = Crop.apply(panel);
+      if ((!result || !result.cancelled)
+          && panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
     } catch (err) {
       _showPanelMessage(panel, (err && err.message) || 'Nothing to crop.');
     }
@@ -111,13 +114,14 @@
       return;
     }
     try {
-      Crop.apply(panel, {
+      var result = Crop.apply(panel, {
         confirmFn: function (count) {
           if (typeof window.confirm !== 'function') return true;
           return window.confirm('Crop will discard ' + count + ' object(s). Continue?');
         }
       });
-      if (panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
+      if ((!result || !result.cancelled)
+          && panel && typeof panel.zoomToExtents === 'function') panel.zoomToExtents();
     } catch (err) {
       _showPanelMessage(panel, (err && err.message) || 'Select an area before cropping.');
     }

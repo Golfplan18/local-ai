@@ -9782,6 +9782,9 @@ def canvas_visual_state(conversation_id):
         value = state.get(key)
         if value is not None and not _VISUAL_CHECKPOINT_ID_RE.fullmatch(str(value)):
             return _json_response({"error": f"invalid {key}"}, 400)
+    warning_acknowledged = state.get("konva_edit_warning_acknowledged")
+    if warning_acknowledged is not None and not isinstance(warning_acknowledged, bool):
+        return _json_response({"error": "invalid konva_edit_warning_acknowledged"}, 400)
     with _conversation_lifecycle_lock(conversation_id):
         if _is_conversation_deleted(conversation_id):
             return _json_response({"status": "deleted"}, 410)
@@ -12750,36 +12753,63 @@ def conversations_restore(conversation_id):
 
 @app.route("/api/conversation/<conversation_id>/projects", methods=["POST"])
 def conversations_set_projects(conversation_id):
-    """Replace a conversation's project memberships (G1.33 sub-step 5).
+    """Replace project memberships or atomically add one membership.
 
     A conversation can belong to many projects; ``commons`` (and its legacy
     id ``general``) is the implicit baseline (empty list == Commons) and is
-    never stored. Body:
-    ``{"project_ids": ["nexus", ...]}``. Returns the stored list."""
+    never stored. Body is exactly one of ``{"project_ids": ["nexus", ...]}``
+    or ``{"add_project_id": "nexus"}``. Returns the stored list."""
     conversation_id = (conversation_id or "").strip()
     if not _valid_existing_conversation_id(conversation_id):
         return _json_response({"error": "invalid conversation_id"}, status=400)
     try:
-        from conversation_memory import set_conversation_projects, load_conversation_json
+        from conversation_memory import (
+            add_conversation_project,
+            load_conversation_json,
+            set_conversation_projects,
+        )
     except Exception as e:
         return _json_response({"error": f"set projects import failed: {e}"}, status=500)
     data = request.get_json(silent=True) or {}
+    add_requested = "add_project_id" in data
+    replace_requested = "project_ids" in data
+    if add_requested == replace_requested:
+        return _json_response({
+            "error": "provide exactly one of add_project_id or project_ids",
+        }, status=400)
+    add_project_id = data.get("add_project_id")
     project_ids = data.get("project_ids")
-    if not isinstance(project_ids, list):
+    if add_requested and (
+        not isinstance(add_project_id, str) or not add_project_id.strip()
+    ):
+        return _json_response({"error": "add_project_id must be a non-empty string"}, status=400)
+    if replace_requested and not isinstance(project_ids, list):
         return _json_response({"error": "project_ids must be a list"}, status=400)
+    stored_project_ids = None
+    path = None
     with _conversation_lifecycle_lock(conversation_id):
         if _is_conversation_deleted(conversation_id):
             return _json_response({"status": "deleted"}, status=410)
-        path = set_conversation_projects(conversation_id, project_ids)
-    if path is None:
+        if add_requested:
+            stored_project_ids = add_conversation_project(
+                conversation_id,
+                add_project_id.strip(),
+            )
+        else:
+            path = set_conversation_projects(conversation_id, project_ids)
+    if (add_requested and stored_project_ids is None) or (
+        replace_requested and path is None
+    ):
         return _json_response(
             {"error": "Dialogue not found", "conversation_id": conversation_id},
             status=404)
-    stored = load_conversation_json(conversation_id) or {}
+    if replace_requested:
+        stored = load_conversation_json(conversation_id) or {}
+        stored_project_ids = stored.get("project_ids", [])
     return _json_response({
         "ok": True,
         "conversation_id": conversation_id,
-        "project_ids": stored.get("project_ids", []),
+        "project_ids": stored_project_ids,
     })
 
 
@@ -13762,7 +13792,7 @@ def _assert_stealth_permanent_delete(conversation_id: str) -> None:
     if isinstance(envelope, dict):
         if envelope.get("tag") != "stealth":
             raise PermissionError(
-                "Delete Forever is available only for Stealth Dialogues; "
+                "Delete Forever is available only for Off Record Dialogues; "
                 "Standard and Private Dialogues use Close"
             )
         return
@@ -13774,7 +13804,7 @@ def _assert_stealth_permanent_delete(conversation_id: str) -> None:
     if (live_path.exists() or live_path.is_symlink()
             or archived_path.exists() or archived_path.is_symlink()):
         raise PermissionError(
-            "Delete Forever requires a readable authoritative Stealth envelope"
+            "Delete Forever requires a readable authoritative Off Record envelope"
         )
 
     with _conversation_lifecycle_guard:
@@ -13783,7 +13813,7 @@ def _assert_stealth_permanent_delete(conversation_id: str) -> None:
         )
     if creation_tag != "stealth":
         raise PermissionError(
-            "Delete Forever is available only for Stealth Dialogues; "
+            "Delete Forever is available only for Off Record Dialogues; "
             "Standard and Private Dialogues use Close"
         )
 
@@ -14101,7 +14131,7 @@ def conversation_privacy_tag(conversation_id):
     target = body.get("tag") if isinstance(body, dict) else None
     if target not in {"", "private"}:
         return json.dumps({
-            "error": "tag must be standard ('') or private; Stealth is creation-only",
+            "error": "tag must be standard ('') or private; Off Record is creation-only",
         }), 400
 
     with _conversation_lifecycle_lock(conversation_id):
@@ -14130,7 +14160,7 @@ def conversation_privacy_tag(conversation_id):
                 )
                 if creation_tag == "stealth":
                     return json.dumps({
-                        "error": "Stealth is creation-only and cannot be retagged",
+                        "error": "Off Record is creation-only and cannot be retagged",
                     }), 409
                 _effective, envelope_created = (
                     _ensure_artifact_conversation_envelope(

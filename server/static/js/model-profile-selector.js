@@ -18,6 +18,7 @@
   var profiles = [];
   var effective = null;
   var oneRunOverride = '';
+  var oneRunRevision = 0;
   var openMode = '';
 
   function activeProject() {
@@ -151,8 +152,40 @@
 
   function selectRun(name) {
     oneRunOverride = name || '';
+    oneRunRevision += 1;
     close();
     paintButtons();
+  }
+
+  function clearOneRunOverride() {
+    if (!oneRunOverride) return;
+    oneRunOverride = '';
+    oneRunRevision += 1;
+    paintButtons();
+  }
+
+  function reserveSubmission(snapshot) {
+    if (!snapshot || snapshot.revision !== oneRunRevision
+        || snapshot.value !== oneRunOverride) return null;
+    var token = {
+      value: oneRunOverride,
+      revision: oneRunRevision,
+    };
+    oneRunOverride = '';
+    oneRunRevision += 1;
+    token.reservedRevision = oneRunRevision;
+    close();
+    paintButtons();
+    return token;
+  }
+
+  function restoreSubmission(token) {
+    if (!token || token.reservedRevision !== oneRunRevision
+        || oneRunOverride !== '') return false;
+    oneRunOverride = token.value || '';
+    oneRunRevision += 1;
+    paintButtons();
+    return true;
   }
 
   function selectProject(name) {
@@ -263,7 +296,7 @@
       if (runButton) toggle('run', runButton);
     });
     document.addEventListener('ora:active-project-changed', function () {
-      oneRunOverride = '';
+      clearOneRunOverride();
       close();
       load();
     });
@@ -275,15 +308,22 @@
   }
 
   window.OraModelProfiles = {
+    close: close,
     getOneRunOverride: function () { return oneRunOverride || ''; },
-    clearOneRunOverride: function () { oneRunOverride = ''; paintButtons(); },
-    acknowledgeSubmission: function (response) {
+    snapshotForSubmission: function () {
+      return { value: oneRunOverride || '', revision: oneRunRevision };
+    },
+    reserveSubmission: reserveSubmission,
+    restoreSubmission: restoreSubmission,
+    clearOneRunOverride: clearOneRunOverride,
+    acknowledgeSubmission: function (response, snapshot) {
       // A network failure or rejected HTTP request did not consume this
       // one-run authority.  Clear only after the server acknowledges the
       // submission contract with a successful response.
       if (!response || response.ok !== true) return false;
-      oneRunOverride = '';
-      paintButtons();
+      if (snapshot && (snapshot.revision !== oneRunRevision
+          || snapshot.value !== oneRunOverride)) return false;
+      clearOneRunOverride();
       return true;
     },
     refresh: load,

@@ -326,6 +326,7 @@
         anchor:       plan.anchor,
         confirm_crop: true,    // we never shrink, so this is moot, but harmless
       });
+      if (res && res.cancelled) return res;
       // Notify observers (autosave, telemetry).
       try {
         var doc = (panel && panel.el && panel.el.ownerDocument) || (typeof document !== 'undefined' ? document : null);

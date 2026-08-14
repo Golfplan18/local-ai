@@ -1673,7 +1673,7 @@ def _update_conversation_privacy_tag_unlocked(
         raise ValueError("privacy tag must be standard ('') or 'private'")
     previous_tag = get_conversation_tag(cid, sessions_root=sessions_root)
     if previous_tag == "stealth":
-        raise PermissionError("Stealth is creation-only and cannot be retagged")
+        raise PermissionError("Off Record is creation-only and cannot be retagged")
 
     sroot = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
     cdir = Path(conversations_dir) if conversations_dir else _DEFAULT_CONVERSATIONS_DIR
@@ -2048,14 +2048,14 @@ def delete_conversation_forever(
                 retained_path.exists() or retained_path.is_symlink()
             ):
                 raise PermissionError(
-                    "Delete Forever requires a readable Stealth Dialogue"
+                    "Delete Forever requires a readable Off Record Dialogue"
                 )
             original_tag = ""
         else:
             original_tag = envelope.get("tag", "")
             if original_tag != "stealth":
                 raise PermissionError(
-                    "Delete Forever is available only for Stealth Dialogues; "
+                    "Delete Forever is available only for Off Record Dialogues; "
                     "use Close for Standard or Private Dialogues"
                 )
         result = _purge_stealth_unlocked(

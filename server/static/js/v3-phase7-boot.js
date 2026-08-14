@@ -153,22 +153,24 @@
     //
     // Pack toolbars are a different story — visual-panel never docks
     // them, so OraV3PackToolbars handles that. Wait until the universal
-    // toolbar is actually in the dock arrangement (i.e. visual-panel's
-    // retry chain has settled) before mounting packs, so the pack edge
-    // positions don't fight with universal's auto-placement.
+    // toolbar is either in the legacy dock or V3's persistent header before
+    // mounting packs, so their edge positions do not race toolbar setup.
     if (_mountedPanels && _mountedPanels.has(panel)) return;
 
     var dockReady = panel._dockController
       && panel._dockController.getArrangement
       && panel._dockController.getArrangement()['ora-universal'];
+    var headerReady = panel.config
+      && panel.config.toolbarHost
+      && panel.config.toolbarHost.querySelector('.ora-toolbar');
 
-    if (dockReady) {
+    if (dockReady || headerReady) {
       if (_mountedPanels) _mountedPanels.add(panel);
       _mountPacks(panel);
       return;
     }
 
-    // Universal not yet in the dock — poll briefly. visual-panel's retry
+    // Universal is not mounted yet — poll briefly. visual-panel's retry
     // chain settles within ~500ms once init completes.
     var attempts = 0;
     var poll = setInterval(function () {
@@ -176,7 +178,10 @@
       var ready = panel._dockController
         && panel._dockController.getArrangement
         && panel._dockController.getArrangement()['ora-universal'];
-      if (ready) {
+      var headerMounted = panel.config
+        && panel.config.toolbarHost
+        && panel.config.toolbarHost.querySelector('.ora-toolbar');
+      if (ready || headerMounted) {
         clearInterval(poll);
         if (_mountedPanels) _mountedPanels.add(panel);
         _mountPacks(panel);

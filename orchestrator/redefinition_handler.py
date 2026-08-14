@@ -195,7 +195,7 @@ def approve_redefinition(
     if _stealth_context():
         return RedefinitionResult(
             success=False,
-            error="Redefinition persistence is suppressed in Stealth",
+            error="Redefinition persistence is suppressed in Off Record",
         )
     entries = list_pending_escalations(redefinition_only=False)
     target = next((e for e in entries if e.queue_index == queue_index), None)
@@ -276,7 +276,7 @@ def deny_redefinition(queue_index: int, reason: str = "") -> RedefinitionResult:
     if _stealth_context():
         return RedefinitionResult(
             success=False,
-            error="Redefinition persistence is suppressed in Stealth",
+            error="Redefinition persistence is suppressed in Off Record",
         )
     entries = list_pending_escalations(redefinition_only=False)
     target = next((e for e in entries if e.queue_index == queue_index), None)

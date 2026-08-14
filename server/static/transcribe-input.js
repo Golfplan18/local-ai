@@ -123,7 +123,7 @@
       link.title = vaultPath;
       statusEl.appendChild(link);
     } else if (statusEl && vaultStatus === 'skipped') {
-      statusEl.textContent = 'Transcribed (Stealth — vault save skipped)';
+      statusEl.textContent = 'Transcribed (Off Record — vault save skipped)';
     } else if (statusEl && vaultStatus === 'failed') {
       statusEl.textContent = 'Transcribed; vault save failed'
         + (vaultError ? ': ' + vaultError : '');

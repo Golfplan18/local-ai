@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 2px;
 }
 
 .spine-bottom {
@@ -23,34 +23,48 @@
 }
 
 .spine-button {
-  width: 44px;
-  height: 44px;
-  border-radius: 9px;
-  background: var(--interactive-normal);
-  border: 1px solid var(--ora-button-border);
+  width: 40px;
+  height: 40px;
+  position: relative;
+  border: 0;
+  background: transparent;
   color: var(--icon-color);
-  box-shadow:
-    3px 4px 6px var(--ora-shadow-raised),
-    inset 1px 1px 0 var(--ora-highlight-raised);
+  box-shadow: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.08s;
 }
+.spine-button::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 7px;
+  background: var(--interactive-normal);
+  border: 1px solid var(--ora-button-border);
+  box-shadow:
+    2px 3px 5px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  transition: border-color 0.12s, transform 0.08s, box-shadow 0.08s;
+}
 .spine-button:hover {
   color: var(--icon-color-hover);
+}
+.spine-button:hover::after {
   border-color: var(--icon-color-hover);
 }
-.spine-button:active {
+.spine-button:active::after {
   transform: translate(1px, 1px);
   box-shadow:
-    2px 2px 4px var(--ora-shadow-raised),
+    1px 2px 3px var(--ora-shadow-raised),
     inset 1px 1px 0 var(--ora-highlight-raised);
 }
 .spine-button svg {
-  width: 22px;
-  height: 22px;
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 
@@ -111,7 +125,7 @@
 
 .bridge-framework-label {
   position: absolute;
-  left: 30px;
+  left: 180px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
@@ -127,6 +141,11 @@
 }
 .bridge-framework-label.is-set {
   display: block;
+}
+
+.left-column.collapsed .bridge-framework-label,
+.left-column.collapsed .bridge-selection-clear {
+  display: none !important;
 }
 
 /* Right bridge mode label — mirrors the left bridge label, justified to

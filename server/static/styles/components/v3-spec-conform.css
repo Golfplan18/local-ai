@@ -21,8 +21,16 @@
 }
 
 .sidebar-top-row .sidebar-new-thread-cmd {
-  flex: 1;
+  flex: 0 0 auto;
   margin-bottom: 0;
+  padding: 5px 8px;
+  background: var(--interactive-normal);
+  border-color: var(--ora-button-border);
+  box-shadow:
+    2px 3px 5px var(--ora-shadow-raised),
+    inset 1px 1px 0 var(--ora-highlight-raised);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .sidebar-fork-thread-cmd,
@@ -34,6 +42,7 @@
   border-radius: 6px;
   padding: 0 8px;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -119,6 +128,30 @@
   min-height: 24px;
   flex-wrap: wrap;
 }
+
+.conversation-browser-bulk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.conversation-browser-bulk[hidden] { display: none; }
+.conversation-browser-bulk label { display: inline-flex; align-items: center; gap: 4px; }
+.conversation-browser-bulk-project,
+.conversation-browser-bulk-add {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  padding: 3px 6px;
+  font: inherit;
+}
+.conversation-browser-bulk-add { cursor: pointer; }
+.conversation-browser-bulk-add:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .conversation-browser-filters {
   display: flex;

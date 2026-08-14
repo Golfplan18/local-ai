@@ -328,6 +328,10 @@
     }
     var nxt   = computeNext(bb.union, opts);
     var next  = { width: nxt.width, height: nxt.height };
+    if (panel && typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('crop-to-content')) {
+      return { cancelled: true, changed: false };
+    }
     var moved = _translateLayers(panel, nxt.dx, nxt.dy);
     _setCanvasSize(panel, next);
     var changed = (prior.width !== next.width)

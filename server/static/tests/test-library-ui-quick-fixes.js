@@ -26,6 +26,11 @@ try {
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
   '<div class="left-sidebar">' +
+  '  <div class="sidebar-collapsed-dashboard">' +
+  '    <button id="sidebarDashProject">Projects</button>' +
+  '    <button id="sidebarDashModel">Model</button>' +
+  '    <button id="sidebarDashOutputStyle">Output Style</button>' +
+  '  </div>' +
   '  <button class="sidebar-fork-thread-cmd" disabled>Fork</button>' +
   '  <button class="sidebar-browse-cmd">Library</button>' +
   '</div>' +
@@ -49,14 +54,26 @@ var browserRequests = 0;
 var browserRequestUrls = [];
 var relatedRequestUrls = [];
 var envelopeRequests = 0;
+var projectWrites = [];
+var bulkFailIds = new Set();
+var settingsTabs = [];
 var envelopes = {
   'named-live': {
     conversation_id: 'named-live',
     display_name: 'Saved Dialogue Name',
+    project_ids: ['existing-project'],
     messages: [
       { role: 'user', content: 'This text must not replace the saved name.' },
       { role: 'assistant', content: 'Response.' },
     ],
+  },
+  'second-live': {
+    conversation_id: 'second-live',
+    project_ids: [],
+  },
+  'third-live': {
+    conversation_id: 'third-live',
+    project_ids: [],
   },
   'empty-live': {
     conversation_id: 'empty-live',
@@ -87,14 +104,57 @@ w.fetch = function (url, opts) {
     browserRequests += 1;
     browserRequestUrls.push(decoded);
     return response(true, {
-      rows: [{
-        conversation_id: 'named-live',
-        source_kind: 'live',
-        title: 'Saved Dialogue Name',
-        snippet: 'This second line must not be rendered.',
-      }],
-      total: 1,
+      rows: [
+        {
+          conversation_id: 'named-live',
+          source_kind: 'live',
+          title: 'Saved Dialogue Name',
+          snippet: 'This second line must not be rendered.',
+          project_ids: ['existing-project'],
+        },
+        {
+          conversation_id: 'second-live',
+          source_kind: 'live',
+          title: 'Second Dialogue',
+          project_ids: [],
+        },
+        {
+          conversation_id: 'third-live',
+          source_kind: 'live',
+          title: 'Third Dialogue',
+          project_ids: [],
+        },
+        {
+          conversation_id: 'engram:claim',
+          source_kind: 'engram',
+          title: 'Atomic Claim Title',
+          project_ids: [],
+        },
+      ],
+      total: 4,
     });
+  }
+  if (decoded === '/api/projects/meta?status=active') {
+    return response(true, {
+      projects: [
+        { nexus: 'commons', name: 'Commons' },
+        { nexus: 'project-a', name: 'Project A' },
+      ],
+    });
+  }
+  var projectWrite = decoded.match(/^\/api\/conversation\/([^/]+)\/projects$/);
+  if (projectWrite && opts && opts.method === 'POST') {
+    var writeId = projectWrite[1];
+    var writeBody = JSON.parse(opts.body || '{}');
+    projectWrites.push({ id: writeId, body: writeBody });
+    if (bulkFailIds.has(writeId)) return response(false, { error: 'simulated failure' }, 500);
+    var storedProjects = Array.isArray(envelopes[writeId] && envelopes[writeId].project_ids)
+      ? envelopes[writeId].project_ids.slice() : [];
+    if (storedProjects.indexOf(writeBody.add_project_id) === -1) {
+      storedProjects.push(writeBody.add_project_id);
+    }
+    if (envelopes[writeId]) envelopes[writeId].project_ids = storedProjects;
+    return response(true, { project_ids: storedProjects });
   }
   if (/^\/api\/conversation\/[^/]+\/related\?/.test(decoded)) {
     relatedRequestUrls.push(decoded);
@@ -128,6 +188,9 @@ w.alert = function () {};
 w.ResizeObserver = function () { this.observe = function () {}; this.disconnect = function () {}; };
 w.setInterval = function () { return 0; };
 w.clearInterval = function () {};
+w.OraSettingsPanel = {
+  open: function (options) { settingsTabs.push(options && options.tab); },
+};
 
 var context = dom.getInternalVMContext();
 context.console = console;
@@ -158,6 +221,22 @@ function flush() {
 async function run() {
   var fork = w.document.querySelector('.sidebar-fork-thread-cmd');
   var title = w.document.getElementById('outputPaneDisplayName');
+
+  w.document.getElementById('sidebarDashOutputStyle').click();
+  record('collapsed Output Style opens Settings without expanding the sidebar',
+    settingsTabs.join(',') === 'styles'
+      && !w.document.querySelector('.left-sidebar').classList.contains('expanded'));
+
+  w.document.getElementById('sidebarDashProject').click();
+  await flush();
+  await flush();
+  w.document.getElementById('sidebarDashModel').click();
+  record('collapsed Project and Model controls open their direct destinations',
+    !!w.document.querySelector('.project-manager-overlay.is-open')
+      && settingsTabs.join(',') === 'styles,models'
+      && !w.document.querySelector('.left-sidebar').classList.contains('expanded'));
+  w.document.querySelector('.project-manager-close').click();
+  await flush();
 
   record('Fork starts disabled', fork.disabled === true);
 
@@ -191,7 +270,9 @@ async function run() {
   w.OraConversation.appendUser('First prompt');
   record('first turn enables Fork', fork.disabled === false);
 
-  w.document.querySelector('.sidebar-browse-cmd').click();
+  var initialBrowseButton = w.document.querySelector('.sidebar-browse-cmd');
+  initialBrowseButton.focus();
+  initialBrowseButton.click();
   await flush();
   await flush();
   record('Library fetched rows', browserRequests > 0, 'requests=' + browserRequests);
@@ -258,6 +339,72 @@ async function run() {
     related.getAttribute('aria-label') === 'Show items related to Saved Dialogue Name' &&
     dismiss.getAttribute('aria-label') === 'Remove Saved Dialogue Name from these results');
 
+  // Related results above intentionally narrow to one row. Return to the
+  // complete Library result set before exercising bulk selection.
+  w.document.querySelector('.conversation-browser-search-btn').click();
+  await flush();
+  await flush();
+  var currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
+  var firstCheck = currentRows[0].querySelector('.conversation-browser-check');
+  var secondCheck = currentRows[1].querySelector('.conversation-browser-check');
+  var thirdCheck = currentRows[2].querySelector('.conversation-browser-check');
+  var engramCheck = currentRows[3].querySelector('.conversation-browser-check');
+  firstCheck.checked = true;
+  firstCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  secondCheck.checked = true;
+  secondCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  w.document.querySelector('.conversation-browser-search-btn').click();
+  await flush();
+  await flush();
+  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
+  record('Library keeps live Dialogue selection through rerender',
+    currentRows[0].querySelector('.conversation-browser-check').checked === true
+      && currentRows[1].querySelector('.conversation-browser-check').checked === true);
+  record('Library prevents non-live project association',
+    engramCheck.disabled === true);
+
+  var bulkProject = w.document.querySelector('.conversation-browser-bulk-project');
+  var bulkAdd = w.document.querySelector('.conversation-browser-bulk-add');
+  record('Library bulk target excludes Commons',
+    Array.from(bulkProject.options).every(function (option) { return option.value !== 'commons'; })
+      && Array.from(bulkProject.options).some(function (option) { return option.value === 'project-a'; }));
+  bulkProject.value = 'project-a';
+  bulkProject.dispatchEvent(new w.Event('change', { bubbles: true }));
+  envelopes['named-live'].project_ids = ['existing-project', 'late-project'];
+  bulkAdd.click();
+  await flush();
+  await flush();
+  var namedWrite = projectWrites.find(function (write) { return write.id === 'named-live'; });
+  record('Library atomically adds without replacing post-search memberships',
+    !!namedWrite
+      && namedWrite.body.add_project_id === 'project-a'
+      && !Object.prototype.hasOwnProperty.call(namedWrite.body, 'project_ids')
+      && envelopes['named-live'].project_ids.join(',') === 'existing-project,late-project,project-a'
+      && projectWrites.some(function (write) {
+        return write.id === 'second-live'
+          && write.body.add_project_id === 'project-a'
+          && !Object.prototype.hasOwnProperty.call(write.body, 'project_ids');
+      }));
+  record('Library clears successful selections',
+    w.document.querySelectorAll('.conversation-browser-check:checked').length === 0);
+
+  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
+  secondCheck = currentRows[1].querySelector('.conversation-browser-check');
+  thirdCheck = currentRows[2].querySelector('.conversation-browser-check');
+  secondCheck.checked = true;
+  secondCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  thirdCheck.checked = true;
+  thirdCheck.dispatchEvent(new w.Event('change', { bubbles: true }));
+  bulkFailIds.add('third-live');
+  bulkAdd.click();
+  await flush();
+  await flush();
+  currentRows = Array.from(w.document.querySelectorAll('.conversation-browser-row'));
+  record('Library reports partial failure and retains only failed selections',
+    currentRows[1].querySelector('.conversation-browser-check').checked === false
+      && currentRows[2].querySelector('.conversation-browser-check').checked === true
+      && w.document.querySelector('.conversation-browser-status').textContent.indexOf('1 failed') !== -1);
+
   var requestsBeforeTitleOpen = envelopeRequests;
   titleButton.click();
   await flush();
@@ -265,7 +412,7 @@ async function run() {
     envelopeRequests > requestsBeforeTitleOpen,
     'requests=' + envelopeRequests);
 
-  var browseButton = w.document.querySelector('.sidebar-browse-cmd');
+  var browseButton = initialBrowseButton;
   var escapeTargets = [
     ['search', '.conversation-browser-search'],
     ['sort', '.conversation-browser-sort'],
@@ -299,7 +446,9 @@ async function run() {
     if (library.classList.contains('is-open')) {
       escapeFailures.push(escapeTargets[i][0] + ': Library stayed open');
     } else if (w.document.activeElement !== browseButton) {
-      escapeFailures.push(escapeTargets[i][0] + ': focus was not restored');
+      var activeFocus = w.document.activeElement;
+      escapeFailures.push(escapeTargets[i][0] + ': focus was not restored ('
+        + (activeFocus && (activeFocus.id || activeFocus.className || activeFocus.tagName)) + ')');
     }
   }
   record('Escape closes Library from every control and restores focus',

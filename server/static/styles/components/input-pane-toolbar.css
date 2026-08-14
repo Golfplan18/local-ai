@@ -8,13 +8,16 @@
    ============================================================ */
 
 .input-pane-toolbar {
-  position: absolute;
-  right: 12px;
-  bottom: 8px;
   display: flex;
+  align-items: center;
   gap: 6px;
-  z-index: 2;
+  z-index: 22;
   pointer-events: auto;
+}
+
+.input-pane-header-controls {
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 .input-pane-toolbar__btn {
@@ -32,7 +35,8 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: color 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.08s;
+  transition: color 0.12s, border-color 0.12s, transform 0.08s,
+    box-shadow 0.08s, opacity 0.14s ease;
 }
 .input-pane-toolbar__btn:hover {
   color: var(--icon-color-hover);
@@ -53,15 +57,42 @@
   cursor: not-allowed;
 }
 .input-pane-toolbar__btn.is-active {
-  color: var(--icon-color-hover);
-  border-color: var(--icon-color-hover);
-  background: var(--background-modifier-hover);
+  color: var(--text-on-accent, var(--background-primary));
+  border-color: var(--interactive-accent, var(--h5-color));
+  background: var(--interactive-accent, var(--h5-color));
+  box-shadow:
+    inset 0 0 0 1px color-mix(
+      in srgb,
+      var(--text-on-accent, var(--background-primary)) 34%,
+      transparent
+    ),
+    1px 2px 4px var(--ora-shadow-raised);
+}
+.input-pane-toolbar__btn.is-active:hover {
+  color: var(--text-on-accent, var(--background-primary));
+  filter: brightness(1.08);
 }
 .input-pane-toolbar__btn svg {
   width: 18px;
   height: 18px;
   display: block;
 }
+
+.input-pane-toolbar__btn--state {
+  width: auto;
+  min-width: 64px;
+  gap: 6px;
+  padding: 0 9px;
+}
+
+.input-pane-toolbar__state-label {
+  font: 600 11px/1 var(--font-interface, sans-serif);
+  white-space: nowrap;
+}
+
+#inputToolbarImageGenerate .input-toolbar-entry-image { display: none; }
+#inputToolbarImageGenerate.is-image-entry .input-toolbar-entry-text { display: none; }
+#inputToolbarImageGenerate.is-image-entry .input-toolbar-entry-image { display: block; }
 
 .input-pane-toolbar__btn--text {
   width: auto;
@@ -131,28 +162,21 @@
   color: var(--text-muted) !important;
 }
 
-/* Reserve space at the bottom-right of the textarea so typed text
-   does not run under the toolbar. Native textareas cannot do shape-
-   outside CSS floats, so this is the simplest reliable approximation
-   of the design's "text floats around them" intent: text wraps short
-   of the toolbar zone rather than literally flowing around its
-   silhouette. */
+/* Keep typed text above the draft's attachment chips. The turn selectors
+   now live in the header and the action buttons in the bridge, so no
+   horizontal toolbar clearance is needed here. */
 .input-pane textarea {
-  padding-bottom: 40px;
-  padding-right: 6px;
+  padding: 0 0 40px;
   box-sizing: border-box;
 }
 
 /* V3 Input Handling Phase 8 — attachment chip row.
-   Anchored along the bottom of the input pane between the textarea
-   bottom-padding zone and the toolbar. Chips wrap when many files are
-   dropped; the row scrolls horizontally before the input pane height
-   grows. The textarea's padding-bottom (40px above) keeps text
-   visually clear of this row's first line. */
+   Anchored along the bottom of the input pane. The textarea's bottom
+   padding keeps its current line clear of the first chip row. */
 .input-pane-attachments {
   position: absolute;
   left: 12px;
-  right: 196px;        /* clear the toolbar's bottom-right zone */
+  right: 12px;
   bottom: 8px;
   display: flex;
   flex-wrap: wrap;
@@ -174,26 +198,20 @@
 }
 
 @media (max-width: 700px) {
-  .input-pane-toolbar {
-    right: 8px;
-    bottom: 8px;
-    display: grid;
-    grid-template-columns: repeat(2, 32px);
-    gap: 6px;
-  }
-
-  .input-pane textarea {
-    padding-bottom: 78px;
-  }
-
-  .input-pane-attachments {
-    right: 88px;
-  }
+  .input-pane-toolbar__btn--text { min-width: 48px; max-width: 92px; }
 }
 
-/* G1.36 honne/tatemae audience toggle — two icons (globe = external default,
-   person = internal); accent when internal. Theme tokens only. */
+/* G1.36 honne/tatemae audience toggle — two icons (person = project default,
+   globe = one-turn external override). */
 #inputToolbarAudience .input-toolbar-audience-internal { display: none; }
 #inputToolbarAudience.is-audience-internal svg:not(.input-toolbar-audience-internal) { display: none; }
 #inputToolbarAudience.is-audience-internal .input-toolbar-audience-internal { display: block; }
-#inputToolbarAudience.is-audience-internal { color: var(--interactive-accent); }
+
+#visualEditorSwitch {
+  min-width: 32px;
+}
+#visualEditorSwitch .visual-editor-icon { display: none; }
+#visualEditorSwitch[data-active-editor="excalidraw"] .visual-editor-icon--excalidraw,
+#visualEditorSwitch[data-active-editor="konva"] .visual-editor-icon--konva {
+  display: block;
+}

@@ -209,7 +209,7 @@
           : el.classList.contains('chat-output-pane') ? 'Aside (output)'
           : 'Findings pane';
         if (state.previewMode === 'private') return `${baseLabel} (Private mode)`;
-        if (state.previewMode === 'stealth') return `${baseLabel} (Stealth mode)`;
+        if (state.previewMode === 'stealth') return `${baseLabel} (Off Record mode)`;
         return baseLabel;
       },
       getAxes: (el) => {
@@ -231,7 +231,7 @@
         if (state.previewMode === 'stealth') {
           return [
             { label: 'Surface', var: surfaceVar, type: 'color' },
-            { label: 'Border (Stealth)', var: '--ora-mode-stealth-pane-border', type: 'color' },
+            { label: 'Border (Off Record)', var: '--ora-mode-stealth-pane-border', type: 'color' },
           ];
         }
         return [
@@ -255,7 +255,7 @@
       selector: '.spine-button',
       label: (el) => {
         if (state.previewMode === 'private' && el.dataset.modeButton === 'private') return 'Private mode button';
-        if (state.previewMode === 'stealth' && el.dataset.modeButton === 'stealth') return 'Stealth mode button';
+        if (state.previewMode === 'stealth' && el.dataset.modeButton === 'stealth') return 'Off Record mode button';
         return 'Spine button';
       },
       getAxes: (el) => {
@@ -738,7 +738,7 @@
         <div class="customizer-preview-buttons">
           <button type="button" data-preview="standard">Standard</button>
           <button type="button" data-preview="private">Private</button>
-          <button type="button" data-preview="stealth">Stealth</button>
+          <button type="button" data-preview="stealth">Off Record</button>
         </div>
       </div>
       <div class="customizer-starter-hint">Click any highlighted item to customize it.</div>
@@ -868,7 +868,7 @@
 
   // ─── Preview mode (simulates Private/Stealth without actually entering) ───
 
-  const PREVIEW_LABELS = { private: 'Private', stealth: 'Stealth' };
+  const PREVIEW_LABELS = { private: 'Private', stealth: 'Off Record' };
 
   const setPreviewMode = (mode) => {
     if (mode !== 'standard' && mode !== 'private' && mode !== 'stealth') return;
@@ -1008,7 +1008,7 @@
     if (savedMode) {
       document.body.classList.add(`${savedMode}-mode`);
       // Re-set the bridge labels to the restored mode's text
-      const labels = { private: 'Private', stealth: 'Stealth' };
+      const labels = { private: 'Private', stealth: 'Off Record' };
       const text = labels[savedMode] || '';
       if (modeLabel) modeLabel.textContent = text;
       if (modeLabelRight) modeLabelRight.textContent = text;

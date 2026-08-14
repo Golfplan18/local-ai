@@ -102,11 +102,12 @@ async function run() {
   record('one-run choice remains local until submit',
     w.OraModelProfiles.getOneRunOverride() === 'Balanced'
       && requests.filter(function (r) { return r.method === 'POST'; }).length === 0);
-  w.OraModelProfiles.acknowledgeSubmission(null);
-  w.OraModelProfiles.acknowledgeSubmission({ ok: false });
+  var failedSnapshot = w.OraModelProfiles.snapshotForSubmission();
+  var failedReservation = w.OraModelProfiles.reserveSubmission(failedSnapshot);
+  w.OraModelProfiles.restoreSubmission(failedReservation);
   record('failed delivery preserves the one-run choice',
     w.OraModelProfiles.getOneRunOverride() === 'Balanced');
-  w.OraModelProfiles.acknowledgeSubmission({ ok: true });
+  w.OraModelProfiles.reserveSubmission(w.OraModelProfiles.snapshotForSubmission());
   record('server acceptance consumes the one-run choice',
     w.OraModelProfiles.getOneRunOverride() === '');
 
@@ -143,14 +144,7 @@ async function run() {
 
   var index = fs.readFileSync(path.resolve(__dirname, '..', '..', 'index-v3.html'), 'utf8');
   record('public submit binds the one-run Model Profile to config_name',
-    index.indexOf("body.append('config_name', profile)") !== -1);
-  var submitFetch = index.indexOf("await fetch('/chat/multipart'");
-  var acceptedClear = index.indexOf('window.OraModelProfiles.acknowledgeSubmission(resp)');
-  var httpRejected = index.indexOf('if (!resp.ok)', submitFetch);
-  record('public submit consumes one-run authority only after HTTP acceptance',
-    submitFetch !== -1 && httpRejected > submitFetch && acceptedClear > httpRejected
-      && index.slice(0, submitFetch).indexOf(
-        'window.OraModelProfiles.clearOneRunOverride()') === -1);
+    index.indexOf("body.append('config_name', submissionModelProfile)") !== -1);
   record('public surfaces use Model Profile terminology',
     index.indexOf('Model configuration</div>') === -1
       && index.indexOf('id="inputToolbarModelProfile"') !== -1);

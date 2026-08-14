@@ -1518,7 +1518,14 @@ body.pane-mode-video .visual-panel {
   position: absolute;
   inset: 0;
   z-index: 30;
-  background: #fff;
+  background-color: var(--ora-visual-canvas-bg, #fff);
+  background-image:
+    radial-gradient(var(--ora-line-dot-color, rgba(0, 0, 0, 0.12)) 1.2px, transparent 1.4px);
+  background-size:
+    var(--ora-excal-grid-size, var(--size-4-6, 24px))
+    var(--ora-excal-grid-size, var(--size-4-6, 24px));
+  background-position:
+    var(--ora-excal-grid-x, 12px) var(--ora-excal-grid-y, 12px);
   color-scheme: light;
 }
 
@@ -1530,6 +1537,136 @@ body.pane-mode-video .visual-panel {
 .ora-excalidraw-island .excalidraw-container {
   width: 100%;
   height: 100%;
+}
+
+/* Keep the standard Excalidraw command row React-owned. Repositioning its
+   real container into the persistent Exhibits band preserves native tools,
+   shortcuts, popups, and selected state without cloning the command surface. */
+.ora-excalidraw-island .excalidraw {
+  overflow: visible;
+  background: transparent;
+}
+
+.ora-excalidraw-island .excalidraw .App-toolbar-container {
+  position: relative;
+  z-index: 50;
+  transform: translate(36px, var(--ora-excal-toolbar-shift, -58px));
+}
+
+/* The native mobile island contributes eight vertical pixels around its
+   40px command row. Remove only that padding so the real toolbar centers in
+   Ora's 44px Exhibits band without scaling or rebuilding its controls. */
+.ora-excalidraw-island .excalidraw .App-toolbar--mobile {
+  --padding: 0 !important;
+}
+
+/* Ora owns image import in the right bridge. Suppress only Excalidraw's
+   generated image-tool label; the bridge and programmatic insert paths stay
+   active. The shipped test id is carried by the label's radio input. */
+.ora-excalidraw-island .excalidraw .App-toolbar label.ToolIcon:has(
+  > input[data-testid="toolbar-image"]
+) {
+  display: none !important;
+}
+
+/* Keep Excalidraw's real main-menu trigger and dropdown React-owned while
+   docking them beside the Exhibits label. */
+.ora-excalidraw-island .excalidraw .main-menu-trigger {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 6px !important;
+  anchor-name: --ora-excal-main-menu-trigger;
+  pointer-events: auto;
+  z-index: 60;
+}
+
+/* Excalidraw renders Undo/Redo in two native shapes: a named desktop group,
+   and an unclassed mobile group whose direct children carry the stable action
+   labels. Style the existing group in either shape; no action is duplicated. */
+.ora-excalidraw-island .excalidraw :is(
+  .undo-redo-buttons,
+  .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
+) {
+  display: flex;
+  gap: 0;
+  margin: 0;
+  pointer-events: auto;
+  z-index: 60;
+}
+
+.ora-excalidraw-island .excalidraw :is(
+  .undo-redo-buttons,
+  .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
+) button {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+}
+
+@supports (position-anchor: --ora-exhibits-header) {
+  .ora-excalidraw-island .excalidraw .main-menu-trigger {
+    position: fixed;
+    position-anchor: --ora-exhibits-header;
+    top: calc(anchor(top) + 6px);
+    left: calc(anchor(left) + 72px);
+  }
+
+  .ora-excalidraw-island .excalidraw .main-menu-trigger
+    ~ [data-testid="dropdown-menu"] {
+    position: fixed;
+    position-anchor: --ora-excal-main-menu-trigger;
+    top: calc(anchor(bottom) + 6px);
+    bottom: auto;
+    left: anchor(left);
+    right: auto;
+    width: min(280px, calc(100vw - 24px));
+    margin: 0;
+    z-index: 70;
+  }
+
+  .ora-excalidraw-island .excalidraw :is(
+    .undo-redo-buttons,
+    .App-bottom-bar .App-toolbar-content > div:has(> button[aria-label="Undo"]):has(> button[aria-label="Redo"])
+  ) {
+    position: fixed;
+    position-anchor: --ora-exhibits-header;
+    top: calc(anchor(top) + 6px);
+    right: calc(anchor(right) + 12px);
+  }
+}
+
+/* Keep viewport controls in their native locations while reducing the large
+   default bodies. A 32px square remains a practical pointer target. */
+.ora-excalidraw-island .excalidraw .zoom-actions .zoom-button {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.ora-excalidraw-island .excalidraw .zoom-actions .reset-zoom-button {
+  width: 48px !important;
+  padding-inline: 6px !important;
+}
+
+.ora-excalidraw-island .excalidraw .help-icon {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+}
+
+.ora-excalidraw-island .excalidraw .App-menu_bottom {
+  bottom: 8px;
+  padding-inline: 8px;
+}
+
+@container ora-visual-pane (max-width: 600px) {
+  .ora-excalidraw-island .excalidraw .App-toolbar-container {
+    width: calc(100cqw - 208px);
+    max-width: calc(100cqw - 208px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
 }
 
 .ora-visual-editor-toggle {

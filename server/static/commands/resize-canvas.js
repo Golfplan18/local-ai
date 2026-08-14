@@ -445,6 +445,11 @@
       throw err;
     }
 
+    if (panel && typeof panel._allowUserMutation === 'function'
+        && !panel._allowUserMutation('resize-canvas')) {
+      return { cancelled: true, changed: false };
+    }
+
     var moved = _translateLayers(panel, off.dx, off.dy);
     _setCanvasSize(panel, next);
 
@@ -688,6 +693,10 @@
       params.confirm_crop = false;
       try {
         var res = apply(panel, params);
+        if (res && res.cancelled) {
+          controller.resolve({ status: 'cancelled', reason: 'mutation-not-confirmed' });
+          return;
+        }
         controller.resolve({ status: 'applied', params: params, result: res });
       } catch (err) {
         if (err && err.code === 'E_CROP_REQUIRES_CONFIRMATION') {
@@ -707,6 +716,10 @@
           params.confirm_crop = true;
           try {
             var res2 = apply(panel, params);
+            if (res2 && res2.cancelled) {
+              controller.resolve({ status: 'cancelled', reason: 'mutation-not-confirmed' });
+              return;
+            }
             controller.resolve({ status: 'applied', params: params, result: res2, cropped: true });
           } catch (e2) {
             controller.resolve({ status: 'error', error: String(e2 && e2.message || e2) });

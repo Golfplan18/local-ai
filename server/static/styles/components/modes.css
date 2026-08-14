@@ -23,8 +23,10 @@ body.theme-light.private-mode {
 }
 body.private-mode .spine-button[data-mode-button="private"],
 body.private-mode .spine-button[data-mode-button="private"]:hover {
-  border-color: var(--ora-mode-private-button-border);
   color: var(--ora-mode-private-button-icon);
+}
+body.private-mode .spine-button[data-mode-button="private"]::after {
+  border-color: var(--ora-mode-private-button-border);
 }
 body.private-mode .bridge-mode-label {
   color: var(--ora-mode-private-label);
@@ -39,8 +41,10 @@ body.theme-light.stealth-mode {
 }
 body.stealth-mode .spine-button[data-mode-button="stealth"],
 body.stealth-mode .spine-button[data-mode-button="stealth"]:hover {
-  border-color: var(--ora-mode-stealth-button-border);
   color: var(--ora-mode-stealth-button-icon);
+}
+body.stealth-mode .spine-button[data-mode-button="stealth"]::after {
+  border-color: var(--ora-mode-stealth-button-border);
 }
 body.stealth-mode .bridge-mode-label {
   color: var(--ora-mode-stealth-label);

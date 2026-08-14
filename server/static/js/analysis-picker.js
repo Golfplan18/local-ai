@@ -28,12 +28,44 @@
   let _lensStepModeId = null;
   let _outsideHandler = null;
   let _escapeHandler = null;
+  let _home = null;
+  let _homeNext = null;
+
+  function placeForCurrentLayout() {
+    const collapsed = document.querySelector('.left-column')?.classList.contains('collapsed');
+    if (!collapsed) {
+      if (_home && _picker.parentNode !== _home) {
+        _home.insertBefore(_picker, _homeNext && _homeNext.parentNode === _home ? _homeNext : null);
+      }
+      _picker.removeAttribute('style');
+      return;
+    }
+    const anchor = _btn && _btn.getBoundingClientRect();
+    document.body.appendChild(_picker);
+    const left = Math.max(16, Math.round((anchor && anchor.right || 0) + 10));
+    Object.assign(_picker.style, {
+      position: 'fixed',
+      top: '16px',
+      left: `${left}px`,
+      right: 'auto',
+      width: `min(620px, calc(100vw - ${left + 16}px))`,
+      maxHeight: 'calc(100vh - 32px)',
+      zIndex: '10060',
+    });
+  }
+
+  function restoreHome() {
+    if (!_home || _picker.parentNode === _home) return;
+    _home.insertBefore(_picker, _homeNext && _homeNext.parentNode === _home ? _homeNext : null);
+    _picker.removeAttribute('style');
+  }
 
   function open() {
     if (!_picker) return;
     if (window.OraFrameworkPicker && typeof window.OraFrameworkPicker.close === 'function') {
       window.OraFrameworkPicker.close();
     }
+    placeForCurrentLayout();
     _picker.hidden = false;
     if (_btn) _btn.setAttribute('aria-expanded', 'true');
 
@@ -78,6 +110,7 @@
   function close() {
     if (!_picker || _picker.hidden) return;
     _picker.hidden = true;
+    restoreHome();
     if (_btn) _btn.setAttribute('aria-expanded', 'false');
     if (_outsideHandler) {
       document.removeEventListener('mousedown', _outsideHandler, true);
@@ -624,6 +657,8 @@
       console.warn('[analysis-picker] DOM nodes missing; picker disabled.');
       return;
     }
+    _home = _picker.parentNode;
+    _homeNext = _picker.nextSibling;
 
     _search.addEventListener('input', () => render(_search.value));
     document.addEventListener('ora:input-toolbar:analysis', () => toggle());

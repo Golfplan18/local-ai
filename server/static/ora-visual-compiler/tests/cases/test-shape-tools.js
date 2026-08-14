@@ -747,5 +747,98 @@ module.exports = {
     } catch (err) {
       record('shape-tools: deleteSelected', false, 'threw: ' + (err.stack || err.message || err));
     }
+
+    // ── 24. A cancelled handoff warning blocks the candidate edit ─────────
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'st-24' });
+      panel.init();
+      panel.setActiveTool('rect');
+      panel.stage.getPointerPosition = function () { return { x: 20, y: 20 }; };
+      panel.config.beforeUserMutation = function () { return false; };
+      panel._onStageDown({ target: panel.stage });
+      record('shape-tools: cancelled mutation guard leaves drawing untouched',
+        panel._drawContext === null && countUserShapes(panel) === 0,
+        'drawContext=' + !!panel._drawContext + ' count=' + countUserShapes(panel));
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      record('shape-tools: cancelled mutation guard', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
+
+    // ── 25. Deferred command guards run only at a valid mutation ─────────
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'st-25' });
+      panel.init();
+      const shape = panel._createShape('rect', { x: 200, y: 200, width: 30, height: 30 });
+      let guardCalls = 0;
+      panel.config.beforeUserMutation = function () { guardCalls += 1; return false; };
+
+      const resizePromise = win.OraResizeCanvas.open(panel);
+      const resizeOpenedWithoutGuard = guardCalls === 0;
+      panel._resizeCanvasDialog.hooks.cancel();
+      const resizeCancelled = await resizePromise;
+      record('shape-tools: opening and cancelling Resize does not consume the guard',
+        resizeOpenedWithoutGuard && resizeCancelled.status === 'cancelled' && guardCalls === 0,
+        'guardCalls=' + guardCalls + ' status=' + resizeCancelled.status);
+
+      const priorSize = win.OraResizeCanvas.getCurrentSize(panel);
+      const blockedResize = win.OraResizeCanvas.apply(panel, {
+        width: priorSize.width + 100,
+        height: priorSize.height + 100,
+        anchor: 'center',
+        confirm_crop: true,
+      });
+      const afterBlockedResize = win.OraResizeCanvas.getCurrentSize(panel);
+      record('shape-tools: declined Resize warning prevents the first mutation',
+        blockedResize.cancelled === true
+          && guardCalls === 1
+          && afterBlockedResize.width === priorSize.width
+          && afterBlockedResize.height === priorSize.height,
+        'guardCalls=' + guardCalls + ' result=' + JSON.stringify(blockedResize));
+
+      guardCalls = 0;
+      panel._cropToSelectionRect = { x: 0, y: 0, width: 10, height: 10 };
+      let cropConfirmationError = null;
+      try {
+        win.OraCropToSelection.apply(panel, { confirmFn: function () { return false; } });
+      } catch (error) {
+        cropConfirmationError = error;
+      }
+      record('shape-tools: cancelled destructive crop does not consume the guard',
+        cropConfirmationError && cropConfirmationError.code === 'E_NOT_CONFIRMED'
+          && guardCalls === 0 && countUserShapes(panel) === 1,
+        'guardCalls=' + guardCalls + ' error=' + (cropConfirmationError && cropConfirmationError.code));
+
+      const blockedCrop = win.OraCropToSelection.apply(panel, { confirm: true });
+      record('shape-tools: declined crop warning preserves geometry and selection',
+        blockedCrop.cancelled === true
+          && guardCalls === 1
+          && countUserShapes(panel) === 1
+          && shape.x() === 200 && shape.y() === 200
+          && panel._cropToSelectionRect.width === 10,
+        'guardCalls=' + guardCalls + ' count=' + countUserShapes(panel));
+
+      panel.destroy();
+      win.document.body.removeChild(div);
+
+      const emptyDiv = mkDiv(win);
+      const emptyPanel = new win.VisualPanel(emptyDiv, { id: 'st-25-empty' });
+      emptyPanel.init();
+      let invalidGuardCalls = 0;
+      emptyPanel.config.beforeUserMutation = function () { invalidGuardCalls += 1; return false; };
+      let emptyCropError = null;
+      try { win.OraCropToContent.apply(emptyPanel); } catch (error) { emptyCropError = error; }
+      record('shape-tools: invalid crop-to-content fails before the guard',
+        emptyCropError && emptyCropError.code === 'E_NO_CONTENT' && invalidGuardCalls === 0,
+        'guardCalls=' + invalidGuardCalls + ' error=' + (emptyCropError && emptyCropError.code));
+      emptyPanel.destroy();
+      win.document.body.removeChild(emptyDiv);
+    } catch (err) {
+      record('shape-tools: deferred command mutation guards', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
   },
 };

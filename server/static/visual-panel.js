@@ -260,6 +260,7 @@
     this._shapeCounter      = 0;            // monotonic id source
     this._history           = [];           // action frames: {undoFn, redoFn, label}
     this._historyCursor     = 0;            // next-write index (== length when at tip)
+    this._mutationGuardCancelled = false;   // rolls back one synchronous guarded action batch
     this._drawContext       = null;         // in-flight draw: {type, start, preview}
     this._selectionDrag     = null;         // in-flight select marquee
     this._selectedShapeIds  = [];           // currently selected user-shape ids
@@ -2101,6 +2102,11 @@
 
   VisualPanel.prototype._setChromeHidden = function (hidden) {
     if (this._destroyed || !this.el) return;
+    if (hidden && typeof document !== 'undefined'
+        && document.body
+        && !document.body.classList.contains('ora-auto-hide-controls')) {
+      hidden = false;
+    }
     if (hidden && this._isInteracting()) return;     // never hide mid-interaction
     if (hidden === this._chromeHidden) return;
     this._chromeHidden = !!hidden;
@@ -2424,6 +2430,7 @@
         window.OraV3TemplateGallery.open(panel);
         return;
       }
+      if (panel._allowUserMutation && !panel._allowUserMutation('new-canvas')) return;
       if (panel.clearUserInput) panel.clearUserInput();
       if (panel.clearArtifact) panel.clearArtifact();
     };
@@ -2444,8 +2451,8 @@
         return;
       }
       try {
-        Crop.apply(panel);
-        if (panel.zoomToExtents) panel.zoomToExtents();
+        var result = Crop.apply(panel);
+        if ((!result || !result.cancelled) && panel.zoomToExtents) panel.zoomToExtents();
       } catch (err) {
         showCommandError((err && err.message) || 'Nothing to crop.');
       }
@@ -2457,13 +2464,13 @@
         return;
       }
       try {
-        Crop.apply(panel, {
+        var result = Crop.apply(panel, {
           confirmFn: function (count) {
             if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
             return window.confirm('Crop will discard ' + count + ' object(s). Continue?');
           },
         });
-        if (panel.zoomToExtents) panel.zoomToExtents();
+        if ((!result || !result.cancelled) && panel.zoomToExtents) panel.zoomToExtents();
       } catch (err) {
         showCommandError((err && err.message) || 'Select an area before cropping.');
       }
@@ -2604,7 +2611,17 @@
       },
     };
 
-    var ctl = Toolbar.render(def, {
+    var externalToolbarHost = panel.config && panel.config.toolbarHost;
+    // V3's persistent Exhibits header owns the universal Konva toolbar.
+    // Export is deliberately omitted there because delivery belongs to the
+    // pane footer; editable Save remains a distinct editor command.
+    var renderDef = def;
+    if (externalToolbarHost && Array.isArray(def.items)) {
+      renderDef = Object.assign({}, def, {
+        items: def.items.filter(function (item) { return item && item.id !== 'export'; }),
+      });
+    }
+    var ctl = Toolbar.render(renderDef, {
       actionRegistry:    actionRegistry,
       predicateRegistry: predicateRegistry,
       context:           panel,
@@ -2628,7 +2645,8 @@
     // (viewport, error bar, indicators, etc.) into a centre dock-content
     // container; from this point onwards, "the canvas" lives at
     // host > .ora-dock--middle > .ora-dock-content > .visual-panel__viewport.
-    var defaultEdges = { 'ora-universal': def.default_dock || 'top' };
+    var defaultEdges = {};
+    if (!externalToolbarHost) defaultEdges['ora-universal'] = def.default_dock || 'top';
     defaultEdges[DRAWING_TOOLBAR_ID] = 'left';
     var dock = Dock.create(this.el, {
       defaultEdges: defaultEdges,
@@ -2651,10 +2669,15 @@
 
     this._mountDrawingToolbarInDock(dock);
 
-    dock.mount(ctl, {
-      id: def.id || 'ora-universal',
-      label: def.label || 'Universal',
-    });
+    if (externalToolbarHost && ctl && ctl.el) {
+      externalToolbarHost.replaceChildren(ctl.el);
+      if (typeof ctl.setIconSize === 'function') ctl.setIconSize('small');
+    } else {
+      dock.mount(ctl, {
+        id: def.id || 'ora-universal',
+        label: def.label || 'Universal',
+      });
+    }
     // First-pass resize so the Konva stage matches the now-reduced viewport.
     this._resyncStageFromDock(dock.getFootprints());
 
@@ -3052,6 +3075,12 @@
 
   VisualPanel.prototype.getActiveTool = function () { return this._activeTool; };
 
+  VisualPanel.prototype._allowUserMutation = function (kind) {
+    if (this._suppressHistory) return true;
+    var guard = this.config && this.config.beforeUserMutation;
+    return typeof guard !== 'function' || guard({ label: kind || 'canvas-edit' }) !== false;
+  };
+
   /**
    * Apply a CSS cursor to the stage container that matches the active tool.
    * Uses CSS classes so styling lives in visual-panel.css.
@@ -3092,6 +3121,18 @@
     this.stage.on('touchstart.vp3',function (e) { self._onStageDown(e); });
     this.stage.on('touchmove.vp3', function (e) { self._onStageMove(e); });
     this.stage.on('touchend.vp3',  function (e) { self._onStageUp(e);   });
+    this.stage.on('dragstart.vp3-mutation-guard', function (e) {
+      var target = e && e.target;
+      if (!target || target === self.stage || typeof target.getAttr !== 'function') return;
+      var isUserObject = !!(
+        target.getAttr('userShapeId')
+        || target.getAttr('userAnnotationId')
+        || target.getAttr('bubbleKind')
+      );
+      if (!isUserObject || self._allowUserMutation('move-object')) return;
+      if (typeof target.stopDrag === 'function') target.stopDrag();
+      e.cancelBubble = true;
+    });
 
     // Right-click on a Konva.Image opens the canvas-to-library context
     // menu. Implementation lives in v3-canvas-to-library.js. We suppress
@@ -3133,6 +3174,12 @@
       this._onSelectDown(e);
       return;
     }
+    if (
+      (this._activeTool === 'text'
+        || ANNOTATION_TOOLS[this._activeTool]
+        || SHAPE_TOOLS[this._activeTool])
+      && !this._allowUserMutation('draw-' + this._activeTool)
+    ) return;
     if (this._activeTool === 'text') {
       // Text tool: single click places anchor, opens inline input.
       var p = this._stagePoint();
@@ -3550,6 +3597,8 @@
     if (typeof prevLabel !== 'string') {
       prevLabel = groupNode.getAttr('userLabel') || '';
     }
+    if (prevLabel === label) return;
+    if (!this._suppressHistory && !this._allowUserMutation('edit-label')) return;
     groupNode.setAttrs({ userLabel: label });
     if (groupNode._vpInnerText && typeof groupNode._vpInnerText.text === 'function') {
       groupNode._vpInnerText.text(label);
@@ -3557,7 +3606,6 @@
       if (layer) layer.draw();
     }
     if (this._suppressHistory) return;
-    if (prevLabel === label) return;
     var self = this;
     var nid = groupNode.getAttr('userShapeId');
     this._pushHistory({
@@ -3886,6 +3934,7 @@
   VisualPanel.prototype._moveShape = function (id, dx, dy) {
     var node = this._findShapeById(id);
     if (!node) return false;
+    if ((dx || dy) && !this._allowUserMutation('move-object')) return false;
     var prev = { x: node.x(), y: node.y() };
     var curr = { x: prev.x + dx, y: prev.y + dy };
     node.position(curr);
@@ -4245,6 +4294,7 @@
 
   VisualPanel.prototype.deleteSelected = function () {
     if (this._selectedShapeIds.length === 0) return;
+    if (!this._allowUserMutation('delete-selection')) return;
     var ids = this._selectedShapeIds.slice();
     // Delete pushes one history frame per shape. For multi-delete this is
     // N frames; acceptable given current scope. (Batching is a future improvement.)
@@ -4261,6 +4311,22 @@
    */
   VisualPanel.prototype._pushHistory = function (frame) {
     if (this._suppressHistory) return;
+    if (this._mutationGuardCancelled || !this._allowUserMutation(frame && frame.label)) {
+      // Callers construct the frame immediately after applying the candidate
+      // mutation. Replaying its undo synchronously means Cancel leaves the
+      // canvas unchanged and no history entry is committed. A same-stack flag
+      // also rolls back sibling frames from one multi-selection drag.
+      this._mutationGuardCancelled = true;
+      this._suppressHistory = true;
+      try {
+        if (frame && typeof frame.undoFn === 'function') frame.undoFn();
+      } finally {
+        this._suppressHistory = false;
+      }
+      var self = this;
+      Promise.resolve().then(function () { self._mutationGuardCancelled = false; });
+      return false;
+    }
     // Truncate forward history.
     if (this._historyCursor < this._history.length) {
       this._history.length = this._historyCursor;
@@ -4271,10 +4337,12 @@
       this._history.shift();
     }
     this._historyCursor = this._history.length;
+    return true;
   };
 
   VisualPanel.prototype.undo = function () {
     if (this._historyCursor <= 0) return false;
+    if (!this._allowUserMutation('undo')) return false;
     this._historyCursor -= 1;
     var frame = this._history[this._historyCursor];
     this._suppressHistory = true;
@@ -4284,6 +4352,7 @@
 
   VisualPanel.prototype.redo = function () {
     if (this._historyCursor >= this._history.length) return false;
+    if (!this._allowUserMutation('redo')) return false;
     var frame = this._history[this._historyCursor];
     this._historyCursor += 1;
     this._suppressHistory = true;
@@ -4304,6 +4373,18 @@
    */
   VisualPanel.prototype.clearUserInput = function () {
     if (!this.userInputLayer && !this.annotationLayer) return;
+    var shapes = this.userInputLayer ? this.userInputLayer.find('.user-shape') : [];
+    var annotations = [];
+    if (this.annotationLayer) {
+      var children = this.annotationLayer.getChildren();
+      for (var ai = 0; ai < children.length; ai++) {
+        if (children[ai].getAttr && children[ai].getAttr('annotationSource') === 'user') {
+          annotations.push(children[ai]);
+        }
+      }
+    }
+    if (shapes.length === 0 && annotations.length === 0 && !this._pendingImage) return;
+    if (!this._allowUserMutation('clear-user-input')) return;
     this._cancelDraw();
     this._cancelSelectionDrag();
     this._dismissTextInput();
@@ -4315,16 +4396,6 @@
     // along on the next message.
     this.clearPendingImage();
 
-    var shapes = this.userInputLayer ? this.userInputLayer.find('.user-shape') : [];
-    var annotations = [];
-    if (this.annotationLayer) {
-      var children = this.annotationLayer.getChildren();
-      for (var ai = 0; ai < children.length; ai++) {
-        if (children[ai].getAttr && children[ai].getAttr('annotationSource') === 'user') {
-          annotations.push(children[ai]);
-        }
-      }
-    }
     if (shapes.length === 0 && annotations.length === 0) return;
 
     var shapeSnapshots = [];
@@ -4553,6 +4624,10 @@
       if (size > MAX_IMAGE_BYTES) {
         var mb = (MAX_IMAGE_BYTES / (1024 * 1024)).toFixed(0);
         self._showImageError('Image must be \u2264 ' + mb + ' MB. Please resize or use a smaller image.');
+        resolve(null);
+        return;
+      }
+      if (!self._allowUserMutation('attach-image')) {
         resolve(null);
         return;
       }
@@ -5599,8 +5674,10 @@
     if (kind !== 'callout' && kind !== 'sticky') return;
     text = text || '';
     if (typeof prevText !== 'string') prevText = node.getAttr('text') || '';
+    if (prevText === text) return;
+    if (!this._suppressHistory && !this._allowUserMutation('edit-annotation-text')) return;
     this._applyAnnotationTextInternal(node, text);
-    if (this._suppressHistory || prevText === text) return;
+    if (this._suppressHistory) return;
     var id = node.getAttr('userAnnotationId');
     var self = this;
     this._pushHistory({
@@ -6142,6 +6219,7 @@
    */
   VisualPanel.prototype.deleteSelectedAnnotations = function () {
     if (!this._selectedAnnotIds || this._selectedAnnotIds.length === 0) return;
+    if (!this._allowUserMutation('delete-annotations')) return;
     var ids = this._selectedAnnotIds.slice();
     for (var i = 0; i < ids.length; i++) this._deleteAnnotation(ids[i]);
     this._selectedAnnotIds = [];

@@ -13,16 +13,20 @@ const source = fs.readFileSync(
   path.resolve(__dirname, '..', 'js', 'v3-canvas-mount.js'), 'utf8'
 );
 const dom = new JSDOM(
-  '<!doctype html><html><body><div class="right-pane"></div><div id="logo-o"></div></body></html>',
+  '<!doctype html><html><body><div class="right-pane"></div><div id="logo-o"></div>'
+    + '<button id="visualExportPng" disabled>Export</button></body></html>',
   { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true }
 );
 const w = dom.window;
+let canvasStateEvents = 0;
+w.document.addEventListener('ora:canvas-state-changed', () => { canvasStateEvents += 1; });
 const calls = [];
 const sceneLoads = [];
 const checkpoints = new Map();
 const visualStates = [];
 const drafts = new Map();
 let islandOptions = null;
+let islandHost = null;
 let checkpointCounter = 0;
 let failVisualState = false;
 let imageBackedCalls = 0;
@@ -45,6 +49,7 @@ const layer = {
 };
 function VisualPanel(element, config) {
   this.el = element;
+  this.config = config;
   this.panelId = config.id;
   this.userInputLayer = layer;
   this.stage = {
@@ -124,6 +129,7 @@ w.OraCanvasFileFormat = {
 };
 w.OraExcalidrawIsland = {
   mount(_host, options) {
+    islandHost = _host;
     islandOptions = options;
     options.onReady(api);
     // Real Excalidraw reports its initial empty scene during mount. This must
@@ -302,6 +308,20 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 (async () => {
   await tick();
+  islandOptions.onChange([], {
+    zoom: { value: 2 }, scrollX: 5, scrollY: -3,
+  }, {});
+  const excalHost = islandHost;
+  if (excalHost.style.getPropertyValue('--ora-excal-grid-size') !== '48px'
+      || excalHost.style.getPropertyValue('--ora-excal-grid-x') !== '34px'
+      || excalHost.style.getPropertyValue('--ora-excal-grid-y') !== '18px') {
+    throw new Error('Excalidraw dot grid did not track zoom and pan: '
+      + JSON.stringify({
+        size: excalHost.style.getPropertyValue('--ora-excal-grid-size'),
+        x: excalHost.style.getPropertyValue('--ora-excal-grid-x'),
+        y: excalHost.style.getPropertyValue('--ora-excal-grid-y'),
+      }));
+  }
   // A user edit made while the old Dialogue is visible may become dirty after
   // load() starts but before its target envelope resolves. Binding dirtiness
   // to its owner prevents the subsequent target load from stealing the draft.
@@ -311,6 +331,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   api.elements = [{ id: 'dirty-old-scene', type: 'rectangle' }];
   islandOptions.onChange(api.elements, api.appState, api.files);
   w.OraCanvas.setConversationContext('target-dialogue', '');
+  const stateEventsBeforeLoad = canvasStateEvents;
   await w.OraCanvas.loadCheckpoint(
     'target-dialogue', '20260813T123456123456Z-deadbeef', null,
     { active_editor: 'excalidraw' }, { preferDraft: true }
@@ -324,8 +345,10 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     throw new Error('dirty old scene was written under target Dialogue: '
       + JSON.stringify(draftPosts));
   }
-  if (sceneLoads[0] !== 'current-B') {
-    throw new Error('current-dialogue reload did not prefer latest.excalidraw B');
+  if (sceneLoads[0] !== 'current-B'
+      || canvasStateEvents !== stateEventsBeforeLoad + 1
+      || w.document.getElementById('visualExportPng').disabled) {
+    throw new Error('current-dialogue load did not refresh the non-empty canvas/export state once');
   }
 
   w.OraCanvas.setConversationContext('privacy-parent', '');
@@ -357,6 +380,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     'target-dialogue', '20260813T123456123456Z-deadbeef', null,
     { active_editor: 'excalidraw' }, { currentDialogue: false, preferDraft: false }
   );
+  const stateEventsBeforeAssistant = canvasStateEvents;
   await w.OraPanels.visual.onBridgeUpdate({ ora_visual_blocks: [
     { envelope: { id: 'assistant-one', type: 'comparison', canvas_action: 'replace' } },
     { envelope: { id: 'assistant-two', type: 'comparison', canvas_action: 'annotate' } },
@@ -367,6 +391,8 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   if (assistantEvents[0] !== 'checkpoint-loaded:historical-A'
       || compiledEnvelopeIds.join(',') !== 'assistant-one'
       || assistantEvents.filter((event) => event === 'png-inserted:true').length !== 1
+      || canvasStateEvents !== stateEventsBeforeAssistant + 1
+      || w.document.getElementById('visualExportPng').disabled
       || draftCountAfterAssistant !== draftCountBeforeAssistant) {
     throw new Error('historical assistant blocks did not load checkpoint, preserve unsupported annotation, and avoid drafting: '
       + JSON.stringify({ assistantEvents, compiledEnvelopeIds,
@@ -529,12 +555,16 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
     throw new Error('explicit replace did not remove user and annotation content');
   }
   const compiledBeforeClear = compiledEnvelopeIds.length;
+  const stateEventsBeforeClear = canvasStateEvents;
   await w.OraPanels.visual.onBridgeUpdate({
     envelope: { id: 'explicit-clear', type: 'comparison', canvas_action: 'clear' },
     ora_visual_dispatch_key: 'actions#clear',
   });
-  if (api.elements.length !== 0 || compiledEnvelopeIds.length !== compiledBeforeClear) {
-    throw new Error('clear did not empty the scene without compiling an artifact');
+  if (api.elements.length !== 0
+      || compiledEnvelopeIds.length !== compiledBeforeClear
+      || canvasStateEvents !== stateEventsBeforeClear + 1
+      || !w.document.getElementById('visualExportPng').disabled) {
+    throw new Error('clear did not empty the scene and refresh canvas/export state once');
   }
 
   const draftCountBeforeCapability = calls.filter(
@@ -567,6 +597,23 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
       || !checkpoints.has(xToK.konva_baseline_checkpoint_id)
       || !currentKonva) {
     throw new Error('X→K did not publish provenance only after both checkpoints');
+  }
+  const statesBeforeWarning = visualStates.length;
+  let confirmAnswer = false;
+  let confirmCalls = 0;
+  w.confirm = function () { confirmCalls += 1; return confirmAnswer; };
+  if (w.OraCanvas.panel.config.beforeUserMutation({ label: 'create:rect' }) !== false
+      || visualStates.length !== statesBeforeWarning) {
+    throw new Error('cancelled first Konva edit did not preserve the unacknowledged handoff');
+  }
+  confirmAnswer = true;
+  if (w.OraCanvas.panel.config.beforeUserMutation({ label: 'create:rect' }) !== true) {
+    throw new Error('confirmed first Konva edit was not accepted');
+  }
+  await w.OraCanvas.flushDraft();
+  if (confirmCalls !== 2
+      || !visualStates[visualStates.length - 1].konva_edit_warning_acknowledged) {
+    throw new Error('Konva editability warning acknowledgement was not persisted once');
   }
   const flattenedObjects = liveObjects.slice();
   const konvaAttachBeforeCapability = konvaAttachCalls;

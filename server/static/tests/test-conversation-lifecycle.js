@@ -511,6 +511,7 @@ async function runIndexPrivacyEgressTests() {
   var events = [];
   var analyzerCalls = 0;
   var allowPrivacy = true;
+  var releasedDrafts = [];
   var frameworkVisualSnapshot = { editor: 'excalidraw', elements: [{ id: 'framework-visual' }] };
   pw.OraInputState = {
     getFramework: function () {
@@ -542,9 +543,28 @@ async function runIndexPrivacyEgressTests() {
   privacyContext.renderAssistantTurn = function (message) {
     events.push('assistant:' + message);
   };
-  privacyContext.submitToMainPipeline = async function (text, _display, _approved, visualSnapshot) {
+  privacyContext._reserveInquiryComposition = function (text) {
+    events.push('reserve:' + text);
+    return {
+      inputSnapshot: { framework: { id: 'terrain-mapping', kind: 'framework' } },
+      attachmentSnapshot: { entries: [] },
+      visualSnapshot: frameworkVisualSnapshot,
+      restoreDraftText: text,
+    };
+  };
+  privacyContext._releaseInquiryComposition = function (composition) {
+    releasedDrafts.push(composition.restoreDraftText);
+    events.push('release');
+  };
+  privacyContext._rebindReservedComposition = function () { return true; };
+  privacyContext._summarizeAttachments = function () { return []; };
+  privacyContext._summarizeCanvas = function () { return ''; };
+  privacyContext.submitToMainPipeline = async function (
+    text, _display, _approved, visualSnapshot, composition
+  ) {
     events.push('submit:' + text);
     events.push('submit-visual:' + String(visualSnapshot === frameworkVisualSnapshot));
+    if (composition) composition.accepted = true;
     return true;
   };
   privacyContext._analyzeFrameworkInputs = async function (request) {
@@ -585,7 +605,8 @@ async function runIndexPrivacyEgressTests() {
       && secondAnalyzeIndex > privacyIndex
       && submits.length === 1
       && /framework-secret/.test(submits[0])
-      && events.includes('capture-option:true')
+      && events[0] === 'reserve:Base prompt'
+      && events.includes('capture-option:false')
       && events.includes('submit-visual:true'));
   record('framework privacy fork receives the complete augmented draft',
     events.some(function (event) {
@@ -599,14 +620,16 @@ async function runIndexPrivacyEgressTests() {
   record('cancelled framework-response privacy sends no analyzer or final request',
     analyzerCalls === 1
       && events.some(function (event) { return event.indexOf('privacy:') === 0; })
-      && !events.some(function (event) { return event.indexOf('submit:') === 0; }));
+      && !events.some(function (event) { return event.indexOf('submit:') === 0; })
+      && releasedDrafts[releasedDrafts.length - 1]
+        === 'Base prompt\nMy private key is framework-secret.');
 
   events = [];
   analyzerCalls = 0;
   await pw.__submitWithFrameworkCheck('My password is initial-secret.');
   record('cancelled initial framework privacy sends no analyzer request',
     analyzerCalls === 0
-      && events[0] === 'privacy:My password is initial-secret.');
+      && events.includes('privacy:My password is initial-secret.'));
 
   var blankDom = new jsdom.JSDOM(
     '<!doctype html><html><body></body></html>',
@@ -632,12 +655,16 @@ async function runIndexPrivacyEgressTests() {
   blankContext.fetch = bw.fetch;
   blankContext.currentConversationId = function () { return 'text-only'; };
   blankContext.currentTag = function () { return ''; };
+  blankContext.inquiryNavigationRevision = 0;
+  blankContext.inquiryDraftRevision = 0;
   blankContext.renderAssistantTurn = function () {};
   blankContext.refreshSidebarAfterSubmit = function () {};
   vm.runInContext(
-    sourceSlice(indexSource, '  const _submitToMainPipeline = async',
+    sourceSlice(indexSource, '  const mainPipelineSubmissionsInFlight = [];',
       '  const submitToMainPipeline = async')
-      + '\nglobalThis.__submitTextOnly = _submitToMainPipeline;',
+      + '\nglobalThis.__submitTextOnly = _submitToMainPipeline;'
+      + '\nglobalThis.__reserveComposition = _reserveInquiryComposition;'
+      + '\nglobalThis.__releaseComposition = _releaseInquiryComposition;',
     blankContext,
     { filename: 'index-text-only-submit.js' }
   );
@@ -647,6 +674,223 @@ async function runIndexPrivacyEgressTests() {
       && submittedFields.message === 'Text only'
       && !Object.prototype.hasOwnProperty.call(submittedFields, 'visual_native')
       && !Object.prototype.hasOwnProperty.call(submittedFields, 'canvas_preview_png'));
+
+  var immediateSubmitFetch = bw.fetch;
+  var activeSubmitConversation = 'composition-a';
+  var delayedSubmitResolvers = [];
+  var delayedSubmitBodies = [];
+  var modelState = { value: 'budget-a', revision: 0 };
+  var audienceState = { value: 'external', revision: 0 };
+  var inputState = {
+    revision: 0,
+    framework: { id: 'framework-a' },
+    analysisMode: null,
+    analysisLens: null,
+  };
+  var attachmentOwner = 'composition-a';
+  var attachmentRevision = 0;
+  var submittedImageEntry = {
+    kind: 'image',
+    file: new bw.File(['a'], 'a.png', { type: 'image/png' }),
+  };
+  var newerImageEntry = {
+    kind: 'image',
+    file: new bw.File(['b'], 'b.png', { type: 'image/png' }),
+  };
+  var attachmentEntries = [submittedImageEntry];
+  blankContext.currentConversationId = function () { return activeSubmitConversation; };
+  bw.OraModelProfiles = {
+    snapshotForSubmission: function () {
+      return { value: modelState.value, revision: modelState.revision };
+    },
+    reserveSubmission: function (snapshot) {
+      if (snapshot.revision !== modelState.revision || snapshot.value !== modelState.value) return null;
+      var token = { value: modelState.value };
+      modelState.value = '';
+      modelState.revision += 1;
+      token.reservedRevision = modelState.revision;
+      return token;
+    },
+    restoreSubmission: function (token) {
+      if (!token || token.reservedRevision !== modelState.revision) return false;
+      modelState.value = token.value;
+      modelState.revision += 1;
+      return true;
+    },
+  };
+  bw.OraStyleAudience = {
+    snapshotForSubmission: function () {
+      return { value: audienceState.value, revision: audienceState.revision };
+    },
+    reserveSubmission: function (snapshot) {
+      if (snapshot.revision !== audienceState.revision
+          || snapshot.value !== audienceState.value) return null;
+      var token = { value: audienceState.value };
+      audienceState.value = 'internal';
+      audienceState.revision += 1;
+      token.reservedRevision = audienceState.revision;
+      return token;
+    },
+    restoreSubmission: function (token) {
+      if (!token || token.reservedRevision !== audienceState.revision) return false;
+      audienceState.value = token.value;
+      audienceState.revision += 1;
+      return true;
+    },
+  };
+  bw.OraInputState = {
+    snapshotForSubmission: function () { return Object.assign({}, inputState); },
+    reserveSubmission: function (snapshot) {
+      if (snapshot.revision !== inputState.revision) return null;
+      var token = Object.assign({}, inputState);
+      inputState.framework = null;
+      inputState.analysisMode = null;
+      inputState.analysisLens = null;
+      inputState.revision += 1;
+      token.reservedRevision = inputState.revision;
+      return token;
+    },
+    restoreSubmission: function (token) {
+      if (!token || token.reservedRevision !== inputState.revision) return false;
+      inputState.framework = token.framework;
+      inputState.analysisMode = token.analysisMode;
+      inputState.analysisLens = token.analysisLens;
+      inputState.revision += 1;
+      return true;
+    },
+  };
+  bw.OraInputAttachments = {
+    snapshotForSubmission: function () {
+      return {
+        conversationId: attachmentOwner,
+        revision: attachmentRevision,
+        entries: attachmentEntries.slice(),
+      };
+    },
+    reserveSubmission: function (snapshot) {
+      if (snapshot.conversationId !== attachmentOwner
+          || snapshot.revision !== attachmentRevision) return null;
+      var token = { conversationId: attachmentOwner, entries: snapshot.entries.slice() };
+      attachmentEntries = attachmentEntries.filter(function (entry) {
+        return snapshot.entries.indexOf(entry) === -1;
+      });
+      attachmentRevision += 1;
+      token.reservedRevision = attachmentRevision;
+      return token;
+    },
+    restoreSubmission: function (token) {
+      if (!token || token.conversationId !== attachmentOwner
+          || token.reservedRevision !== attachmentRevision) return false;
+      attachmentEntries = token.entries.concat(attachmentEntries);
+      attachmentRevision += 1;
+      return true;
+    },
+  };
+  bw.fetch = function (_url, options) {
+    var fields = {};
+    options.body.forEach(function (value, key) { fields[key] = value; });
+    delayedSubmitBodies.push(fields);
+    return new Promise(function (resolve) { delayedSubmitResolvers.push(resolve); });
+  };
+  blankContext.fetch = bw.fetch;
+
+  var exactCompositionSubmit = bw.__submitTextOnly('Composition A');
+  var firstTurnReserved = modelState.value === ''
+    && audienceState.value === 'internal'
+    && inputState.framework === null
+    && attachmentEntries.length === 0;
+  var duplicateCompositionSubmit = bw.__submitTextOnly('Composition A');
+  attachmentEntries.push(newerImageEntry);
+  attachmentRevision += 1;
+  var nextTurnSubmit = bw.__submitTextOnly('Composition B');
+  delayedSubmitResolvers.shift()({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({ status: 'ok' }); },
+  });
+  delayedSubmitResolvers.shift()({
+    ok: true, status: 200,
+    json: function () { return Promise.resolve({ status: 'ok' }); },
+  });
+  await Promise.all([exactCompositionSubmit, duplicateCompositionSubmit, nextTurnSubmit]);
+
+  modelState.value = 'budget-retry'; modelState.revision += 1;
+  audienceState.value = 'external'; audienceState.revision += 1;
+  inputState.framework = { id: 'framework-retry' }; inputState.revision += 1;
+  var retryImageEntry = {
+    kind: 'image',
+    file: new bw.File(['retry'], 'retry.png', { type: 'image/png' }),
+  };
+  attachmentEntries = [retryImageEntry]; attachmentRevision += 1;
+  var failedUntouchedSubmit = bw.__submitTextOnly('Composition retry');
+  delayedSubmitResolvers.shift()({ ok: false, status: 503 });
+  await failedUntouchedSubmit;
+  var failedCompositionRestored = modelState.value === 'budget-retry'
+    && audienceState.value === 'external'
+    && inputState.framework && inputState.framework.id === 'framework-retry'
+    && attachmentEntries[0] === retryImageEntry;
+
+  var failedSupersededSubmit = bw.__submitTextOnly('Composition superseded');
+  modelState.value = 'budget-new'; modelState.revision += 1;
+  audienceState.value = 'internal'; audienceState.revision += 1;
+  inputState.framework = null;
+  inputState.analysisMode = { id: 'analysis-new' };
+  inputState.revision += 1;
+  var newestImageEntry = {
+    kind: 'image',
+    file: new bw.File(['new'], 'new.png', { type: 'image/png' }),
+  };
+  attachmentEntries.push(newestImageEntry); attachmentRevision += 1;
+  delayedSubmitResolvers.shift()({ ok: false, status: 503 });
+  await failedSupersededSubmit;
+
+  delete bw.OraModelProfiles;
+  delete bw.OraStyleAudience;
+  delete bw.OraInputState;
+  delete bw.OraInputAttachments;
+  var visualRevision = 1;
+  bw.OraCanvas = {
+    hasContent: function () { return true; },
+    snapshotForSubmit: function () {
+      return {
+        editor: 'excalidraw',
+        elements: [{ id: 'visual-shape', version: visualRevision }],
+        appState: {},
+        files: {},
+      };
+    },
+  };
+  var firstVisualComposition = bw.__reserveComposition('Same visual Inquiry');
+  var exactVisualRepeat = bw.__reserveComposition('Same visual Inquiry');
+  visualRevision += 1;
+  var changedVisualComposition = bw.__reserveComposition('Same visual Inquiry');
+  var visualDedupeIsExact = !!firstVisualComposition
+    && exactVisualRepeat === null
+    && !!changedVisualComposition;
+  bw.__releaseComposition(changedVisualComposition);
+  bw.__releaseComposition(firstVisualComposition);
+
+  record('one-turn composition is reserved once, isolated from the next turn, and safely restored',
+    firstTurnReserved
+      && visualDedupeIsExact
+      && delayedSubmitBodies.length === 4
+      && delayedSubmitBodies[0].config_name === 'budget-a'
+      && delayedSubmitBodies[0].framework_selected === 'framework-a'
+      && delayedSubmitBodies[0].image && delayedSubmitBodies[0].image.name === 'a.png'
+      && !Object.prototype.hasOwnProperty.call(delayedSubmitBodies[1], 'config_name')
+      && !Object.prototype.hasOwnProperty.call(delayedSubmitBodies[1], 'framework_selected')
+      && delayedSubmitBodies[1].style_audience === 'internal'
+      && delayedSubmitBodies[1].image && delayedSubmitBodies[1].image.name === 'b.png'
+      && failedCompositionRestored
+      && modelState.value === 'budget-new'
+      && inputState.analysisMode && inputState.analysisMode.id === 'analysis-new'
+      && attachmentEntries.includes(newestImageEntry));
+  bw.fetch = immediateSubmitFetch;
+  blankContext.fetch = immediateSubmitFetch;
+  blankContext.currentConversationId = function () { return 'text-only'; };
+  delete bw.OraModelProfiles;
+  delete bw.OraStyleAudience;
+  delete bw.OraInputState;
+  delete bw.OraInputAttachments;
 
   var backgroundState = {
     objects: [{ id: 'bg-image', kind: 'image', layer: 'background' }],
@@ -937,7 +1181,7 @@ async function runIndexLifecycleControlsTests() {
 
   var modeCore = sourceSlice(
     indexSource,
-    "  const modeLabel       = document.getElementById('bridgeModeLabel');",
+    "  const qaMessage       = document.getElementById('bridgeQAMessage');",
     '  // ─── Pane-mode buttons (Audio/Video Phase 1)'
   );
   var modeLifecycle = sourceSlice(
@@ -975,18 +1219,18 @@ async function runIndexLifecycleControlsTests() {
   var stealthActions = Array.from(menu.querySelectorAll('[data-action]')).map(function (item) {
     return item.textContent;
   });
-  record('Stealth mode menu separates Exit from irreversible deletion',
-    stealthActions.indexOf('Exit Stealth') !== -1
+  record('Off Record mode menu separates Exit from irreversible deletion',
+    stealthActions.indexOf('Exit Off Record') !== -1
       && stealthActions.indexOf('Delete Forever') !== -1
       && stealthActions.indexOf('Close') === -1);
   mw.document.body.classList.add('stealth-mode');
-  record('runtime Stealth renders one bracket label without overlapping bridge duplicates',
+  record('runtime Off Record renders one bracket label without overlapping bridge duplicates',
     mw.getComputedStyle(mw.document.getElementById('bridgeModeLabel')).display === 'none'
       && mw.getComputedStyle(mw.document.getElementById('modeBracketLeft')).opacity !== '0');
   mw.document.body.classList.remove('stealth-mode');
   record('spine mode menu exposes ARIA state and focuses its first item',
     stealthButton.getAttribute('aria-expanded') === 'true'
-      && mw.document.activeElement.textContent === 'New stealth');
+      && mw.document.activeElement.textContent === 'New Off Record');
   mw.document.activeElement.dispatchEvent(new mw.KeyboardEvent('keydown', {
     key: 'End', bubbles: true,
   }));
@@ -1024,7 +1268,7 @@ async function runIndexLifecycleControlsTests() {
   activeId = 'stealth-a';
   stealthButton.click();
   menu.querySelector('[data-action="exit-stealth"]').click();
-  record('mode Exit Stealth is navigation-only at the bound Dialogue id',
+  record('mode Exit Off Record is navigation-only at the bound Dialogue id',
     exitCalls.length === 1
       && exitCalls[0] === 'stealth-a'
       && deleteCalls.length === 0
@@ -1134,9 +1378,17 @@ async function runIndexLifecycleControlsTests() {
   }));
   pendingDocumentResolve();
   await new Promise(function (resolve) { setTimeout(resolve, 0); });
-  record('delayed attachment completion cannot land in a newer Dialogue',
-    aw.OraInputAttachments.list().length === 0
-      && !aw.document.querySelector('[data-document-id="doc-a"]'));
+  activeAttachmentId = 'attach-a';
+  aw.document.dispatchEvent(new aw.CustomEvent('ora:conversation-load-failed', {
+    detail: {
+      conversation_id: 'attach-b',
+      active_conversation_id: 'attach-a',
+    },
+  }));
+  record('failed navigation preserves the prior attachment composition',
+    aw.OraInputAttachments.list().length === 1
+      && !!aw.document.querySelector('[data-document-id="doc-a"]'));
+  aw.document.querySelector('[data-document-id="doc-a"] .transcribe-chip__close').click();
 
   aw.OraInputAttachments.addFiles([
     { name: 'current.pdf', type: 'application/pdf', size: 14 },
@@ -1174,9 +1426,9 @@ async function runIndexLifecycleControlsTests() {
   await new Promise(function (resolve) { setTimeout(resolve, 0); });
   record('media attachment dispatch carries its owning Dialogue identity',
     mediaOptionsSeen
-      && mediaOptionsSeen.conversation_id === 'attach-b'
+      && mediaOptionsSeen.conversation_id === 'attach-a'
       && mediaOptionsSeen.tag === ''
-      && aw.OraInputAttachments.list()[0].conversation_id === 'attach-b');
+      && aw.OraInputAttachments.list()[0].conversation_id === 'attach-a');
   aw.document.querySelector('[data-transcribe-id="audio-a"] .transcribe-chip__close').click();
 
   activeAttachmentId = 'attach-a';
@@ -1191,8 +1443,18 @@ async function runIndexLifecycleControlsTests() {
   aw.document.dispatchEvent(new aw.CustomEvent('ora:conversation-selected', {
     detail: { conversation_id: 'attach-b' },
   }));
-  record('navigation clears the prior Dialogue attachment composition',
+  var optimisticSelectionPreservedAttachment =
+    aw.document.getElementById('inputPaneAttachments').children.length === 1;
+  aw.document.dispatchEvent(new aw.CustomEvent('ora:conversation-tag-changed', {
+    detail: {
+      conversation_id: 'attach-b',
+      tag: '',
+      source: 'conversation-envelope',
+    },
+  }));
+  record('successful navigation clears attachments only after authoritative selection',
     imageAttachedToA
+      && optimisticSelectionPreservedAttachment
       && aw.OraInputAttachments.list().length === 0
       && aw.document.getElementById('inputPaneAttachments').children.length === 0);
 
@@ -1684,8 +1946,8 @@ async function run() {
   var protectedActionLabels = Array.from(
     w.document.querySelectorAll('#outputPaneActionsMenu .mode-dropdown-item')
   ).map(function (item) { return item.textContent; });
-  record('Stealth output actions use Exit and Delete Forever, never Close',
-    protectedActionLabels.indexOf('Exit Stealth') !== -1
+  record('Off Record output actions use Exit and Delete Forever, never Close',
+    protectedActionLabels.indexOf('Exit Off Record') !== -1
       && protectedActionLabels.indexOf('Delete Forever') !== -1
       && protectedActionLabels.indexOf('Close') === -1);
   protectedActionsButton.click();
@@ -1800,7 +2062,7 @@ async function run() {
   record('Standard output actions use Close and do not expose irreversible deletion',
     standardActionLabels.indexOf('Close') !== -1
       && standardActionLabels.indexOf('Delete Forever') === -1
-      && standardActionLabels.indexOf('Exit Stealth') === -1);
+      && standardActionLabels.indexOf('Exit Off Record') === -1);
   record('output actions menu moves focus to its first item',
     !!actionsMenu
       && actionsButton.getAttribute('aria-expanded') === 'true'
@@ -1859,7 +2121,7 @@ async function run() {
   record('Private output actions use the same reversible Close lifecycle',
     privateActionLabels.indexOf('Close') !== -1
       && privateActionLabels.indexOf('Delete Forever') === -1
-      && privateActionLabels.indexOf('Exit Stealth') === -1);
+      && privateActionLabels.indexOf('Exit Off Record') === -1);
   actionsButton.click();
 
   calls = [];

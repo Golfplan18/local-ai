@@ -771,6 +771,17 @@
       state.activeTitle = derived || conversation_id;
     }
 
+    // The validated envelope commits the new active identity. Publish that
+    // fact before restoring its editable draft or awaiting Exhibits so
+    // turn-level controls from the previous Dialogue cannot leak into it.
+    document.dispatchEvent(new CustomEvent('ora:conversation-tag-changed', {
+      detail: {
+        conversation_id,
+        tag: state.activeTag,
+        source: 'conversation-envelope',
+      },
+    }));
+
     // Library sources are genuinely read-only: do not surface or create an
     // unsendable local draft under a synthetic archive/engram id.
     if (state.readOnlySource) clearDraft(conversation_id);
@@ -805,17 +816,6 @@
         && (!state.visualState || state.visualState.active_editor === 'excalidraw')
       ),
     });
-
-    // The loaded envelope is authoritative over sidebar/request metadata.
-    if (envelope) {
-      document.dispatchEvent(new CustomEvent('ora:conversation-tag-changed', {
-        detail: {
-          conversation_id,
-          tag: state.activeTag,
-          source: 'conversation-envelope',
-        },
-      }));
-    }
 
     // Mark as read (best effort).
     if (envelope) {
@@ -1402,7 +1402,7 @@
         knownTag = envelope && envelope.tag || '';
       } catch (e) {
         console.error(`[v3-conversation] privacy resolution failed for ${id}:`, e);
-        window.alert('Close failed: could not verify whether this Dialogue is Stealth.');
+        window.alert('Close failed: could not verify whether this Dialogue is Off Record.');
         return null;
       }
     }
@@ -1470,7 +1470,7 @@
     if (id === state.activeConversationId) {
       if (state.readOnlySource) return null;
       if (state.activeTag === 'stealth') {
-        window.alert('A Stealth Dialogue cannot be retagged.');
+        window.alert('An Off Record Dialogue cannot be retagged.');
         return null;
       }
       if (state.activeTag === targetTag) return { ok: true, tag: targetTag };
@@ -1935,7 +1935,7 @@
     }
     if (menuTag === 'stealth') {
       items.push({
-        label: 'Exit Stealth',
+        label: 'Exit Off Record',
         action: () => exitStealth(menuConversationId),
       }, {
         label: 'Delete Forever',

@@ -36,11 +36,25 @@ var planCalls = 0;
 var runCalls = 0;
 var privacyCalls = [];
 var privacyAllowed = true;
+var activeConversationId = 'dialogue-a';
+var navigateDuringNextPlan = false;
+var holdNextPrivacy = false;
+var releaseHeldPrivacy = null;
 
 w.OraConversation = {
+  getActiveConversationId: function () { return activeConversationId; },
   submitAfterPrivacy: async function (text, submit, options) {
     privacyCalls.push({ text: text, draftText: options && options.draftText });
     if (!privacyAllowed) return false;
+    if (holdNextPrivacy) {
+      holdNextPrivacy = false;
+      return new Promise(function (resolve) {
+        releaseHeldPrivacy = async function () {
+          await submit();
+          resolve(true);
+        };
+      });
+    }
     await submit();
     return true;
   },
@@ -70,6 +84,13 @@ global.fetch = function (url, options) {
   }
   if (url === '/api/programming/plan') {
     planCalls += 1;
+    if (navigateDuringNextPlan) {
+      navigateDuringNextPlan = false;
+      activeConversationId = 'dialogue-b';
+      w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+        detail: { conversation_id: activeConversationId },
+      }));
+    }
     return Promise.resolve({
       ok: true,
       json: function () {
@@ -180,9 +201,26 @@ async function run() {
     privacyCalls.length === 0);
 
   var assistantMessages = [];
+  var userMessages = [];
+  navigateDuringNextPlan = true;
   await w.OraProgramming.submit('Implement the requested change.', {
+    renderUser: function (message) {
+      userMessages.push({ message: message, conversationId: activeConversationId });
+    },
     renderAssistant: function (message) { assistantMessages.push(message); },
   });
+  var navigationKeptDialogueBBlank = !w.document.querySelector('.programming-plan')
+    && !w.document.querySelector('[data-programming-answer]');
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  record('planning navigation renders the objective only in its originating Dialogue',
+    navigationKeptDialogueBBlank
+      && userMessages.length === 1
+      && userMessages[0].conversationId === 'dialogue-a'
+      && userMessages[0].message === 'Implement the requested change.'
+      && !!w.document.querySelector('[data-programming-answer]'));
   record('submission begins repository-specific planning',
     requests.length === 4
       && requests[3].url === '/api/programming/plan'
@@ -218,6 +256,62 @@ async function run() {
   record('repository has not run before approval',
     requests.slice(3).every(function (request) { return request.url !== '/api/programming/run'; }));
 
+  activeConversationId = 'dialogue-b';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  record('a different Dialogue starts with independent Programming state',
+    !w.OraProgramming.isActive()
+      && w.document.querySelector('[data-programming-repository]').value === ''
+      && !w.document.querySelector('.programming-plan'));
+  w.OraProgramming.setActive(true);
+  w.document.querySelector('[data-programming-repository]').value = '/tmp/other-repo';
+
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  var dialogueARestored = w.OraProgramming.isActive()
+    && w.document.querySelector('[data-programming-repository]').value === '/tmp/example-repo'
+    && /Implement the requested behavior/.test(
+      w.document.querySelector('.programming-plan').textContent
+    );
+  activeConversationId = 'dialogue-b';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  var dialogueBRestored = w.OraProgramming.isActive()
+    && w.document.querySelector('[data-programming-repository]').value === '/tmp/other-repo'
+    && !w.document.querySelector('.programming-plan');
+  record('each Dialogue restores its own active Programming workflow',
+    dialogueARestored && dialogueBRestored);
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: 'dialogue-b' },
+  }));
+  var beforePendingObjectiveRequests = requests.length;
+  var beforePendingObjectivePrivacy = privacyCalls.length;
+  var pendingObjectiveResult = await w.OraProgramming.submit('Do not cross this pending load.');
+  record('text-bearing planning is blocked while its Dialogue selection is pending',
+    pendingObjectiveResult === false
+      && requests.length === beforePendingObjectiveRequests
+      && privacyCalls.length === beforePendingObjectivePrivacy);
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-load-failed', {
+    detail: {
+      conversation_id: 'dialogue-b',
+      active_conversation_id: activeConversationId,
+    },
+  }));
+  record('failed Dialogue selection restores the actual Programming workflow',
+    w.OraProgramming.isActive()
+      && w.document.querySelector('[data-programming-repository]').value === '/tmp/example-repo'
+      && /Implement the requested behavior/.test(
+        w.document.querySelector('.programming-plan').textContent
+      ));
+
   privacyAllowed = false;
   var beforeCancelledObjective = requests.length;
   var cancelledObjectiveResult = await w.OraProgramming.submit('Run an unapproved objective.');
@@ -230,8 +324,27 @@ async function run() {
       && !!w.document.querySelector('[data-programming-approve]'));
   privacyAllowed = true;
   w.document.querySelector('[data-programming-approve]').click();
+  activeConversationId = 'dialogue-b';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
   await waitForRequests(7);
   await flush();
+  var completionDidNotLeak = assistantMessages.length === 0;
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-tag-changed', {
+    detail: {
+      conversation_id: activeConversationId,
+      source: 'conversation-envelope',
+    },
+  }));
+  record('in-flight Programming result is delivered only to its owning Dialogue',
+    completionDidNotLeak
+      && assistantMessages.length === 1
+      && /needs a decision/.test(assistantMessages[0]));
   record('approval is explicit in the run request',
     requests.length === 7
       && requests[6].url === '/api/programming/run'
@@ -244,6 +357,31 @@ async function run() {
     privacyCalls.length === 4);
   record('ASK USER exposes an explicit continuation control',
     !!w.document.querySelector('[data-programming-resume]'));
+  activeConversationId = 'dialogue-b';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: 'dialogue-a' },
+  }));
+  w.document.querySelector('[data-programming-continuation]').value = 'Do not cross this pending load';
+  var beforePendingResumeRequests = requests.length;
+  var beforePendingResumePrivacy = privacyCalls.length;
+  w.document.querySelector('[data-programming-resume]').click();
+  await flush();
+  record('text-bearing resume is blocked while its Dialogue selection is pending',
+    requests.length === beforePendingResumeRequests
+      && privacyCalls.length === beforePendingResumePrivacy);
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-load-failed', {
+    detail: {
+      conversation_id: 'dialogue-a',
+      active_conversation_id: activeConversationId,
+    },
+  }));
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
   w.document.querySelector('[data-programming-continuation]').value = 'Continue safely';
   w.document.querySelector('[data-programming-resume]').click();
   await waitForRequests(8);
@@ -282,6 +420,28 @@ async function run() {
     requests[beforeCancelledAnswer].payload.answers.length === 1
       && requests[beforeCancelledAnswer].payload.answers[0].answer === 'Only this file');
 
+  holdNextPrivacy = true;
+  var beforeRoundTripRequests = requests.length;
+  var roundTripUserMessages = [];
+  var roundTripSubmission = w.OraProgramming.submit('Do not survive a navigation round trip.', {
+    renderUser: function (message) { roundTripUserMessages.push(message); },
+  });
+  await flush();
+  activeConversationId = 'dialogue-b';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  activeConversationId = 'dialogue-a';
+  w.document.dispatchEvent(new w.CustomEvent('ora:conversation-selected', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  await releaseHeldPrivacy();
+  var roundTripResult = await roundTripSubmission;
+  record('delayed privacy acceptance is invalidated by a Dialogue navigation round trip',
+    roundTripResult === false
+      && requests.length === beforeRoundTripRequests
+      && roundTripUserMessages.length === 0);
+
   w.OraConversation = null;
   var beforeFailedPrivacy = requests.length;
   var missingPrivacyResult = await w.OraProgramming.submit('My password is secret.');
@@ -289,6 +449,18 @@ async function run() {
     missingPrivacyResult === false
       && requests.length === beforeFailedPrivacy
       && /Privacy check unavailable/.test(w.document.querySelector('.programming-status').textContent));
+
+  activeConversationId = 'fresh-dialogue';
+  w.document.dispatchEvent(new w.CustomEvent('ora:fresh-conversation-started', {
+    detail: { conversation_id: activeConversationId },
+  }));
+  record('a fresh Dialogue starts with reset Programming state',
+    !w.OraProgramming.isActive()
+      && w.document.querySelector('[data-programming-repository]').value === ''
+      && !w.document.querySelector('.programming-plan')
+      && /Enter an objective in Inquiry/.test(
+        w.document.querySelector('[data-programming-body]').textContent
+      ));
 
   if (failures) process.exit(1);
 }
