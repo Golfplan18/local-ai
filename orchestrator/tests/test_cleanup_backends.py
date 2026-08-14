@@ -457,5 +457,39 @@ class TestCodexCLIClient(unittest.TestCase):
         self.assertFalse(os.path.exists(homes[0]))
 
 
+# Preserved from test_engram_rewrite_run.py, deleted with the one-time engram
+# migration tooling it tested. These cover live code: every historical
+# pipeline that talks to MiniMax goes through cleanup_backends.
+class TestMiniMaxOutputBudget(unittest.TestCase):
+    """The token budget is split across two files; pin the seam.
+
+    rewrite_run asks for 8192 per note and MiniMaxClient adds room for the
+    <think> block. 32768 is the measured requirement for a rewrite — M3's
+    reasoning once consumed a full 8192 and emitted no answer at all. Before
+    this, the client imposed 32768 as a flat floor on EVERY caller, so a
+    2048-token extraction silently ran with a 16x ceiling.
+    """
+
+    def test_rewrite_request_lands_on_the_measured_requirement(self):
+        from orchestrator.historical.cleanup_backends import _output_budget
+        self.assertEqual(_output_budget(8192), 32768)
+
+    def test_smaller_callers_keep_their_own_answer_budget(self):
+        from orchestrator.historical.cleanup_backends import (
+            _output_budget, THINK_TOKEN_BUDGET,
+        )
+        for asked in (8, 1024, 2048):
+            self.assertEqual(_output_budget(asked), asked + THINK_TOKEN_BUDGET)
+            self.assertLess(_output_budget(asked), 32768,
+                            "a small caller must not inherit the rewriting ceiling")
+
+    def test_budget_always_leaves_room_to_think(self):
+        from orchestrator.historical.cleanup_backends import (
+            _output_budget, THINK_TOKEN_BUDGET,
+        )
+        for asked in (0, None):
+            self.assertGreaterEqual(_output_budget(asked), THINK_TOKEN_BUDGET)
+
+
 if __name__ == "__main__":
     unittest.main()

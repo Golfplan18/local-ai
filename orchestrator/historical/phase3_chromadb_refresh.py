@@ -23,7 +23,21 @@ import sys
 import glob
 
 ENGRAMS_DIR = os.path.expanduser("~/Documents/vault/Engrams")
-CHROMADB_PATH = os.path.expanduser("~/ora/chromadb")
+def _chromadb_default() -> str:
+    """Resolve the vector store through runtime_paths, never a hardcoded path.
+
+    A literal os.path.expanduser("~/ora/chromadb") ignores ORA_CHROMADB_PATH,
+    so it bypassed the test quarantine in orchestrator/tests/live_guard.py and
+    read the user's real 7 GB store during unit tests — which is how
+    test_rag_isolation_bypass came to run a lexical scan over the live corpus
+    and hang the suite. runtime_paths is also what makes these modules portable
+    off macOS.
+    """
+    from orchestrator import runtime_paths as _rp
+    return str(_rp.chromadb_dir())
+
+
+CHROMADB_PATH = _chromadb_default()
 COLLECTION_NAME = "knowledge"
 
 
