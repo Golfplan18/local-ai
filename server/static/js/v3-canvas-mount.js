@@ -602,10 +602,12 @@
       }
     };
 
-    const resetKonvaToPng = async (png) => {
+    const resetKonvaToPng = async (png, attachPng = true) => {
       if (!panel) throw new Error('Konva fallback is unavailable');
       if (typeof panel.clearArtifact === 'function') panel.clearArtifact();
+      if (typeof panel.clearPendingImage === 'function') panel.clearPendingImage();
       if (typeof panel.loadCanvasState === 'function') panel.loadCanvasState({ objects: [] });
+      if (!attachPng) return;
       const file = new File([png], 'excalidraw-flattened.png', { type: 'image/png' });
       const attached = await panel.attachImage(file);
       if (!attached) throw new Error('Konva rejected the flattened visual');
@@ -826,9 +828,12 @@
       const hadEditableContent = sourceSnapshot.elements.some(
         (element) => element && !element.isDeleted && !isAssistantArtifact(element)
       );
+      const hasContent = sourceSnapshot.elements.some(
+        (element) => element && !element.isDeleted
+      );
       const source = await materialize(sourceSnapshot);
       const savedSource = await postCheckpoint(source);
-      await resetKonvaToPng(source.preview);
+      await resetKonvaToPng(source.preview, hasContent);
       const baselineMaterialized = await materialize(Object.assign(
         {}, snapshotKonva(), { conversationId: ownerId, conversationTag: ownerTag }
       ));

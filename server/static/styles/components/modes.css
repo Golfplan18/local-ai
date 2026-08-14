@@ -479,6 +479,6 @@ body.stealth-mode .bridge-mode-label {
    shape drawn, give the O a soft accent ring so the user sees that the
    submit action will pick up canvas content alongside text. */
 .spine-wordmark .wordmark-clickable.canvas-ready .wm-stroke-bright {
-  stroke: var(--interactive-accent);
-  filter: drop-shadow(0 0 3px var(--interactive-accent));
+  stroke: var(--interactive-accent, var(--ora-wordmark-bright));
+  filter: drop-shadow(0 0 3px var(--interactive-accent, var(--ora-wordmark-bright)));
 }
