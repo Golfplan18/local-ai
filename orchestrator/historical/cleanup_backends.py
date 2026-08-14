@@ -915,6 +915,25 @@ MINIMAX_KEYRING_USERNAME    = "minimax-api-key"
 ENV_MINIMAX_KEY             = "MINIMAX_API_KEY"
 ENV_MINIMAX_MODEL           = "ORA_MINIMAX_MODEL"
 DEFAULT_MINIMAX_MODEL       = "MiniMax-M3"
+
+# M3 spends output tokens on a <think> block BEFORE the answer, so every caller
+# needs headroom it did not ask for. Callers here were written against
+# non-thinking backends and size max_tokens for the answer alone: Phase C asks
+# for 1024 but averages ~3,070, phase5 extraction asks for 2048, privacy tagging
+# asks for 8. A rewrite's think block once consumed a full 8,192 with no answer
+# emitted, which is what this budget is sized from.
+#
+# This is added to the caller's own budget rather than imposed as a flat floor.
+# The flat 32768 floor it replaces was the REWRITING requirement applied to every
+# caller, so a 2,048-token extraction silently ran with a 16x ceiling. Adding
+# instead of flooring keeps rewrite_run's 8192-per-note request landing on the
+# measured 32768 while every other caller keeps its own answer budget.
+THINK_TOKEN_BUDGET = 24576
+
+
+def _output_budget(max_tokens: int) -> int:
+    """Caller's answer budget plus room for the reasoning block."""
+    return max(int(max_tokens or 0), 0) + THINK_TOKEN_BUDGET
 MINIMAX_TIMEOUT             = 300
 MINIMAX_RETRIES             = 4
 _THINK_RE = re.compile(r"<think>.*?</think>", re.S)
@@ -964,11 +983,7 @@ class MiniMaxClient:
         payload = json.dumps({
             "model": use_model,
             "messages": msgs,
-            # Floor high: the <think> block for a full note rewrite ran 13,760
-            # characters and consumed all 8,192 output tokens on one test, finishing
-            # inside the reasoning with no answer at all. Classification needs ~3k;
-            # generation needs an order of magnitude more headroom.
-            "max_tokens": max(max_tokens, 32768),
+            "max_tokens": _output_budget(max_tokens),
             "temperature": temperature,
         }).encode()
 
