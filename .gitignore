@@ -148,6 +148,8 @@ data/maintenance-results.jsonl
 # Live runtime overlays, including user-pipeline configuration edits.
 data/runtime/
 data/claude-code-runs/
+# Isolated ChatGPT/Codex OAuth runtime state and local SDK databases.
+data/codex-subscription/
 
 # Generated preview artifact (PR-A vendor-authoritative registry build)
 config/model-registry.vendor-authoritative.json
