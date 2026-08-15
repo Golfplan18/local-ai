@@ -209,6 +209,36 @@ def load_model_inventory() -> dict:
             if isinstance(alias, str) and alias:
                 aliases.setdefault(alias, model_id)
 
+    # ChatGPT/Codex subscription endpoints exist only in the connected SDK
+    # session, never in routing-config.json. Merge that live inventory without
+    # persisting it so health validation sees the same exact ids Router can
+    # resolve. Import here avoids coupling module initialization to the
+    # optional SDK adapter.
+    try:
+        try:
+            from . import codex_subscription
+        except ImportError:
+            import codex_subscription  # type: ignore
+        if codex_subscription.is_configured():
+            for endpoint in codex_subscription.model_endpoints():
+                if not isinstance(endpoint, dict):
+                    continue
+                model_id = endpoint.get("id")
+                if not isinstance(model_id, str) or not model_id:
+                    continue
+                record = dict(endpoint)
+                record["reachable"] = bool(
+                    endpoint.get("enabled", True)
+                    and endpoint.get("status", "active") == "active"
+                )
+                _merge_inventory_record(
+                    records, model_id, record, source="subscription",
+                )
+    except Exception:
+        # A disconnected or unavailable optional transport must not prevent
+        # ordinary registry/routing/local health evaluation.
+        pass
+
     models_json = read_json(rp.overlay_path("config", "models.json"))
     for key in ("local_models", "commercial_models"):
         for record in models_json.get(key, []) or []:

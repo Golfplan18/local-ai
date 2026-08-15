@@ -104,6 +104,9 @@ def release_key(model: dict) -> str:
 def cost_of(model: dict) -> float:
     """Get the blended cost ($/M tokens). math.inf when missing — sorts to
     the bottom on cost-ascending."""
+    selector_cost = model.get("_subscription_selector_cost_per_m")
+    if selector_cost is not None:
+        return float(selector_cost)
     pricing = model.get("openrouter_pricing", {}) or {}
     val = pricing.get("blended_per_m")
     return float(val) if val is not None else math.inf

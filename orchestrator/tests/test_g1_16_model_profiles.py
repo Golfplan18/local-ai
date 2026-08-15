@@ -11,6 +11,7 @@ from textwrap import dedent
 from unittest import mock
 
 from orchestrator import framework_parser
+from orchestrator import codex_subscription
 from orchestrator import model_profiles as mp
 
 
@@ -60,6 +61,68 @@ class ModelProfileHealthTests(unittest.TestCase):
             inventory({"issued-new": {"reachable": True}}, {"issued-old": "issued-new"}),
         )
         self.assertEqual(health["status"], "ok")
+
+    def test_all_subscription_profile_passes_activation_and_effective_resolution(self):
+        endpoint_id = "codex-subscription:sdk-gpt"
+        endpoint = {
+            "id": endpoint_id,
+            "type": "api",
+            "status": "active",
+            "enabled": True,
+            "service": "codex-subscription",
+            "model_id": "gpt-native",
+            "dispatch": "subscription",
+            "vision_capable": False,
+            "capabilities": {
+                "tool_access": False,
+                "file_system_access": False,
+            },
+        }
+        selected_profile = profile(endpoint_id)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = root / "registry.json"
+            vendor = root / "vendor.json"
+            routing = root / "routing.json"
+            catalog = root / "catalog.json"
+            models = root / "models.json"
+            registry.write_text('{"models": {}}')
+            vendor.write_text('{"models": {}, "aliases": {}}')
+            routing.write_text('{"endpoints": []}')
+            catalog.write_text('{"models": []}')
+            models.write_text('{"local_models": [], "commercial_models": []}')
+            with (
+                mock.patch.object(mp.rp, "model_registry_path", return_value=registry),
+                mock.patch.object(
+                    mp.rp, "vendor_authoritative_registry_path",
+                    return_value=vendor,
+                ),
+                mock.patch.object(mp.rp, "routing_config_path", return_value=routing),
+                mock.patch.object(mp.rp, "model_catalog_path", return_value=catalog),
+                mock.patch.object(mp.rp, "overlay_path", return_value=models),
+                mock.patch.object(
+                    codex_subscription, "is_configured", return_value=True,
+                ),
+                mock.patch.object(
+                    codex_subscription, "model_endpoints", return_value=[endpoint],
+                ),
+                mock.patch.object(
+                    mp, "_read_profile", return_value=selected_profile,
+                ),
+                mock.patch.object(mp, "_validate_ram_allocation", return_value={}),
+                mock.patch.object(mp.ac, "get_active_name", return_value="subscription"),
+            ):
+                live_inventory = mp.load_model_inventory()
+                summary = mp.profile_summary("subscription", live_inventory)
+                effective = mp.resolve_effective_profile()
+
+        record = live_inventory["models"][endpoint_id]
+        self.assertEqual(record["status"], "active")
+        self.assertFalse(record["capabilities"]["tool_access"])
+        self.assertIn("subscription", record["_profile_sources"])
+        self.assertEqual(summary["health"]["status"], "ok")
+        self.assertEqual(effective["selected"]["name"], "subscription")
+        self.assertEqual(effective["selected"]["health"]["status"], "ok")
 
 
 class ModelProfileInheritanceTests(unittest.TestCase):

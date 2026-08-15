@@ -703,7 +703,7 @@ def bake_missing_presets(
 
     with open(catalog_path) as f:
         catalog_data = json.load(f)
-    catalog = catalog_data.get("models", []) or []
+    catalog = list(catalog_data.get("models", []) or [])
     if not catalog:
         return []
     with open(presets_path) as f:
@@ -733,17 +733,17 @@ def bake_missing_presets(
         # version-skewed scripts/ copy lacking the function. Degrade to
         # no filtering rather than aborting every preset bake.
         xref = {}
-    tokens_per_sec: dict = xref.get("tokens_per_sec") or {}
+    tokens_per_sec: dict = dict(xref.get("tokens_per_sec") or {})
     # Speed-preset sort key: time-to-first-token in ms (OpenRouter or_ttft_ms
     # preferred, AA latency_ttft_seconds × 1000 fallback). Threaded into
     # populate_configuration exactly like tokens_per_sec. .get with default
     # so a version-skewed registry_crossref lacking the key degrades to no
     # latency signal rather than KeyError-ing the whole bake.
-    latency_ms: dict = xref.get("latency_ms") or {}
-    reasoning_model_ids: set = xref.get("reasoning_model_ids") or set()
-    registry_ids: set = xref.get("registry_ids") or set()
-    unreachable_ids: set = xref.get("unreachable_ids") or set()
-    vision_verified_ids: set = xref.get("vision_verified_ids") or set()
+    latency_ms: dict = dict(xref.get("latency_ms") or {})
+    reasoning_model_ids: set = set(xref.get("reasoning_model_ids") or set())
+    registry_ids: set = set(xref.get("registry_ids") or set())
+    unreachable_ids: set = set(xref.get("unreachable_ids") or set())
+    vision_verified_ids: set = set(xref.get("vision_verified_ids") or set())
     # Vendor-catalogue-authoritative pool restriction: when the inversion is
     # active, the Models pane serves each keyed vendor's NATIVE catalogue, so a
     # pick that's in the base registry but absent from that inventory (and not
@@ -751,13 +751,50 @@ def bake_missing_presets(
     # pane-resolvable ids; passing it restricts the picks to models the pane can
     # show. .get with default so a version-skewed scripts/ copy lacking the key
     # degrades to no VA restriction (base-registry filter still applies).
-    va_resolvable_ids: set = xref.get("va_resolvable_ids") or set()
+    va_resolvable_ids: set = set(xref.get("va_resolvable_ids") or set())
     # Hard identity floor: only catalog ids that serialize to an actual
     # routing endpoint may enter a generated primary/fallback chain.
-    routing_endpoint_ids: set = xref.get("routing_endpoint_ids") or set()
+    routing_endpoint_ids: set = set(xref.get("routing_endpoint_ids") or set())
     # Serialize native endpoint ids, not the legacy OpenRouter aliases that
     # may have supplied pricing/intelligence data to the catalog picker.
-    canonical_aliases: dict = xref.get("canonical_aliases") or {}
+    canonical_aliases: dict = dict(xref.get("canonical_aliases") or {})
+
+    # Connected ChatGPT/Codex models are runtime-only endpoints, so append
+    # their exact-counterpart selection projections in memory and explicitly
+    # mirror their ids through every catalog gate. Nothing here is written to
+    # the catalog or registry; generated profiles serialize endpoint ids only.
+    try:
+        try:
+            from . import codex_subscription
+        except ImportError:
+            import codex_subscription  # type: ignore
+        subscription_candidates = codex_subscription.selector_candidates()
+    except Exception:
+        subscription_candidates = []
+    if subscription_candidates:
+        catalog.extend(subscription_candidates)
+        subscription_ids = {
+            candidate["id"] for candidate in subscription_candidates
+        }
+        registry_ids.update(subscription_ids)
+        routing_endpoint_ids.update(subscription_ids)
+        va_resolvable_ids.update(subscription_ids)
+        unreachable_ids.difference_update(subscription_ids)
+        for candidate in subscription_candidates:
+            model_id = candidate["id"]
+            throughput = candidate.get("output_tokens_per_second")
+            if throughput is None:
+                throughput = candidate.get("or_throughput_tps")
+            if throughput is not None:
+                tokens_per_sec[model_id] = float(throughput)
+            ttft_ms = candidate.get("or_ttft_ms")
+            if ttft_ms is None and candidate.get("latency_ttft_seconds") is not None:
+                ttft_ms = float(candidate["latency_ttft_seconds"]) * 1000.0
+            if ttft_ms is not None:
+                latency_ms[model_id] = float(ttft_ms)
+            if (candidate.get("reasoning_model") is True
+                    or candidate.get("forced_reasoning") is True):
+                reasoning_model_ids.add(model_id)
 
     if preset_names is None:
         selected_presets = PRESET_ORDER

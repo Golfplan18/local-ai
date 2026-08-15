@@ -1185,6 +1185,66 @@ class TestMinContext1mToggle(_Fixture):
             {"gemini/gemini-3.1-flash-lite"},
         )
 
+    def test_bake_adds_connected_subscription_candidate_to_every_gate_then_removes_it(self):
+        captured = []
+        subscription_id = "codex-subscription:sdk-gpt"
+        candidate = {
+            "id": subscription_id,
+            "category": "chat",
+            "provider": "openai",
+            "size_bucket": "large",
+            "aa_intelligence_index": 90,
+            "output_tokens_per_second": 120,
+            "or_ttft_ms": 350,
+            "reasoning_model": True,
+            "_subscription_selector_cost_per_m": 0.01,
+        }
+
+        class _FakeAP:
+            def registry_crossref(self, *a, **k):
+                return {
+                    "registry_ids": {"m"},
+                    "routing_endpoint_ids": {"m"},
+                    "va_resolvable_ids": {"m"},
+                }
+
+            def populate_configuration(self, preset_name, catalog,
+                                       presets_config, **kwargs):
+                captured.append((
+                    preset_name,
+                    {model["id"] for model in catalog},
+                    kwargs,
+                ))
+                return {"name": preset_name, "cells": {}, "toggles": {}}
+
+        self._patch_bake(_FakeAP())
+        import codex_subscription as codex_sub
+        with mock.patch.object(
+            codex_sub, "selector_candidates",
+            side_effect=[[candidate], []],
+        ):
+            self.module.bake_missing_presets(force=True)
+            self.module.bake_missing_presets(force=True)
+
+        connected_calls = captured[:len(self.module.PRESET_ORDER)]
+        disconnected_calls = captured[len(self.module.PRESET_ORDER):]
+        self.assertEqual(
+            [name for name, _catalog, _kwargs in connected_calls],
+            self.module.PRESET_ORDER,
+        )
+        for _name, catalog_ids, kwargs in connected_calls:
+            self.assertIn(subscription_id, catalog_ids)
+            self.assertIn(subscription_id, kwargs["registry_ids"])
+            self.assertIn(subscription_id, kwargs["routing_endpoint_ids"])
+            self.assertIn(subscription_id, kwargs["va_resolvable_ids"])
+            self.assertEqual(kwargs["tokens_per_sec"][subscription_id], 120)
+            self.assertEqual(kwargs["latency_ms"][subscription_id], 350)
+            self.assertIn(subscription_id, kwargs["reasoning_model_ids"])
+        for _name, catalog_ids, kwargs in disconnected_calls:
+            self.assertNotIn(subscription_id, catalog_ids)
+            self.assertNotIn(subscription_id, kwargs["registry_ids"])
+            self.assertNotIn(subscription_id, kwargs["routing_endpoint_ids"])
+
     def _patch_bake(self, fake_ap):
         """Wire bake_missing_presets to use a fake auto-populate module +
         in-temp catalog/presets so we can capture the threaded args without

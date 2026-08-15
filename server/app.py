@@ -1543,22 +1543,38 @@ _chatgpt_catalog_signature_lock = threading.Lock()
 
 
 def _sync_chatgpt_subscription_router(account_status: dict) -> None:
-    """Reload the process-local Router when subscription availability moves."""
+    """Re-bake presets, then reload Router when subscription inventory moves."""
     global _chatgpt_catalog_signature
     signature = (
-        account_status.get("state"),
+        account_status.get("state") == "connected",
         account_status.get("catalog_revision"),
     )
+    # Serialize the entire transition. A newer disconnect must wait for an
+    # in-flight connected bake, then run its own bake and become the accepted
+    # signature; otherwise the older bake can finish last and restore stale
+    # subscription picks after the account has disconnected.
     with _chatgpt_catalog_signature_lock:
         if signature == _chatgpt_catalog_signature:
             return
-        _chatgpt_catalog_signature = signature
-    if not _reload_pipeline_router_after_config_change():
-        # A transient reload failure must remain retryable on the next status
-        # poll; otherwise the in-memory catalogue can stay stale indefinitely.
-        with _chatgpt_catalog_signature_lock:
-            if _chatgpt_catalog_signature == signature:
-                _chatgpt_catalog_signature = None
+        try:
+            from orchestrator import active_configuration as _active_config
+            baked = set(_active_config.bake_missing_presets(force=True) or [])
+            required = set(_active_config.PRESET_ORDER)
+            if not required.issubset(baked):
+                missing = sorted(required.difference(baked))
+                raise RuntimeError(
+                    f"subscription preset re-bake incomplete: {missing}"
+                )
+            reloaded = _reload_pipeline_router_after_config_change()
+        except Exception as exc:
+            print(
+                "[model-registry] ChatGPT subscription preset re-bake failed: "
+                f"{type(exc).__name__}",
+                flush=True,
+            )
+            reloaded = False
+        if reloaded:
+            _chatgpt_catalog_signature = signature
 
 
 def _chatgpt_subscription_response(payload: dict):
@@ -18842,14 +18858,16 @@ def model_registry_get():
                                     if ep.get("service") == "claude-code"
                                     else "provider-managed subscription runtime"
                                 )
-                            filtered[eid] = {
+                            subscription_model = {
                                 "id": eid,
                                 "display_name": ep.get("display_name") or eid,
                                 "description": ep.get("description") or "",
                                 "provider": provider_id,
                                 "vendor": "Subscription",
                                 "category": "chat",
-                                "vision_capable": ep.get("vision_capable", False),
+                                "vision_capable": False,
+                                "input_modalities": ["text"],
+                                "output_modalities": ["text"],
                                 "context_length": ep.get("context_window"),
                                 "pricing": {"input_per_token": 0,
                                             "output_per_token": 0,
@@ -18863,6 +18881,19 @@ def model_registry_get():
                                 "subscription_provider": provider_label,
                                 "subscription_transport": transport_label,
                             }
+                            for metric_field in (
+                                "aa_intelligence_index", "aa_coding_index",
+                                "aa_agentic_index", "intelligence_score",
+                                "size_bucket", "parameters_b", "release_date",
+                                "output_tokens_per_second", "or_throughput_tps",
+                                "latency_ttft_seconds", "latency_total_seconds",
+                                "or_ttft_ms", "reasoning_model",
+                                "reasoning_capable", "forced_reasoning",
+                                "metrics_inherited_from",
+                            ):
+                                if ep.get(metric_field) is not None:
+                                    subscription_model[metric_field] = ep[metric_field]
+                            filtered[eid] = subscription_model
                         continue
                     # DIRECT chip: the id has a registered api endpoint with
                     # dispatch=direct (vendor key present, so calls go to the

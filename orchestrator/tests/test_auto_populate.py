@@ -142,6 +142,30 @@ class TestParetoFilter(unittest.TestCase):
         self.assertEqual({m["id"] for m in frontier}, {"a", "b", "c"})
 
 
+class TestSubscriptionSelectorCost(unittest.TestCase):
+    def test_ephemeral_cost_drives_paid_pick_but_never_serializes_or_enters_free(self):
+        candidate = _model(
+            "codex-subscription:sdk-gpt", intelligence=95,
+            blended=99.0, size="large", provider="openai",
+        )
+        candidate["_subscription_selector_cost_per_m"] = 0.01
+        self.assertEqual(auto_populate.cost_of(candidate), 0.01)
+        self.assertEqual(auto_populate.filter_free([candidate]), [])
+        self.assertEqual(auto_populate.filter_paid([candidate]), [candidate])
+
+        catalog = _fixture_catalog() + [candidate]
+        config = auto_populate.populate_configuration(
+            "budget", catalog, _fixture_presets(),
+        )
+        self.assertEqual(
+            config["cells"]["analysis"]["gear4"]["depth"]["primary"],
+            candidate["id"],
+        )
+        serialized = json.dumps(config)
+        self.assertIn(candidate["id"], serialized)
+        self.assertNotIn("_subscription_selector_cost_per_m", serialized)
+
+
 class TestFloor(unittest.TestCase):
     def test_floor_80_pct_keeps_top_band(self):
         models = [
