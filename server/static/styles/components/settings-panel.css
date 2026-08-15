@@ -2410,6 +2410,31 @@ a.ora-settings-apikey-label:hover {
   color: var(--color-red, #C77958);
 }
 
+.ora-models-hw-trash {
+  flex: 0 0 auto;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted, #A89F8A);
+  padding: 2px 6px;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.ora-models-hw-trash:hover:not(:disabled) {
+  border-color: var(--color-red, #C77958);
+  color: var(--color-red, #C77958);
+}
+
+.ora-models-hw-trash:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.ora-models-hw-discovery-error {
+  margin: 6px 8px 0;
+}
+
 /* In-use highlight for hardware rows: signals which installed locals
    are actually loaded by the active config. Subtle green tint so the
    user can see at a glance where their RAM is going. */

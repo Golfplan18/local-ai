@@ -506,6 +506,16 @@ class TestDialogueTokenAccounting(unittest.TestCase):
             ),
         )
 
+    def test_evict_mlx_model_removes_canonical_path_alias(self):
+        cached_path = "/tmp/ora-models/model-a"
+        alias = "/tmp/ora-models/../ora-models/model-a"
+        boot._mlx_cache[cached_path] = (object(), object())
+        try:
+            self.assertTrue(boot.evict_mlx_model(alias))
+            self.assertNotIn(cached_path, boot._mlx_cache)
+        finally:
+            boot._mlx_cache.pop(cached_path, None)
+
 class TestUnknownEndpoint(unittest.TestCase):
     def setUp(self):
         mlx_mutex.reset_for_tests()

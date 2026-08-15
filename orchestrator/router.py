@@ -132,6 +132,10 @@ class Router:
         # file-backed source — reload is a no-op."
         self._config_path: Path | None = None
         self._uses_default_config_path = False
+        # Last successfully parsed models.json projection.  A fresh Router
+        # starts fail-closed for locals; reload may preserve this authoritative
+        # snapshot if models.json is temporarily missing or malformed.
+        self._authoritative_local_endpoints: dict[str, dict] = {}
         if config_dict:
             self.config = config_dict
         else:
@@ -142,7 +146,7 @@ class Router:
 
         self._build_lookup_tables()
 
-    def _build_lookup_tables(self) -> None:
+    def _build_lookup_tables(self) -> bool:
         """Rebuild the derived lookup tables from ``self.config``.
 
         Called from ``__init__`` and from :meth:`reload` after the
@@ -150,7 +154,7 @@ class Router:
         paths honest about which fields the Router caches in memory.
         """
         self._endpoints = {ep["id"]: ep for ep in self.config.get("endpoints", [])}
-        self._merge_models_json_local_endpoints()
+        local_snapshot_loaded = self._merge_models_json_local_endpoints()
         self._merge_codex_subscription_endpoints()
         self._endpoint_aliases = self._build_endpoint_aliases()
         self._machines = {m["id"]: m for m in self.config.get("machines", [])}
@@ -162,49 +166,93 @@ class Router:
         # models.json vision_capable lookup cache (Chunk 2e). Cleared on
         # reload so edits to models.json also take effect immediately.
         self._vision_lookup_cache = None
+        return local_snapshot_loaded
 
-    def _merge_models_json_local_endpoints(self) -> None:
+    def _merge_models_json_local_endpoints(self) -> bool:
         """Expose discovered local models as runtime endpoints.
 
-        The Models pane and hardware panel read discovered local models from
-        config/models.json, while older routing-config endpoints can drift
-        behind that list. Merge the discovered entries into the in-memory
-        endpoint lookup so picking one in a configuration actually resolves at
-        dispatch time. This is intentionally runtime-only; discovery remains
-        the source of truth for the installed local set.
+        Discovery is authoritative for physical presence.  Static local
+        endpoints contribute their stable ids and curated runtime metadata only
+        when their canonical model path appears in config/models.json.  This
+        keeps one endpoint per installed path and prevents a removed static
+        endpoint path from lingering in the runtime picker.
         """
+        configured_locals_by_path: dict[str, dict] = {}
+        for endpoint in self._endpoints.values():
+            if endpoint.get("type") != "local":
+                continue
+            raw_path = endpoint.get("model_path") or endpoint.get("path")
+            if raw_path:
+                canonical = str(Path(raw_path).expanduser().resolve(strict=False))
+                configured_locals_by_path.setdefault(canonical, endpoint)
+
+        # Static configuration is metadata, never evidence of physical
+        # presence. Remove every static local before consulting the
+        # authoritative discovery snapshot.
+        self._endpoints = {
+            endpoint_id: endpoint
+            for endpoint_id, endpoint in self._endpoints.items()
+            if endpoint.get("type") != "local"
+        }
+
         try:
             models_path = rp.overlay_path("config", "models.json")
             if not models_path.exists():
-                return
+                raise FileNotFoundError(models_path)
             with open(models_path) as f:
                 data = json.load(f)
+            if (
+                not isinstance(data, dict)
+                or "local_models" not in data
+                or not isinstance(data.get("local_models"), list)
+            ):
+                raise ValueError("models.json local_models must be a list")
         except Exception as exc:
             print(f"[Router] models.json local endpoint merge failed: {exc}")
-            return
+            self._endpoints.update({
+                endpoint_id: dict(endpoint)
+                for endpoint_id, endpoint
+                in self._authoritative_local_endpoints.items()
+            })
+            return False
 
+        local_endpoints: dict[str, dict] = {}
+        seen_paths: set[str] = set()
         for model in data.get("local_models", []) or []:
-            model_id = model.get("id")
+            if not isinstance(model, dict):
+                continue
+            raw_model_path = model.get("path") or model.get("model_path") or ""
+            if not raw_model_path:
+                continue
+            model_path = str(Path(raw_model_path).expanduser().resolve(strict=False))
+            if model_path in seen_paths:
+                continue
+            seen_paths.add(model_path)
+            configured = configured_locals_by_path.get(model_path) or {}
+            model_id = configured.get("id") or model.get("id")
             if not model_id:
                 continue
-            model_path = model.get("path") or model.get("model_path") or ""
             ram_gb = model.get("ram_gb") or 0
-            endpoint = dict(self._endpoints.get(model_id) or {})
+            endpoint = dict(configured)
+            installed = bool(Path(model_path).is_dir())
             endpoint.update({
                 "id": model_id,
                 "type": "local",
                 "engine": endpoint.get("engine") or "mlx",
                 "machine": endpoint.get("machine") or DEFAULT_MACHINE_ID,
                 "model_path": model_path,
-                "display_name": model.get("display_name") or endpoint.get("display_name") or model_id,
+                "display_name": endpoint.get("display_name") or model.get("display_name") or model_id,
                 "provider": endpoint.get("provider") or "local",
                 "tier": endpoint.get("tier") or self._local_tier_for_models_json_entry(model),
-                "status": "active" if model_path and Path(model_path).exists() else "inactive",
-                "enabled": bool(model_path and Path(model_path).exists()),
-                "ram_resident_gb": ram_gb,
+                "status": (endpoint.get("status", "active")
+                           if installed else "inactive"),
+                "enabled": bool(installed and endpoint.get("enabled", True)),
+                "ram_resident_gb": endpoint.get("ram_resident_gb") or ram_gb,
                 "ram_overhead_gb": endpoint.get("ram_overhead_gb") or 0,
                 "context_window": endpoint.get("context_window") or 32768,
-                "parameters_b": model.get("parameters_b") or model.get("active_params_per_token"),
+                "parameters_b": (endpoint.get("parameters_b")
+                                 or model.get("parameters_b")
+                                 or model.get("active_params_per_token")),
                 "capabilities": endpoint.get("capabilities") or {
                     "tool_access": True,
                     "file_system_access": True,
@@ -214,7 +262,14 @@ class Router:
                 "vision_capable": bool(model.get("vision_capable", endpoint.get("vision_capable", False))),
                 "_installed_local_model": True,
             })
-            self._endpoints[model_id] = endpoint
+            local_endpoints[model_id] = endpoint
+
+        self._endpoints.update(local_endpoints)
+        self._authoritative_local_endpoints = {
+            endpoint_id: dict(endpoint)
+            for endpoint_id, endpoint in local_endpoints.items()
+        }
+        return True
 
     def _merge_codex_subscription_endpoints(self) -> None:
         """Expose connected ChatGPT/Codex models as runtime endpoints.
@@ -363,8 +418,7 @@ class Router:
             print(f"[Router] reload failed (keeping prior config): {exc}")
             return False
         self.config = new_config
-        self._build_lookup_tables()
-        return True
+        return self._build_lookup_tables()
 
     def resolve_endpoint(self, slot: str, gear: int, context: str,
                          excluded_ids: set | None = None,

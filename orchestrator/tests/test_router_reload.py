@@ -195,6 +195,194 @@ class RouterReloadFromFileTests(unittest.TestCase):
         finally:
             path.unlink(missing_ok=True)
 
+    def test_local_lookup_is_one_row_per_discovered_path(self) -> None:
+        """Static local metadata survives by path; absent/duplicate ids do not."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            installed = root / "models" / "physical-model"
+            installed.mkdir(parents=True)
+            absent = root / "models" / "absent-model"
+            models_json = root / "models.json"
+            models_json.write_text(json.dumps({
+                "local_models": [{
+                    "id": "generated-physical-id",
+                    "display_name": "Generated Name",
+                    "path": str(installed),
+                    "ram_gb": 6,
+                    "active_params_per_token": 12,
+                    "vision_capable": True,
+                }],
+            }))
+            cfg = _minimal_config([], [])
+            cfg["endpoints"] = [
+                {
+                    "id": "stable-static-id",
+                    "type": "local",
+                    "engine": "mlx",
+                    "machine": "studio",
+                    "model_path": str(installed),
+                    "display_name": "Curated Name",
+                    "provider": "curated",
+                    "parameters_b": 9,
+                    "status": "active",
+                    "enabled": True,
+                },
+                {
+                    "id": "stale-static-id",
+                    "type": "local",
+                    "engine": "mlx",
+                    "machine": "studio",
+                    "model_path": str(absent),
+                    "status": "active",
+                    "enabled": True,
+                },
+            ]
+            config_path = root / "routing.json"
+            config_path.write_text(json.dumps(cfg))
+
+            with mock.patch.object(
+                router_module.rp, "overlay_path", return_value=models_json
+            ):
+                router = Router(config_path=config_path)
+
+            local_rows = [
+                endpoint for endpoint in router._endpoints.values()
+                if endpoint.get("type") == "local"
+            ]
+            self.assertEqual(len(local_rows), 1)
+            self.assertIn("stable-static-id", router._endpoints)
+            self.assertNotIn("generated-physical-id", router._endpoints)
+            self.assertNotIn("stale-static-id", router._endpoints)
+            self.assertEqual(
+                router._endpoints["stable-static-id"]["display_name"],
+                "Curated Name",
+            )
+            self.assertEqual(
+                router._endpoints["stable-static-id"]["provider"], "curated"
+            )
+
+    def test_fresh_router_fails_closed_for_locals_without_valid_models_json(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            installed = root / "models" / "configured-only"
+            installed.mkdir(parents=True)
+            cfg = _minimal_config([], [])
+            cfg["endpoints"].append({
+                "id": "configured-local",
+                "type": "local",
+                "model_path": str(installed),
+                "status": "active",
+                "enabled": True,
+            })
+            config_path = root / "routing.json"
+            config_path.write_text(json.dumps(cfg))
+
+            for name, content in (
+                ("missing.json", None),
+                ("malformed.json", "{not-json"),
+            ):
+                models_json = root / name
+                if content is not None:
+                    models_json.write_text(content)
+                with self.subTest(name=name), mock.patch.object(
+                    router_module.rp, "overlay_path", return_value=models_json
+                ):
+                    router = Router(config_path=config_path)
+                self.assertNotIn("configured-local", router._endpoints)
+                self.assertFalse(any(
+                    endpoint.get("type") == "local"
+                    for endpoint in router._endpoints.values()
+                ))
+
+    def test_reload_failure_preserves_prior_authoritative_local_snapshot(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            installed = root / "models" / "installed"
+            installed.mkdir(parents=True)
+            absent = root / "models" / "absent"
+            models_json = root / "models.json"
+            models_json.write_text(json.dumps({
+                "local_models": [{
+                    "id": "discovered-id",
+                    "path": str(installed),
+                }],
+            }))
+            cfg = _minimal_config([], [])
+            cfg["endpoints"].extend([
+                {
+                    "id": "stable-local",
+                    "type": "local",
+                    "model_path": str(installed),
+                    "status": "active",
+                    "enabled": True,
+                },
+                {
+                    "id": "stale-static",
+                    "type": "local",
+                    "model_path": str(absent),
+                    "status": "active",
+                    "enabled": True,
+                },
+            ])
+            config_path = root / "routing.json"
+            config_path.write_text(json.dumps(cfg))
+
+            with mock.patch.object(
+                router_module.rp, "overlay_path", return_value=models_json
+            ):
+                router = Router(config_path=config_path)
+                self.assertIn("stable-local", router._endpoints)
+                models_json.write_text("{not-json")
+                self.assertFalse(router.reload())
+
+            self.assertIn("stable-local", router._endpoints)
+            self.assertNotIn("stale-static", router._endpoints)
+            self.assertEqual(
+                router._endpoints["stable-local"]["model_path"],
+                str(installed.resolve()),
+            )
+
+    def test_reload_applies_added_and_removed_discovery_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            installed = root / "models" / "installed"
+            installed.mkdir(parents=True)
+            models_json = root / "models.json"
+            models_json.write_text(json.dumps({"local_models": []}))
+            cfg = _minimal_config([], [])
+            cfg["endpoints"].append({
+                "id": "stable-local",
+                "type": "local",
+                "model_path": str(installed),
+                "status": "active",
+                "enabled": True,
+            })
+            config_path = root / "routing.json"
+            config_path.write_text(json.dumps(cfg))
+
+            with mock.patch.object(
+                router_module.rp, "overlay_path", return_value=models_json
+            ):
+                router = Router(config_path=config_path)
+                self.assertNotIn("stable-local", router._endpoints)
+
+                models_json.write_text(json.dumps({
+                    "local_models": [{
+                        "id": "generated-id",
+                        "path": str(installed),
+                    }],
+                }))
+                self.assertTrue(router.reload())
+                self.assertIn("stable-local", router._endpoints)
+
+                models_json.write_text(json.dumps({"local_models": []}))
+                self.assertTrue(router.reload())
+                self.assertNotIn("stable-local", router._endpoints)
+
 
 # ---------------------------------------------------------------------------
 # Router.reload() — config_dict source (test-only path)

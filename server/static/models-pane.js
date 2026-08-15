@@ -189,7 +189,7 @@
     // chat-only today (media entries left 2026-06-11 with the
     // image_generation slot), and the inventory renders whatever
     // categories the response carries.
-    Promise.all([
+    return Promise.all([
       fetch('/api/model-registry?categories=all').then(_json),
       fetch('/api/model-registry/picks').then(_json),
       fetch('/api/configurations').then(_json),
@@ -2711,8 +2711,19 @@
         +     (fits ? ' ora-models-hw-fit-ok' : ' ora-models-hw-fit-no') + '">'
         +     (fits ? '✓ fits' : '✗ too large')
         +   '</span>'
+        +   '<button type="button" class="ora-models-hw-trash"'
+        +     ' data-action="trash-local-model"'
+        +     ' data-model-id="' + _esc(m.id) + '"'
+        +     ' data-model-name="' + _esc(m.display_name || m.id) + '">'
+        +     'Move to Trash</button>'
         + '</li>';
     });
+
+    var discoveryWarning = h.local_discovery_error
+      ? '<p class="ora-models-error ora-models-hw-discovery-error">'
+        + 'Local model discovery failed: ' + _esc(h.local_discovery_error)
+        + '. Showing the last known inventory.</p>'
+      : '';
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
@@ -2722,6 +2733,7 @@
       +     'Installed-but-not-referenced models cost zero RAM.'
       +   '</span>'
       + '</header>'
+      + discoveryWarning
       + '<div class="ora-models-hw-body">'
       +   '<div class="ora-models-hw-totals">'
       +     '<div><span class="ora-models-hw-label">System RAM</span>'
@@ -2743,6 +2755,82 @@
         ? '<ul class="ora-models-hw-list">' + rows.join('') + '</ul>'
         : '<p class="ora-models-placeholder">No local models installed.</p>')
       + '</div>';
+
+    Array.from(section.querySelectorAll('[data-action="trash-local-model"]'))
+      .forEach(function (button) {
+        button.addEventListener('click', function () {
+          _trashLocalModel(button);
+        });
+      });
+  }
+
+  function _trashLocalModel(button) {
+    var modelId = button && button.dataset.modelId;
+    if (!modelId) return;
+    var modelName = button.dataset.modelName || modelId;
+    if (!root.confirm(
+      'Move local model "' + modelName + '" to Trash?\n\n'
+      + 'Ora will stop offering it immediately. You can restore it from '
+      + 'macOS Trash until Trash is emptied.'
+    )) return;
+
+    button.disabled = true;
+    button.textContent = 'Moving…';
+    fetch('/api/local-models/trash', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model_id: modelId}),
+    }).then(function (response) {
+      return response.json().then(function (payload) {
+        if (!response.ok || !payload.ok) {
+          var error = new Error(
+            payload.error || 'Could not move model to Trash.'
+          );
+          error.responseData = payload;
+          throw error;
+        }
+        return payload;
+      });
+    }).then(function (payload) {
+      // Apply the endpoint's post-delete scan immediately; the full reload then
+      // refreshes configurations and every other derived view.
+      _hardware = payload.hardware || _hardware;
+      if (_registry && _registry.models) delete _registry.models[modelId];
+      _renderHardware();
+      _renderInventory();
+      return _loadAll();
+    }).catch(function (err) {
+      if (button && button.isConnected) {
+        button.disabled = false;
+        button.textContent = 'Move to Trash';
+      }
+      var protection = err && err.responseData;
+      if (protection
+          && protection.status === 'awaiting_system_protection_approval') {
+        document.dispatchEvent(new CustomEvent(
+          'ora:system-protection-approval-required',
+          {detail: {
+            action: 'Move local model to Trash',
+            model_id: modelId,
+            queue_id: protection.queue_id || '',
+            retry_required: protection.retry_required === true,
+          }}
+        ));
+        if (root.OraReviewQueuePanel
+            && typeof root.OraReviewQueuePanel.open === 'function') {
+          root.OraReviewQueuePanel.open({tab: 'paused'});
+        } else {
+          var reviewButton = document.getElementById('sidebarReviewQueueOpen');
+          if (reviewButton) reviewButton.click();
+        }
+        root.alert(
+          'Moving local model "' + modelName + '" to Trash is queued for approval. '
+          + 'Approve it in Review Queue, then retry Move to Trash.'
+        );
+        return;
+      }
+      root.alert((err && err.message) || 'Could not move model to Trash.');
+    });
   }
 
   // Collect the set of local-* model ids referenced as a primary

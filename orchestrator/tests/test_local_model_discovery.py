@@ -9,23 +9,34 @@ refresh() round-trip that preserves commercial_models + top-level keys.
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
+import types
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
+import local_model_discovery  # noqa: E402
 from local_model_discovery import (  # noqa: E402
+    LocalModelDeleteError,
+    LocalModelDiscoveryError,
     ROLE_RULES,
+    TRASH_BIN,
     _is_moe,
     _is_vision_capable,
     _quant_bits,
     _recommended_roles,
+    move_model_to_trash,
     probe_model_dir,
+    reconcile_static_local_endpoints,
     refresh,
+    resolve_delete_target,
     scan_models_dir,
 )
 
@@ -317,8 +328,14 @@ class ScanModelsDir(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_returns_empty_for_missing_directory(self):
-        self.assertEqual(scan_models_dir(self.root / "nope"), [])
+    def test_missing_directory_is_an_explicit_discovery_error(self):
+        with self.assertRaises(LocalModelDiscoveryError):
+            scan_models_dir(self.root / "nope")
+
+    def test_unreadable_directory_is_an_explicit_discovery_error(self):
+        with mock.patch.object(local_model_discovery.os, "access", return_value=False):
+            with self.assertRaises(LocalModelDiscoveryError):
+                scan_models_dir(self.root)
 
     def test_skips_non_model_subdirectories(self):
         # diffusers / whisper / loras shouldn't show up — they lack
@@ -392,6 +409,7 @@ class RefreshRoundTrip(unittest.TestCase):
         result = refresh(
             models_json=self.models_json,
             models_dir=self.models_dir,
+            routing_config=None,
             write=True,
         )
         self.assertTrue(result["wrote"])
@@ -408,7 +426,7 @@ class RefreshRoundTrip(unittest.TestCase):
         self.assertEqual(len(loaded["local_models"]), 1)
         self.assertEqual(loaded["local_models"][0]["id"], "local-mlx-qwen-test")
 
-    def test_does_not_blank_file_when_models_dir_empty(self):
+    def test_readable_empty_directory_clears_inventory(self):
         original_locals = [{"id": "manual-entry", "vision_capable": True}]
         self._seed_models_json({
             "overhead_reservation_gb": 8,
@@ -419,13 +437,51 @@ class RefreshRoundTrip(unittest.TestCase):
         result = refresh(
             models_json=self.models_json,
             models_dir=self.models_dir,
+            routing_config=None,
             write=True,
         )
         self.assertEqual(result["discovered"], [])
-        self.assertFalse(result["wrote"])
-        # File preserves original local_models.
+        self.assertTrue(result["wrote"])
+        loaded = json.loads(self.models_json.read_text())
+        self.assertEqual(loaded["local_models"], [])
+
+    def test_missing_directory_preserves_prior_inventory(self):
+        original_locals = [{"id": "last-known-good"}]
+        self._seed_models_json({
+            "local_models": original_locals,
+            "commercial_models": [{"id": "cloud"}],
+        })
+        self.models_dir.rmdir()
+
+        with self.assertRaises(LocalModelDiscoveryError):
+            refresh(
+                models_json=self.models_json,
+                models_dir=self.models_dir,
+                routing_config=None,
+                write=True,
+            )
+
         loaded = json.loads(self.models_json.read_text())
         self.assertEqual(loaded["local_models"], original_locals)
+        self.assertEqual(loaded["commercial_models"], [{"id": "cloud"}])
+
+    def test_unreadable_directory_preserves_prior_inventory(self):
+        original_locals = [{"id": "last-known-good"}]
+        self._seed_models_json({"local_models": original_locals})
+
+        with mock.patch.object(local_model_discovery.os, "access", return_value=False):
+            with self.assertRaises(LocalModelDiscoveryError):
+                refresh(
+                    models_json=self.models_json,
+                    models_dir=self.models_dir,
+                    routing_config=None,
+                    write=True,
+                )
+
+        self.assertEqual(
+            json.loads(self.models_json.read_text())["local_models"],
+            original_locals,
+        )
 
     def test_dry_run_returns_diff_without_writing(self):
         self._seed_models_json({
@@ -441,6 +497,7 @@ class RefreshRoundTrip(unittest.TestCase):
         result = refresh(
             models_json=self.models_json,
             models_dir=self.models_dir,
+            routing_config=None,
             write=False,
         )
         self.assertFalse(result["wrote"])
@@ -449,6 +506,482 @@ class RefreshRoundTrip(unittest.TestCase):
         # File should be unchanged.
         loaded = json.loads(self.models_json.read_text())
         self.assertEqual(loaded["local_models"], [{"id": "old-model"}])
+
+
+class StaticEndpointReconciliation(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.model_dir = _make_fake_model_dir(
+            self.root,
+            "physical-name-4bit",
+            {"architectures": ["LlamaForCausalLM"], "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_matching_path_keeps_static_identity_and_suppresses_duplicates(self):
+        generated = probe_model_dir(self.model_dir)
+        duplicate = dict(generated, id="second-generated-id")
+        rows = reconcile_static_local_endpoints(
+            [generated, duplicate],
+            [
+                {
+                    "id": "stable-curated-id",
+                    "type": "local",
+                    "model_path": str(self.model_dir),
+                    "display_name": "Curated Display Name",
+                    "provider": "curated-provider",
+                    "context_window": 262144,
+                    "parameters_b": 9,
+                },
+                {
+                    "id": "stale-static-id",
+                    "type": "local",
+                    "model_path": str(self.root / "absent-model"),
+                },
+            ],
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], "stable-curated-id")
+        self.assertEqual(rows[0]["display_name"], "Curated Display Name")
+        self.assertEqual(rows[0]["provider"], "curated-provider")
+        self.assertNotIn("stale-static-id", {row["id"] for row in rows})
+
+
+class DeleteTargetSafety(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "models"
+        self.root.mkdir()
+        self.target = self.root / "safe-model"
+        self.target.mkdir()
+        self.inventory = [{"id": "local-safe", "path": str(self.target)}]
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_resolves_current_direct_child_by_id(self):
+        self.assertEqual(
+            resolve_delete_target("local-safe", self.inventory, self.root),
+            self.target.resolve(),
+        )
+
+    def test_rejects_cloud_or_unknown_id(self):
+        with self.assertRaises(LocalModelDeleteError):
+            resolve_delete_target("openai/gpt-5", self.inventory, self.root)
+
+    def test_rejects_traversal_outside_models_root(self):
+        outside = self.root.parent / "outside"
+        outside.mkdir()
+        inventory = [{"id": "local-escape", "path": str(self.root / ".." / "outside")}]
+        with self.assertRaises(LocalModelDeleteError):
+            resolve_delete_target("local-escape", inventory, self.root)
+
+    def test_rejects_symlink_escape(self):
+        outside = self.root.parent / "outside"
+        outside.mkdir()
+        link = self.root / "linked-model"
+        link.symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(LocalModelDeleteError):
+            resolve_delete_target(
+                "local-linked", [{"id": "local-linked", "path": str(link)}], self.root
+            )
+
+    def test_rejects_target_that_is_no_longer_current(self):
+        self.target.rmdir()
+        with self.assertRaises(LocalModelDeleteError):
+            resolve_delete_target("local-safe", self.inventory, self.root)
+
+    def test_trash_invocation_uses_fixed_argv_without_shell(self):
+        completed = mock.Mock(returncode=0)
+        with mock.patch.object(
+            local_model_discovery.subprocess, "run", return_value=completed
+        ) as run:
+            self.assertIs(move_model_to_trash(self.target), completed)
+
+        run.assert_called_once_with(
+            [TRASH_BIN, str(self.target)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertNotIn("shell", run.call_args.kwargs)
+
+
+class LocalModelProtectionIdentity(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "models"
+        self.root.mkdir()
+        self.target = self.root / "model"
+        self.target.mkdir()
+        from orchestrator import system_protection
+        self.protection = system_protection
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_identity_is_direct_child_lstat_without_tree_walk(self):
+        weights = self.target / "weights.safetensors"
+        weights.write_bytes(b"not-read-by-protection")
+        with mock.patch.object(
+            self.protection.os,
+            "walk",
+            side_effect=AssertionError("model contents must not be walked"),
+        ):
+            identity = self.protection.capture_local_model_identity(
+                self.target.resolve(), self.root.resolve()
+            )
+
+        self.assertEqual(identity["target"]["type"], "directory")
+        self.assertIsInstance(identity["target"]["lstat"]["inode"], int)
+
+    def test_identity_rejects_non_child_and_changes_on_inode_replacement(self):
+        first = self.protection.capture_local_model_identity(
+            self.target.resolve(), self.root.resolve()
+        )
+        self.target.rmdir()
+        self.target.mkdir()
+        second = self.protection.capture_local_model_identity(
+            self.target.resolve(), self.root.resolve()
+        )
+        self.assertNotEqual(first, second)
+
+        outside = self.root.parent / "outside"
+        outside.mkdir()
+        with self.assertRaises(self.protection.ProtectionDenied):
+            self.protection.capture_local_model_identity(
+                outside.resolve(), self.root.resolve()
+            )
+
+
+class LocalModelTrashEndpoint(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        repo = ORCHESTRATOR.parent
+        if str(repo) not in sys.path:
+            sys.path.insert(0, str(repo))
+        from orchestrator.embedding import install_test_stub
+        install_test_stub()
+        from server import app as server
+        from orchestrator import system_protection
+        cls.server = server
+        cls.system_protection = system_protection
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.models_dir = self.root / "models"
+        self.models_dir.mkdir()
+        self.model_dir = _make_fake_model_dir(
+            self.models_dir,
+            "physical-model",
+            {"architectures": ["LlamaForCausalLM"], "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+        self.models_json = self.root / "models.json"
+        self.models_json.write_text(json.dumps({
+            "overhead_reservation_gb": 8,
+            "local_models": [],
+            "commercial_models": [{"id": "cloud-model"}],
+        }))
+        self.routing_config = self.root / "routing-config.json"
+        self.routing_config.write_text(json.dumps({
+            "endpoints": [
+                {
+                    "id": "stable-local-id",
+                    "type": "local",
+                    "engine": "mlx",
+                    "machine": "test-machine",
+                    "model_path": str(self.model_dir),
+                    "display_name": "Stable Local",
+                    "status": "active",
+                    "enabled": True,
+                },
+                {
+                    "id": "stale-static-id",
+                    "type": "local",
+                    "engine": "mlx",
+                    "machine": "test-machine",
+                    "model_path": str(self.models_dir / "absent-model"),
+                    "display_name": "Absent Local",
+                    "status": "active",
+                    "enabled": True,
+                },
+            ],
+        }))
+        self.client = self.server.app.test_client()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _server_patches(self):
+        return (
+            mock.patch.object(self.server, "MODELS_JSON", str(self.models_json)),
+            mock.patch.object(self.server, "LOCAL_MODELS_DIR", self.models_dir),
+            mock.patch.object(
+                self.server,
+                "_routing_config_path",
+                return_value=str(self.routing_config),
+            ),
+        )
+
+    def test_endpoint_rejects_cloud_id_without_trashing(self):
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, mock.patch.object(
+            local_model_discovery, "move_model_to_trash"
+        ) as trash:
+            response = self.client.post(
+                "/api/local-models/trash", json={"model_id": "cloud-model"}
+            )
+
+        self.assertEqual(response.status_code, 404)
+        trash.assert_not_called()
+        self.assertTrue(self.model_dir.is_dir())
+
+    def test_endpoint_rejects_cross_site_request_before_discovery(self):
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, mock.patch.object(
+            local_model_discovery, "refresh"
+        ) as refresh, mock.patch.object(
+            local_model_discovery, "move_model_to_trash"
+        ) as trash:
+            response = self.client.post(
+                "/api/local-models/trash",
+                json={"model_id": "stable-local-id"},
+                headers={"Origin": "https://attacker.example"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        refresh.assert_not_called()
+        trash.assert_not_called()
+
+    def test_endpoint_returns_review_required_without_mutation(self):
+        p1, p2, p3 = self._server_patches()
+        review = self.system_protection.ProtectionReviewRequired(
+            "approval required", queue_id="queue-1"
+        )
+        with p1, p2, p3, mock.patch.object(
+            self.system_protection,
+            "authorize_server_action",
+            side_effect=review,
+        ), mock.patch.object(
+            local_model_discovery, "move_model_to_trash"
+        ) as trash, mock.patch.object(
+            self.server, "_reload_pipeline_router_after_config_change"
+        ):
+            response = self.client.post(
+                "/api/local-models/trash", json={"model_id": "stable-local-id"}
+            )
+
+        self.assertEqual(response.status_code, 409)
+        trash.assert_not_called()
+        self.assertTrue(self.model_dir.is_dir())
+
+    def test_registry_returns_one_local_row_per_discovered_path(self):
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, mock.patch.object(
+            self.server.rp,
+            "routing_config_path",
+            return_value=self.routing_config,
+        ):
+            response = self.client.get("/api/model-registry?categories=all")
+
+        self.assertEqual(response.status_code, 200, response.data)
+        models = json.loads(response.data)["models"]
+        local_ids = {
+            model_id for model_id, model in models.items()
+            if model.get("_local_endpoint")
+        }
+        self.assertEqual(local_ids, {"stable-local-id"})
+        self.assertNotIn("local-mlx-physical-model", models)
+        self.assertNotIn("stale-static-id", models)
+
+    def test_endpoint_serializes_evicts_trashes_rescans_and_returns_inventory(self):
+        trash_root = self.root / "Trash"
+        trash_root.mkdir()
+        acquired = []
+
+        def fake_trash(target):
+            target = Path(target)
+            shutil.move(str(target), str(trash_root / target.name))
+            return mock.Mock(returncode=0)
+
+        def fake_acquire(machine_id):
+            acquired.append(machine_id)
+            return nullcontext()
+
+        fake_boot = types.SimpleNamespace(evict_mlx_model=mock.Mock(return_value=True))
+        protection = object()
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, \
+             mock.patch.object(
+                 local_model_discovery, "move_model_to_trash", side_effect=fake_trash
+             ) as trash, \
+             mock.patch("mlx_mutex.acquire", side_effect=fake_acquire), \
+             mock.patch.object(
+                 self.server, "_boot_context_api", return_value=fake_boot
+             ), \
+             mock.patch.object(
+                 self.system_protection,
+                 "authorize_server_action",
+                 return_value=protection,
+             ) as authorize, \
+             mock.patch.object(
+                 self.system_protection,
+                 "protected_effect",
+                 return_value=nullcontext(),
+             ), \
+             mock.patch.object(
+                 self.system_protection, "complete_execution"
+             ) as complete, \
+             mock.patch.object(
+                 self.server,
+                 "_reload_pipeline_router_after_config_change",
+                 return_value=True,
+             ) as reload_router:
+            response = self.client.post(
+                "/api/local-models/trash", json={"model_id": "stable-local-id"}
+            )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        payload = json.loads(response.data)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["inventory"], [])
+        self.assertEqual(payload["hardware"]["local_models"], [])
+        self.assertEqual(acquired, ["test-machine"])
+        trash.assert_called_once_with(self.model_dir.resolve())
+        fake_boot.evict_mlx_model.assert_called_once_with(str(self.model_dir.resolve()))
+        self.assertEqual(reload_router.call_count, 2)
+        authorize.assert_called_once()
+        self.assertEqual(authorize.call_args.args[0], "local_model_trash")
+        complete.assert_called_once()
+        self.assertTrue(complete.call_args.kwargs["ok"])
+        saved = json.loads(self.models_json.read_text())
+        self.assertEqual(saved["local_models"], [])
+        self.assertEqual(saved["commercial_models"], [{"id": "cloud-model"}])
+
+    def test_endpoint_revalidates_the_same_target_under_mutex(self):
+        replacement = self.models_dir / "replacement-model"
+        replacement.mkdir()
+        initial = {
+            "discovered": [{
+                "id": "stable-local-id",
+                "path": str(self.model_dir.resolve()),
+                "machine": "test-machine",
+            }],
+            "previous": [{
+                "id": "stable-local-id",
+                "path": str(self.model_dir.resolve()),
+                "machine": "test-machine",
+            }],
+            "wrote": True,
+        }
+        changed = {
+            **initial,
+            "discovered": [{
+                "id": "stable-local-id",
+                "path": str(replacement.resolve()),
+                "machine": "test-machine",
+            }],
+        }
+        protection = object()
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, mock.patch.object(
+            local_model_discovery, "refresh", side_effect=[initial, changed]
+        ), mock.patch.object(
+            local_model_discovery, "move_model_to_trash"
+        ) as trash, mock.patch(
+            "mlx_mutex.acquire", return_value=nullcontext()
+        ), mock.patch.object(
+            self.system_protection,
+            "authorize_server_action",
+            return_value=protection,
+        ), mock.patch.object(
+            self.system_protection, "protected_effect"
+        ) as protected_effect, mock.patch.object(
+            self.system_protection, "complete_execution"
+        ) as complete:
+            response = self.client.post(
+                "/api/local-models/trash", json={"model_id": "stable-local-id"}
+            )
+
+        self.assertEqual(response.status_code, 409, response.data)
+        trash.assert_not_called()
+        protected_effect.assert_not_called()
+        complete.assert_called_once()
+        self.assertFalse(complete.call_args.kwargs["ok"])
+
+    def test_endpoint_persists_failure_receipt_when_trash_fails(self):
+        protection = object()
+        p1, p2, p3 = self._server_patches()
+        with p1, p2, p3, mock.patch.object(
+            local_model_discovery,
+            "move_model_to_trash",
+            side_effect=OSError("trash unavailable"),
+        ), mock.patch(
+            "mlx_mutex.acquire", return_value=nullcontext()
+        ), mock.patch.object(
+            self.server,
+            "_boot_context_api",
+            return_value=types.SimpleNamespace(evict_mlx_model=mock.Mock()),
+        ), mock.patch.object(
+            self.system_protection,
+            "authorize_server_action",
+            return_value=protection,
+        ), mock.patch.object(
+            self.system_protection,
+            "protected_effect",
+            return_value=nullcontext(),
+        ), mock.patch.object(
+            self.system_protection, "complete_execution"
+        ) as complete, mock.patch.object(
+            self.server, "_reload_pipeline_router_after_config_change"
+        ):
+            response = self.client.post(
+                "/api/local-models/trash", json={"model_id": "stable-local-id"}
+            )
+
+        self.assertEqual(response.status_code, 500, response.data)
+        complete.assert_called_once()
+        self.assertFalse(complete.call_args.kwargs["ok"])
+
+    def test_failed_reload_after_change_retries_on_unchanged_scan(self):
+        changed = {
+            "discovered": [{"id": "new"}],
+            "previous": [],
+            "wrote": True,
+        }
+        unchanged = {
+            "discovered": [{"id": "new"}],
+            "previous": [{"id": "new"}],
+            "wrote": True,
+        }
+        with mock.patch.object(
+            local_model_discovery, "refresh", side_effect=[changed, unchanged]
+        ), mock.patch.object(
+            self.server,
+            "_reload_pipeline_router_after_config_change",
+            side_effect=[False, True],
+        ) as reload_router:
+            first, first_error = self.server._refresh_local_model_inventory()
+            second, second_error = self.server._refresh_local_model_inventory()
+
+        self.assertIsNone(first_error)
+        self.assertIsNone(second_error)
+        self.assertFalse(first["router_reloaded"])
+        self.assertTrue(second["router_reloaded"])
+        self.assertEqual(reload_router.call_count, 2)
+        reload_router.assert_has_calls([mock.call(), mock.call()])
 
 
 if __name__ == "__main__":
