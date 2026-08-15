@@ -7,22 +7,19 @@
       "step1_cleanup": {
         "primary": "nvidia/nemotron-nano-9b-v2:free",
         "fallback": [
-          "meta-llama/llama-3.2-3b-instruct:free",
-          "liquid/lfm-2.5-1.2b-thinking:free"
+          "meta-llama/llama-3.2-3b-instruct:free"
         ]
       },
       "classification": {
         "primary": "nvidia/nemotron-nano-9b-v2:free",
         "fallback": [
-          "meta-llama/llama-3.2-3b-instruct:free",
-          "liquid/lfm-2.5-1.2b-thinking:free"
+          "meta-llama/llama-3.2-3b-instruct:free"
         ]
       },
       "rag_planner": {
         "primary": "nvidia/nemotron-nano-9b-v2:free",
         "fallback": [
-          "meta-llama/llama-3.2-3b-instruct:free",
-          "liquid/lfm-2.5-1.2b-thinking:free"
+          "meta-llama/llama-3.2-3b-instruct:free"
         ]
       },
       "gear2_rag_lookup": {
