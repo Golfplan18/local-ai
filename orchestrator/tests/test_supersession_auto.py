@@ -24,8 +24,6 @@ import types
 import unittest
 from unittest import mock
 
-sys.path.insert(0, os.path.expanduser("~/ora"))
-
 from orchestrator.historical import run_engram_cleaning_detection as eng_det
 from orchestrator.historical import run_engram_cleaning_resolver as eng_res
 from orchestrator.historical import run_news_supersession_detection as news_det

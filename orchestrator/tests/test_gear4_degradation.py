@@ -31,21 +31,9 @@ for p in (HERE, WORKTREE_ROOT):
         sys.path.insert(0, p)
 
 
-# Use the same forced-load pattern other sweep tests use so the worktree's
-# boot.py wins over any pre-loaded version from a different sys.path entry.
-import importlib.util as _ilu
 
 
-def _load_worktree(modname: str):
-    fname = os.path.join(HERE, f"{modname}.py")
-    spec = _ilu.spec_from_file_location(modname, fname)
-    mod = _ilu.module_from_spec(spec)
-    sys.modules[modname] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-boot = _load_worktree("boot")
+import boot
 
 
 def _fake_endpoint(name):

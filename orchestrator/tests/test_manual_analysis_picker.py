@@ -14,7 +14,7 @@ import sys
 import unittest
 from unittest import mock
 
-WORKSPACE = os.path.expanduser("~/ora")
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 sys.path.insert(0, os.path.join(WORKSPACE, "server"))
 
