@@ -126,22 +126,11 @@ class TestStealthManifestSidecar(unittest.TestCase):
         # for one conv_id, verify only matching entries are removed and
         # the others survive.
         #
-        # Closeout imports conversation_memory at module-load time; if
-        # the HEAD commit doesn't have every symbol it expects, the
-        # import chain fails. Inject stubs so the test runs against
-        # whatever HEAD is checked out.
-        if "orchestrator.conversation_memory" not in sys.modules:
-            import types
-            stub = types.ModuleType("orchestrator.conversation_memory")
-            stub.get_conversation_tag = lambda *a, **kw: "stealth"
-            stub.set_conversation_closed = lambda *a, **kw: None
-            sys.modules["orchestrator.conversation_memory"] = stub
-        else:
-            cm = sys.modules["orchestrator.conversation_memory"]
-            if not hasattr(cm, "set_conversation_closed"):
-                cm.set_conversation_closed = lambda *a, **kw: None
-            if not hasattr(cm, "get_conversation_tag"):
-                cm.get_conversation_tag = lambda *a, **kw: "stealth"
+        # Import the real conversation_memory. The stub that used to stand in
+        # here stayed in sys.modules for the rest of the process and went
+        # stale as soon as conversation_closeout imported one more name from
+        # that module (detach_direct_fork_children, 2026-08-11), turning this
+        # test into an ImportError.
 
         from orchestrator.conversation_closeout import _purge_stealth
 
@@ -315,20 +304,31 @@ class TestVerifierCaseInsensitive(unittest.TestCase):
 
 
 class TestGear4SingleStreamContingency(unittest.TestCase):
-    """Fix 7: Gear 4 records a contingency when exactly one analyst stream
-    is degraded (rather than silently proceeding to step 4 with an error
-    string as one of the analysts' outputs).
+    """Fix 7: a degraded analyst stream is recorded as a contingency rather
+    than silently cross-evaluated as if its error string were an analysis.
+
+    The 2026-06-29 per-analyst recovery rework (commit c4c750b0) strengthened
+    the remedy: a stream that is unrecoverable after primary + same-model
+    retry + fallback no longer continues in degraded form at all — the turn
+    falls back to Gear 3 for a complete single-model answer. The old
+    ``step3-<stream>-analyst-degraded-cross-eval-on-error-string`` names
+    therefore no longer exist in boot.py; the property they guarded (an error
+    string never reaches cross-evaluation unannounced) is now carried by the
+    fallback-to-gear3 contingencies asserted below.
     """
 
     def test_contingency_name_recorded_in_source(self):
         boot_py = Path(HERE) / "boot.py"
         text = boot_py.read_text()
         self.assertIn(
-            "step3-breadth-analyst-degraded-cross-eval-on-error-string", text
+            'f"step3-{failed[0]}-analyst-unrecoverable-fallback-to-gear3"', text
         )
         self.assertIn(
-            "step3-depth-analyst-degraded-cross-eval-on-error-string", text
+            "step3-both-analysts-unrecoverable-fallback-to-gear3", text
         )
+        # The superseded path must stay gone: proceeding to step 4 with a
+        # degraded stream is the silent failure this test exists to block.
+        self.assertNotIn("degraded-cross-eval-on-error-string", text)
 
 
 class TestBypassNegationAware(unittest.TestCase):

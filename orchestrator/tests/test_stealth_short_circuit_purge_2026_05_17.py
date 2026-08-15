@@ -271,23 +271,15 @@ class TestPurgeStealthLayer9ScrubsOversightLogs(unittest.TestCase):
     human-queue.jsonl matching the stealth conversation_id and leaves
     other conversations' entries untouched. Uses the atomic-rewrite
     pattern (``.tmp`` + replace).
-    """
 
-    def setUp(self):
-        # Stub conversation_memory so the closeout module import chain
-        # works against whatever HEAD is checked out, matching the
-        # pattern used by test_silent_failure_fixes_2026_05_15.py.
-        if "orchestrator.conversation_memory" not in sys.modules:
-            stub = types.ModuleType("orchestrator.conversation_memory")
-            stub.get_conversation_tag = lambda *a, **kw: "stealth"
-            stub.set_conversation_closed = lambda *a, **kw: None
-            sys.modules["orchestrator.conversation_memory"] = stub
-        else:
-            cm = sys.modules["orchestrator.conversation_memory"]
-            if not hasattr(cm, "set_conversation_closed"):
-                cm.set_conversation_closed = lambda *a, **kw: None
-            if not hasattr(cm, "get_conversation_tag"):
-                cm.get_conversation_tag = lambda *a, **kw: "stealth"
+    No conversation_memory stub here. The hand-written stand-in that used to
+    be installed in setUp stayed in sys.modules for the rest of the process —
+    handing every later test a two-function fake of a real module — and it
+    went stale the moment conversation_closeout imported one more name from
+    it, which is what happened on 2026-08-11 when detach_direct_fork_children
+    joined that import chain and every test in this class became an
+    ImportError. The real module imports fine.
+    """
 
     def _write_jsonl(self, path: Path, records: list[dict]):
         path.parent.mkdir(parents=True, exist_ok=True)

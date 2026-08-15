@@ -34,6 +34,15 @@ sys.path.insert(0, str(ORCHESTRATOR))
 sys.path.insert(0, str(WORKSPACE / "server"))
 
 
+from oversight_sandbox import redirect_sessions_root  # noqa: E402
+
+
+def setUpModule():
+    # Keep this module's Dialogue writes out of the live sessions store. The
+    # endpoint handlers default an absent conversation_id to "main" — the
+    # user's own Dialogue — and persist envelopes under the sessions root.
+    redirect_sessions_root()
+
 class _NoopThread:
     """Stub thread that fires no side-effects — mirrors test_visual_merged_input."""
 

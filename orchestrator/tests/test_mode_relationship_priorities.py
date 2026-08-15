@@ -45,12 +45,23 @@ VALID_TYPES = {
 # exempted from the priority-presence checks.
 _BYPASS_STYLE_MODES = {"simple"}
 
+# modes/INDEX.md is the directory's index (`type: reference`), not a mode. It
+# arrived with the 2026-05-28 vault sync (commit 1f41c568) and every glob below
+# swept it up as if it were one, so the whole module has failed since.
+_NON_MODE_FILES = {"INDEX"}
+
+
+def _mode_files():
+    """Every mode file in modes/, excluding the index."""
+    return [p for p in sorted(MODES_DIR.glob("*.md"))
+            if p.stem not in _NON_MODE_FILES]
+
 
 class TestAllModesCarryPriorities(unittest.TestCase):
     """Every analytical mode file must carry the section the parser expects."""
 
     def test_section_present_in_every_mode(self):
-        mode_files = sorted(MODES_DIR.glob("*.md"))
+        mode_files = _mode_files()
         analytical = [p for p in mode_files if p.stem not in _BYPASS_STYLE_MODES]
         self.assertGreaterEqual(
             len(analytical), 58,
@@ -70,7 +81,7 @@ class TestAllModesCarryPriorities(unittest.TestCase):
         """Parser must return at least one prioritized type for each
         analytical mode. Bypass-style modes (gear-1, direct-response)
         are exempted — they don't use cross-mode relationship traversal."""
-        for path in sorted(MODES_DIR.glob("*.md")):
+        for path in _mode_files():
             if path.stem in _BYPASS_STYLE_MODES:
                 continue
             with self.subTest(mode=path.stem):
@@ -87,7 +98,7 @@ class TestAllModesCarryPriorities(unittest.TestCase):
 
     def test_all_types_valid(self):
         """No mode references a type outside the 13-type taxonomy."""
-        for path in sorted(MODES_DIR.glob("*.md")):
+        for path in _mode_files():
             with self.subTest(mode=path.stem):
                 text = path.read_text(encoding="utf-8")
                 pri = parse_mode_relationship_priorities(text)

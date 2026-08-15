@@ -42,11 +42,19 @@ from pathlib import Path
 
 DEFAULT_CAPABILITIES = Path.home() / "ora" / "config" / "capabilities.json"
 DEFAULT_ROUTING = Path.home() / "ora" / "config" / "routing-config.json"
-DEFAULT_DOC = (
-    Path.home()
-    / "Documents"
-    / "vault"
-    / "Reference — Capability Invocation Contracts.md"
+# The 2026-07-13 vault consolidation moved 536 Ora documents from the vault
+# root into Projects/Ora/. This path was not updated, so every invocation has
+# exited 2 ("FATAL: doc not found") since — the drift check the script exists
+# to perform has not run at all. Look in the current canonical location first
+# and keep the pre-consolidation path as a fallback so a vault that has not
+# been reorganised still works.
+_VAULT = Path.home() / "Documents" / "vault"
+_DOC_NAME = "Reference — Capability Invocation Contracts.md"
+DEFAULT_DOC = next(
+    (candidate for candidate in (_VAULT / "Projects" / "Ora" / _DOC_NAME,
+                                 _VAULT / _DOC_NAME)
+     if candidate.exists()),
+    _VAULT / "Projects" / "Ora" / _DOC_NAME,
 )
 
 # System-internal slots — declared in routing-config because they need
