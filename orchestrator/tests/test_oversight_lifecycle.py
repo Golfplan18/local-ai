@@ -151,10 +151,14 @@ class TestStealthOversightSuppression(OversightLifecycleTestCase):
                 [], "1", conversation_id="stealth-resolution",
             )
         self.assertFalse(result.success)
-        self.assertIn("Stealth", result.error)
+        # "Off Record" is the user-facing name for a stealth Dialogue since the
+        # 2026-08-13 interface-perimeter pass (#296); the internal tag is still
+        # "stealth". These two assertions read the message shown to the user, so
+        # they follow the visible label.
+        self.assertIn("Off Record", result.error)
         pending.assert_not_called()
         commit.assert_not_called()
-        self.assertIn("suppressed in Stealth", message)
+        self.assertIn("suppressed in Off Record", message)
 
 
 class TestLifecycleContextScope(OversightLifecycleTestCase):

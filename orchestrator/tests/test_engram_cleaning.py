@@ -78,17 +78,50 @@ class _FakeMetadataCollection:
                 self.records[record_id]["metadata"].update(metadata)
 
 
+@contextlib.contextmanager
 def _fake_chroma_modules(collection):
+    """Serve a fake chromadb + orchestrator.embedding for the block.
+
+    Deliberately NOT `mock.patch.dict(sys.modules, ...)`. patch.dict restores
+    by CLEARING the dict and refilling it from a pre-patch copy, so every
+    module first imported inside the block is evicted on exit — including the
+    ones the code under test imports lazily (refresh_chromadb does
+    `from orchestrator.tools.knowledge_index import ...` inside the window).
+
+    An evicted submodule stays reachable as its parent package's attribute, so
+    afterwards `from orchestrator.tools import knowledge_index` returns the old
+    object while `from orchestrator.tools.knowledge_index import name` misses
+    sys.modules and imports a SECOND copy. A test that patches one is then
+    invisible to production code that imports the other: that split is what
+    made test_engram_promotion's indexing test fail (silently indexing into a
+    real collection instead of its fake) whenever this module ran first under
+    `python -m unittest test_engram_cleaning test_engram_promotion`.
+
+    Restoring only the keys we replaced leaves everything imported inside the
+    block where the import system put it.
+    """
     chromadb_module = types.ModuleType("chromadb")
     chromadb_module.PersistentClient = lambda path: object()
 
     embedding_module = types.ModuleType("orchestrator.embedding")
     embedding_module.get_or_create_collection = (
         lambda _client, _collection_name: collection)
-    return {
+
+    fakes = {
         "chromadb": chromadb_module,
         "orchestrator.embedding": embedding_module,
     }
+    missing = object()
+    previous = {name: sys.modules.get(name, missing) for name in fakes}
+    sys.modules.update(fakes)
+    try:
+        yield
+    finally:
+        for name, prior in previous.items():
+            if prior is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = prior
 
 
 def _write_engram(directory: str, slug: str, tag: str = "archived") -> str:
@@ -394,7 +427,7 @@ class TestResolverChromaRefresh(unittest.TestCase):
             with (
                 mock.patch.object(
                     run_engram_cleaning_resolver, "ENGRAMS_DIR", engrams_dir),
-                mock.patch.dict(sys.modules, _fake_chroma_modules(collection)),
+                _fake_chroma_modules(collection),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
@@ -458,7 +491,7 @@ class TestPhase3ChromaRefresh(unittest.TestCase):
             with (
                 mock.patch.object(phase3_chromadb_refresh, "ENGRAMS_DIR",
                                   engrams_dir),
-                mock.patch.dict(sys.modules, _fake_chroma_modules(collection)),
+                _fake_chroma_modules(collection),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):

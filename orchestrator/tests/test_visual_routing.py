@@ -41,6 +41,17 @@ sys.path.insert(0, str(ORCHESTRATOR))
 sys.path.insert(0, str(WORKSPACE / "server"))
 
 
+from oversight_sandbox import redirect_sessions_root  # noqa: E402
+
+
+def setUpModule():
+    # Keep this module's Dialogue writes out of the live sessions store, and
+    # out of the previous run's. An envelope on disk is authoritative, so a
+    # leftover one from an earlier run makes the endpoint ignore the history
+    # this suite supplies — the module passes on a clean tree and fails on the
+    # second run.
+    redirect_sessions_root()
+
 class _NoopThread:
     """Stub thread that fires no side-effects — mirrors test_visual_e2e."""
 
@@ -434,17 +445,32 @@ class RoutingConfigSchemaTests(unittest.TestCase):
             f"endpoints missing vision_capable: {missing}",
         )
 
-    def test_all_local_mlx_are_text_only(self) -> None:
-        """Per WP-4.2 plan: local MLX models are never vision-capable."""
+    def test_local_endpoints_declare_vision_capable_explicitly(self) -> None:
+        """Local endpoints state their vision support as a real boolean.
+
+        WP-4.2 assumed local MLX models were never vision-capable and this test
+        asserted it. The 2026-05-26 model swap replaced the local lineup with a
+        vision-capable one across three training families (see CLAUDE.md), so
+        every local endpoint in routing-config.json now declares
+        ``vision_capable: true`` and the old assertion was asserting a policy
+        the system had deliberately dropped.
+
+        What still matters is that the flag is declared and typed: routing
+        treats a missing field as False (test_case_e_*), so a local model that
+        CAN see images but forgets the field is silently demoted to extraction.
+        """
         cfg_path = WORKSPACE / "config" / "routing-config.json"
         with open(cfg_path) as f:
             cfg = json.load(f)
-        for ep in cfg.get("endpoints", []):
-            if ep.get("type") == "local":
-                self.assertFalse(
-                    ep.get("vision_capable", False),
-                    f"local endpoint {ep.get('id')} should be text-only",
-                )
+        local = [ep for ep in cfg.get("endpoints", [])
+                 if ep.get("type") == "local"]
+        self.assertTrue(local, "routing-config declares no local endpoints")
+        for ep in local:
+            self.assertIsInstance(
+                ep.get("vision_capable"), bool,
+                f"local endpoint {ep.get('id')} must declare vision_capable "
+                "as a boolean",
+            )
 
 
 class ModelsJsonSchemaTests(unittest.TestCase):

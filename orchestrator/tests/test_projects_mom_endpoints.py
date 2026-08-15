@@ -82,11 +82,32 @@ class ProjectsMomEndpointTests(unittest.TestCase):
         self.assertEqual(gmom["objectives"], "Finish the draft.")
         self.assertTrue(gmom["milestones"][0]["done"])
 
+    def _classify_matrix_as_project(self, filename):
+        """Stamp the explicit project_type the MOM write gate requires.
+
+        The gate (#260, 2026-07-13) refuses a MOM write unless the Matrix
+        frontmatter declares project_type: [project]. A matrix created through
+        this endpoint does not carry it — _new_matrix_text writes nexus/type/
+        dates only — so the create succeeds (no file yet, gate skipped) and
+        every later write is 403'd, which is what broke this test. Doing here
+        what the gate's own error message tells the operator to do keeps the
+        subject of the test the patch semantics rather than the gate.
+        """
+        path = self.vault / "Matrix" / filename
+        text = path.read_text(encoding="utf-8")
+        assert text.startswith("---\n")
+        end = text.index("\n---\n", 4)
+        path.write_text(
+            text[:end] + "\nproject_type:\n  - project" + text[end:],
+            encoding="utf-8",
+        )
+
     def test_post_patch_preserves_other_sections(self):
         self.client.post(
             "/api/projects/my-book/mom",
             json={"name": "Wrong", "mission": "First.", "objectives": "Obj."},
         )
+        self._classify_matrix_as_project("Project Matrix My Book.md")
         # Patch only the mission; objectives must remain.
         self.client.post(
             "/api/projects/my-book/mom",

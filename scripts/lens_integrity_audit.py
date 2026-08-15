@@ -22,7 +22,10 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MODE_DIR = ROOT / "modes"
-LENS_DIR = ROOT / "knowledge" / "mental-models"
+# lenses/ replaced knowledge/mental-models in PR #275 (0cbb84c5, 2026-07-31).
+# The old path held gitignored user content before that and does not exist at
+# all after it, so this audit was scanning an empty lens corpus either way.
+LENS_DIR = ROOT / "lenses"
 REQUIRED_LENS_FIELDS = (
     "lens_id",
     "name",
@@ -147,7 +150,7 @@ def _mode_files(root: Path) -> list[Path]:
 
 def _lens_files(root: Path) -> list[Path]:
     return sorted(
-        path for path in (root / "knowledge" / "mental-models").glob("*.md")
+        path for path in (root / "lenses").glob("*.md")
         if path.name != "INDEX.md"
     )
 

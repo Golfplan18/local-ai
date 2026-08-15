@@ -42,6 +42,7 @@ tearDown counterpart is needed:
 from __future__ import annotations
 
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -142,4 +143,79 @@ def redirect_oversight_logs(test_case: unittest.TestCase) -> str:
     for p in patches:
         p.start()
         test_case.addCleanup(p.stop)
+    return tmpdir
+
+
+def redirect_sessions_root(test_case=None):
+    """Point every sessions-root consumer at a throwaway directory.
+
+    The endpoint suites POST to /chat, /chat/multipart and the upload routes.
+    Those handlers write a Dialogue envelope under the sessions root, and when
+    the request carries no conversation_id the handler defaults to ``main`` —
+    the user's OWN Dialogue. Run against a live checkout these suites therefore
+    wrote into ~/ora/sessions: annot-convo-1, annot-convo-empty, e2e-convo-1,
+    e2e-convo-img, e2e-convo-textonly and a long tail of test-chat-* Dialogues
+    were all sitting in the live store on 2026-08-14, listed in the user's own
+    sidebar.
+
+    They also made the suite's verdict depend on that store. The real ``main``
+    Dialogue was closed on 2026-08-11; from then on the closed-conversation
+    guard rejected these requests with 409 and six modules "failed" — a result
+    decided by the developer's chat history rather than by the code. In a fresh
+    checkout the same six pass.
+
+    Three modules bake ``_DEFAULT_SESSIONS_ROOT`` from runtime_paths at import,
+    and server.app aliases the conversation_memory one at module level, so all
+    four bindings are redirected here.
+
+    Usage — call once per module, so classes without their own setUp are
+    covered too:
+
+        def setUpModule():
+            redirect_sessions_root()
+
+    Pass a TestCase instead to scope the redirect to one test.
+    """
+    tmpdir = tempfile.mkdtemp(prefix="ora-sessions-sandbox-")
+    root = pathlib.Path(tmpdir)
+
+    from orchestrator import (  # noqa: F401 — imported for their attributes
+        conversation_closeout,
+        conversation_memory,
+        vault_export,
+    )
+
+    patches = []
+    for name in ("conversation_memory", "conversation_closeout", "vault_export"):
+        # server/app.py reaches conversation_memory by BOTH spellings — the
+        # packaged one at module scope and a bare `from conversation_memory
+        # import ...` inside the multipart handler — and orchestrator/ is on
+        # sys.path, so the two are separate module objects with separate
+        # constants. Redirect whichever copies this process actually has.
+        for module in (sys.modules.get(f"orchestrator.{name}"),
+                       sys.modules.get(name)):
+            if module is not None and hasattr(module, "_DEFAULT_SESSIONS_ROOT"):
+                patches.append(
+                    mock.patch.object(module, "_DEFAULT_SESSIONS_ROOT", root))
+    # server.app imports the conversation_memory constant under an alias at
+    # module scope, so its binding is a separate object to redirect. Only the
+    # already-imported module is touched: importing the Flask app here would
+    # make every caller of this fixture pay for it.
+    server_app = sys.modules.get("server.app")
+    if server_app is not None and hasattr(server_app, "_conversation_sessions_root"):
+        patches.append(
+            mock.patch.object(server_app, "_conversation_sessions_root", root))
+
+    for p in patches:
+        p.start()
+
+    def _restore():
+        for p in reversed(patches):
+            p.stop()
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    if test_case is not None:
+        test_case.addCleanup(_restore)
+    else:
+        unittest.addModuleCleanup(_restore)
     return tmpdir

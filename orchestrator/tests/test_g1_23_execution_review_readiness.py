@@ -275,8 +275,12 @@ def test_g1_23_records_preserve_submission_and_deferral_boundaries():
         assert expected_recovery in record
 
     evidence_path = ROOT / "outputs" / "g1-23" / "closeout-evidence.md"
+    # Re-pinned 2026-08-14. The original hash was taken at G1.23 closeout
+    # (94f10f07, 2026-07-26); f14ea5b0 (2026-07-31) rewrote one command line in
+    # this evidence file when server/server.py became server/app.py, so the pin
+    # has been stale — not the evidence — ever since.
     assert hashlib.sha256(evidence_path.read_bytes()).hexdigest() == (
-        "5ab372a613654dc3fa505a550377fe266003ba4c621d80f43f2d0f5560897b9a"
+        "6a9b07ff25b47a46b96592d2a48a80086e479ab612c6b0a3752e7b0881c7d0e9"
     )
     assert "416 passed, 14 subtests passed" in report
     assert "201 passed, 12 subtests passed" in report

@@ -59,6 +59,20 @@ class SidebarWindowTests(unittest.TestCase):
 
 
 class ExplicitEndpointResolutionTests(unittest.TestCase):
+    def setUp(self):
+        # Router.__init__ merges the machine's config/models.json local models
+        # into its endpoint table even when handed an explicit config_dict.
+        # That is right in production — models.json is the source of truth for
+        # local models — but it made these fixtures machine-dependent: on this
+        # developer's Mac the six discovered MLX endpoints joined the four
+        # below, so the exact-membership assertion could only pass on a machine
+        # with no local models installed. These tests are about explicit
+        # endpoint resolution, so the discovery merge is switched off.
+        merge = mock.patch.object(
+            Router, "_merge_models_json_local_endpoints", lambda self: None)
+        merge.start()
+        self.addCleanup(merge.stop)
+
     def _router(self):
         return Router(config_dict={
             "endpoints": [

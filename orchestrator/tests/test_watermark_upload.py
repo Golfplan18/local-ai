@@ -26,6 +26,15 @@ ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
 
+from oversight_sandbox import redirect_sessions_root  # noqa: E402
+
+
+def setUpModule():
+    # Keep this module's Dialogue writes out of the live sessions store. The
+    # endpoint handlers default an absent conversation_id to "main" — the
+    # user's own Dialogue — and persist envelopes under the sessions root.
+    redirect_sessions_root()
+
 class WatermarkNormalizerTests(unittest.TestCase):
 
     def setUp(self):

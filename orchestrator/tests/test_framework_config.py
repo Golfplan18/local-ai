@@ -212,12 +212,12 @@ class TestComposeFrameworkSpec(unittest.TestCase):
             ],
         }), encoding="utf-8")
 
-        # Pointer file pointing at the project
+        # Pointer file pointing at the project. Written through
+        # register_project, not by hand: since the 2026-07-25 authority-binding
+        # fix (8f1cd428) a pointer must carry the manifest_sha256 it was issued
+        # against, and one without it resolves to "no project registered".
         self.pointer_dir = Path(tempfile.mkdtemp(prefix="fc_ptr_"))
-        (self.pointer_dir / "fc-test-proj.json").write_text(json.dumps({
-            "nexus": "fc-test-proj",
-            "root": str(self.proj_dir),
-        }), encoding="utf-8")
+        pr.register_project(str(self.proj_dir), pointer_dir=str(self.pointer_dir))
 
         # Synthetic framework file in a temp FRAMEWORKS_DIR
         self.frameworks_dir = Path(tempfile.mkdtemp(prefix="fc_fw_"))
@@ -277,6 +277,9 @@ class TestComposeFrameworkSpec(unittest.TestCase):
         data = json.loads(manifest_path.read_text())
         data["framework_configurations"][0]["config"]["docless"] = "X"
         manifest_path.write_text(json.dumps(data))
+        # Editing the manifest breaks the identity the pointer was issued
+        # against (8f1cd428). Re-register, as an operator would.
+        pr.register_project(str(self.proj_dir), pointer_dir=str(self.pointer_dir))
         out = fc.compose_framework_spec(
             "synth-fw", project_nexus="fc-test-proj",
             profile_name="test-profile",
@@ -313,6 +316,9 @@ class TestComposeFrameworkSpec(unittest.TestCase):
         data = json.loads(manifest_path.read_text())
         data["framework_configurations"][0]["config"]["docless"] = "X"
         manifest_path.write_text(json.dumps(data))
+        # Editing the manifest breaks the identity the pointer was issued
+        # against (8f1cd428). Re-register, as an operator would.
+        pr.register_project(str(self.proj_dir), pointer_dir=str(self.pointer_dir))
         out = fc.compose_framework_spec(
             "synth-fw.md", project_nexus="fc-test-proj",
             profile_name="test-profile",
@@ -429,12 +435,10 @@ class TestComposeWithOverlays(unittest.TestCase):
             ],
         }), encoding="utf-8")
 
-        # Pointer file
+        # Pointer file — see the note in TestComposeFrameworkSpec.setUp on why
+        # this goes through register_project rather than being written by hand.
         self.pointer_dir = Path(tempfile.mkdtemp(prefix="fc_overlay_ptr_"))
-        (self.pointer_dir / "overlay-test-proj.json").write_text(json.dumps({
-            "nexus": "overlay-test-proj",
-            "root": str(self.proj_dir),
-        }), encoding="utf-8")
+        pr.register_project(str(self.proj_dir), pointer_dir=str(self.pointer_dir))
 
         # Synthetic framework with the extension marker
         self.frameworks_dir = Path(tempfile.mkdtemp(prefix="fc_overlay_fw_"))
