@@ -99,6 +99,26 @@ def _read_profile(name: str) -> dict:
     return profile
 
 
+def _validate_ram_allocation(profile: dict) -> dict:
+    """Apply the shared whole-profile RAM contract with this module's error type."""
+    try:
+        return ac.validate_profile_allocation(profile)
+    except ValueError as exc:
+        raise ModelProfileError(str(exc)) from exc
+
+
+def validate_profile_allocation(profile_or_name: dict | str) -> dict:
+    """Validate a live profile or named profile before it can execute."""
+    profile = (
+        _read_profile(profile_or_name)
+        if isinstance(profile_or_name, str)
+        else profile_or_name
+    )
+    if not isinstance(profile, dict):
+        raise ModelProfileError("model profile must be a JSON object")
+    return _validate_ram_allocation(profile)
+
+
 def _iter_profile_cells(node: Any, path: tuple[str, ...] = ()) -> Iterable[tuple[tuple[str, ...], dict]]:
     if not isinstance(node, dict):
         return
@@ -376,6 +396,7 @@ def capture_project_binding(
     profile_name = validate_profile_name(profile_name)
     project_nexus = pm.validate_nexus(project_nexus)
     profile = _read_profile(profile_name)
+    _validate_ram_allocation(profile)
     health = evaluate_profile_health(profile)
     if health["status"] == "unavailable":
         raise ModelProfileError(
@@ -460,7 +481,9 @@ def load_project_locked_profile(token: str) -> dict:
     locks = validate_project_binding(record, expected_nexus=nexus)
     if locks["binding_digest"] != expected_digest:
         raise ModelProfileError("project Model Profile token is stale")
-    return copy.deepcopy(locks["profile_snapshot"])
+    profile = copy.deepcopy(locks["profile_snapshot"])
+    _validate_ram_allocation(profile)
+    return profile
 
 
 def resolve_effective_profile(
@@ -503,6 +526,7 @@ def resolve_effective_profile(
             profile = load_project_locked_profile(selected["runtime_name"])
         else:
             profile = _read_profile(selected["runtime_name"])
+            _validate_ram_allocation(profile)
         health = evaluate_profile_health(profile)
         if health["status"] == "unavailable":
             raise ModelProfileError(
@@ -854,6 +878,7 @@ def confirm_migration(
             proposed = _replace_model_ids(
                 locks["profile_snapshot"], proposal["replacements"],
             )
+            _validate_ram_allocation(proposed)
             locks["profile_snapshot"] = proposed
             locks["profile_digest"] = profile_digest(proposed)
             locks["binding_digest"] = _binding_digest(locks)
@@ -876,6 +901,7 @@ def confirm_migration(
                     "Model Profile changed after preview; review a new proposal"
                 )
             proposed = _replace_model_ids(current, proposal["replacements"])
+            _validate_ram_allocation(proposed)
             ac._save_config(profile_name, proposed)
             rollback = lambda: ac._save_config(profile_name, current)
 
@@ -922,5 +948,5 @@ __all__ = [
     "load_project_locked_profile", "preview_migration", "profile_digest",
     "profile_summary", "project_lock_token", "resolve_effective_profile",
     "routing_config_with_project_locks", "validate_profile_name",
-    "validate_project_binding",
+    "validate_profile_allocation", "validate_project_binding",
 ]

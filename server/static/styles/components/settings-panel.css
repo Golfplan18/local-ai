@@ -2396,20 +2396,6 @@ a.ora-settings-apikey-label:hover {
   text-align: right;
 }
 
-.ora-models-hw-fit {
-  font-size: 10px;
-  font-weight: 600;
-  width: 70px;
-}
-
-.ora-models-hw-fit-ok {
-  color: var(--color-green, #87905B);
-}
-
-.ora-models-hw-fit-no {
-  color: var(--color-red, #C77958);
-}
-
 .ora-models-hw-trash {
   flex: 0 0 auto;
   border: 1px solid var(--background-modifier-border, #3A3022);
@@ -2435,9 +2421,7 @@ a.ora-settings-apikey-label:hover {
   margin: 6px 8px 0;
 }
 
-/* In-use highlight for hardware rows: signals which installed locals
-   are actually loaded by the active config. Subtle green tint so the
-   user can see at a glance where their RAM is going. */
+/* Allocation highlight for installed locals referenced by the active profile. */
 .ora-models-hw-row-in-use {
   background: rgba(80, 200, 120, 0.08);
 }

@@ -95,6 +95,61 @@ class ModelProfileApiTests(unittest.TestCase):
         persist.assert_called_once_with('example', 'Balanced', locks)
         self.assertEqual(response.get_json()['effective'], effective)
 
+    def test_over_cap_project_binding_is_rejected_before_pointer_write(self):
+        oversized = {
+            'name': 'Oversized',
+            'toggles': {'adversarial_diversity': False},
+            'cells': {
+                'utility': {'step1_cleanup': {
+                    'primary': 'local-too-large', 'fallback': [],
+                }},
+                'analysis': {
+                    'gear4': {'depth': {
+                        'primary': 'local-too-large', 'fallback': [],
+                    }},
+                    'gear3': {'depth': {
+                        'primary': 'local-too-large', 'fallback': [],
+                    }},
+                },
+            },
+        }
+        with (
+            mock.patch.object(mp, '_read_profile', return_value=oversized),
+            mock.patch.object(mp.ac, '_get_system_ram_gb', return_value=100),
+            mock.patch.object(mp.ac, '_load_local_models', return_value=[
+                {'id': 'local-too-large', 'ram_gb': 86},
+            ]),
+            mock.patch.object(pm, 'set_project_model_binding') as persist,
+        ):
+            response = self.client.post('/api/model-profiles/project/example', json={
+                'name': 'Oversized',
+            })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('85% hard cap', response.get_json()['error'])
+        persist.assert_not_called()
+
+    def test_public_one_run_override_rejects_over_cap_profile_before_execution(self):
+        with (
+            mock.patch.object(mp, 'profile_summary', return_value={
+                'health': {'status': 'ok', 'reason': ''},
+            }),
+            mock.patch.object(
+                mp, 'validate_profile_allocation',
+                side_effect=mp.ModelProfileError(
+                    'Model Profile local RAM allocation exceeds the 85% hard cap'
+                ),
+            ),
+            mock.patch.object(server, '_invoke_pipeline') as invoke,
+        ):
+            response = self.client.post('/chat', json={
+                'message': 'Run once with this profile.',
+                'panel_id': 'ram-one-run-rejection',
+                'config_name': 'Oversized',
+            })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('85% hard cap', response.get_json()['error'])
+        invoke.assert_not_called()
+
     def test_legacy_project_update_also_captures_an_exact_binding(self):
         locks = {'binding_digest': 'server-issued'}
         with (

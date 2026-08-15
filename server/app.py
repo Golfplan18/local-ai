@@ -8363,6 +8363,7 @@ def _validate_public_model_profile_override(config_name):
             f"cannot run unavailable Model Profile {name!r}: "
             f"{summary['health']['reason']}"
         )
+    _mp.validate_profile_allocation(name)
     return name
 
 
@@ -18270,6 +18271,15 @@ def load_models():
 
 
 def _models_payload(models_cfg: dict, discovery_error: str | None = None) -> dict:
+    from orchestrator import active_configuration as _ac
+
+    models_document_error = None
+    if not isinstance(models_cfg, dict):
+        models_document_error = (
+            "local model inventory is malformed: root must be an object"
+        )
+        models_cfg = {}
+
     config = load_config()
     ep_by_name = {
         (e.get("id") or e.get("name")): e
@@ -18280,20 +18290,62 @@ def _models_payload(models_cfg: dict, discovery_error: str | None = None) -> dic
     system_ram = get_system_ram_gb()
     overhead = models_cfg.get("overhead_reservation_gb", 8)
     budget = system_ram - overhead
-    commercial_models = [dict(model) for model in models_cfg.get("commercial_models", [])]
+    local_models = models_cfg.get("local_models")
+    active_profile_name = None
+    allocation_error = None
+    try:
+        if models_document_error:
+            raise ValueError(models_document_error)
+        active_profile_name = _ac.get_active_name(strict=True)
+        active_profile = _ac._load_config(active_profile_name)
+        allocation = _ac.profile_ram_allocation(
+            active_profile,
+            system_ram_gb=system_ram,
+            local_models=local_models,
+        )
+    except Exception as exc:
+        # This endpoint is display-only.  A missing pointer/profile or
+        # untrustworthy inventory must clear prior allocation figures without
+        # turning the Models pane itself into an authorization bypass.
+        active_profile_name = None
+        allocation_error = str(exc)
+        automatic_target = max(
+            0.0, float(system_ram) * _ac.AUTOMATIC_RAM_TARGET_RATIO,
+        )
+        hard_cap = max(0.0, float(system_ram) * _ac.HARD_RAM_CAP_RATIO)
+        allocation = {
+            "automatic_target_gb": automatic_target,
+            "hard_cap_gb": hard_cap,
+            "active_local_model_ids": [],
+            "allocated_local_ram_gb": 0.0,
+            "headroom_to_hard_cap_gb": hard_cap,
+        }
+    commercial_rows = models_cfg.get("commercial_models", [])
+    commercial_models = [
+        dict(model) for model in commercial_rows if isinstance(model, dict)
+    ] if isinstance(commercial_rows, list) else []
     for model in commercial_models:
-        ep = ep_by_name.get(model["id"], {})
+        ep = ep_by_name.get(model.get("id"), {})
         model["available"] = ep.get("status") == "active"
 
     return {
         "system_ram_gb": round(system_ram, 1),
         "overhead_gb": overhead,
         "available_budget_gb": round(budget, 1),
-        "local_models": models_cfg.get("local_models", []),
+        "local_models": [
+            dict(model) for model in local_models if isinstance(model, dict)
+        ] if isinstance(local_models, list) else [],
         "commercial_models": commercial_models,
         "slot_assignments": config.get("slot_assignments", {}),
         "gear4_overrides": config.get("gear4_overrides", {}),
         "local_discovery_error": discovery_error,
+        "active_profile_name": active_profile_name,
+        "allocation_error": allocation_error,
+        "automatic_target_gb": allocation["automatic_target_gb"],
+        "hard_cap_gb": allocation["hard_cap_gb"],
+        "active_local_model_ids": allocation["active_local_model_ids"],
+        "allocated_local_ram_gb": allocation["allocated_local_ram_gb"],
+        "headroom_to_hard_cap_gb": allocation["headroom_to_hard_cap_gb"],
     }
 
 @app.route("/models")

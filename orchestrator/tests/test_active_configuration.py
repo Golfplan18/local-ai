@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKTREE_ROOT = os.path.dirname(HERE)
@@ -25,19 +26,23 @@ class _Fixture(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.data_dir = Path(self.tmpdir) / "data"
         self.config_dir = Path(self.tmpdir) / "config" / "configurations"
+        self.models_path = Path(self.tmpdir) / "config" / "models.json"
         self.runtime_config_dir = (
             Path(self.tmpdir) / "data" / "runtime" / "config" / "configurations")
         self.data_dir.mkdir(parents=True)
         self.config_dir.mkdir(parents=True)
+        self.models_path.write_text('{"local_models": []}\n', encoding="utf-8")
         self._orig_data = ac.DATA_DIR
         self._orig_pointer = ac.ACTIVE_POINTER_PATH
         self._orig_config = ac.CONFIGURATIONS_DIR
         self._orig_default_config = ac._DEFAULT_CONFIGURATIONS_DIR
         self._orig_runtime_config = ac.RUNTIME_CONFIGURATIONS_DIR
+        self._orig_models_path = ac.MODELS_JSON_PATH
         ac.DATA_DIR = self.data_dir
         ac.ACTIVE_POINTER_PATH = self.data_dir / "active-configuration.json"
         ac.CONFIGURATIONS_DIR = self.config_dir
         ac.RUNTIME_CONFIGURATIONS_DIR = self.runtime_config_dir
+        ac.MODELS_JSON_PATH = self.models_path
 
     def tearDown(self):
         self.module.DATA_DIR = self._orig_data
@@ -45,6 +50,7 @@ class _Fixture(unittest.TestCase):
         self.module.CONFIGURATIONS_DIR = self._orig_config
         self.module._DEFAULT_CONFIGURATIONS_DIR = self._orig_default_config
         self.module.RUNTIME_CONFIGURATIONS_DIR = self._orig_runtime_config
+        self.module.MODELS_JSON_PATH = self._orig_models_path
 
     def _write_config(self, name, payload):
         with open(self.config_dir / f"{name}.json", "w") as f:
@@ -81,6 +87,277 @@ class TestActivePointer(_Fixture):
         (self.data_dir / "active-configuration.json").write_text("{not json")
         self.assertEqual(self.module.get_active_name(),
                          self.module.DEFAULT_ACTIVE_NAME)
+
+
+class TestProfileRamAllocation(_Fixture):
+
+    def _profile(self, primary, *, fallback=None, visual=None):
+        return {"cells": {"analysis": {"gear4": {"depth": {
+            "primary": primary,
+            "fallback": list(fallback or []),
+            "vision_substitute": visual,
+        }}}}}
+
+    def test_unique_models_across_primary_fallback_and_visual_count_once(self):
+        profile = {"cells": {
+            "analysis": {"gear4": {
+                "depth": {
+                    "primary": "local-a",
+                    "fallback": ["local-b", "local-a", "deleted-local"],
+                    "vision_substitute": "local-c",
+                },
+                "breadth": {
+                    "primary": "local-b",
+                    "fallback": ["local-c"],
+                    "vision_substitute": "local-a",
+                },
+            }},
+        }}
+        allocation = self.module.profile_ram_allocation(
+            profile,
+            system_ram_gb=100,
+            local_models=[
+                {"id": "local-a", "ram_gb": 20},
+                {"id": "local-b", "ram_gb": 30},
+                {"id": "local-c", "ram_gb": 10},
+            ],
+        )
+        self.assertEqual(allocation["active_local_model_ids"], [
+            "local-a", "local-c", "local-b",
+        ])
+        self.assertEqual(allocation["allocated_local_ram_gb"], 60)
+        self.assertEqual(allocation["automatic_target_gb"], 80)
+        self.assertEqual(allocation["hard_cap_gb"], 85)
+        self.assertEqual(allocation["headroom_to_hard_cap_gb"], 25)
+
+    def test_only_reachable_roles_count_and_reuse_counts_once(self):
+        profile = {
+            "roles": {
+                "shared": {
+                    "primary": "local-a",
+                    "fallback": ["local-b", "local-a"],
+                },
+                "alias": {"role": "shared"},
+                "duplicate": {"primary": "local-a", "fallback": []},
+                "unused": {"primary": "unused-local", "fallback": []},
+            },
+            "cells": {
+                "utility": {"step1_cleanup": {"role": "alias"}},
+                "analysis": {"gear4": {
+                    "depth": {"role": "duplicate"},
+                    "breadth": {
+                        "role": "shared",
+                        "primary": "overridden-local",
+                    },
+                }},
+            },
+        }
+        allocation = self.module.profile_ram_allocation(
+            profile,
+            system_ram_gb=100,
+            local_models=[
+                {"id": "local-a", "ram_gb": 20},
+                {"id": "local-b", "ram_gb": 30},
+                {"id": "unused-local", "ram_gb": 90},
+                {"id": "overridden-local", "ram_gb": 90},
+            ],
+        )
+        self.assertEqual(
+            allocation["active_local_model_ids"], ["local-a", "local-b"],
+        )
+        self.assertEqual(allocation["allocated_local_ram_gb"], 50)
+
+    def test_reachable_malformed_role_references_fail_clearly(self):
+        invalid_profiles = (
+            ({"cells": {"slot": {"role": "missing"}}}, "no roles object"),
+            (
+                {"roles": {"bad": "not-an-object"},
+                 "cells": {"slot": {"role": "bad"}}},
+                "does not name an object",
+            ),
+            ({"roles": {}, "cells": {"slot": {"role": []}}},
+             "non-empty string"),
+        )
+        for profile, message in invalid_profiles:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.module.profile_ram_allocation(
+                        profile, system_ram_gb=100, local_models=[],
+                    )
+
+    def test_grouping_role_metadata_cannot_hide_descendant_allocation(self):
+        profile = {
+            "roles": {
+                "metadata": {
+                    "primary": "vendor/cloud-model", "fallback": [],
+                },
+                "large": {
+                    "role": "metadata",
+                    "primary": "local-too-large", "fallback": [],
+                },
+            },
+            "cells": {"analysis": {
+                "role": "metadata",
+                "gear4": {"depth": {"role": "large"}},
+            }},
+        }
+        inventory = [{"id": "local-too-large", "ram_gb": 86}]
+        allocation = self.module.profile_ram_allocation(
+            profile, system_ram_gb=100, local_models=inventory,
+        )
+        self.assertEqual(
+            allocation["active_local_model_ids"], ["local-too-large"],
+        )
+        with self.assertRaisesRegex(ValueError, "85% hard cap"):
+            self.module.validate_profile_allocation(
+                profile, system_ram_gb=100, local_models=inventory,
+            )
+
+    def test_unavailable_or_deleted_ids_count_zero(self):
+        allocation = self.module.profile_ram_allocation(
+            self._profile("deleted-local", fallback=["local-a", "missing-local"]),
+            system_ram_gb=100,
+            local_models=[{"id": "local-a", "ram_gb": 20}],
+        )
+        self.assertEqual(allocation["active_local_model_ids"], ["local-a"])
+        self.assertEqual(allocation["allocated_local_ram_gb"], 20)
+
+    def test_missing_or_malformed_inventory_fails_closed_but_empty_is_valid(self):
+        empty = self.module.validate_profile_allocation(
+            self._profile("local-a"), system_ram_gb=100,
+        )
+        self.assertEqual(empty["allocated_local_ram_gb"], 0)
+
+        self.models_path.unlink()
+        with self.assertRaisesRegex(ValueError, "inventory is unavailable"):
+            self.module.validate_profile_allocation(
+                self._profile("local-a"), system_ram_gb=100,
+            )
+
+        for malformed in ("{not json", "[]", '{}', '{"local_models": {}}'):
+            with self.subTest(malformed=malformed):
+                self.models_path.write_text(malformed, encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "inventory is (?:unavailable|malformed)"):
+                    self.module.validate_profile_allocation(
+                        self._profile("local-a"), system_ram_gb=100,
+                    )
+
+    def test_injected_inventory_rejects_duplicate_ids_and_invalid_ram(self):
+        invalid_inventories = (
+            None,
+            {"not": "a list"},
+            [
+                {"id": "local-a", "ram_gb": 1},
+                {"id": "local-a", "ram_gb": 2},
+            ],
+            [{"id": "local-a", "ram_gb": -1}],
+            [{"id": "local-a", "ram_gb": float("nan")}],
+            [{"id": "local-a", "ram_gb": float("inf")}],
+            [{"id": "local-a", "ram_gb": "unknown"}],
+            ["not-an-object"],
+        )
+        for rows in invalid_inventories:
+            with self.subTest(rows=rows):
+                with self.assertRaisesRegex(ValueError, "inventory is malformed"):
+                    self.module.validate_profile_allocation(
+                        self._profile("local-a"),
+                        system_ram_gb=100,
+                        local_models=rows,
+                    )
+
+    def test_stale_canonical_path_is_unavailable_and_counts_zero(self):
+        allocation = self.module.profile_ram_allocation(
+            self._profile("local-stale"),
+            system_ram_gb=100,
+            local_models=[{
+                "id": "local-stale",
+                "ram_gb": 80,
+                "path": str(Path(self.tmpdir) / "models" / "gone"),
+            }],
+        )
+        self.assertEqual(allocation["active_local_model_ids"], [])
+        self.assertEqual(allocation["allocated_local_ram_gb"], 0)
+
+    def test_exact_hard_cap_is_accepted_and_any_excess_is_rejected(self):
+        at_cap = self.module.validate_profile_allocation(
+            self._profile("at-cap"),
+            system_ram_gb=100,
+            local_models=[{"id": "at-cap", "ram_gb": 85}],
+        )
+        self.assertEqual(at_cap["headroom_to_hard_cap_gb"], 0)
+        with self.assertRaisesRegex(ValueError, "85% hard cap"):
+            self.module.validate_profile_allocation(
+                {
+                    "roles": {
+                        "large": {"primary": "over-cap", "fallback": []},
+                    },
+                    "cells": {"analysis": {"gear4": {
+                        "depth": {"role": "large"},
+                    }}},
+                },
+                system_ram_gb=100,
+                local_models=[{"id": "over-cap", "ram_gb": 85.01}],
+            )
+
+    def test_failed_manual_edits_leave_profile_bytes_unchanged(self):
+        original = {
+            "cells": {
+                "utility": {"step1_cleanup": {
+                    "primary": "base-local", "fallback": [],
+                }},
+                "analysis": {
+                    "gear4": {"depth": {"primary": "cloud", "fallback": []}},
+                    "gear3": {"depth": {"primary": "cloud", "fallback": []}},
+                },
+            },
+        }
+        inventory = [
+            {"id": "base-local", "ram_gb": 80},
+            {"id": "extra-local", "ram_gb": 6},
+        ]
+        operations = (
+            lambda: self.module.set_slot_primary("c", "fast 2", "extra-local"),
+            lambda: self.module.set_slot_fallback("c", "large", 0, "extra-local"),
+            lambda: self.module.set_visual_substitute("c", "extra-local"),
+        )
+        with mock.patch.object(self.module, "_get_system_ram_gb", return_value=100), \
+             mock.patch.object(self.module, "_load_local_models", return_value=inventory):
+            for operation in operations:
+                with self.subTest(operation=operation):
+                    self._write_config("c", original)
+                    path = self.config_dir / "c.json"
+                    before = path.read_bytes()
+                    with self.assertRaisesRegex(ValueError, "85% hard cap"):
+                        operation()
+                    self.assertEqual(path.read_bytes(), before)
+
+    def test_missing_inventory_rejects_edit_without_writing(self):
+        self._write_config("c", self._profile("local-a"))
+        path = self.config_dir / "c.json"
+        before = path.read_bytes()
+        self.models_path.unlink()
+        with self.assertRaisesRegex(ValueError, "inventory is unavailable"):
+            self.module.set_slot_fallback("c", "large", 0, "local-b")
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_failed_activation_leaves_pointer_bytes_unchanged(self):
+        self._write_config("too-large", {
+            "roles": {
+                "large": {"primary": "large-local", "fallback": []},
+            },
+            "cells": {"analysis": {"gear4": {
+                "depth": {"role": "large"},
+            }}},
+        })
+        self.module.ACTIVE_POINTER_PATH.write_bytes(b'{"name":"keep-me"}\n')
+        before = self.module.ACTIVE_POINTER_PATH.read_bytes()
+        with mock.patch.object(self.module, "_get_system_ram_gb", return_value=100), \
+             mock.patch.object(self.module, "_load_local_models", return_value=[
+                 {"id": "large-local", "ram_gb": 86},
+             ]):
+            with self.assertRaisesRegex(ValueError, "85% hard cap"):
+                self.module.set_active_name("too-large")
+        self.assertEqual(self.module.ACTIVE_POINTER_PATH.read_bytes(), before)
 
 
 class TestToggles(_Fixture):

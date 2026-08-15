@@ -9,6 +9,8 @@ array. Scans each subdirectory for a valid MLX ``config.json``, derives:
 - type (``dense`` or ``moe``)
 - architecture_note
 - recommended_roles (by parameter-count rule table)
+- parameters_b (estimated total parameters, including multimodal components)
+- context_window (extracted from the model config when declared)
 - active_params_per_token (total for dense; estimated for MoE)
 - vision_capable
 
@@ -136,6 +138,26 @@ def _estimate_total_params_b(model_dir: Path, config: dict) -> float:
         return 0.0
     bits = _quant_bits(config)
     return bytes_total * 8.0 / bits / 1e9
+
+
+def _extract_context_window(config: dict) -> int | None:
+    """Extract a positive declared text context window without guessing."""
+    keys = (
+        "max_position_embeddings", "max_sequence_length", "max_seq_len",
+        "seq_length", "sequence_length", "n_positions", "context_length",
+        "model_max_length",
+    )
+    text = _text_config(config)
+    for source in (text, config):
+        for key in keys:
+            value = source.get(key)
+            try:
+                context = int(value)
+            except (TypeError, ValueError):
+                continue
+            if context > 0:
+                return context
+    return None
 
 
 def _extract_active_params_b(dir_name: str, total_b: float, config: dict) -> float:
@@ -291,6 +313,8 @@ def probe_model_dir(model_dir: Path) -> Optional[dict]:
         "architecture_note": _make_arch_note(model_dir.name, total_b, active_b,
                                               is_moe, vision, config),
         "recommended_roles": _recommended_roles(total_b),
+        "parameters_b": round(total_b, 1),
+        "context_window": _extract_context_window(config),
         "active_params_per_token": int(round(active_b)),
         "vision_capable": vision,
     }
@@ -408,7 +432,7 @@ def reconcile_static_local_endpoints(
             row["id"] = endpoint["id"]
             for key in (
                 "display_name", "provider", "training_family", "tier",
-                "context_window", "parameters_b", "capabilities",
+                "context_window", "capabilities", "enabled", "status",
                 "vision_capable", "machine", "engine", "ram_overhead_gb",
             ):
                 if endpoint.get(key) is not None:

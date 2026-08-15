@@ -109,9 +109,8 @@
   // collapses it.
   var _looseningOpenFor = null;
 
-  // Hardware data from /models — system_ram_gb / overhead_gb /
-  // available_budget_gb / local_models[]. Used by the bottom
-  // hardware analysis section.
+  // Hardware data from /models — shared active-profile RAM allocation
+  // plus installed local_models[]. Used by the bottom hardware section.
   var _hardware = null;
 
   // ── public API ───────────────────────────────────────────────────────────
@@ -236,14 +235,16 @@
     });
   }
 
-  // Refresh just the active-config indicator + toggles without
-  // refetching the registry. Cheap; used after a toggle change or an
-  // active-card switch. Hardware re-render included because the
-  // IN USE BY ACTIVE / IN ACTIVE CONFIG calc walks active_name.
+  // Refresh the active-config indicator, toggles, and server-owned RAM
+  // allocation without refetching the full registry.
   function _refreshActive() {
     var scrollState = _capturePaneScroll();
-    return fetch('/api/configurations').then(_json).then(function (configs) {
-      _configs = configs || _configs;
+    return Promise.all([
+      fetch('/api/configurations').then(_json),
+      fetch('/models').then(_json).catch(function () { return null; }),
+    ]).then(function (resp) {
+      _configs = resp[0] || _configs;
+      _hardware = resp[1] || null;
       _renderHeader();
       _renderPresets();
       _renderCustom();
@@ -2681,36 +2682,29 @@
       return;
     }
     var locals = h.local_models || [];
-    // Two totals to surface:
-    //   INSTALLED — every model downloaded to disk. Sum of ram_gb across
-    //   the install set. Not all of these are loaded at once.
-    //   IN USE    — only the locals referenced as primary in the active
-    //   configuration. This is what's actually resident in RAM when the
-    //   pipeline runs. Headroom = available − IN USE.
     var installedTotal = locals.reduce(function (sum, m) {
-      return sum + (m.ram_gb || 0);
+      var ram = Number(m.ram_gb);
+      return sum + (Number.isFinite(ram) && ram >= 0 ? ram : 0);
     }, 0);
-    var inUseIds = _localsReferencedByActiveConfig();
-    var inUseTotal = locals.reduce(function (sum, m) {
-      return inUseIds.has(m.id) ? sum + (m.ram_gb || 0) : sum;
-    }, 0);
-    var available = h.available_budget_gb || 0;
-    var headroom = available - inUseTotal;
+    var activeIds = new Set(h.active_local_model_ids || []);
+    var automaticTarget = Number(h.automatic_target_gb || 0);
+    var hardCap = Number(h.hard_cap_gb || 0);
+    var allocated = Number(h.allocated_local_ram_gb || 0);
+    var headroom = Number(h.headroom_to_hard_cap_gb || 0);
+    function ramText(value) {
+      return Number.isFinite(value) ? value.toFixed(1) + ' GB' : '?';
+    }
 
     var rows = locals.map(function (m) {
-      var size = m.ram_gb != null ? m.ram_gb + ' GB' : '?';
-      var fits = (m.ram_gb || 0) <= (h.available_budget_gb || Infinity);
-      var inUse = inUseIds.has(m.id);
-      var classes = 'ora-models-hw-row' + (inUse ? ' ora-models-hw-row-in-use' : '');
+      var rowRam = Number(m.ram_gb);
+      var size = Number.isFinite(rowRam) && rowRam >= 0 ? rowRam + ' GB' : '?';
+      var active = activeIds.has(m.id);
+      var classes = 'ora-models-hw-row' + (active ? ' ora-models-hw-row-in-use' : '');
       return ''
         + '<li class="' + classes + '">'
         +   '<span class="ora-models-hw-name">' + _esc(m.display_name || m.id) + '</span>'
-        +   (inUse ? '<span class="ora-models-hw-in-use-chip">IN ACTIVE CONFIG</span>' : '')
+        +   (active ? '<span class="ora-models-hw-in-use-chip">IN ACTIVE PROFILE</span>' : '')
         +   '<span class="ora-models-hw-size">' + _esc(size) + '</span>'
-        +   '<span class="ora-models-hw-fit'
-        +     (fits ? ' ora-models-hw-fit-ok' : ' ora-models-hw-fit-no') + '">'
-        +     (fits ? '✓ fits' : '✗ too large')
-        +   '</span>'
         +   '<button type="button" class="ora-models-hw-trash"'
         +     ' data-action="trash-local-model"'
         +     ' data-model-id="' + _esc(m.id) + '"'
@@ -2724,33 +2718,39 @@
         + 'Local model discovery failed: ' + _esc(h.local_discovery_error)
         + '. Showing the last known inventory.</p>'
       : '';
+    var allocationWarning = h.allocation_error
+      ? '<p class="ora-models-error ora-models-hw-allocation-error">'
+        + 'Active-profile allocation unavailable: ' + _esc(h.allocation_error)
+        + '. Allocation has been cleared.</p>'
+      : '';
 
     section.innerHTML = ''
       + '<header class="ora-models-section-header">'
-      +   '<h3>Local model hardware</h3>'
+      +   '<h3>Local Model Hardware</h3>'
       +   '<span class="ora-models-section-hint">'
-      +     'RAM math reflects what the active Model Profile actually loads. '
-      +     'Installed-but-not-referenced models cost zero RAM.'
+      +     'Whole-profile allocation counts each installed local model once; reuse across slots is free.'
       +   '</span>'
       + '</header>'
       + discoveryWarning
+      + allocationWarning
       + '<div class="ora-models-hw-body">'
       +   '<div class="ora-models-hw-totals">'
       +     '<div><span class="ora-models-hw-label">System RAM</span>'
-      +       '<span class="ora-models-hw-value">' + _esc(String(h.system_ram_gb || '?')) + ' GB</span></div>'
-      +     '<div><span class="ora-models-hw-label">Overhead</span>'
-      +       '<span class="ora-models-hw-value">' + _esc(String(h.overhead_gb || '?')) + ' GB</span></div>'
-      +     '<div><span class="ora-models-hw-label">Available</span>'
-      +       '<span class="ora-models-hw-value">' + _esc(String(available || '?')) + ' GB</span></div>'
+      +       '<span class="ora-models-hw-value">' + _esc(ramText(Number(h.system_ram_gb))) + '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Automatic target (80%)</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(ramText(automaticTarget)) + '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Hard maximum (85%)</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(ramText(hardCap)) + '</span></div>'
       +     '<div><span class="ora-models-hw-label">Installed</span>'
       +       '<span class="ora-models-hw-value">' + _esc(installedTotal.toFixed(0)) + ' GB</span></div>'
-      +     '<div><span class="ora-models-hw-label">In use by active</span>'
-      +       '<span class="ora-models-hw-value">' + _esc(inUseTotal.toFixed(0)) + ' GB</span></div>'
-      +     '<div><span class="ora-models-hw-label">Headroom</span>'
+      +     '<div><span class="ora-models-hw-label">Allocated to active profile</span>'
+      +       '<span class="ora-models-hw-value">' + _esc(ramText(allocated)) + '</span></div>'
+      +     '<div><span class="ora-models-hw-label">Headroom to hard maximum</span>'
       +       '<span class="ora-models-hw-value' + (headroom < 0 ? ' ora-models-hw-headroom-low' : '') + '">'
-      +         _esc(headroom.toFixed(0)) + ' GB</span></div>'
+      +         _esc(ramText(headroom)) + '</span></div>'
       +   '</div>'
-      +   '<p class="ora-models-hw-note">Select local models from Model Inventory above.</p>'
+      +   '<p class="ora-models-hw-note">Allocation includes primary, fallback, and visual-substitute references. '
+      +     'It is a profile-selection budget, not a claim about current cache residency.</p>'
       +   (locals.length
         ? '<ul class="ora-models-hw-list">' + rows.join('') + '</ul>'
         : '<p class="ora-models-placeholder">No local models installed.</p>')
@@ -2831,33 +2831,6 @@
       }
       root.alert((err && err.message) || 'Could not move model to Trash.');
     });
-  }
-
-  // Collect the set of local-* model ids referenced as a primary
-  // anywhere in the active configuration. Used to compute "in use"
-  // RAM accounting in the hardware section. Walks summary.all_primaries
-  // (already a flat list across every cell).
-  function _localsReferencedByActiveConfig() {
-    var ids = new Set();
-    if (!_configs) return ids;
-    var activeName = _configs.active_name;
-    if (!activeName) return ids;
-    var summary = null;
-    Object.keys(_configs.presets || {}).forEach(function (k) {
-      var p = _configs.presets[k];
-      if (p && p.name === activeName) summary = p;
-    });
-    if (!summary) {
-      summary = (_configs.customs || []).find(function (c) { return c.name === activeName; });
-    }
-    if (!summary || !Array.isArray(summary.all_primaries)) return ids;
-    summary.all_primaries.forEach(function (pid) {
-      if (typeof pid === 'string' && pid.indexOf('/') === -1) {
-        // No-slash id == local (registry convention)
-        ids.add(pid);
-      }
-    });
-    return ids;
   }
 
   // ── Maintenance section (bottom of pane) ─────────────────────────────

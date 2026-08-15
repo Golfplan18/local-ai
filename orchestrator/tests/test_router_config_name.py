@@ -299,6 +299,66 @@ class TestConfigNameMissing(unittest.TestCase):
         self.assertIsNone(ep)
 
 
+class TestConfigurationRamContract(unittest.TestCase):
+    def test_direct_named_profile_load_rejects_over_cap_allocation(self):
+        from orchestrator import model_profiles as mp
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            (config_dir / "oversized.json").write_text(json.dumps({
+                "roles": {
+                    "inner": {
+                        "primary": "vendor/cloud-model", "fallback": [],
+                    },
+                    "large": {
+                        "role": "inner",
+                        "primary": "local-too-large", "fallback": [],
+                    },
+                },
+                "cells": {"analysis": {
+                    "role": "inner",
+                    "gear4": {"depth": {"role": "large"}},
+                }},
+            }), encoding="utf-8")
+            with (
+                mock.patch.object(router_module, "CONFIGURATIONS_DIR", config_dir),
+                mock.patch.object(mp.ac, "_get_system_ram_gb", return_value=100),
+                mock.patch.object(mp.ac, "_load_local_models", return_value=[
+                    {"id": "local-too-large", "ram_gb": 86},
+                ]),
+            ):
+                router = Router(config_dict={"endpoints": []})
+                with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                    router._load_configuration("oversized")
+                self.assertNotIn("oversized", router._configurations)
+
+                router._configurations["oversized"] = json.loads(
+                    (config_dir / "oversized.json").read_text(encoding="utf-8")
+                )
+                with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                    router._load_configuration("oversized")
+
+    def test_named_profile_without_installed_locals_still_loads(self):
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            expected = {"cells": {"analysis": {"gear4": {"depth": {
+                "primary": "vendor/cloud-model", "fallback": [],
+            }}}}}
+            (config_dir / "cloud-only.json").write_text(
+                json.dumps(expected), encoding="utf-8",
+            )
+            with mock.patch.object(
+                router_module, "CONFIGURATIONS_DIR", config_dir,
+            ), mock.patch(
+                "orchestrator.model_profiles.ac._load_local_models",
+                return_value=[],
+            ):
+                router = Router(config_dict={"endpoints": []})
+                self.assertEqual(router._load_configuration("cloud-only"), expected)
+
 class TestConfigurationCacheClearsOnReload(unittest.TestCase):
     """reload() must invalidate the configuration cache so file edits
     take effect on the next call."""

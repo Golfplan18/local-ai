@@ -226,7 +226,10 @@ class ProbeModelDir(unittest.TestCase):
                 "architectures": ["LlamaForCausalLM"],
                 "model_type": "llama",
                 "quantization": {"bits": 4},
-                "text_config": {"hidden_size": 4096},
+                "text_config": {
+                    "hidden_size": 4096,
+                    "max_position_embeddings": 131072,
+                },
             },
             safetensors_bytes=3_500_000_000,
         )
@@ -235,6 +238,8 @@ class ProbeModelDir(unittest.TestCase):
         self.assertEqual(entry["type"], "dense")
         self.assertFalse(entry["vision_capable"])
         # At 4-bit, 3.5GB → ~7B params → 5-15B band.
+        self.assertEqual(entry["parameters_b"], 7.0)
+        self.assertEqual(entry["context_window"], 131072)
         self.assertIn("sidebar", entry["recommended_roles"])
 
     def test_dense_vision_model_qwen3_5(self):
@@ -516,7 +521,11 @@ class StaticEndpointReconciliation(unittest.TestCase):
         self.model_dir = _make_fake_model_dir(
             self.root,
             "physical-name-4bit",
-            {"architectures": ["LlamaForCausalLM"], "quantization": {"bits": 4}},
+            {
+                "architectures": ["LlamaForCausalLM"],
+                "quantization": {"bits": 4},
+                "max_position_embeddings": 131072,
+            },
             safetensors_bytes=2_000_000_000,
         )
 
@@ -535,6 +544,9 @@ class StaticEndpointReconciliation(unittest.TestCase):
                     "model_path": str(self.model_dir),
                     "display_name": "Curated Display Name",
                     "provider": "curated-provider",
+                    "enabled": False,
+                    "status": "inactive",
+                    "training_family": "curated-family",
                     "context_window": 262144,
                     "parameters_b": 9,
                 },
@@ -550,6 +562,14 @@ class StaticEndpointReconciliation(unittest.TestCase):
         self.assertEqual(rows[0]["id"], "stable-curated-id")
         self.assertEqual(rows[0]["display_name"], "Curated Display Name")
         self.assertEqual(rows[0]["provider"], "curated-provider")
+        self.assertFalse(rows[0]["enabled"])
+        self.assertEqual(rows[0]["status"], "inactive")
+        self.assertEqual(rows[0]["training_family"], "curated-family")
+        self.assertEqual(rows[0]["context_window"], 262144)
+        # Discovery owns the estimated total; a static endpoint's manual size
+        # cannot replace the weight-derived value.
+        self.assertEqual(rows[0]["parameters_b"], 4.0)
+        self.assertNotIn("quality_score", rows[0])
         self.assertNotIn("stale-static-id", {row["id"] for row in rows})
 
 
@@ -733,6 +753,85 @@ class LocalModelTrashEndpoint(unittest.TestCase):
                 "_routing_config_path",
                 return_value=str(self.routing_config),
             ),
+        )
+
+    def test_models_payload_uses_active_profile_allocation_contract(self):
+        from orchestrator import active_configuration as ac
+
+        profile = {"cells": {"analysis": {"gear4": {"depth": {
+            "primary": "local-a",
+            "fallback": ["local-b", "deleted-local", "local-a"],
+            "vision_substitute": "local-b",
+        }}}}}
+        models_cfg = {
+            "overhead_reservation_gb": 8,
+            "local_models": [
+                {"id": "local-a", "ram_gb": 20},
+                {"id": "local-b", "ram_gb": 25},
+            ],
+            "commercial_models": [],
+        }
+        with mock.patch.object(
+            self.server, "load_config", return_value={"endpoints": []}
+        ), mock.patch.object(
+            self.server, "get_system_ram_gb", return_value=100
+        ), mock.patch.object(
+            ac, "get_active_name", return_value="active-test"
+        ), mock.patch.object(
+            ac, "_load_config", return_value=profile
+        ):
+            payload = self.server._models_payload(models_cfg)
+
+        self.assertEqual(payload["automatic_target_gb"], 80)
+        self.assertEqual(payload["hard_cap_gb"], 85)
+        self.assertEqual(payload["active_local_model_ids"], ["local-a", "local-b"])
+        self.assertEqual(payload["allocated_local_ram_gb"], 45)
+        self.assertEqual(payload["headroom_to_hard_cap_gb"], 40)
+
+    def test_models_payload_clears_allocation_when_active_profile_is_missing(self):
+        from orchestrator import active_configuration as ac
+
+        models_cfg = {
+            "overhead_reservation_gb": 8,
+            "local_models": [{"id": "local-a", "ram_gb": 20}],
+            "commercial_models": [],
+        }
+        with mock.patch.object(
+            self.server, "load_config", return_value={"endpoints": []}
+        ), mock.patch.object(
+            self.server, "get_system_ram_gb", return_value=100
+        ), mock.patch.object(
+            ac, "get_active_name", return_value="missing-profile"
+        ), mock.patch.object(
+            ac, "_load_config", side_effect=FileNotFoundError("gone")
+        ):
+            payload = self.server._models_payload(
+                models_cfg, discovery_error="model disk offline",
+            )
+
+        self.assertIsNone(payload["active_profile_name"])
+        self.assertIn("gone", payload["allocation_error"])
+        self.assertEqual(payload["active_local_model_ids"], [])
+        self.assertEqual(payload["allocated_local_ram_gb"], 0)
+        self.assertEqual(payload["headroom_to_hard_cap_gb"], 85)
+        self.assertEqual(payload["local_discovery_error"], "model disk offline")
+
+    def test_models_payload_fails_soft_for_malformed_inventory_document(self):
+        with mock.patch.object(
+            self.server, "load_config", return_value={"endpoints": []}
+        ), mock.patch.object(
+            self.server, "get_system_ram_gb", return_value=100
+        ):
+            payload = self.server._models_payload(
+                [], discovery_error="discovery could not read the model disk",
+            )
+
+        self.assertIn("root must be an object", payload["allocation_error"])
+        self.assertEqual(payload["active_local_model_ids"], [])
+        self.assertEqual(payload["allocated_local_ram_gb"], 0)
+        self.assertEqual(
+            payload["local_discovery_error"],
+            "discovery could not read the model disk",
         )
 
     def test_endpoint_rejects_cloud_id_without_trashing(self):

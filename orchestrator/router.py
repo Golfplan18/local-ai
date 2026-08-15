@@ -1023,6 +1023,11 @@ class Router:
 
         cached = self._configurations.get(name)
         if cached is not None:
+            try:
+                from orchestrator import model_profiles as _mp
+            except ImportError:  # direct script-style import from sys.path
+                import model_profiles as _mp  # type: ignore
+            _mp.validate_profile_allocation(cached)
             return cached
 
         path = self._configuration_path(name)
@@ -1044,6 +1049,11 @@ class Router:
             print(f"[Router] failed to load configuration {name}: {exc}")
             return None
 
+        try:
+            from orchestrator import model_profiles as _mp
+        except ImportError:  # direct script-style import from sys.path
+            import model_profiles as _mp  # type: ignore
+        _mp.validate_profile_allocation(cfg)
         self._configurations[name] = cfg
         return cfg
 

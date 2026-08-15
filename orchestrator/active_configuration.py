@@ -22,6 +22,7 @@ back to ``get_active_name()`` when ``config_name`` is None.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import threading
@@ -37,6 +38,7 @@ DATA_DIR = ORA_HOME / "data"
 ACTIVE_POINTER_PATH = DATA_DIR / "active-configuration.json"
 PRESET_TOGGLES_PATH = DATA_DIR / "preset-toggles.json"
 CONFIGURATIONS_DIR = ORA_HOME / "config" / "configurations"
+MODELS_JSON_PATH = ORA_HOME / "config" / "models.json"
 _DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
 RUNTIME_CONFIGURATIONS_DIR = rp.RUNTIME_CONFIGURATIONS_DIR
 _RUNTIME_OVERLAY_CONFIG_NAMES = set(getattr(
@@ -47,10 +49,233 @@ _RUNTIME_OVERLAY_CONFIG_NAMES = set(getattr(
 # context, so existing behavior is preserved end-to-end.
 DEFAULT_ACTIVE_NAME = "user-pipeline"
 
+AUTOMATIC_RAM_TARGET_RATIO = 0.80
+HARD_RAM_CAP_RATIO = 0.85
+
 _lock = threading.RLock()
+_LOCAL_MODELS_UNSET = object()
 
 
-def get_active_name() -> str:
+def _get_system_ram_gb() -> float:
+    try:
+        from .platform_check import get_system_ram_gb
+    except ImportError:  # direct script-style import from sys.path
+        from platform_check import get_system_ram_gb  # type: ignore
+    return float(get_system_ram_gb())
+
+
+def _load_local_models() -> list[dict]:
+    """Return the latest discovered local inventory or fail closed."""
+    try:
+        with open(MODELS_JSON_PATH) as f:
+            data = json.load(f)
+    except FileNotFoundError as exc:
+        raise ValueError(
+            f"local model inventory is unavailable: {MODELS_JSON_PATH} is missing"
+        ) from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"local model inventory is unavailable: could not read "
+            f"{MODELS_JSON_PATH}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ValueError("local model inventory is malformed: root must be an object")
+    if "local_models" not in data:
+        raise ValueError(
+            "local model inventory is malformed: local_models is missing"
+        )
+    return data["local_models"]
+
+
+def _installed_local_models(local_models=_LOCAL_MODELS_UNSET) -> dict[str, dict]:
+    """Validate and index the authoritative installed inventory by routing id."""
+    rows = _load_local_models() if local_models is _LOCAL_MODELS_UNSET else local_models
+    if not isinstance(rows, list):
+        raise ValueError(
+            "local model inventory is malformed: local_models must be a list"
+        )
+    installed: dict[str, dict] = {}
+    seen_ids: set[str] = set()
+    for index, model in enumerate(rows):
+        if not isinstance(model, dict):
+            raise ValueError(
+                f"local model inventory is malformed: row {index} must be an object"
+            )
+        model_id = model.get("id")
+        if not isinstance(model_id, str) or not model_id.strip():
+            raise ValueError(
+                f"local model inventory is malformed: row {index} has no valid id"
+            )
+        model_id = model_id.strip()
+        if model_id in seen_ids:
+            raise ValueError(
+                f"local model inventory is malformed: duplicate id {model_id!r}"
+            )
+        seen_ids.add(model_id)
+
+        raw_ram = model.get("ram_gb")
+        if isinstance(raw_ram, bool):
+            raise ValueError(
+                f"local model inventory is malformed: {model_id!r} has invalid ram_gb"
+            )
+        try:
+            ram_gb = float(raw_ram)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"local model inventory is malformed: {model_id!r} has invalid ram_gb"
+            ) from exc
+        if not math.isfinite(ram_gb) or ram_gb < 0:
+            raise ValueError(
+                f"local model inventory is malformed: {model_id!r} has invalid ram_gb"
+            )
+
+        if "path" in model:
+            raw_path = model.get("path")
+        elif "model_path" in model:
+            raw_path = model.get("model_path")
+        else:
+            raw_path = None
+        if raw_path is not None:
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                raise ValueError(
+                    f"local model inventory is malformed: {model_id!r} has invalid path"
+                )
+            try:
+                available = Path(raw_path).expanduser().resolve(strict=False).is_dir()
+            except (OSError, RuntimeError):
+                available = False
+            if not available:
+                continue
+
+        installed[model_id] = {**model, "id": model_id, "ram_gb": ram_gb}
+    return installed
+
+
+def _profile_model_ids(profile: dict) -> list[str]:
+    """Collect each model reachable from a routing cell exactly once."""
+    seen: set[str] = set()
+    ordered: list[str] = []
+    roles = profile.get("roles")
+
+    def add(value) -> None:
+        if isinstance(value, str) and value and value not in seen:
+            seen.add(value)
+            ordered.append(value)
+
+    def resolve_role(role) -> dict:
+        if not isinstance(role, str) or not role:
+            raise ValueError(
+                "Model Profile role reference must be a non-empty string"
+            )
+        if not isinstance(roles, dict):
+            raise ValueError(
+                f"Model Profile role reference {role!r} has no roles object"
+            )
+        target = roles.get(role)
+        if not isinstance(target, dict):
+            raise ValueError(
+                f"Model Profile role reference {role!r} does not name an object"
+            )
+        # Match Router._resolve_configuration_cell exactly: the routing
+        # cell's role selects one top-level role object.  A role field on that
+        # returned object is metadata; Router executes the object's own chain.
+        return target
+
+    def collect_cell(cell: dict) -> None:
+        role = cell.get("role")
+        if role:
+            cell = resolve_role(role)
+        elif "role" in cell and cell["role"] not in (None, ""):
+            # Router treats other falsy values as an inline cell. Reject them
+            # here instead of allowing malformed role metadata to bypass the
+            # shared profile validation contract.
+            resolve_role(cell["role"])
+        add(cell.get("primary"))
+        add(cell.get("vision_substitute"))
+        fallback = cell.get("fallback")
+        if isinstance(fallback, list):
+            for model_id in fallback:
+                add(model_id)
+
+    visiting: set[int] = set()
+
+    def visit(node) -> None:
+        if not isinstance(node, dict):
+            return
+        identity = id(node)
+        if identity in visiting:
+            raise ValueError("Model Profile cells contain a reference cycle")
+        visiting.add(identity)
+        try:
+            children = [value for value in node.values()
+                        if isinstance(value, dict)]
+            if any(key in node for key in (
+                "primary", "fallback", "vision_substitute", "role",
+            )):
+                collect_cell(node)
+            for value in children:
+                visit(value)
+        finally:
+            visiting.remove(identity)
+
+    visit(profile.get("cells") or {})
+    return ordered
+
+
+def profile_ram_allocation(
+    profile: dict,
+    *,
+    system_ram_gb: float | None = None,
+    local_models=_LOCAL_MODELS_UNSET,
+) -> dict:
+    """Describe whole-profile local RAM allocation from installed model sizes."""
+    if not isinstance(profile, dict):
+        raise ValueError("Model Profile must be a JSON object for RAM validation")
+    try:
+        system_ram = float(
+            system_ram_gb if system_ram_gb is not None else _get_system_ram_gb()
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("system RAM is unavailable for Model Profile validation") from exc
+    if not math.isfinite(system_ram) or system_ram <= 0:
+        raise ValueError("system RAM is unavailable for Model Profile validation")
+    installed = _installed_local_models(local_models)
+    local_ids = [model_id for model_id in _profile_model_ids(profile)
+                 if model_id in installed]
+    allocated = sum(installed[model_id]["ram_gb"] for model_id in local_ids)
+    automatic_target = max(0.0, system_ram * AUTOMATIC_RAM_TARGET_RATIO)
+    hard_cap = max(0.0, system_ram * HARD_RAM_CAP_RATIO)
+    return {
+        "system_ram_gb": system_ram,
+        "automatic_target_gb": automatic_target,
+        "hard_cap_gb": hard_cap,
+        "active_local_model_ids": local_ids,
+        "allocated_local_ram_gb": allocated,
+        "headroom_to_hard_cap_gb": hard_cap - allocated,
+    }
+
+
+def validate_profile_allocation(
+    profile: dict,
+    *,
+    system_ram_gb: float | None = None,
+    local_models=_LOCAL_MODELS_UNSET,
+) -> dict:
+    """Reject a profile only when its unique installed locals exceed 85%."""
+    allocation = profile_ram_allocation(
+        profile, system_ram_gb=system_ram_gb, local_models=local_models)
+    allocated = allocation["allocated_local_ram_gb"]
+    hard_cap = allocation["hard_cap_gb"]
+    if allocated > hard_cap:
+        raise ValueError(
+            "Model Profile local RAM allocation "
+            f"({allocated:g} GB) exceeds the 85% hard cap "
+            f"({hard_cap:g} GB). Reuse or remove a local model before saving."
+        )
+    return allocation
+
+
+def get_active_name(*, strict: bool = False) -> str:
     """Return the active configuration name.
 
     Reads ``~/ora/data/active-configuration.json``. When the file is
@@ -58,6 +283,10 @@ def get_active_name() -> str:
     keeps working on fresh installs that haven't yet picked anything.
     """
     if not ACTIVE_POINTER_PATH.exists():
+        if strict:
+            raise ValueError(
+                f"active Model Profile pointer is missing: {ACTIVE_POINTER_PATH}"
+            )
         return DEFAULT_ACTIVE_NAME
     try:
         with open(ACTIVE_POINTER_PATH) as f:
@@ -65,8 +294,13 @@ def get_active_name() -> str:
         name = data.get("name") if isinstance(data, dict) else None
         if isinstance(name, str) and name.strip():
             return name.strip()
-    except (OSError, json.JSONDecodeError):
-        pass
+    except (OSError, json.JSONDecodeError) as exc:
+        if strict:
+            raise ValueError(
+                f"active Model Profile pointer is unreadable: {exc}"
+            ) from exc
+    if strict:
+        raise ValueError("active Model Profile pointer is malformed")
     return DEFAULT_ACTIVE_NAME
 
 
@@ -88,6 +322,7 @@ def set_active_name(name: str) -> None:
             "pick an existing name or create one first"
         )
     with _lock:
+        validate_profile_allocation(_load_config(name))
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         tmp = ACTIVE_POINTER_PATH.with_suffix(".json.tmp")
         with open(tmp, "w") as f:
@@ -946,6 +1181,7 @@ def set_visual_substitute(name: str, model_id: str) -> dict:
         config = _load_config(name)
         cells = config.setdefault("cells", {})
         _walk_and_set_vision_substitute(cells, model_id)
+        validate_profile_allocation(config)
         _save_config(name, config)
     return config
 
@@ -1002,6 +1238,7 @@ def set_slot_primary(name: str, slot_label: str, model_id: str) -> dict:
         # check.
         if config.get("_incomplete") and _is_baseline_complete(config):
             config.pop("_incomplete", None)
+        validate_profile_allocation(config)
         _save_config(name, config)
     return config
 
@@ -1073,6 +1310,7 @@ def set_slot_fallback(name: str, popout_label: str, index: int, model_id: str) -
             # Strip trailing Nones (housekeeping)
             while fallback and fallback[-1] is None:
                 fallback.pop()
+        validate_profile_allocation(config)
         _save_config(name, config)
     return config
 
@@ -1093,6 +1331,10 @@ __all__ = [
     "set_slot_fallback",
     "POPOUT_LABEL_TO_CELL",
     "set_visual_substitute",
+    "profile_ram_allocation",
+    "validate_profile_allocation",
+    "AUTOMATIC_RAM_TARGET_RATIO",
+    "HARD_RAM_CAP_RATIO",
     "DEFAULT_ACTIVE_NAME",
     "PRESET_ORDER",
     "SLOT_LABEL_TO_PATHS",
