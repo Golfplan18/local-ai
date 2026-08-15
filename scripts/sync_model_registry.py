@@ -60,6 +60,15 @@ from pathlib import Path
 # ──────────────────────────────────────────────────────────────────────────
 
 ORA_HOME = Path(os.environ.get("ORA_HOME") or os.path.expanduser("~/ora"))
+
+# Smallest context window worth carrying in the registry. A model below this is
+# not a usable choice here — see the note at the filter in merge_sources — and
+# offering it in the selector only invites picking something that cannot work.
+# 120,000 rather than 128,000 deliberately: perplexity/sonar declares 127,072
+# and would otherwise be lost over 928 tokens, while the next model down sits
+# at 81,920, so anything in 82,000–127,000 selects the identical set.
+MIN_CONTEXT_LENGTH = 120_000
+
 REGISTRY_PATH = Path(
     os.environ.get("ORA_MODEL_REGISTRY_PATH")
     or (ORA_HOME / "config" / "model-registry.json")
@@ -1536,6 +1545,15 @@ def merge_sources(
         or_view = openrouter_view(ormodel)
         model_id = or_view["id"]
         if not model_id:
+            continue
+        if (or_view.get("context_length") or 0) < MIN_CONTEXT_LENGTH:
+            # Below the floor the model is unusable here in practice: the
+            # transport reserves up to 64,000 tokens of the window for the
+            # answer, so a model at or under that leaves no room for the
+            # question and the provider rejects the call outright. Keeping
+            # such models in the registry only offers the user choices that
+            # cannot work. Filtering at the source is what keeps them out of
+            # the selector, the preset bake and the derived catalog alike.
             continue
         ll_entry = litellm_lookup(model_id, litellm, ll_index)
         ll_view = litellm_view(ll_entry)

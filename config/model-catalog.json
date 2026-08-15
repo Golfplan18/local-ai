@@ -524,36 +524,6 @@
       "output_tokens_per_second": 58.283
     },
     {
-      "id": "perceptron/perceptron-mk1",
-      "display_name": "Perceptron: Perceptron Mk1",
-      "provider": "perceptron",
-      "openrouter_slug": "perceptron/perceptron-mk1",
-      "vision_capable": true,
-      "input_modalities": [
-        "text",
-        "image",
-        "video"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.15,
-        "output_per_m": 1.5,
-        "blended_per_m": 0.4875
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
       "id": "inclusionai/ring-2.6-1t",
       "display_name": "inclusionAI: Ring-2.6-1T",
       "provider": "inclusionai",
@@ -2029,36 +1999,6 @@
       "output_tokens_per_second": 116.419
     },
     {
-      "id": "rekaai/reka-edge",
-      "display_name": "Reka Edge",
-      "provider": "rekaai",
-      "openrouter_slug": "rekaai/reka-edge",
-      "vision_capable": true,
-      "input_modalities": [
-        "image",
-        "text",
-        "video"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 16384,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.09999999999999999,
-        "output_per_m": 0.09999999999999999,
-        "blended_per_m": 0.09999999999999999
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
       "id": "minimax/minimax-m2.7",
       "display_name": "MiniMax: MiniMax M2.7",
       "provider": "minimax",
@@ -3177,35 +3117,6 @@
       "output_tokens_per_second": 0.0
     },
     {
-      "id": "minimax/minimax-m2-her",
-      "display_name": "MiniMax: MiniMax M2-her",
-      "provider": "minimax",
-      "openrouter_slug": "minimax/minimax-m2-her",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.3,
-        "output_per_m": 1.2,
-        "blended_per_m": 0.5249999999999999
-      },
-      "aa_intelligence_index": 36.1,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2025-10-26",
-      "family_tier": "flagship",
-      "size_bucket": "large",
-      "is_free": false,
-      "output_tokens_per_second": 139.233
-    },
-    {
       "id": "writer/palmyra-x5",
       "display_name": "Writer: Palmyra X5",
       "provider": "writer",
@@ -3232,64 +3143,6 @@
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
-    },
-    {
-      "id": "liquid/lfm-2.5-1.2b-thinking:free",
-      "display_name": "LiquidAI: LFM2.5-1.2B-Thinking (free)",
-      "provider": "liquid",
-      "openrouter_slug": "liquid/lfm-2.5-1.2b-thinking:free",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 1.2,
-      "openrouter_pricing": {
-        "input_per_m": 0.0,
-        "output_per_m": 0.0,
-        "blended_per_m": 0.0
-      },
-      "aa_intelligence_index": 8.1,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2026-01-20",
-      "family_tier": null,
-      "size_bucket": "small",
-      "is_free": true,
-      "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "liquid/lfm-2.5-1.2b-instruct:free",
-      "display_name": "LiquidAI: LFM2.5-1.2B-Instruct (free)",
-      "provider": "liquid",
-      "openrouter_slug": "liquid/lfm-2.5-1.2b-instruct:free",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 1.2,
-      "openrouter_pricing": {
-        "input_per_m": 0.0,
-        "output_per_m": 0.0,
-        "blended_per_m": 0.0
-      },
-      "aa_intelligence_index": 8.0,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2026-01-20",
-      "family_tier": null,
-      "size_bucket": "small",
-      "is_free": true,
-      "output_tokens_per_second": 0.0
     },
     {
       "id": "openai/gpt-audio",
@@ -3830,34 +3683,6 @@
       "output_tokens_per_second": 80.813
     },
     {
-      "id": "essentialai/rnj-1-instruct",
-      "display_name": "EssentialAI: Rnj 1 Instruct",
-      "provider": "essentialai",
-      "openrouter_slug": "essentialai/rnj-1-instruct",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.15,
-        "output_per_m": 0.15,
-        "blended_per_m": 0.15
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
       "id": "openrouter/bodybuilder",
       "display_name": "Body Builder (beta)",
       "provider": "openrouter",
@@ -4183,66 +4008,6 @@
       "output_tokens_per_second": 70.473
     },
     {
-      "id": "allenai/olmo-3-32b-think",
-      "display_name": "AllenAI: Olmo 3 32B Think",
-      "provider": "allenai",
-      "openrouter_slug": "allenai/olmo-3-32b-think",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": 32.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.15,
-        "output_per_m": 0.5,
-        "blended_per_m": 0.2375
-      },
-      "aa_intelligence_index": 12.1,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2025-11-20",
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "google/gemini-3-pro-image-preview",
-      "display_name": "Google: Nano Banana Pro (Gemini 3 Pro Image Preview)",
-      "provider": "google",
-      "openrouter_slug": "google/gemini-3-pro-image-preview",
-      "vision_capable": true,
-      "input_modalities": [
-        "image",
-        "text"
-      ],
-      "output_modalities": [
-        "image",
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 2.0,
-        "output_per_m": 12.0,
-        "blended_per_m": 4.5
-      },
-      "aa_intelligence_index": 48.4,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1126.0,
-      "intelligence_rank": 150,
-      "release_date": "2025-11-18",
-      "family_tier": "flagship",
-      "size_bucket": "large",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
       "id": "deepcogito/cogito-v2.1-671b",
       "display_name": "Deep Cogito: Cogito v2.1 671B",
       "provider": "deepcogito",
@@ -4478,36 +4243,6 @@
       "release_date": null,
       "family_tier": null,
       "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "mistralai/voxtral-small-24b-2507",
-      "display_name": "Mistral: Voxtral Small 24B 2507",
-      "provider": "mistralai",
-      "openrouter_slug": "mistralai/voxtral-small-24b-2507",
-      "vision_capable": false,
-      "input_modalities": [
-        "text",
-        "audio",
-        "file"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32000,
-      "parameters_b": 24.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.09999999999999999,
-        "output_per_m": 0.3,
-        "blended_per_m": 0.15
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1233.0,
-      "intelligence_rank": 100,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
       "is_free": false
     },
     {
@@ -4928,37 +4663,6 @@
       "size_bucket": "midsize",
       "is_free": false,
       "output_tokens_per_second": 49.999
-    },
-    {
-      "id": "google/gemini-2.5-flash-image",
-      "display_name": "Google: Nano Banana (Gemini 2.5 Flash Image)",
-      "provider": "google",
-      "openrouter_slug": "google/gemini-2.5-flash-image",
-      "vision_capable": true,
-      "input_modalities": [
-        "image",
-        "text"
-      ],
-      "output_modalities": [
-        "image",
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.3,
-        "output_per_m": 2.5,
-        "blended_per_m": 0.85
-      },
-      "aa_intelligence_index": 20.6,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1417.0,
-      "intelligence_rank": 6,
-      "release_date": "2025-05-20",
-      "family_tier": "mid",
-      "size_bucket": "midsize",
-      "is_free": false,
-      "output_tokens_per_second": 203.989
     },
     {
       "id": "qwen/qwen3-vl-30b-a3b-thinking",
@@ -5778,36 +5482,6 @@
       "output_tokens_per_second": 76.269
     },
     {
-      "id": "z-ai/glm-4.5v",
-      "display_name": "Z.ai: GLM 4.5V",
-      "provider": "z-ai",
-      "openrouter_slug": "z-ai/glm-4.5v",
-      "vision_capable": true,
-      "input_modalities": [
-        "text",
-        "image"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.6,
-        "output_per_m": 1.7999999999999998,
-        "blended_per_m": 0.8999999999999999
-      },
-      "aa_intelligence_index": 15.1,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2025-08-11",
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false,
-      "output_tokens_per_second": 22.26
-    },
-    {
       "id": "ai21/jamba-large-1.7",
       "display_name": "AI21: Jamba Large 1.7",
       "provider": "ai21",
@@ -6487,34 +6161,6 @@
       "output_tokens_per_second": 25.528
     },
     {
-      "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-      "display_name": "Venice: Uncensored (free)",
-      "provider": "cognitivecomputations",
-      "openrouter_slug": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 24.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.0,
-        "output_per_m": 0.0,
-        "blended_per_m": 0.0
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": true
-    },
-    {
       "id": "tencent/hunyuan-a13b-instruct",
       "display_name": "Tencent: Hunyuan A13B Instruct",
       "provider": "tencent",
@@ -6560,34 +6206,6 @@
         "input_per_m": 0.8999999999999999,
         "output_per_m": 1.9,
         "blended_per_m": 1.15
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "morph/morph-v3-fast",
-      "display_name": "Morph: Morph V3 Fast",
-      "provider": "morph",
-      "openrouter_slug": "morph/morph-v3-fast",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 81920,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.7999999999999999,
-        "output_per_m": 1.2,
-        "blended_per_m": 0.8999999999999999
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
@@ -6907,35 +6525,6 @@
       "output_tokens_per_second": 61.716
     },
     {
-      "id": "google/gemma-3n-e4b-it",
-      "display_name": "Google: Gemma 3n 4B",
-      "provider": "google",
-      "openrouter_slug": "google/gemma-3n-e4b-it",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.06,
-        "output_per_m": 0.12,
-        "blended_per_m": 0.075
-      },
-      "aa_intelligence_index": 6.4,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1305.0,
-      "intelligence_rank": 49,
-      "release_date": "2025-05-20",
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
       "id": "mistralai/mistral-medium-3",
       "display_name": "Mistral: Mistral Medium 3",
       "provider": "mistralai",
@@ -7017,34 +6606,6 @@
         "input_per_m": 0.75,
         "output_per_m": 1.2,
         "blended_per_m": 0.8625
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "arcee-ai/coder-large",
-      "display_name": "Arcee AI: Coder Large",
-      "provider": "arcee-ai",
-      "openrouter_slug": "arcee-ai/coder-large",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.5,
-        "output_per_m": 0.7999999999999999,
-        "blended_per_m": 0.575
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
@@ -7711,35 +7272,6 @@
       "is_free": false
     },
     {
-      "id": "rekaai/reka-flash-3",
-      "display_name": "Reka Flash 3",
-      "provider": "rekaai",
-      "openrouter_slug": "rekaai/reka-flash-3",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.09999999999999999,
-        "output_per_m": 0.19999999999999998,
-        "blended_per_m": 0.125
-      },
-      "aa_intelligence_index": 9.5,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2025-03-10",
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false,
-      "output_tokens_per_second": 91.811
-    },
-    {
       "id": "google/gemma-3-27b-it",
       "display_name": "Google: Gemma 3 27B",
       "provider": "google",
@@ -7768,34 +7300,6 @@
       "size_bucket": "midsize",
       "is_free": false,
       "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "thedrummer/skyfall-36b-v2",
-      "display_name": "TheDrummer: Skyfall 36B V2",
-      "provider": "thedrummer",
-      "openrouter_slug": "thedrummer/skyfall-36b-v2",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 36.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.55,
-        "output_per_m": 0.7999999999999999,
-        "blended_per_m": 0.6125
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
     },
     {
       "id": "perplexity/sonar-reasoning-pro",
@@ -7886,36 +7390,6 @@
       "is_free": false
     },
     {
-      "id": "mistralai/mistral-saba",
-      "display_name": "Mistral: Saba",
-      "provider": "mistralai",
-      "openrouter_slug": "mistralai/mistral-saba",
-      "vision_capable": false,
-      "input_modalities": [
-        "text",
-        "file"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.19999999999999998,
-        "output_per_m": 0.6,
-        "blended_per_m": 0.3
-      },
-      "aa_intelligence_index": 12.1,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": "2025-02-17",
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
       "id": "openai/o3-mini-high",
       "display_name": "OpenAI: o3 Mini High",
       "provider": "openai",
@@ -7991,34 +7465,6 @@
         "input_per_m": 0.7,
         "output_per_m": 1.4,
         "blended_per_m": 0.8749999999999999
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "small",
-      "is_free": false
-    },
-    {
-      "id": "aion-labs/aion-rp-llama-3.1-8b",
-      "display_name": "AionLabs: Aion-RP 1.0 (8B)",
-      "provider": "aion-labs",
-      "openrouter_slug": "aion-labs/aion-rp-llama-3.1-8b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 8.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.7999999999999999,
-        "output_per_m": 1.5999999999999999,
-        "blended_per_m": 1.0
       },
       "aa_intelligence_index": null,
       "aa_blended_per_m": null,
@@ -8116,34 +7562,6 @@
       "size_bucket": "small",
       "is_free": false,
       "output_tokens_per_second": 224.044
-    },
-    {
-      "id": "mistralai/mistral-small-24b-instruct-2501",
-      "display_name": "Mistral: Mistral Small 3",
-      "provider": "mistralai",
-      "openrouter_slug": "mistralai/mistral-small-24b-instruct-2501",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 24.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.049999999999999996,
-        "output_per_m": 0.08,
-        "blended_per_m": 0.057499999999999996
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1233.0,
-      "intelligence_rank": 100,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
     },
     {
       "id": "deepseek/deepseek-r1-distill-qwen-32b",
@@ -8288,63 +7706,6 @@
       "intelligence_rank": null,
       "release_date": null,
       "family_tier": "flagship",
-      "size_bucket": "large",
-      "is_free": false
-    },
-    {
-      "id": "microsoft/phi-4",
-      "display_name": "Microsoft: Phi 4",
-      "provider": "microsoft",
-      "openrouter_slug": "microsoft/phi-4",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 16384,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.065,
-        "output_per_m": 0.14,
-        "blended_per_m": 0.08375
-      },
-      "aa_intelligence_index": 10.4,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1221.0,
-      "intelligence_rank": 108,
-      "release_date": "2024-12-12",
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false,
-      "output_tokens_per_second": 36.033
-    },
-    {
-      "id": "sao10k/l3.1-70b-hanami-x1",
-      "display_name": "Sao10K: Llama 3.1 70B Hanami x1",
-      "provider": "sao10k",
-      "openrouter_slug": "sao10k/l3.1-70b-hanami-x1",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 16000,
-      "parameters_b": 70.0,
-      "openrouter_pricing": {
-        "input_per_m": 3.0,
-        "output_per_m": 3.0,
-        "blended_per_m": 3.0
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
       "size_bucket": "large",
       "is_free": false
     },
@@ -8701,34 +8062,6 @@
       "output_tokens_per_second": 0.0
     },
     {
-      "id": "thedrummer/unslopnemo-12b",
-      "display_name": "TheDrummer: UnslopNemo 12B",
-      "provider": "thedrummer",
-      "openrouter_slug": "thedrummer/unslopnemo-12b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 12.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.39999999999999997,
-        "output_per_m": 0.39999999999999997,
-        "blended_per_m": 0.39999999999999997
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
-    },
-    {
       "id": "anthropic/claude-3.5-haiku",
       "display_name": "Anthropic: Claude 3.5 Haiku",
       "provider": "anthropic",
@@ -8759,34 +8092,6 @@
       "output_tokens_per_second": 0.0
     },
     {
-      "id": "anthracite-org/magnum-v4-72b",
-      "display_name": "Magnum v4 72B",
-      "provider": "anthracite-org",
-      "openrouter_slug": "anthracite-org/magnum-v4-72b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 72.0,
-      "openrouter_pricing": {
-        "input_per_m": 3.0,
-        "output_per_m": 5.0,
-        "blended_per_m": 3.5
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "large",
-      "is_free": false
-    },
-    {
       "id": "qwen/qwen-2.5-7b-instruct",
       "display_name": "Qwen: Qwen2.5 7B Instruct",
       "provider": "qwen",
@@ -8814,90 +8119,6 @@
       "size_bucket": "small",
       "is_free": false,
       "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "inflection/inflection-3-productivity",
-      "display_name": "Inflection: Inflection 3 Productivity",
-      "provider": "inflection",
-      "openrouter_slug": "inflection/inflection-3-productivity",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8000,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 2.5,
-        "output_per_m": 10.0,
-        "blended_per_m": 4.375
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "inflection/inflection-3-pi",
-      "display_name": "Inflection: Inflection 3 Pi",
-      "provider": "inflection",
-      "openrouter_slug": "inflection/inflection-3-pi",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8000,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 2.5,
-        "output_per_m": 10.0,
-        "blended_per_m": 4.375
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": "mid",
-      "size_bucket": "midsize",
-      "is_free": false
-    },
-    {
-      "id": "thedrummer/rocinante-12b",
-      "display_name": "TheDrummer: Rocinante 12B",
-      "provider": "thedrummer",
-      "openrouter_slug": "thedrummer/rocinante-12b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 32768,
-      "parameters_b": 12.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.16999999999999998,
-        "output_per_m": 0.43,
-        "blended_per_m": 0.235
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
     },
     {
       "id": "meta-llama/llama-3.2-3b-instruct:free",
@@ -9217,34 +8438,6 @@
       "output_tokens_per_second": 40.958
     },
     {
-      "id": "sao10k/l3-lunaris-8b",
-      "display_name": "Sao10K: Llama 3 8B Lunaris",
-      "provider": "sao10k",
-      "openrouter_slug": "sao10k/l3-lunaris-8b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8192,
-      "parameters_b": 8.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.04,
-        "output_per_m": 0.049999999999999996,
-        "blended_per_m": 0.042499999999999996
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "small",
-      "is_free": false
-    },
-    {
       "id": "openai/gpt-4o-2024-08-06",
       "display_name": "OpenAI: GPT-4o (2024-08-06)",
       "provider": "openai",
@@ -9424,34 +8617,6 @@
       "output_tokens_per_second": 72.952
     },
     {
-      "id": "google/gemma-2-27b-it",
-      "display_name": "Google: Gemma 2 27B",
-      "provider": "google",
-      "openrouter_slug": "google/gemma-2-27b-it",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8192,
-      "parameters_b": 27.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.65,
-        "output_per_m": 0.65,
-        "blended_per_m": 0.65
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1235.0,
-      "intelligence_rank": 100,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
-    },
-    {
       "id": "openai/gpt-4o-2024-05-13",
       "display_name": "OpenAI: GPT-4o (2024-05-13)",
       "provider": "openai",
@@ -9512,121 +8677,6 @@
       "size_bucket": "midsize",
       "is_free": false,
       "output_tokens_per_second": 200.927
-    },
-    {
-      "id": "meta-llama/llama-3-8b-instruct",
-      "display_name": "Meta: Llama 3 8B Instruct",
-      "provider": "meta-llama",
-      "openrouter_slug": "meta-llama/llama-3-8b-instruct",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8192,
-      "parameters_b": 8.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.14,
-        "output_per_m": 0.14,
-        "blended_per_m": 0.14
-      },
-      "aa_intelligence_index": 6.4,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1167.0,
-      "intelligence_rank": 134,
-      "release_date": "2024-04-18",
-      "family_tier": null,
-      "size_bucket": "small",
-      "is_free": false,
-      "output_tokens_per_second": 80.824
-    },
-    {
-      "id": "meta-llama/llama-3-70b-instruct",
-      "display_name": "Meta: Llama 3 70B Instruct",
-      "provider": "meta-llama",
-      "openrouter_slug": "meta-llama/llama-3-70b-instruct",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8192,
-      "parameters_b": 70.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.51,
-        "output_per_m": 0.74,
-        "blended_per_m": 0.5675
-      },
-      "aa_intelligence_index": 8.9,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1273.0,
-      "intelligence_rank": 78,
-      "release_date": "2024-12-06",
-      "family_tier": null,
-      "size_bucket": "large",
-      "is_free": false,
-      "output_tokens_per_second": 97.203
-    },
-    {
-      "id": "mistralai/mixtral-8x22b-instruct",
-      "display_name": "Mistral: Mixtral 8x22B Instruct",
-      "provider": "mistralai",
-      "openrouter_slug": "mistralai/mixtral-8x22b-instruct",
-      "vision_capable": false,
-      "input_modalities": [
-        "text",
-        "file"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 2.0,
-        "output_per_m": 6.0,
-        "blended_per_m": 3.0
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "microsoft/wizardlm-2-8x22b",
-      "display_name": "WizardLM-2 8x22B",
-      "provider": "microsoft",
-      "openrouter_slug": "microsoft/wizardlm-2-8x22b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 65536,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.62,
-        "output_per_m": 0.62,
-        "blended_per_m": 0.62
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1074.0,
-      "intelligence_rank": 177,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
     },
     {
       "id": "openai/gpt-4-turbo",
@@ -9748,35 +8798,6 @@
       "output_tokens_per_second": 34.042
     },
     {
-      "id": "openai/gpt-3.5-turbo-0613",
-      "display_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
-      "provider": "openai",
-      "openrouter_slug": "openai/gpt-3.5-turbo-0613",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 4095,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 1.0,
-        "output_per_m": 2.0,
-        "blended_per_m": 1.25
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1121.0,
-      "intelligence_rank": 152,
-      "release_date": "2023-06-13",
-      "family_tier": "fast",
-      "size_bucket": "small",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
       "id": "openrouter/auto",
       "display_name": "Auto Router",
       "provider": "openrouter",
@@ -9808,206 +8829,6 @@
       "family_tier": null,
       "size_bucket": null,
       "is_free": false
-    },
-    {
-      "id": "openai/gpt-3.5-turbo-instruct",
-      "display_name": "OpenAI: GPT-3.5 Turbo Instruct",
-      "provider": "openai",
-      "openrouter_slug": "openai/gpt-3.5-turbo-instruct",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 4095,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 1.5,
-        "output_per_m": 2.0,
-        "blended_per_m": 1.625
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1121.0,
-      "intelligence_rank": 152,
-      "release_date": "2023-06-13",
-      "family_tier": "fast",
-      "size_bucket": "small",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "openai/gpt-3.5-turbo-16k",
-      "display_name": "OpenAI: GPT-3.5 Turbo 16k",
-      "provider": "openai",
-      "openrouter_slug": "openai/gpt-3.5-turbo-16k",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 16385,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 3.0,
-        "output_per_m": 4.0,
-        "blended_per_m": 3.25
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1121.0,
-      "intelligence_rank": 152,
-      "release_date": "2023-06-13",
-      "family_tier": "fast",
-      "size_bucket": "small",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
-    },
-    {
-      "id": "mancer/weaver",
-      "display_name": "Mancer: Weaver (alpha)",
-      "provider": "mancer",
-      "openrouter_slug": "mancer/weaver",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8000,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.75,
-        "output_per_m": 1.0,
-        "blended_per_m": 0.8125
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": null,
-      "is_free": false
-    },
-    {
-      "id": "undi95/remm-slerp-l2-13b",
-      "display_name": "ReMM SLERP 13B",
-      "provider": "undi95",
-      "openrouter_slug": "undi95/remm-slerp-l2-13b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 6144,
-      "parameters_b": 13.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.44999999999999996,
-        "output_per_m": 0.65,
-        "blended_per_m": 0.5
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
-    },
-    {
-      "id": "gryphe/mythomax-l2-13b",
-      "display_name": "MythoMax 13B",
-      "provider": "gryphe",
-      "openrouter_slug": "gryphe/mythomax-l2-13b",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 4096,
-      "parameters_b": 13.0,
-      "openrouter_pricing": {
-        "input_per_m": 0.06,
-        "output_per_m": 0.06,
-        "blended_per_m": 0.06
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": null,
-      "intelligence_rank": null,
-      "release_date": null,
-      "family_tier": null,
-      "size_bucket": "midsize",
-      "is_free": false
-    },
-    {
-      "id": "openai/gpt-4",
-      "display_name": "OpenAI: GPT-4",
-      "provider": "openai",
-      "openrouter_slug": "openai/gpt-4",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 8191,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 30.0,
-        "output_per_m": 60.0,
-        "blended_per_m": 37.5
-      },
-      "aa_intelligence_index": 12.8,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1265.0,
-      "intelligence_rank": 85,
-      "release_date": "2023-03-14",
-      "family_tier": "flagship",
-      "size_bucket": "large",
-      "is_free": false,
-      "output_tokens_per_second": 35.996
-    },
-    {
-      "id": "openai/gpt-3.5-turbo",
-      "display_name": "OpenAI: GPT-3.5 Turbo",
-      "provider": "openai",
-      "openrouter_slug": "openai/gpt-3.5-turbo",
-      "vision_capable": false,
-      "input_modalities": [
-        "text"
-      ],
-      "output_modalities": [
-        "text"
-      ],
-      "context_window": 16385,
-      "parameters_b": null,
-      "openrouter_pricing": {
-        "input_per_m": 0.5,
-        "output_per_m": 1.5,
-        "blended_per_m": 0.75
-      },
-      "aa_intelligence_index": null,
-      "aa_blended_per_m": null,
-      "intelligence_score": 1121.0,
-      "intelligence_rank": 152,
-      "release_date": "2023-06-13",
-      "family_tier": "fast",
-      "size_bucket": "small",
-      "is_free": false,
-      "output_tokens_per_second": 0.0
     }
   ]
 }
