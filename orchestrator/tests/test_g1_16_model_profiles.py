@@ -11,6 +11,7 @@ from textwrap import dedent
 from unittest import mock
 
 from orchestrator import framework_parser
+from orchestrator import codex_subscription
 from orchestrator import model_profiles as mp
 
 
@@ -60,6 +61,68 @@ class ModelProfileHealthTests(unittest.TestCase):
             inventory({"issued-new": {"reachable": True}}, {"issued-old": "issued-new"}),
         )
         self.assertEqual(health["status"], "ok")
+
+    def test_all_subscription_profile_passes_activation_and_effective_resolution(self):
+        endpoint_id = "codex-subscription:sdk-gpt"
+        endpoint = {
+            "id": endpoint_id,
+            "type": "api",
+            "status": "active",
+            "enabled": True,
+            "service": "codex-subscription",
+            "model_id": "gpt-native",
+            "dispatch": "subscription",
+            "vision_capable": False,
+            "capabilities": {
+                "tool_access": False,
+                "file_system_access": False,
+            },
+        }
+        selected_profile = profile(endpoint_id)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = root / "registry.json"
+            vendor = root / "vendor.json"
+            routing = root / "routing.json"
+            catalog = root / "catalog.json"
+            models = root / "models.json"
+            registry.write_text('{"models": {}}')
+            vendor.write_text('{"models": {}, "aliases": {}}')
+            routing.write_text('{"endpoints": []}')
+            catalog.write_text('{"models": []}')
+            models.write_text('{"local_models": [], "commercial_models": []}')
+            with (
+                mock.patch.object(mp.rp, "model_registry_path", return_value=registry),
+                mock.patch.object(
+                    mp.rp, "vendor_authoritative_registry_path",
+                    return_value=vendor,
+                ),
+                mock.patch.object(mp.rp, "routing_config_path", return_value=routing),
+                mock.patch.object(mp.rp, "model_catalog_path", return_value=catalog),
+                mock.patch.object(mp.rp, "overlay_path", return_value=models),
+                mock.patch.object(
+                    codex_subscription, "is_configured", return_value=True,
+                ),
+                mock.patch.object(
+                    codex_subscription, "model_endpoints", return_value=[endpoint],
+                ),
+                mock.patch.object(
+                    mp, "_read_profile", return_value=selected_profile,
+                ),
+                mock.patch.object(mp, "_validate_ram_allocation", return_value={}),
+                mock.patch.object(mp.ac, "get_active_name", return_value="subscription"),
+            ):
+                live_inventory = mp.load_model_inventory()
+                summary = mp.profile_summary("subscription", live_inventory)
+                effective = mp.resolve_effective_profile()
+
+        record = live_inventory["models"][endpoint_id]
+        self.assertEqual(record["status"], "active")
+        self.assertFalse(record["capabilities"]["tool_access"])
+        self.assertIn("subscription", record["_profile_sources"])
+        self.assertEqual(summary["health"]["status"], "ok")
+        self.assertEqual(effective["selected"]["name"], "subscription")
+        self.assertEqual(effective["selected"]["health"]["status"], "ok")
 
 
 class ModelProfileInheritanceTests(unittest.TestCase):
@@ -132,6 +195,41 @@ class ModelProfileInheritanceTests(unittest.TestCase):
             locked = mp.load_project_locked_profile(token)
         self.assertEqual(mp.profile_digest(locked), original_digest)
         self.assertNotEqual(mp.profile_digest(self.profiles["project"]), original_digest)
+
+    def test_existing_over_cap_project_snapshot_cannot_activate(self):
+        snapshot = profile("cloud-model")
+        snapshot["roles"] = {
+            "project-model": {
+                "primary": "local-too-large", "fallback": [],
+            },
+        }
+        snapshot["cells"]["utility"]["step1_cleanup"] = {
+            "role": "project-model",
+        }
+        locks = {
+            "schema_version": mp.LOCK_SCHEMA_VERSION,
+            "project_nexus": "my-project",
+            "profile_name": "project",
+            "profile_digest": mp.profile_digest(snapshot),
+            "profile_snapshot": snapshot,
+            "toggles": {"adversarial_diversity": False},
+            "image_model": None,
+            "vision_mode": {},
+            "captured_at": "2026-08-14T00:00:00+00:00",
+        }
+        locks["binding_digest"] = mp._binding_digest(locks)
+        record = {"default_model_profile": "project", "model_locks": locks}
+        with (
+            mock.patch.object(mp.pm, "read_project_meta", return_value=record),
+            mock.patch.object(mp.ac, "_get_system_ram_gb", return_value=100),
+            mock.patch.object(mp.ac, "_load_local_models", return_value=[
+                {"id": "local-too-large", "ram_gb": 86},
+            ]),
+        ):
+            with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                mp.resolve_effective_profile(
+                    global_profile="global", project_nexus="my-project",
+                )
 
     def test_tampered_project_snapshot_fails_closed(self):
         record = self._binding_record()
@@ -430,6 +528,58 @@ class ModelProfileMigrationTests(unittest.TestCase):
             mp.confirm_migration(
                 "legacy", proposal["proposal_id"], user_confirmed=True)
         self.assertEqual(self.saved, [])
+
+    def test_over_cap_live_migration_is_rejected_before_profile_write(self):
+        before = mp._canonical_json(self.current)
+        proposal = mp.preview_migration("legacy")
+        with (
+            mock.patch.object(mp.ac, "_get_system_ram_gb", return_value=100),
+            mock.patch.object(mp.ac, "_load_local_models", return_value=[
+                {"id": "replacement", "ram_gb": 86},
+            ]),
+        ):
+            with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                mp.confirm_migration(
+                    "legacy", proposal["proposal_id"], user_confirmed=True,
+                )
+        self.assertEqual(mp._canonical_json(self.current), before)
+        self.assertEqual(self.saved, [])
+        self.assertFalse(self.receipts.exists())
+
+    def test_over_cap_project_migration_is_rejected_before_binding_write(self):
+        locks = {
+            "schema_version": mp.LOCK_SCHEMA_VERSION,
+            "project_nexus": "my-project",
+            "profile_name": "Legacy",
+            "profile_digest": mp.profile_digest(self.current),
+            "profile_snapshot": copy.deepcopy(self.current),
+            "toggles": {"adversarial_diversity": False},
+            "image_model": None,
+            "vision_mode": {},
+            "captured_at": "2026-07-22T00:00:00+00:00",
+        }
+        locks["binding_digest"] = mp._binding_digest(locks)
+        record = {"default_model_profile": "Legacy", "model_locks": locks}
+        before = mp._canonical_json(record)
+        with mock.patch.object(mp.pm, "read_project_meta", return_value=record):
+            proposal = mp.preview_migration("Legacy", "my-project")
+
+        with (
+            mock.patch.object(mp.pm, "read_project_meta", return_value=record),
+            mock.patch.object(mp.pm, "set_project_model_binding") as persist,
+            mock.patch.object(mp.ac, "_get_system_ram_gb", return_value=100),
+            mock.patch.object(mp.ac, "_load_local_models", return_value=[
+                {"id": "replacement", "ram_gb": 86},
+            ]),
+        ):
+            with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                mp.confirm_migration(
+                    "Legacy", proposal["proposal_id"], user_confirmed=True,
+                    project_nexus="my-project",
+                )
+        persist.assert_not_called()
+        self.assertEqual(mp._canonical_json(record), before)
+        self.assertFalse(self.receipts.exists())
 
     def test_receipt_failure_rolls_back_the_profile(self):
         before = copy.deepcopy(self.current)

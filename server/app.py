@@ -1543,22 +1543,38 @@ _chatgpt_catalog_signature_lock = threading.Lock()
 
 
 def _sync_chatgpt_subscription_router(account_status: dict) -> None:
-    """Reload the process-local Router when subscription availability moves."""
+    """Re-bake presets, then reload Router when subscription inventory moves."""
     global _chatgpt_catalog_signature
     signature = (
-        account_status.get("state"),
+        account_status.get("state") == "connected",
         account_status.get("catalog_revision"),
     )
+    # Serialize the entire transition. A newer disconnect must wait for an
+    # in-flight connected bake, then run its own bake and become the accepted
+    # signature; otherwise the older bake can finish last and restore stale
+    # subscription picks after the account has disconnected.
     with _chatgpt_catalog_signature_lock:
         if signature == _chatgpt_catalog_signature:
             return
-        _chatgpt_catalog_signature = signature
-    if not _reload_pipeline_router_after_config_change():
-        # A transient reload failure must remain retryable on the next status
-        # poll; otherwise the in-memory catalogue can stay stale indefinitely.
-        with _chatgpt_catalog_signature_lock:
-            if _chatgpt_catalog_signature == signature:
-                _chatgpt_catalog_signature = None
+        try:
+            from orchestrator import active_configuration as _active_config
+            baked = set(_active_config.bake_missing_presets(force=True) or [])
+            required = set(_active_config.PRESET_ORDER)
+            if not required.issubset(baked):
+                missing = sorted(required.difference(baked))
+                raise RuntimeError(
+                    f"subscription preset re-bake incomplete: {missing}"
+                )
+            reloaded = _reload_pipeline_router_after_config_change()
+        except Exception as exc:
+            print(
+                "[model-registry] ChatGPT subscription preset re-bake failed: "
+                f"{type(exc).__name__}",
+                flush=True,
+            )
+            reloaded = False
+        if reloaded:
+            _chatgpt_catalog_signature = signature
 
 
 def _chatgpt_subscription_response(payload: dict):
@@ -8363,6 +8379,7 @@ def _validate_public_model_profile_override(config_name):
             f"cannot run unavailable Model Profile {name!r}: "
             f"{summary['health']['reason']}"
         )
+    _mp.validate_profile_allocation(name)
     return name
 
 
@@ -18253,6 +18270,34 @@ def capability_video_generates():
 
 # ── model switcher ───────────────────────────────────────────────────────────
 
+LOCAL_MODELS_DIR = Path.home() / "ora" / "models"
+_local_model_inventory_lock = threading.RLock()
+
+
+def _refresh_local_model_inventory() -> tuple[dict | None, str | None]:
+    """Refresh the installed-model snapshot, preserving it on scan failure."""
+    try:
+        from local_model_discovery import refresh as _refresh
+        with _local_model_inventory_lock:
+            result = _refresh(
+                models_json=Path(MODELS_JSON),
+                models_dir=LOCAL_MODELS_DIR,
+                routing_config=Path(_routing_config_path()),
+                write=True,
+            )
+            # Retry the live Router after every authoritative scan. A failed
+            # reload must not become permanent merely because models.json is
+            # already current on the next pane load. False remains the
+            # expected no-op result when no Router has been instantiated.
+            result["router_reloaded"] = (
+                _reload_pipeline_router_after_config_change()
+            )
+        return result, None
+    except Exception as exc:
+        # refresh scans before writing, so the existing models.json remains the
+        # last-known-good truth when the root is missing or unreadable.
+        return None, str(exc)
+
 def get_system_ram_gb():
     try:
         from platform_check import get_system_ram_gb as _get_ram
@@ -18267,12 +18312,18 @@ def load_models():
     except Exception:
         return {"overhead_reservation_gb": 8, "local_models": [], "commercial_models": []}
 
-@app.route("/models")
-def models_endpoint():
-    config     = load_config()
-    models_cfg = load_models()
-    # Endpoints carry `id` after the Chunk 12 schema cleanup; older
-    # callers wrote `name`. Accept either.
+
+def _models_payload(models_cfg: dict, discovery_error: str | None = None) -> dict:
+    from orchestrator import active_configuration as _ac
+
+    models_document_error = None
+    if not isinstance(models_cfg, dict):
+        models_document_error = (
+            "local model inventory is malformed: root must be an object"
+        )
+        models_cfg = {}
+
+    config = load_config()
     ep_by_name = {
         (e.get("id") or e.get("name")): e
         for e in config.get("endpoints", [])
@@ -18280,22 +18331,229 @@ def models_endpoint():
     }
 
     system_ram = get_system_ram_gb()
-    overhead   = models_cfg.get("overhead_reservation_gb", 8)
-    budget     = system_ram - overhead
+    overhead = models_cfg.get("overhead_reservation_gb", 8)
+    budget = system_ram - overhead
+    local_models = models_cfg.get("local_models")
+    active_profile_name = None
+    allocation_error = None
+    try:
+        if models_document_error:
+            raise ValueError(models_document_error)
+        active_profile_name = _ac.get_active_name(strict=True)
+        active_profile = _ac._load_config(active_profile_name)
+        allocation = _ac.profile_ram_allocation(
+            active_profile,
+            system_ram_gb=system_ram,
+            local_models=local_models,
+        )
+    except Exception as exc:
+        # This endpoint is display-only.  A missing pointer/profile or
+        # untrustworthy inventory must clear prior allocation figures without
+        # turning the Models pane itself into an authorization bypass.
+        active_profile_name = None
+        allocation_error = str(exc)
+        automatic_target = max(
+            0.0, float(system_ram) * _ac.AUTOMATIC_RAM_TARGET_RATIO,
+        )
+        hard_cap = max(0.0, float(system_ram) * _ac.HARD_RAM_CAP_RATIO)
+        allocation = {
+            "automatic_target_gb": automatic_target,
+            "hard_cap_gb": hard_cap,
+            "active_local_model_ids": [],
+            "allocated_local_ram_gb": 0.0,
+            "headroom_to_hard_cap_gb": hard_cap,
+        }
+    commercial_rows = models_cfg.get("commercial_models", [])
+    commercial_models = [
+        dict(model) for model in commercial_rows if isinstance(model, dict)
+    ] if isinstance(commercial_rows, list) else []
+    for model in commercial_models:
+        ep = ep_by_name.get(model.get("id"), {})
+        model["available"] = ep.get("status") == "active"
 
-    for cm in models_cfg.get("commercial_models", []):
-        ep = ep_by_name.get(cm["id"], {})
-        cm["available"] = ep.get("status") == "active"
-
-    return json.dumps({
-        "system_ram_gb":      round(system_ram, 1),
-        "overhead_gb":        overhead,
+    return {
+        "system_ram_gb": round(system_ram, 1),
+        "overhead_gb": overhead,
         "available_budget_gb": round(budget, 1),
-        "local_models":       models_cfg.get("local_models", []),
-        "commercial_models":  models_cfg.get("commercial_models", []),
-        "slot_assignments":   config.get("slot_assignments", {}),
-        "gear4_overrides":    config.get("gear4_overrides", {}),
-    })
+        "local_models": [
+            dict(model) for model in local_models if isinstance(model, dict)
+        ] if isinstance(local_models, list) else [],
+        "commercial_models": commercial_models,
+        "slot_assignments": config.get("slot_assignments", {}),
+        "gear4_overrides": config.get("gear4_overrides", {}),
+        "local_discovery_error": discovery_error,
+        "active_profile_name": active_profile_name,
+        "allocation_error": allocation_error,
+        "automatic_target_gb": allocation["automatic_target_gb"],
+        "hard_cap_gb": allocation["hard_cap_gb"],
+        "active_local_model_ids": allocation["active_local_model_ids"],
+        "allocated_local_ram_gb": allocation["allocated_local_ram_gb"],
+        "headroom_to_hard_cap_gb": allocation["headroom_to_hard_cap_gb"],
+    }
+
+@app.route("/models")
+def models_endpoint():
+    _refresh_result, discovery_error = _refresh_local_model_inventory()
+    models_cfg = load_models()
+    return json.dumps(_models_payload(models_cfg, discovery_error))
+
+
+@app.route("/api/local-models/trash", methods=["POST"])
+def local_model_trash():
+    """Move one currently discovered physical local model to macOS Trash."""
+    cross_site = _cross_site_mutation_response()
+    if cross_site is not None:
+        return cross_site
+    body = request.get_json(silent=True) or {}
+    model_id = body.get("model_id")
+    if not isinstance(model_id, str) or not model_id.strip():
+        return _json_response({"ok": False, "error": "model_id is required"}, status=400)
+    model_id = model_id.strip()
+
+    from local_model_discovery import (
+        LocalModelDeleteError,
+        move_model_to_trash,
+        refresh as _refresh,
+        resolve_delete_target,
+    )
+    from orchestrator import system_protection as _sp
+
+    with _local_model_inventory_lock:
+        try:
+            current = _refresh(
+                models_json=Path(MODELS_JSON),
+                models_dir=LOCAL_MODELS_DIR,
+                routing_config=Path(_routing_config_path()),
+                write=True,
+            )
+            target = resolve_delete_target(
+                model_id, current["discovered"], LOCAL_MODELS_DIR
+            )
+            models_root = Path(LOCAL_MODELS_DIR).expanduser().resolve(strict=True)
+        except LocalModelDeleteError as exc:
+            return _json_response({"ok": False, "error": str(exc)}, status=404)
+        except Exception as exc:
+            return _json_response({
+                "ok": False,
+                "error": f"local model discovery failed: {exc}",
+            }, status=503)
+
+        if current.get("discovered") != current.get("previous"):
+            _reload_pipeline_router_after_config_change()
+
+        current_row = next(
+            row for row in current["discovered"] if row.get("id") == model_id
+        )
+        machine_id = current_row.get("machine") or "studio-128"
+        authorized_target = target
+        protection = None
+
+        try:
+            selector = _sp.local_model_selector(target, models_root)
+            pre_state = _sp.capture_local_model_identity(target, models_root)
+            protection = _sp.authorize_server_action(
+                "local_model_trash",
+                selectors=[selector],
+                params={"model_id": model_id, "machine_id": machine_id},
+                pre_state=[pre_state],
+            )
+        except Exception as exc:
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+            return _json_response({
+                "ok": False,
+                "error": f"local model protection failed: {exc}",
+            }, status=500)
+
+        try:
+            try:
+                import mlx_mutex
+            except ImportError:
+                from orchestrator import mlx_mutex
+            with mlx_mutex.acquire(machine_id):
+                # The mutex wait can be long enough for external filesystem
+                # changes. Re-scan and re-resolve under the lock immediately
+                # before eviction and mutation.
+                locked = _refresh(
+                    models_json=Path(MODELS_JSON),
+                    models_dir=LOCAL_MODELS_DIR,
+                    routing_config=Path(_routing_config_path()),
+                    write=False,
+                )
+                target = resolve_delete_target(
+                    model_id, locked["discovered"], LOCAL_MODELS_DIR
+                )
+                locked_root = Path(LOCAL_MODELS_DIR).expanduser().resolve(strict=True)
+                if _sp.local_model_selector(target, locked_root) != selector:
+                    raise LocalModelDeleteError(
+                        "local model target changed after approval"
+                    )
+                with _sp.protected_effect(protection):
+                    _boot_context_api().evict_mlx_model(str(target))
+                    move_model_to_trash(target)
+        except Exception as exc:
+            try:
+                _sp.complete_execution(
+                    protection,
+                    ok=False,
+                    result={"error": type(exc).__name__, "model_id": model_id},
+                    post_state=[
+                        _sp.capture_local_model_identity(
+                            authorized_target, models_root
+                        )
+                    ],
+                )
+            except Exception as receipt_error:
+                return _system_protection_error_response(receipt_error)
+            if isinstance(exc, _sp.SystemProtectionError):
+                return _system_protection_error_response(exc)
+            if isinstance(exc, LocalModelDeleteError):
+                return _json_response({"ok": False, "error": str(exc)}, status=409)
+            return _json_response({
+                "ok": False,
+                "error": f"could not move local model to Trash: {exc}",
+            }, status=500)
+
+        try:
+            _sp.complete_execution(
+                protection,
+                ok=True,
+                result={"moved_to_trash": True, "model_id": model_id},
+                post_state=[
+                    _sp.capture_local_model_identity(
+                        authorized_target, models_root
+                    )
+                ],
+            )
+        except Exception as receipt_error:
+            return _system_protection_error_response(receipt_error)
+
+        try:
+            updated = _refresh(
+                models_json=Path(MODELS_JSON),
+                models_dir=LOCAL_MODELS_DIR,
+                routing_config=Path(_routing_config_path()),
+                write=True,
+            )
+        except Exception as exc:
+            _reload_pipeline_router_after_config_change()
+            return _json_response({
+                "ok": False,
+                "moved_to_trash": True,
+                "model_id": model_id,
+                "error": f"model moved to Trash, but inventory refresh failed: {exc}",
+            }, status=500)
+
+        router_reloaded = _reload_pipeline_router_after_config_change()
+        hardware = _models_payload(load_models())
+        return _json_response({
+            "ok": True,
+            "moved_to_trash": True,
+            "model_id": model_id,
+            "inventory": updated["discovered"],
+            "hardware": hardware,
+            "router_reloaded": router_reloaded,
+        })
 
 
 # ── Model registry: read access + on-demand refresh ─────────────────────────
@@ -18361,6 +18619,7 @@ def model_registry_get():
     surface (and the image-generation row on Models) opts in by
     passing ``categories=chat,image_generation`` etc.
     """
+    _local_refresh, _local_discovery_error = _refresh_local_model_inventory()
     try:
         from orchestrator import model_registry as mr
         registry = mr.load_registry()
@@ -18555,6 +18814,18 @@ def model_registry_get():
             _rc_path = rp.routing_config_path()
             if _rc_path.exists():
                 _rc = _json2.loads(_rc_path.read_text())
+                _configured_locals_by_path = {}
+                for _endpoint in (_rc.get("endpoints") or []):
+                    if _endpoint.get("type") != "local":
+                        continue
+                    _raw_path = _endpoint.get("model_path") or _endpoint.get("path")
+                    if _raw_path:
+                        _canonical_path = os.path.realpath(
+                            os.path.expanduser(str(_raw_path))
+                        )
+                        _configured_locals_by_path.setdefault(
+                            _canonical_path, _endpoint
+                        )
                 _runtime_subscription_endpoints = []
                 try:
                     from orchestrator import codex_subscription as _codex_sub
@@ -18578,6 +18849,14 @@ def model_registry_get():
                 # stamps, local merges) never leak into the shared cache.
                 if filtered is all_models:
                     filtered = dict(all_models)
+                # Defensive cleanup for process-local registries produced by an
+                # older server version that leaked UI-only local rows into its
+                # cache. The current successful discovery snapshot is rebuilt
+                # once below, by physical path.
+                filtered = {
+                    mid: model for mid, model in filtered.items()
+                    if not model.get("_local_endpoint")
+                }
                 for ep in [
                     *(_rc.get("endpoints") or []),
                     *_runtime_subscription_endpoints,
@@ -18606,14 +18885,16 @@ def model_registry_get():
                                     if ep.get("service") == "claude-code"
                                     else "provider-managed subscription runtime"
                                 )
-                            filtered[eid] = {
+                            subscription_model = {
                                 "id": eid,
                                 "display_name": ep.get("display_name") or eid,
                                 "description": ep.get("description") or "",
                                 "provider": provider_id,
                                 "vendor": "Subscription",
                                 "category": "chat",
-                                "vision_capable": ep.get("vision_capable", False),
+                                "vision_capable": False,
+                                "input_modalities": ["text"],
+                                "output_modalities": ["text"],
                                 "context_length": ep.get("context_window"),
                                 "pricing": {"input_per_token": 0,
                                             "output_per_token": 0,
@@ -18627,6 +18908,19 @@ def model_registry_get():
                                 "subscription_provider": provider_label,
                                 "subscription_transport": transport_label,
                             }
+                            for metric_field in (
+                                "aa_intelligence_index", "aa_coding_index",
+                                "aa_agentic_index", "intelligence_score",
+                                "size_bucket", "parameters_b", "release_date",
+                                "output_tokens_per_second", "or_throughput_tps",
+                                "latency_ttft_seconds", "latency_total_seconds",
+                                "or_ttft_ms", "reasoning_model",
+                                "reasoning_capable", "forced_reasoning",
+                                "metrics_inherited_from",
+                            ):
+                                if ep.get(metric_field) is not None:
+                                    subscription_model[metric_field] = ep[metric_field]
+                            filtered[eid] = subscription_model
                         continue
                     # DIRECT chip: the id has a registered api endpoint with
                     # dispatch=direct (vendor key present, so calls go to the
@@ -18639,49 +18933,12 @@ def model_registry_get():
                             stamped["direct_service"] = ep.get("service") or "direct"
                             filtered[eid] = stamped
                         continue
-                    if ep.get("type") != "local":
+                    # Static local endpoints are deliberately not emitted here.
+                    # They are joined by canonical path to the discovered set
+                    # below, so an absent path cannot create a stale row.
+                    if ep.get("type") == "local":
                         continue
-                    if eid in filtered:
-                        continue
-                    params = ep.get("parameters_b")
-                    # Same size-bucket rule the catalog uses:
-                    # <12B = small, 12-50B = midsize, >50B = large
-                    size_bucket = None
-                    if params is not None:
-                        if params < 12:
-                            size_bucket = "small"
-                        elif params <= 50:
-                            size_bucket = "midsize"
-                        else:
-                            size_bucket = "large"
-                    ram_total = (ep.get("ram_resident_gb") or 0) + (ep.get("ram_overhead_gb") or 0)
-                    filtered[eid] = {
-                        "id": eid,
-                        "display_name": ep.get("display_name") or eid,
-                        "provider": ep.get("provider") or "local",
-                        "vendor": "Local",
-                        "local": True,
-                        "category": "chat",
-                        "vision_capable": ep.get("vision_capable", False),
-                        "vision_verified_by": "endpoint_config",
-                        "context_length": ep.get("context_window"),
-                        "supports_function_calling": (ep.get("capabilities") or {}).get("tool_access"),
-                        "pricing": {"input_per_token": 0, "output_per_token": 0, "blended_per_m": 0},
-                        "is_free": True,
-                        "size_bucket": size_bucket,
-                        "parameters_b": params,
-                        "ram_resident_gb": ep.get("ram_resident_gb"),
-                        "ram_overhead_gb": ep.get("ram_overhead_gb"),
-                        "ram_total_gb": ram_total or None,
-                        # Local models are reachable as long as the
-                        # endpoint is enabled — no probe needed; the
-                        # MLX mutex handles concurrency at runtime.
-                        "reachable": bool(ep.get("enabled", True) and ep.get("status") == "active"),
-                        "reachable_rate_limited": False,
-                        "vendor_listed": None,  # no vendor audit applies
-                        "_local_endpoint": True,
-                    }
-                _models_path = rp.overlay_path("config", "models.json")
+                _models_path = Path(MODELS_JSON)
                 if _models_path.exists():
                     _models_cfg = _json2.loads(_models_path.read_text())
 
@@ -18711,34 +18968,66 @@ def model_registry_get():
                             return "large"
                         return None
 
+                    _seen_local_paths = set()
                     for lm in (_models_cfg.get("local_models") or []):
-                        eid = lm.get("id")
+                        path = lm.get("path") or lm.get("model_path")
+                        if not path:
+                            continue
+                        canonical_path = os.path.realpath(
+                            os.path.expanduser(str(path))
+                        )
+                        if canonical_path in _seen_local_paths:
+                            continue
+                        _seen_local_paths.add(canonical_path)
+                        configured = _configured_locals_by_path.get(
+                            canonical_path, {}
+                        )
+                        eid = configured.get("id") or lm.get("id")
                         if not eid:
                             continue
-                        path = lm.get("path") or lm.get("model_path")
-                        installed = bool(path and os.path.exists(path))
+                        installed = os.path.isdir(canonical_path)
                         ram_gb = lm.get("ram_gb")
-                        params = lm.get("parameters_b")
+                        params = configured.get("parameters_b")
+                        if params is None:
+                            params = lm.get("parameters_b")
                         if params is None:
                             params = lm.get("active_params_per_token")
                         existing = dict(filtered.get(eid) or {})
+                        ram_overhead_gb = configured.get("ram_overhead_gb") or 0
                         existing.update({
                             "id": eid,
-                            "display_name": lm.get("display_name") or existing.get("display_name") or eid,
-                            "provider": existing.get("provider") or "local",
+                            "display_name": (configured.get("display_name")
+                                             or lm.get("display_name")
+                                             or existing.get("display_name") or eid),
+                            "provider": (configured.get("provider")
+                                         or existing.get("provider") or "local"),
                             "vendor": "Local",
                             "local": True,
                             "category": "chat",
-                            "vision_capable": bool(lm.get("vision_capable", existing.get("vision_capable", False))),
-                            "vision_verified_by": "models_json",
+                            "vision_capable": bool(configured.get(
+                                "vision_capable",
+                                lm.get("vision_capable", existing.get("vision_capable", False)),
+                            )),
+                            "vision_verified_by": ("endpoint_config"
+                                                   if configured else "models_json"),
+                            "context_length": (configured.get("context_window")
+                                               or existing.get("context_length")),
+                            "supports_function_calling": (
+                                (configured.get("capabilities") or {}).get("tool_access")
+                                if configured else existing.get("supports_function_calling")
+                            ),
                             "pricing": existing.get("pricing") or {"input_per_token": 0, "output_per_token": 0, "blended_per_m": 0},
                             "is_free": True,
                             "size_bucket": existing.get("size_bucket") or _local_size_bucket(lm),
                             "parameters_b": params,
                             "ram_resident_gb": ram_gb,
-                            "ram_overhead_gb": 0,
-                            "ram_total_gb": ram_gb,
-                            "reachable": installed,
+                            "ram_overhead_gb": ram_overhead_gb,
+                            "ram_total_gb": ((ram_gb or 0) + ram_overhead_gb) or None,
+                            "reachable": bool(
+                                installed
+                                and configured.get("enabled", True)
+                                and configured.get("status", "active") == "active"
+                            ),
                             "reachable_rate_limited": False,
                             "vendor_listed": None,
                             "_local_endpoint": True,
@@ -18761,6 +19050,7 @@ def model_registry_get():
         # (see the comment where _reach_counts is computed).
         "reach_counts": _reach_counts,
         "stats": stats,
+        "local_discovery_error": _local_discovery_error,
     })
 
 
@@ -18771,16 +19061,24 @@ def configurations_list():
     saved customs, the active configuration name, and the active
     toggle state. Backs the presets row + custom-previous grid + header.
 
-    First-load preset baking: when any of the four presets is missing
-    a configuration file (fresh install state), the auto-populate
-    engine runs against the catalog and writes the missing files
-    before the listing returns. Idempotent — already-baked presets
-    are skipped, so subsequent calls cost nothing.
+    Before returning, refresh the disk-authoritative local inventory and
+    re-bake Free from its cloud baseline plus the current compatible local
+    models. Other presets retain the existing first-load-only bake behavior.
     """
     try:
         from orchestrator import active_configuration as ac
         from orchestrator import model_profiles as _mp
-        ac.bake_missing_presets()
+        # Keep the inventory scan and Free re-bake in one serialized section:
+        # the returned card must describe the physical models found by this
+        # pane load, not whichever scan won a concurrent Promise.all request.
+        with _local_model_inventory_lock:
+            local_refresh, _local_error = _refresh_local_model_inventory()
+            if local_refresh is not None:
+                ac.bake_missing_presets(
+                    force=True, preset_names=("free",))
+            else:
+                ac.bake_missing_presets()
+            _reload_pipeline_router_after_config_change()
         return _json_response(_mp.decorate_configuration_catalog(
             ac.list_configurations()))
     except Exception as exc:
@@ -19148,6 +19446,11 @@ def configurations_active_toggles():
                 per_config_updated = True
             except FileNotFoundError:
                 pass  # active points to nothing — skip silently
+
+        # Re-baking writes named profiles after the inventory-triggered Router
+        # reload. Invalidate again only after every preset/custom write so the
+        # next dispatch cannot reuse a stale named-profile cache entry.
+        _reload_pipeline_router_after_config_change()
 
         return _json_response({
             "name": name,
@@ -20639,32 +20942,22 @@ if __name__ == "__main__":
     except Exception as _e:
         print(f"[startup] Direct-API refresh hook failed: {_e}")
 
-    # Auto-discover local MLX models in ~/ora/models/. Probes each
-    # subdirectory's config.json + safetensors, derives ram_gb / type /
-    # vision_capable / recommended_roles / active_params_per_token, and
-    # rewrites the local_models section of config/models.json. Skips the
-    # rewrite (safety) if discovery returns zero entries — protects
-    # against the models directory being momentarily inaccessible.
-    # The V3 Models pane reads models.json on its next request, so the
-    # new inventory shows up without further intervention.
-    try:
-        from local_model_discovery import refresh as _refresh_local_models
-        _r = _refresh_local_models(write=True)
-        if _r.get("wrote"):
-            count = len(_r["discovered"])
-            added = _r.get("added") or []
-            removed = _r.get("removed") or []
-            msg = f"[startup] local-models discovery: {count} model(s)"
-            if added:
-                msg += f", added {len(added)}"
-            if removed:
-                msg += f", removed {len(removed)}"
-            print(msg)
-        else:
-            print("[startup] local-models discovery: skipped "
-                  "(no models found in ~/ora/models/)")
-    except Exception as _e:
-        print(f"[startup] local-models discovery failed: {_e}")
+    # Auto-discover local MLX models in ~/ora/models/. A successful empty
+    # scan is authoritative and clears stale inventory; an inaccessible root
+    # is an explicit error and leaves the last-known-good file untouched.
+    _r, _local_error = _refresh_local_model_inventory()
+    if _local_error:
+        print(f"[startup] local-models discovery failed: {_local_error}")
+    elif _r:
+        count = len(_r["discovered"])
+        added = _r.get("added") or []
+        removed = _r.get("removed") or []
+        msg = f"[startup] local-models discovery: {count} model(s)"
+        if added:
+            msg += f", added {len(added)}"
+        if removed:
+            msg += f", removed {len(removed)}"
+        print(msg)
 
     # Self-heal the Lucide icon-set: rebuild runtime/icon-set.json
     # whenever the toolbar / pack JSON sources have moved on. Keeps

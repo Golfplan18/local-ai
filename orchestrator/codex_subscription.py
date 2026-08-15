@@ -8,6 +8,8 @@ so this transport can never fall through to metered API billing.
 from __future__ import annotations
 
 import importlib
+import json
+import math
 import tempfile
 import threading
 from pathlib import Path
@@ -49,6 +51,25 @@ _last_error: "CodexSubscriptionError | None" = None
 _reauth_required = False
 _catalog_revision = 0
 _model_fingerprint: tuple[tuple[str, str], ...] = ()
+
+_SELECTOR_COST_FIELD = "_subscription_selector_cost_per_m"
+_INHERITED_METRIC_FIELDS = (
+    "aa_intelligence_index",
+    "aa_coding_index",
+    "aa_agentic_index",
+    "intelligence_score",
+    "size_bucket",
+    "parameters_b",
+    "release_date",
+    "output_tokens_per_second",
+    "or_throughput_tps",
+    "latency_ttft_seconds",
+    "latency_total_seconds",
+    "or_ttft_ms",
+    "reasoning_model",
+    "reasoning_capable",
+    "forced_reasoning",
+)
 
 
 class CodexSubscriptionError(RuntimeError):
@@ -395,6 +416,98 @@ def _object_value(obj: Any, name: str, default: Any = None) -> Any:
     return getattr(obj, name, default)
 
 
+def _read_model_map(path: Path) -> dict[str, dict]:
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    models = payload.get("models") if isinstance(payload, dict) else None
+    if isinstance(models, dict):
+        return {
+            str(model_id): model
+            for model_id, model in models.items()
+            if isinstance(model, dict)
+        }
+    if isinstance(models, list):
+        return {
+            str(model.get("id")): model
+            for model in models
+            if isinstance(model, dict) and model.get("id")
+        }
+    return {}
+
+
+def _metric_sources() -> tuple[dict[str, dict], dict[str, dict]]:
+    return (
+        _read_model_map(runtime_paths.model_catalog_path()),
+        _read_model_map(runtime_paths.model_registry_path()),
+    )
+
+
+def _enrich_endpoint(
+    endpoint: dict,
+    catalog_models: dict[str, dict],
+    registry_models: dict[str, dict],
+) -> dict:
+    """Borrow selection facts only from the exact OpenAI API counterpart."""
+    native_model = str(endpoint.get("model_id") or "").strip()
+    counterpart_id = f"openai/{native_model}"
+    catalog_row = catalog_models.get(counterpart_id) or {}
+    registry_row = registry_models.get(counterpart_id) or {}
+    if not catalog_row and not registry_row:
+        return endpoint
+
+    enriched = dict(endpoint)
+    for field in _INHERITED_METRIC_FIELDS:
+        value = registry_row.get(field)
+        if value is None:
+            value = catalog_row.get(field)
+        if value is not None:
+            enriched[field] = value
+
+    context = catalog_row.get("context_window")
+    if context is None:
+        context = registry_row.get("context_length")
+    if context is not None:
+        enriched["context_window"] = context
+        enriched["context_length"] = context
+
+    if any(enriched.get(field) is not None for field in _INHERITED_METRIC_FIELDS):
+        enriched["metrics_inherited_from"] = counterpart_id
+
+    # The Codex transport is text-only even when its API counterpart accepts
+    # images. Counterpart capability metadata must never override that truth.
+    enriched["vision_capable"] = False
+    enriched["input_modalities"] = ["text"]
+    enriched["output_modalities"] = ["text"]
+    return enriched
+
+
+def _published_blended_cost(
+    counterpart_id: str,
+    catalog_models: dict[str, dict],
+    registry_models: dict[str, dict],
+) -> float | None:
+    catalog_row = catalog_models.get(counterpart_id) or {}
+    value = (catalog_row.get("openrouter_pricing") or {}).get("blended_per_m")
+    if value is None:
+        pricing = (registry_models.get(counterpart_id) or {}).get("pricing") or {}
+        value = pricing.get("blended_per_m")
+        if value is None:
+            input_per_token = pricing.get("input_per_token")
+            output_per_token = pricing.get("output_per_token")
+            if input_per_token is not None or output_per_token is not None:
+                value = (
+                    0.75 * float(input_per_token or 0)
+                    + 0.25 * float(output_per_token or 0)
+                ) * 1_000_000
+    try:
+        cost = float(value)
+    except (TypeError, ValueError):
+        return None
+    return cost if math.isfinite(cost) and cost >= 0 else None
+
+
 def _mark_reauth_required() -> None:
     global _reauth_required, _last_error, _catalog_revision, _model_fingerprint
     with _state_lock:
@@ -424,6 +537,7 @@ def model_endpoints() -> list[dict]:
             _mark_reauth_required()
         return []
 
+    catalog_models, registry_models = _metric_sources()
     endpoints: list[dict] = []
     for row in rows:
         if bool(_object_value(row, "hidden", False)):
@@ -442,7 +556,7 @@ def model_endpoints() -> list[dict]:
             _object_value(row, "display_name", "") or native_model
         )
         endpoint_id = f"codex-subscription:{sdk_id}"
-        endpoints.append({
+        endpoint = {
             "id": endpoint_id,
             "type": "api",
             "status": "active",
@@ -454,6 +568,8 @@ def model_endpoints() -> list[dict]:
             "model_id": native_model,
             "dispatch": "subscription",
             "vision_capable": False,
+            "input_modalities": ["text"],
+            "output_modalities": ["text"],
             "capabilities": {
                 "tool_access": False,
                 "file_system_access": False,
@@ -463,7 +579,10 @@ def model_endpoints() -> list[dict]:
             "subscription_provider": "OpenAI",
             "subscription_transport": "ChatGPT via the bundled Codex runtime",
             "subscription_default": bool(_object_value(row, "is_default", False)),
-        })
+        }
+        endpoints.append(_enrich_endpoint(
+            endpoint, catalog_models, registry_models,
+        ))
 
     endpoints.sort(key=lambda endpoint: endpoint["id"])
     fingerprint = tuple(
@@ -474,6 +593,51 @@ def model_endpoints() -> list[dict]:
             _model_fingerprint = fingerprint
             _catalog_revision += 1
     return endpoints
+
+
+def selector_candidates(endpoints: list[dict] | None = None) -> list[dict]:
+    """Return connected, exact-counterpart candidates for paid preset bakes.
+
+    The penny values are selection weights only. They never replace API
+    pricing on the registry endpoint and generated profiles serialize only
+    the subscription endpoint id.
+    """
+    if endpoints is None:
+        source = model_endpoints()
+        if not source:
+            return []
+        catalog_models, registry_models = _metric_sources()
+    else:
+        catalog_models, registry_models = _metric_sources()
+        source = [
+            _enrich_endpoint(dict(endpoint), catalog_models, registry_models)
+            for endpoint in endpoints
+        ]
+    ranked: list[tuple[float, str, str, dict]] = []
+    for endpoint in source:
+        counterpart_id = endpoint.get("metrics_inherited_from")
+        if not counterpart_id or endpoint.get("aa_intelligence_index") is None:
+            continue
+        published_cost = _published_blended_cost(
+            counterpart_id, catalog_models, registry_models,
+        )
+        if published_cost is None:
+            continue
+        release = str(endpoint.get("release_date") or "9999-12-31")
+        ranked.append((published_cost, release, endpoint["id"], endpoint))
+
+    candidates: list[dict] = []
+    for rank, (_cost, _release, _endpoint_id, endpoint) in enumerate(
+        sorted(ranked, key=lambda item: item[:3]), start=1,
+    ):
+        candidate = dict(endpoint)
+        candidate.update({
+            "category": "chat",
+            "is_free": False,
+            _SELECTOR_COST_FIELD: rank / 100.0,
+        })
+        candidates.append(candidate)
+    return candidates
 
 
 def _message_text(content: Any) -> str:

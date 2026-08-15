@@ -93,6 +93,7 @@ def _fixture_presets():
                 "mode": "paid_intelligence",
                 "selection": "latency_knee",
                 "latency_ceiling_ms": 1200,
+                "min_tokens_per_second": 80,
                 "knee_cost_normalization": "log",
                 "exclude_reasoning": True,
             },
@@ -139,6 +140,30 @@ class TestParetoFilter(unittest.TestCase):
         ]
         frontier = auto_populate.pareto_filter(models)
         self.assertEqual({m["id"] for m in frontier}, {"a", "b", "c"})
+
+
+class TestSubscriptionSelectorCost(unittest.TestCase):
+    def test_ephemeral_cost_drives_paid_pick_but_never_serializes_or_enters_free(self):
+        candidate = _model(
+            "codex-subscription:sdk-gpt", intelligence=95,
+            blended=99.0, size="large", provider="openai",
+        )
+        candidate["_subscription_selector_cost_per_m"] = 0.01
+        self.assertEqual(auto_populate.cost_of(candidate), 0.01)
+        self.assertEqual(auto_populate.filter_free([candidate]), [])
+        self.assertEqual(auto_populate.filter_paid([candidate]), [candidate])
+
+        catalog = _fixture_catalog() + [candidate]
+        config = auto_populate.populate_configuration(
+            "budget", catalog, _fixture_presets(),
+        )
+        self.assertEqual(
+            config["cells"]["analysis"]["gear4"]["depth"]["primary"],
+            candidate["id"],
+        )
+        serialized = json.dumps(config)
+        self.assertIn(candidate["id"], serialized)
+        self.assertNotIn("_subscription_selector_cost_per_m", serialized)
 
 
 class TestFloor(unittest.TestCase):
@@ -1217,16 +1242,37 @@ class TestPopulateConfiguration(unittest.TestCase):
         self.assertIn("loosening_log", config["_auto_populate_metadata"])
 
     def test_speed_end_to_end(self):
-        catalog = _fixture_catalog()
+        catalog = [
+            _model("qwen/qwen3.7-plus", intelligence=72, blended=0.56,
+                   size="large", provider="qwen"),
+            _model("minimax/MiniMax-M3", intelligence=72, blended=0.52,
+                   size="large", provider="minimax"),
+            _model("xiaomi/mimo-v2.5", intelligence=60, blended=0.18,
+                   size="large", provider="xiaomi"),
+            _model("fast/slow-first-token", intelligence=90, blended=0.01,
+                   size="large", provider="fast-slow-ttft"),
+            _model("small/fast", intelligence=50, blended=0.10,
+                   size="small", provider="small-fast"),
+            _model("small/slow", intelligence=60, blended=0.05,
+                   size="small", provider="small-slow"),
+            _model("small/unknown", intelligence=70, blended=0.01,
+                   size="small", provider="small-unknown"),
+        ]
         presets = _fixture_presets()
-        # Latency signal (ms) for the large-bucket models. a/flagship is OVER
-        # the 1200ms gate; the rest are within it. With these costs/intels the
-        # gated cost/intelligence frontier is d/weak → c/cheap → b/strong →
-        # a/value, and the log-cost knee (diminishing-returns elbow) is b/strong.
-        latency = {"a/flagship": 1500, "a/value": 800, "b/strong": 600,
-                   "c/cheap": 400, "d/weak": 300, "e/dominated": 900}
+        throughput = {
+            "qwen/qwen3.7-plus": 56,
+            "minimax/MiniMax-M3": 84,
+            "xiaomi/mimo-v2.5": 90,
+            "fast/slow-first-token": 100,
+            "small/fast": 100,
+            "small/slow": 40,
+            # small/unknown intentionally has no measured throughput.
+        }
+        latency = {mid: 600 for mid in throughput}
+        latency["fast/slow-first-token"] = 1500
         config = auto_populate.populate_configuration(
-            "speed", catalog, presets, latency_ms=latency)
+            "speed", catalog, presets,
+            latency_ms=latency, tokens_per_sec=throughput)
         self.assertEqual(config["preset_lineage"], "speed")
         depth = config["cells"]["analysis"]["gear4"]["depth"]
         self.assertIsNotNone(depth)
@@ -1234,11 +1280,30 @@ class TestPopulateConfiguration(unittest.TestCase):
         self.assertIsNotNone(config["cells"]["post_analysis"]["consolidation"])
         # gear3.breadth is explicitly null (sequential mode)
         self.assertIsNone(config["cells"]["analysis"]["gear3"]["breadth"])
-        # Knee selection: never the over-the-gate flagship, never the dominated
-        # model, and lands on the frontier's best-value knee (b/strong).
-        self.assertNotEqual(depth["primary"], "a/flagship")
-        self.assertNotEqual(depth["primary"], "e/dominated")
-        self.assertEqual(depth["primary"], "b/strong")
+
+        referenced = set()
+
+        def collect(value):
+            if isinstance(value, dict):
+                primary = value.get("primary")
+                if isinstance(primary, str):
+                    referenced.add(primary)
+                referenced.update(value.get("fallback") or [])
+                for child in value.values():
+                    collect(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect(child)
+
+        collect(config["cells"])
+        self.assertIn("minimax/MiniMax-M3", referenced)
+        self.assertIn("xiaomi/mimo-v2.5", referenced)
+        self.assertNotIn("qwen/qwen3.7-plus", referenced)
+        self.assertNotIn("fast/slow-first-token", referenced)
+        self.assertNotIn("small/slow", referenced)
+        self.assertNotIn("small/unknown", referenced)
+        self.assertTrue(referenced)
+        self.assertTrue(all(throughput.get(mid, 0) >= 80 for mid in referenced))
 
     def test_unknown_preset_raises(self):
         catalog = _fixture_catalog()

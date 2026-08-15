@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 import urllib.error
 from pathlib import Path
@@ -518,6 +519,9 @@ class SettingsEndpointTests(unittest.TestCase):
             "display_name": "GPT Codex", "description": "Subscription model",
             "service": "codex-subscription", "model_id": "gpt-native",
             "dispatch": "subscription", "vision_capable": False,
+            "aa_intelligence_index": 88,
+            "output_tokens_per_second": 110,
+            "metrics_inherited_from": "openai/gpt-native",
             "subscription_provider": "OpenAI",
             "subscription_transport": "ChatGPT via the bundled Codex runtime",
         }
@@ -544,6 +548,131 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertFalse(model["vision_capable"])
         self.assertEqual(model["pricing"]["input_per_token"], 0)
         self.assertFalse(model["is_free"])
+        self.assertEqual(model["aa_intelligence_index"], 88)
+        self.assertEqual(model["output_tokens_per_second"], 110)
+        self.assertEqual(model["metrics_inherited_from"], "openai/gpt-native")
+        self.assertNotIn("_subscription_selector_cost_per_m", model)
+
+    def test_subscription_catalog_change_rebakes_before_router_reload_once(self):
+        from orchestrator import active_configuration
+
+        events = []
+        prior_signature = self.S._chatgpt_catalog_signature
+        self.S._chatgpt_catalog_signature = None
+        self.addCleanup(
+            setattr, self.S, "_chatgpt_catalog_signature", prior_signature,
+        )
+        with mock.patch.object(
+            active_configuration, "bake_missing_presets",
+            side_effect=lambda **kwargs: (
+                events.append(("bake", kwargs))
+                or list(active_configuration.PRESET_ORDER)
+            ),
+        ) as bake, mock.patch.object(
+            self.S, "_reload_pipeline_router_after_config_change",
+            side_effect=lambda: (events.append(("reload", {})) or True),
+        ) as reload_router:
+            status = {"state": "connected", "catalog_revision": 7}
+            self.S._sync_chatgpt_subscription_router(status)
+            self.S._sync_chatgpt_subscription_router(status)
+
+        self.assertEqual(events, [
+            ("bake", {"force": True}),
+            ("reload", {}),
+        ])
+        bake.assert_called_once_with(force=True)
+        reload_router.assert_called_once_with()
+
+    def test_partial_subscription_rebake_does_not_reload_and_retries(self):
+        from orchestrator import active_configuration
+
+        prior_signature = self.S._chatgpt_catalog_signature
+        self.S._chatgpt_catalog_signature = None
+        self.addCleanup(
+            setattr, self.S, "_chatgpt_catalog_signature", prior_signature,
+        )
+        with mock.patch.object(
+            active_configuration, "bake_missing_presets",
+            side_effect=[
+                ["free", "budget"],
+                list(active_configuration.PRESET_ORDER),
+            ],
+        ) as bake, mock.patch.object(
+            self.S, "_reload_pipeline_router_after_config_change",
+            return_value=True,
+        ) as reload_router:
+            status = {"state": "connected", "catalog_revision": 8}
+            self.S._sync_chatgpt_subscription_router(status)
+            self.assertIsNone(self.S._chatgpt_catalog_signature)
+            reload_router.assert_not_called()
+            self.S._sync_chatgpt_subscription_router(status)
+
+        self.assertEqual(bake.call_count, 2)
+        reload_router.assert_called_once_with()
+
+    def test_newer_disconnect_waits_for_connected_bake_and_finishes_last(self):
+        from orchestrator import active_configuration
+
+        prior_signature = self.S._chatgpt_catalog_signature
+        self.S._chatgpt_catalog_signature = None
+        self.addCleanup(
+            setattr, self.S, "_chatgpt_catalog_signature", prior_signature,
+        )
+        connected_bake_entered = threading.Event()
+        release_connected_bake = threading.Event()
+        disconnected_bake_entered = threading.Event()
+        events = []
+
+        def bake(**_kwargs):
+            name = threading.current_thread().name
+            events.append(f"bake:{name}")
+            if name == "connected-sync":
+                connected_bake_entered.set()
+                release_connected_bake.wait(timeout=2)
+            else:
+                disconnected_bake_entered.set()
+            return list(active_configuration.PRESET_ORDER)
+
+        def reload_router():
+            events.append(f"reload:{threading.current_thread().name}")
+            return True
+
+        with mock.patch.object(
+            active_configuration, "bake_missing_presets", side_effect=bake,
+        ), mock.patch.object(
+            self.S, "_reload_pipeline_router_after_config_change",
+            side_effect=reload_router,
+        ):
+            connected = threading.Thread(
+                name="connected-sync",
+                target=self.S._sync_chatgpt_subscription_router,
+                args=({"state": "connected", "catalog_revision": 8},),
+            )
+            disconnected = threading.Thread(
+                name="disconnected-sync",
+                target=self.S._sync_chatgpt_subscription_router,
+                args=({"state": "disconnected", "catalog_revision": 9},),
+            )
+            connected.start()
+            self.assertTrue(connected_bake_entered.wait(timeout=1))
+            disconnected.start()
+            self.assertFalse(
+                disconnected_bake_entered.wait(timeout=0.05),
+                "disconnect bake must wait for the connected transaction lock",
+            )
+            release_connected_bake.set()
+            connected.join(timeout=2)
+            disconnected.join(timeout=2)
+
+        self.assertFalse(connected.is_alive())
+        self.assertFalse(disconnected.is_alive())
+        self.assertEqual(events, [
+            "bake:connected-sync",
+            "reload:connected-sync",
+            "bake:disconnected-sync",
+            "reload:disconnected-sync",
+        ])
+        self.assertEqual(self.S._chatgpt_catalog_signature, (False, 9))
 
     @staticmethod
     def _http_error(code: int) -> urllib.error.HTTPError:

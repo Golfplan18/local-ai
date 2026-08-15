@@ -1807,6 +1807,40 @@ a.ora-settings-apikey-label:hover {
 
 /* ── Maintenance section: reachability-probe trigger ─────────────── */
 
+.ora-models-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ora-models-bottom-grid > section {
+  min-width: 0;
+}
+
+/* The maintenance section normally carries outer padding. In the paired
+   layout, move it below the header so both section headers share a top edge. */
+.ora-models-bottom-grid > .ora-models-maintenance {
+  padding: 0 0 16px;
+}
+
+.ora-models-bottom-grid > .ora-models-maintenance .ora-models-maintenance-body {
+  padding: 6px 12px 0;
+}
+
+.ora-models-bottom-grid .ora-models-section-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.ora-models-bottom-grid .ora-models-section-header .ora-models-section-hint {
+  flex: 1 1 240px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .ora-models-maintenance {
   padding: 6px 12px 16px;
 }
@@ -1860,6 +1894,21 @@ a.ora-settings-apikey-label:hover {
   font-size: 11px;
   color: var(--text-muted, #A89F8A);
   font-style: italic;
+}
+
+@media (max-width: 1200px) {
+  .ora-models-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .ora-models-bottom-grid > .ora-models-maintenance {
+    padding: 6px 12px 16px;
+  }
+
+  .ora-models-bottom-grid > .ora-models-maintenance .ora-models-maintenance-body {
+    padding: 0;
+  }
 }
 
 .ora-models-inventory-count {
@@ -2347,23 +2396,32 @@ a.ora-settings-apikey-label:hover {
   text-align: right;
 }
 
-.ora-models-hw-fit {
-  font-size: 10px;
-  font-weight: 600;
-  width: 70px;
+.ora-models-hw-trash {
+  flex: 0 0 auto;
+  border: 1px solid var(--background-modifier-border, #3A3022);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted, #A89F8A);
+  padding: 2px 6px;
+  font-size: 9px;
+  cursor: pointer;
 }
 
-.ora-models-hw-fit-ok {
-  color: var(--color-green, #87905B);
-}
-
-.ora-models-hw-fit-no {
+.ora-models-hw-trash:hover:not(:disabled) {
+  border-color: var(--color-red, #C77958);
   color: var(--color-red, #C77958);
 }
 
-/* In-use highlight for hardware rows: signals which installed locals
-   are actually loaded by the active config. Subtle green tint so the
-   user can see at a glance where their RAM is going. */
+.ora-models-hw-trash:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.ora-models-hw-discovery-error {
+  margin: 6px 8px 0;
+}
+
+/* Allocation highlight for installed locals referenced by the active profile. */
 .ora-models-hw-row-in-use {
   background: rgba(80, 200, 120, 0.08);
 }

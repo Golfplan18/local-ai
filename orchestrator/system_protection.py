@@ -29,6 +29,8 @@ import json
 import os
 import re
 import secrets
+import stat
+from urllib.parse import quote, unquote
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -58,8 +60,11 @@ SERVER_ACTION_SELECTOR_PREFIXES = {
     "style_profile_delete": ("path:",),
     "theme_delete": ("path:",),
     "model_profile_delete": ("path:",),
+    "local_model_trash": ("local-model:",),
     "vector_store_rebuild": ("path:",),
 }
+
+_LOCAL_MODEL_SELECTOR_PREFIX = "local-model:"
 
 _DESTRUCTIVE_WORDS = re.compile(
     r"(?:^|[_:\-])(delete|destroy|erase|format|purge|remove|reset|unregister|wipe)(?:$|[_:\-])",
@@ -363,11 +368,107 @@ def _path_from_selector(selector: str) -> str | None:
     text = str(selector or "")
     if text.startswith("path:"):
         return _path_key(text[5:])
+    if text.startswith(_LOCAL_MODEL_SELECTOR_PREFIX):
+        _root, target = _local_model_selector_paths(text)
+        return target
     return None
 
 
 def path_selector(path: str | os.PathLike[str]) -> str:
     return "path:" + _path_key(path)
+
+
+def local_model_selector(
+    target: str | os.PathLike[str],
+    models_root: str | os.PathLike[str],
+) -> str:
+    """Identify one canonical direct child without exposing model contents."""
+
+    root_key = _path_key(models_root)
+    target_key = _path_key(target)
+    if os.path.dirname(target_key) != root_key:
+        raise ProtectionDenied(
+            "local model target is not a canonical direct child of its managed root"
+        )
+    encoded_root = quote(root_key, safe="/:._-~")
+    encoded_target = quote(target_key, safe="/:._-~")
+    return f"{_LOCAL_MODEL_SELECTOR_PREFIX}{encoded_root}|{encoded_target}"
+
+
+def _local_model_selector_paths(selector: str) -> tuple[str, str]:
+    text = str(selector or "")
+    if not text.startswith(_LOCAL_MODEL_SELECTOR_PREFIX):
+        raise ProtectionDenied("local model selector is not canonical")
+    payload = text[len(_LOCAL_MODEL_SELECTOR_PREFIX):]
+    if payload.count("|") != 1:
+        raise ProtectionDenied("local model selector is not canonical")
+    encoded_root, encoded_target = payload.split("|", 1)
+    root = unquote(encoded_root)
+    target = unquote(encoded_target)
+    if (
+        not root
+        or not target
+        or root != _path_key(root)
+        or target != _path_key(target)
+        or local_model_selector(target, root) != text
+    ):
+        raise ProtectionDenied("local model selector is not canonical")
+    return root, target
+
+
+def _lstat_identity(path: str) -> dict[str, Any]:
+    try:
+        current = os.lstat(path)
+    except FileNotFoundError:
+        return {"type": "absent", "lstat": None}
+    mode = current.st_mode
+    if stat.S_ISDIR(mode):
+        kind = "directory"
+    elif stat.S_ISLNK(mode):
+        kind = "symlink"
+    elif stat.S_ISREG(mode):
+        kind = "file"
+    else:
+        kind = "special"
+    return {
+        "type": kind,
+        "lstat": {
+            "device": int(current.st_dev),
+            "inode": int(current.st_ino),
+            "mode": int(mode),
+        },
+    }
+
+
+def capture_local_model_identity(
+    target: str | os.PathLike[str],
+    models_root: str | os.PathLike[str],
+) -> dict[str, Any]:
+    """Capture a no-follow identity for one managed model directory.
+
+    The selector authenticates the canonical root/target pair and the state
+    authenticates both directory entries by type and ``lstat`` identity.  It
+    deliberately does not walk or hash model contents.
+    """
+
+    selector = local_model_selector(target, models_root)
+    root, canonical_target = _local_model_selector_paths(selector)
+    root_state = _lstat_identity(root)
+    if root_state["type"] != "directory":
+        raise ProtectionDenied("local models root is not a physical directory")
+    target_state = _lstat_identity(canonical_target)
+    body = {
+        "selector": selector,
+        "kind": "local_model_direct_child",
+        "root": {"path": root, **root_state},
+        "target": {"path": canonical_target, **target_state},
+    }
+    return {**body, "digest": _digest(body)}
+
+
+def _capture_local_model_selector_identity(selector: str) -> dict[str, Any]:
+    root, target = _local_model_selector_paths(selector)
+    return capture_local_model_identity(target, root)
 
 
 def _critical_roots() -> dict[str, str]:
@@ -479,6 +580,8 @@ def capture_selector_identity(selector: str) -> dict[str, Any]:
     normalized = str(selector or "")
     if normalized.startswith("path:"):
         return capture_path_identity(normalized[5:])
+    if normalized.startswith(_LOCAL_MODEL_SELECTOR_PREFIX):
+        return _capture_local_model_selector_identity(normalized)
     if normalized.startswith("credential:"):
         parts = normalized.split(":", 1)[1].split("/", 1)
         if len(parts) != 2 or parts[0] != "ora" or not parts[1]:
@@ -526,7 +629,9 @@ def _authenticate_state_identities(
         claimed = state.pop("digest", None)
         if claimed != _digest(state):
             raise ProtectionDenied(f"protected {phase} state identity is invalid")
-        if selector.startswith(("path:", "credential:")):
+        if selector.startswith((
+            "path:", "credential:", _LOCAL_MODEL_SELECTOR_PREFIX,
+        )):
             captured = capture_selector_identity(selector)
             if dict(raw) != captured:
                 raise ProtectionDenied(
@@ -993,6 +1098,15 @@ def complete_execution(
             raise ProtectionAuditError(
                 "credential deletion cannot complete until exact post-state is absent"
             )
+    if ok and execution.action == "local_model_trash":
+        if any(
+            state.get("kind") != "local_model_direct_child"
+            or (state.get("target") or {}).get("type") != "absent"
+            for state in authenticated_post_state
+        ):
+            raise ProtectionAuditError(
+                "local model Trash cannot complete while the exact target remains present"
+            )
     path = _actions_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with _rp.locked_file(path):
@@ -1237,11 +1351,13 @@ __all__ = [
     "SystemProtectionError",
     "authorize_server_action",
     "begin_execution",
+    "capture_local_model_identity",
     "capture_path_identity",
     "classify_action",
     "classify_tool_call",
     "complete_execution",
     "params_digest",
+    "local_model_selector",
     "path_selector",
     "protected_effect",
     "require_active_execution",

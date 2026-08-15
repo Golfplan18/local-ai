@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import sys
 import tempfile
 import time
@@ -235,6 +236,97 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
         self.assertFalse(endpoint["vision_capable"])
         self.assertFalse(endpoint["capabilities"]["tool_access"])
         self.assertNotIn("context_window", endpoint)
+
+    def test_exact_counterparts_supply_metrics_and_selector_only_penny_costs(self):
+        self._connect()
+        self.client.model_rows = [
+            types.SimpleNamespace(
+                id="sdk-old", model="gpt-old", display_name="GPT Old",
+                hidden=False, input_modalities=["text"], is_default=False,
+            ),
+            types.SimpleNamespace(
+                id="sdk-new", model="gpt-new", display_name="GPT New",
+                hidden=False, input_modalities=["text"], is_default=False,
+            ),
+            types.SimpleNamespace(
+                id="sdk-expensive", model="gpt-expensive",
+                display_name="GPT Expensive", hidden=False,
+                input_modalities=["text"], is_default=False,
+            ),
+            types.SimpleNamespace(
+                id="sdk-unmatched", model="gpt-native",
+                display_name="GPT Unmatched", hidden=False,
+                input_modalities=["text"], is_default=False,
+            ),
+        ]
+        catalog_path = Path(self.tmp.name) / "model-catalog.json"
+        registry_path = Path(self.tmp.name) / "model-registry.json"
+        catalog_path.write_text(json.dumps({"models": [
+            {"id": "openai/gpt-old", "size_bucket": "large",
+             "release_date": "2024-01-01", "context_window": 200000,
+             "openrouter_pricing": {"blended_per_m": 2.0}},
+            {"id": "openai/gpt-new", "size_bucket": "large",
+             "release_date": "2025-01-01", "context_window": 300000,
+             "openrouter_pricing": {"blended_per_m": 2.0}},
+            {"id": "openai/gpt-expensive", "size_bucket": "large",
+             "release_date": "2025-06-01",
+             "openrouter_pricing": {"blended_per_m": 8.0}},
+            # A fuzzy near-match must not enrich sdk-unmatched.
+            {"id": "openai/gpt-native-preview", "size_bucket": "large",
+             "openrouter_pricing": {"blended_per_m": 1.0}},
+        ]}))
+        registry_path.write_text(json.dumps({"models": {
+            model_id: {
+                "aa_intelligence_index": 70 + index,
+                "aa_coding_index": 80 + index,
+                "aa_agentic_index": 60 + index,
+                "output_tokens_per_second": 100 + index,
+                "latency_ttft_seconds": 0.4 + index / 10,
+                "reasoning_model": False,
+                "vision_capable": True,
+            }
+            for index, model_id in enumerate((
+                "openai/gpt-old", "openai/gpt-new",
+                "openai/gpt-expensive",
+            ))
+        }}))
+
+        with mock.patch.object(
+            subscription.runtime_paths, "model_catalog_path",
+            return_value=catalog_path,
+        ), mock.patch.object(
+            subscription.runtime_paths, "model_registry_path",
+            return_value=registry_path,
+        ):
+            endpoints = subscription.model_endpoints()
+            candidates = subscription.selector_candidates(endpoints)
+
+        by_id = {endpoint["id"]: endpoint for endpoint in endpoints}
+        enriched = by_id["codex-subscription:sdk-old"]
+        self.assertEqual(enriched["metrics_inherited_from"], "openai/gpt-old")
+        self.assertEqual(enriched["aa_coding_index"], 80)
+        self.assertEqual(enriched["context_window"], 200000)
+        self.assertFalse(enriched["vision_capable"])
+        self.assertEqual(enriched["input_modalities"], ["text"])
+        self.assertEqual(enriched["output_modalities"], ["text"])
+        self.assertNotIn(
+            "metrics_inherited_from",
+            by_id["codex-subscription:sdk-unmatched"],
+        )
+
+        self.assertEqual([candidate["id"] for candidate in candidates], [
+            "codex-subscription:sdk-old",
+            "codex-subscription:sdk-new",
+            "codex-subscription:sdk-expensive",
+        ])
+        self.assertEqual(
+            [candidate["_subscription_selector_cost_per_m"]
+             for candidate in candidates],
+            [0.01, 0.02, 0.03],
+        )
+        for candidate in candidates:
+            self.assertNotIn("openrouter_pricing", candidate)
+            self.assertNotIn("pricing", candidate)
 
     def test_inference_is_ephemeral_read_only_deny_all_and_metered(self):
         self._connect()

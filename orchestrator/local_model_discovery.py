@@ -9,6 +9,8 @@ array. Scans each subdirectory for a valid MLX ``config.json``, derives:
 - type (``dense`` or ``moe``)
 - architecture_note
 - recommended_roles (by parameter-count rule table)
+- parameters_b (estimated total parameters, including multimodal components)
+- context_window (extracted from the model config when declared)
 - active_params_per_token (total for dense; estimated for MoE)
 - vision_capable
 
@@ -27,13 +29,25 @@ and miss new ones. This module closes that loop.
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Optional
 
 # Default models directory — overridable by tests.
 DEFAULT_MODELS_DIR = Path.home() / "ora" / "models"
 DEFAULT_MODELS_JSON = Path.home() / "ora" / "config" / "models.json"
+DEFAULT_ROUTING_CONFIG = Path.home() / "ora" / "config" / "routing-config.json"
+TRASH_BIN = "/usr/bin/trash"
+
+
+class LocalModelDiscoveryError(RuntimeError):
+    """The installed-model directory could not be read authoritatively."""
+
+
+class LocalModelDeleteError(ValueError):
+    """A requested deletion target is not a currently discovered model."""
 
 # Pipeline-role rule table by total parameter count (billions).
 # Ranges align with the Ora slot taxonomy:
@@ -124,6 +138,26 @@ def _estimate_total_params_b(model_dir: Path, config: dict) -> float:
         return 0.0
     bits = _quant_bits(config)
     return bytes_total * 8.0 / bits / 1e9
+
+
+def _extract_context_window(config: dict) -> int | None:
+    """Extract a positive declared text context window without guessing."""
+    keys = (
+        "max_position_embeddings", "max_sequence_length", "max_seq_len",
+        "seq_length", "sequence_length", "n_positions", "context_length",
+        "model_max_length",
+    )
+    text = _text_config(config)
+    for source in (text, config):
+        for key in keys:
+            value = source.get(key)
+            try:
+                context = int(value)
+            except (TypeError, ValueError):
+                continue
+            if context > 0:
+                return context
+    return None
 
 
 def _extract_active_params_b(dir_name: str, total_b: float, config: dict) -> float:
@@ -279,6 +313,8 @@ def probe_model_dir(model_dir: Path) -> Optional[dict]:
         "architecture_note": _make_arch_note(model_dir.name, total_b, active_b,
                                               is_moe, vision, config),
         "recommended_roles": _recommended_roles(total_b),
+        "parameters_b": round(total_b, 1),
+        "context_window": _extract_context_window(config),
         "active_params_per_token": int(round(active_b)),
         "vision_capable": vision,
     }
@@ -295,12 +331,34 @@ def scan_models_dir(models_dir: Path = DEFAULT_MODELS_DIR) -> list[dict]:
     Returns a list sorted by parameter count (smallest first), which
     matches the conventional models.json ordering.
     """
-    if not models_dir.is_dir():
-        return []
+    models_dir = Path(models_dir).expanduser()
+    try:
+        if not models_dir.exists():
+            raise LocalModelDiscoveryError(
+                f"local models directory is missing: {models_dir}"
+            )
+        if not models_dir.is_dir():
+            raise LocalModelDiscoveryError(
+                f"local models path is not a directory: {models_dir}"
+            )
+        if not os.access(models_dir, os.R_OK | os.X_OK):
+            raise LocalModelDiscoveryError(
+                f"local models directory is unreadable: {models_dir}"
+            )
+        subdirs = sorted(models_dir.iterdir())
+    except LocalModelDiscoveryError:
+        raise
+    except OSError as exc:
+        raise LocalModelDiscoveryError(
+            f"local models directory is unreadable: {models_dir}: {exc}"
+        ) from exc
 
     entries = []
-    for subdir in sorted(models_dir.iterdir()):
-        if not subdir.is_dir():
+    for subdir in subdirs:
+        # A symlink is not a physical direct child of the managed model
+        # directory.  Ignoring it here also prevents one physical model from
+        # appearing twice through a second symlinked name.
+        if subdir.is_symlink() or not subdir.is_dir():
             continue
         entry = probe_model_dir(subdir)
         if entry is not None:
@@ -311,6 +369,138 @@ def scan_models_dir(models_dir: Path = DEFAULT_MODELS_DIR) -> list[dict]:
     return entries
 
 
+def _canonical_path(value: str | Path) -> str:
+    return str(Path(value).expanduser().resolve(strict=False))
+
+
+def _load_static_local_endpoints(routing_config: Path | None) -> list[dict]:
+    """Load configured local endpoints used to retain stable identities."""
+    if routing_config is None:
+        return []
+    path = Path(routing_config).expanduser()
+    if not path.exists():
+        return []
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise LocalModelDiscoveryError(
+            f"could not read configured local endpoints from {path}: {exc}"
+        ) from exc
+    return [
+        endpoint for endpoint in (data.get("endpoints") or [])
+        if isinstance(endpoint, dict)
+        and endpoint.get("type") == "local"
+        and endpoint.get("id")
+        and (endpoint.get("model_path") or endpoint.get("path"))
+    ]
+
+
+def reconcile_static_local_endpoints(
+    discovered: list[dict],
+    static_endpoints: list[dict],
+) -> list[dict]:
+    """Return one discovered row per path, retaining matching static identity.
+
+    Physical paths are authoritative.  A configured endpoint contributes its
+    stable id and curated metadata only when its canonical model path matches a
+    directory found by the current scan.  Configured endpoints whose paths are
+    absent therefore cannot create stale inventory rows.
+    """
+    endpoint_by_path: dict[str, dict] = {}
+    for endpoint in static_endpoints:
+        raw_path = endpoint.get("model_path") or endpoint.get("path")
+        if not raw_path:
+            continue
+        endpoint_by_path.setdefault(_canonical_path(raw_path), endpoint)
+
+    reconciled = []
+    seen_paths: set[str] = set()
+    for model in discovered:
+        raw_path = model.get("path") or model.get("model_path")
+        if not raw_path:
+            continue
+        canonical = _canonical_path(raw_path)
+        if canonical in seen_paths:
+            continue
+        seen_paths.add(canonical)
+
+        row = dict(model)
+        row["path"] = canonical
+        endpoint = endpoint_by_path.get(canonical)
+        if endpoint:
+            row["id"] = endpoint["id"]
+            for key in (
+                "display_name", "provider", "training_family", "tier",
+                "context_window", "capabilities", "enabled", "status",
+                "vision_capable", "machine", "engine", "ram_overhead_gb",
+            ):
+                if endpoint.get(key) is not None:
+                    row[key] = endpoint[key]
+        reconciled.append(row)
+    return reconciled
+
+
+def resolve_delete_target(
+    model_id: str,
+    discovered: list[dict],
+    models_dir: Path = DEFAULT_MODELS_DIR,
+) -> Path:
+    """Resolve an id to a safe, current physical model directory.
+
+    The returned directory must exist, must not be a symlink, and must be a
+    canonical direct child of the managed models root.  Callers must pass the
+    result of a fresh successful scan; an arbitrary path is never accepted.
+    """
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise LocalModelDeleteError("model_id is required")
+    matches = [
+        model for model in discovered
+        if isinstance(model, dict) and model.get("id") == model_id.strip()
+    ]
+    if len(matches) != 1:
+        raise LocalModelDeleteError(
+            "model is not a currently discovered local model"
+        )
+
+    raw_target = matches[0].get("path") or matches[0].get("model_path")
+    if not raw_target:
+        raise LocalModelDeleteError("discovered model has no physical path")
+    try:
+        root = Path(models_dir).expanduser().resolve(strict=True)
+        candidate = Path(raw_target).expanduser()
+        if candidate.is_symlink():
+            raise LocalModelDeleteError("symlink model directories cannot be deleted")
+        target = candidate.resolve(strict=True)
+    except LocalModelDeleteError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise LocalModelDeleteError(
+            f"model directory is no longer current: {exc}"
+        ) from exc
+
+    if not root.is_dir():
+        raise LocalModelDeleteError("local models root is not a directory")
+    if target.parent != root:
+        raise LocalModelDeleteError(
+            "model directory is not a canonical direct child of the local models root"
+        )
+    if not target.is_dir():
+        raise LocalModelDeleteError("model target is not a directory")
+    return target
+
+
+def move_model_to_trash(target: Path) -> subprocess.CompletedProcess:
+    """Move one already-validated model directory to macOS Trash."""
+    return subprocess.run(
+        [TRASH_BIN, str(target)],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
 # ----------------------------------------------------------------------
 # Public refresh API: rewrite the local_models section of models.json
 # ----------------------------------------------------------------------
@@ -319,6 +509,7 @@ def scan_models_dir(models_dir: Path = DEFAULT_MODELS_DIR) -> list[dict]:
 def refresh(
     models_json: Path = DEFAULT_MODELS_JSON,
     models_dir: Path = DEFAULT_MODELS_DIR,
+    routing_config: Path | None = DEFAULT_ROUTING_CONFIG,
     write: bool = False,
 ) -> dict:
     """Run discovery and optionally rewrite the local_models section.
@@ -336,11 +527,14 @@ def refresh(
     When ``write=True``:
     - rewrites ``models_json`` with the new ``local_models`` array
     - preserves the ``commercial_models`` array and ALL top-level keys
-    - skips the rewrite (and returns wrote=False) if discovery returns
-      zero entries — safety against the models directory being
-      momentarily inaccessible or unmounted
+    - a successfully read empty directory writes an empty array
+    - a missing or unreadable directory raises LocalModelDiscoveryError before
+      any write, preserving the last-known-good inventory
     """
-    discovered = scan_models_dir(models_dir)
+    discovered = reconcile_static_local_endpoints(
+        scan_models_dir(models_dir),
+        _load_static_local_endpoints(routing_config),
+    )
 
     previous = []
     full_doc = {}
@@ -367,14 +561,10 @@ def refresh(
     if not write:
         return result
 
-    # Safety: refuse to blank out the file if discovery returned nothing.
-    if not discovered:
-        return result
-
     full_doc["local_models"] = discovered
     # Track when discovery last ran so the V3 pane can show staleness.
     full_doc["_local_models_discovered_at"] = (
-        Path(models_dir).stat().st_mtime if Path(models_dir).is_dir() else None
+        Path(models_dir).stat().st_mtime
     )
 
     with open(models_json, "w") as f:

@@ -299,6 +299,155 @@ class TestConfigNameMissing(unittest.TestCase):
         self.assertIsNone(ep)
 
 
+class TestSameMachineLocalResolution(unittest.TestCase):
+    def _router(self):
+        local = {
+            "id": "local-a", "type": "local", "engine": "mlx",
+            "machine": "studio-128", "model_path": "/not-loaded/local-a",
+            "enabled": True, "status": "active",
+        }
+        config = {
+            "endpoints": [local],
+            "buckets": {"local": ["local-a"]},
+            "pipelines": {"legacy-test": {"analysis": {"gear4": {
+                "depth": {"buckets": ["local"]},
+            }}}},
+        }
+        with mock.patch.object(
+            Router, "_merge_models_json_local_endpoints", return_value=True,
+        ):
+            return Router(config_dict=config)
+
+    def test_legacy_path_does_not_exclude_same_machine_local(self):
+        endpoint = self._router().resolve_endpoint(
+            "depth", 4, "legacy-test", same_machine_block="studio-128",
+            mutex_check=False,
+        )
+        self.assertEqual(endpoint["id"], "local-a")
+
+    def test_named_path_does_not_exclude_same_machine_local(self):
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            (config_dir / "local-profile.json").write_text(json.dumps({
+                "cells": {"analysis": {"gear4": {"depth": {
+                    "primary": "local-a", "fallback": [],
+                }}}},
+            }), encoding="utf-8")
+            with mock.patch.object(
+                router_module, "CONFIGURATIONS_DIR", config_dir,
+            ), mock.patch(
+                "orchestrator.model_profiles.ac._load_local_models",
+                return_value=[],
+            ):
+                endpoint = self._router().resolve_endpoint(
+                    "depth", 4, "interactive",
+                    config_name="local-profile",
+                    same_machine_block="studio-128", mutex_check=False,
+                )
+        self.assertEqual(endpoint["id"], "local-a")
+
+    def test_profile_diversity_override_is_authoritative_for_retry(self):
+        import router as router_module
+
+        endpoint = {
+            "id": "api-a", "type": "api", "service": "test",
+            "model_id": "api-a", "enabled": True, "status": "active",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            for name, diversity in (("strict", True), ("reuse", False)):
+                (config_dir / f"{name}.json").write_text(json.dumps({
+                    "diversity_override": diversity,
+                    "cells": {"analysis": {"gear4": {
+                        "depth": {"primary": "api-a", "fallback": []},
+                        "breadth": {"primary": "api-a", "fallback": []},
+                    }}},
+                }), encoding="utf-8")
+            with mock.patch.object(
+                router_module, "CONFIGURATIONS_DIR", config_dir,
+            ), mock.patch(
+                "orchestrator.model_profiles.ac._load_local_models",
+                return_value=[],
+            ), mock.patch.object(
+                Router, "_merge_models_json_local_endpoints", return_value=True,
+            ):
+                global_reuse = Router(config_dict={
+                    "endpoints": [endpoint], "diversity": {"enabled": False},
+                })
+                global_strict = Router(config_dict={
+                    "endpoints": [endpoint], "diversity": {"enabled": True},
+                })
+                self.assertIsNone(global_reuse.resolve_gear(
+                    4, "interactive", config_name="strict"))
+                reused = global_strict.resolve_gear(
+                    4, "interactive", config_name="reuse")
+
+        self.assertEqual(reused["depth"]["id"], "api-a")
+        self.assertEqual(reused["breadth"]["id"], "api-a")
+
+
+class TestConfigurationRamContract(unittest.TestCase):
+    def test_direct_named_profile_load_rejects_over_cap_allocation(self):
+        from orchestrator import model_profiles as mp
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            (config_dir / "oversized.json").write_text(json.dumps({
+                "roles": {
+                    "inner": {
+                        "primary": "vendor/cloud-model", "fallback": [],
+                    },
+                    "large": {
+                        "role": "inner",
+                        "primary": "local-too-large", "fallback": [],
+                    },
+                },
+                "cells": {"analysis": {
+                    "role": "inner",
+                    "gear4": {"depth": {"role": "large"}},
+                }},
+            }), encoding="utf-8")
+            with (
+                mock.patch.object(router_module, "CONFIGURATIONS_DIR", config_dir),
+                mock.patch.object(mp.ac, "_get_system_ram_gb", return_value=100),
+                mock.patch.object(mp.ac, "_load_local_models", return_value=[
+                    {"id": "local-too-large", "ram_gb": 86},
+                ]),
+            ):
+                router = Router(config_dict={"endpoints": []})
+                with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                    router._load_configuration("oversized")
+                self.assertNotIn("oversized", router._configurations)
+
+                router._configurations["oversized"] = json.loads(
+                    (config_dir / "oversized.json").read_text(encoding="utf-8")
+                )
+                with self.assertRaisesRegex(mp.ModelProfileError, "85% hard cap"):
+                    router._load_configuration("oversized")
+
+    def test_named_profile_without_installed_locals_still_loads(self):
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            config_dir = Path(td)
+            expected = {"cells": {"analysis": {"gear4": {"depth": {
+                "primary": "vendor/cloud-model", "fallback": [],
+            }}}}}
+            (config_dir / "cloud-only.json").write_text(
+                json.dumps(expected), encoding="utf-8",
+            )
+            with mock.patch.object(
+                router_module, "CONFIGURATIONS_DIR", config_dir,
+            ), mock.patch(
+                "orchestrator.model_profiles.ac._load_local_models",
+                return_value=[],
+            ):
+                router = Router(config_dict={"endpoints": []})
+                self.assertEqual(router._load_configuration("cloud-only"), expected)
+
 class TestConfigurationCacheClearsOnReload(unittest.TestCase):
     """reload() must invalidate the configuration cache so file edits
     take effect on the next call."""

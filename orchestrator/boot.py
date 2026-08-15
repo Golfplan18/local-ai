@@ -17621,6 +17621,28 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
 _mlx_cache: dict = {}  # {model_path: (model_obj, tokenizer)}
 
 
+def evict_mlx_model(model_path: str | os.PathLike) -> bool:
+    """Evict every cached MLX entry resolving to ``model_path``.
+
+    Callers performing filesystem mutation must hold the model's machine mutex
+    while invoking this helper so no inference can retain or recreate the cache
+    entry between eviction and the mutation.
+    """
+    canonical = os.path.realpath(os.path.expanduser(os.fspath(model_path)))
+    removed = False
+    for cached_path in list(_mlx_cache):
+        try:
+            cached_canonical = os.path.realpath(
+                os.path.expanduser(os.fspath(cached_path))
+            )
+        except TypeError:
+            continue
+        if cached_canonical == canonical:
+            _mlx_cache.pop(cached_path, None)
+            removed = True
+    return removed
+
+
 def call_local_endpoint(messages: list, endpoint: dict, images: list = None) -> str:
     url = endpoint.get("url", "http://localhost:11434")
     engine = endpoint.get("engine", "ollama")

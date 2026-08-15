@@ -222,7 +222,7 @@ class TestExternalApiWalkthrough(unittest.TestCase):
 
     def test_requirements_install_codex_sdk_and_pinned_runtime_package(self):
         requirements = (REPO_ROOT / "requirements.txt").read_text().splitlines()
-        self.assertIn("openai-codex", requirements)
+        self.assertIn("openai-codex==0.144.4", requirements)
 
 
 if __name__ == "__main__":
