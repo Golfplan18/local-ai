@@ -21,19 +21,9 @@ for p in (HERE, WORKTREE_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import importlib.util as _ilu
 
 
-def _load_worktree(modname: str):
-    fname = os.path.join(HERE, f"{modname}.py")
-    spec = _ilu.spec_from_file_location(modname, fname)
-    mod = _ilu.module_from_spec(spec)
-    sys.modules[modname] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-rag_engine = _load_worktree("rag_engine")
+import rag_engine
 
 
 class TestRagMaxChars(unittest.TestCase):

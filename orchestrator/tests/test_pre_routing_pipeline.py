@@ -10,7 +10,7 @@ import os
 import sys
 import unittest
 
-WORKSPACE = os.path.expanduser("~/ora")
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 
 import boot  # noqa: E402
