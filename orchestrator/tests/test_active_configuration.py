@@ -360,6 +360,168 @@ class TestProfileRamAllocation(_Fixture):
         self.assertEqual(self.module.ACTIVE_POINTER_PATH.read_bytes(), before)
 
 
+class TestFreeLocalOverlay(_Fixture):
+    @staticmethod
+    def _cell(primary, *fallback):
+        return {"primary": primary, "fallback": list(fallback)}
+
+    def _cloud_free(self):
+        cell = self._cell
+        return {"name": "free", "preset_lineage": "free", "cells": {
+            "utility": {
+                "step1_cleanup": cell("cloud-small", "cloud-small-2"),
+                "classification": cell("cloud-classify", "cloud-small-2"),
+                "rag_planner": cell("cloud-plan", "cloud-small-2"),
+                "gear2_rag_lookup": cell("cloud-fast-lookup", "cloud-fast-3"),
+            },
+            "analysis": {
+                "gear4": {
+                    "depth": cell("cloud-big-1", "cloud-big-3"),
+                    "breadth": cell("cloud-big-2", "cloud-big-4"),
+                },
+                "gear3": {
+                    "depth": cell("cloud-fast-1", "cloud-fast-3"),
+                    "breadth": cell("cloud-fast-2", "cloud-fast-4"),
+                },
+            },
+            "post_analysis": {
+                "consolidation": cell("cloud-consolidate", "cloud-big-3"),
+                "verification": cell("cloud-verify", "cloud-big-3"),
+                "formatter": cell("cloud-format", "cloud-big-3"),
+            },
+        }}
+
+    @staticmethod
+    def _local(model_id, params, ram, family, **overrides):
+        row = {
+            "id": model_id,
+            "parameters_b": params,
+            "ram_gb": ram,
+            "training_family": family,
+            "context_window": 262_144,
+            "vision_capable": True,
+            "enabled": True,
+            "status": "active",
+        }
+        row.update(overrides)
+        return row
+
+    def test_128gb_free_uses_94gb_and_reuses_pair_slots(self):
+        config = self._cloud_free()
+        locals_ = [
+            self._local("local-big", 156, 73, "mistral"),
+            self._local("local-fast", 32, 15, "qwen"),
+            self._local("local-small", 11.9, 6, "qwen"),
+        ]
+
+        self.module._apply_free_local_overlay(
+            config, local_models=locals_, system_ram_gb=128,
+            toggles={"adversarial_diversity": False},
+        )
+
+        cells = config["cells"]
+        self.assertEqual(cells["analysis"]["gear4"]["depth"]["primary"],
+                         "local-big")
+        self.assertEqual(cells["analysis"]["gear4"]["breadth"]["primary"],
+                         "local-big")
+        self.assertEqual(cells["analysis"]["gear3"]["depth"]["primary"],
+                         "local-fast")
+        self.assertEqual(cells["analysis"]["gear3"]["breadth"]["primary"],
+                         "local-fast")
+        self.assertEqual(cells["utility"]["step1_cleanup"]["primary"],
+                         "local-small")
+        self.assertEqual(
+            cells["analysis"]["gear4"]["depth"]["fallback"][0],
+            "cloud-big-1",
+        )
+        self.assertEqual(
+            cells["post_analysis"]["verification"]["fallback"][0],
+            "cloud-verify",
+        )
+        for section in (cells["utility"], cells["analysis"]["gear4"],
+                        cells["analysis"]["gear3"], cells["post_analysis"]):
+            for chain in section.values():
+                self.assertFalse(any(mid.startswith("local-")
+                                     for mid in chain.get("fallback", [])))
+        allocation = self.module.profile_ram_allocation(
+            config, system_ram_gb=128, local_models=locals_)
+        self.assertEqual(allocation["allocated_local_ram_gb"], 94)
+        self.assertLessEqual(allocation["allocated_local_ram_gb"],
+                             allocation["automatic_target_gb"])
+        self.assertFalse(config["diversity_override"])
+
+    def test_diversity_adds_distinct_family_pairs_after_core_slots(self):
+        config = self._cloud_free()
+        locals_ = [
+            self._local("big-a", 120, 70, "a"),
+            self._local("big-a-older", 110, 60, "a"),
+            self._local("big-b", 100, 50, "b"),
+            self._local("fast-a", 40, 20, "a"),
+            self._local("fast-b", 30, 15, "b"),
+            self._local("small", 8, 5, "s"),
+        ]
+
+        self.module._apply_free_local_overlay(
+            config, local_models=locals_, system_ram_gb=250,
+            toggles={"adversarial_diversity": True},
+        )
+
+        gear4 = config["cells"]["analysis"]["gear4"]
+        gear3 = config["cells"]["analysis"]["gear3"]
+        self.assertEqual(gear4["depth"]["primary"], "big-a")
+        self.assertEqual(gear4["breadth"]["primary"], "big-b")
+        self.assertEqual(gear3["depth"]["primary"], "fast-a")
+        self.assertEqual(gear3["breadth"]["primary"], "fast-b")
+        self.assertTrue(config["diversity_override"])
+
+    def test_1m_and_vision_toggles_leave_incompatible_locals_out(self):
+        config = self._cloud_free()
+        locals_ = [
+            self._local("short-big", 100, 40, "a", context_window=899_999),
+            self._local("text-fast", 20, 10, "b", context_window=1_000_000,
+                        vision_capable="false"),
+            self._local("nan-big", 90, 35, "d", context_window=float("nan")),
+            self._local("eligible-small", 8, 5, "c",
+                        context_window=1_000_000),
+        ]
+
+        self.module._apply_free_local_overlay(
+            config, local_models=locals_, system_ram_gb=128,
+            toggles={"min_context_1m": True, "vision_only": True},
+        )
+
+        self.assertEqual(
+            config["cells"]["analysis"]["gear4"]["depth"]["primary"],
+            "cloud-big-1",
+        )
+        self.assertEqual(
+            config["cells"]["analysis"]["gear3"]["depth"]["primary"],
+            "cloud-fast-1",
+        )
+        self.assertEqual(
+            config["cells"]["utility"]["step1_cleanup"]["primary"],
+            "eligible-small",
+        )
+
+    def test_stale_disabled_and_inactive_models_are_excluded(self):
+        config = self._cloud_free()
+        locals_ = [
+            self._local("stale", 200, 50, "stale",
+                        path=str(Path(self.tmpdir) / "missing-model")),
+            self._local("disabled", 190, 50, "disabled", enabled=False),
+            self._local("inactive", 180, 50, "inactive", status="inactive"),
+            self._local("eligible", 100, 40, "eligible"),
+        ]
+
+        self.module._apply_free_local_overlay(
+            config, local_models=locals_, system_ram_gb=128, toggles={})
+
+        self.assertEqual(
+            config["cells"]["analysis"]["gear4"]["depth"]["primary"],
+            "eligible",
+        )
+
+
 class TestToggles(_Fixture):
 
     def test_get_infers_adversarial_from_breadth_populated(self):

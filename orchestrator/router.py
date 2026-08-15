@@ -4,7 +4,7 @@ Model routing engine for Ora.
 Resolves pipeline slots to endpoints using the bucket-based priority system
 defined in routing-config.json. Handles:
   - Bucket resolution with ordered fallthrough
-  - MLX parallel constraint (two local models on same machine)
+  - MLX per-machine serialization for local models
   - Gear downgrade cascade
   - Warning generation (overkill, underkill, same-provider, swap risk)
   - V1 endpoint compatibility (returns dicts usable by call_model)
@@ -434,7 +434,8 @@ class Router:
                 this is mapped to a default configuration via
                 DEFAULT_CONFIG_FOR_CONTEXT (Chunk 2d cutover).
             excluded_ids: Endpoint IDs already assigned (for diversity)
-            same_machine_block: Machine ID to block local endpoints from (MLX constraint)
+            same_machine_block: Retained for caller compatibility; local work
+                is serialized by the MLX mutex instead of excluded by machine.
             config_name: Named configuration in config/configurations/.
                 When None, the effective configuration is derived from
                 ``context``.
@@ -485,11 +486,6 @@ class Router:
                     continue
                 if ep_id in excluded_ids:
                     continue
-
-                # MLX parallel constraint: block local endpoints on the same machine
-                if same_machine_block and ep.get("type") == "local":
-                    if ep.get("machine") == same_machine_block:
-                        continue
 
                 if mutex_check and ep.get("type") == "local":
                     machine_id = ep.get("machine") or DEFAULT_MACHINE_ID
@@ -566,14 +562,6 @@ class Router:
                 config_diversity = bool(cfg_dict["diversity_override"])
 
         for slot in slots:
-            same_machine_block = None
-
-            # For Gear 4: apply MLX parallel constraint
-            if gear == 4 and slot == "breadth" and "depth" in assignments:
-                depth_ep = assignments["depth"]
-                if depth_ep.get("type") == "local":
-                    same_machine_block = depth_ep.get("machine")
-
             # For breadth slot: prefer a different model than depth for diversity.
             # Skipped entirely when the config sets diversity_override: false —
             # in that case breadth resolves the same way depth did, which
@@ -585,22 +573,19 @@ class Router:
                 ep = self.resolve_endpoint(
                     slot, gear, context,
                     excluded_ids={depth_id},
-                    same_machine_block=same_machine_block,
                     config_name=config_name,
                 )
 
                 # When diversity is enforced, do NOT fall back to the same model.
                 # This lets the gear downgrade cascade find a wider pool at lower gears.
-                if ep is None and not self._diversity:
+                if ep is None and not config_diversity:
                     ep = self.resolve_endpoint(
                         slot, gear, context,
-                        same_machine_block=same_machine_block,
                         config_name=config_name,
                     )
             else:
                 ep = self.resolve_endpoint(
                     slot, gear, context,
-                    same_machine_block=same_machine_block,
                     config_name=config_name,
                 )
 
@@ -1284,7 +1269,7 @@ class Router:
 
         Walks the cell's primary + fallback[] in order, applying the same
         per-endpoint filters as the legacy bucket-walk path
-        (enabled, status==active, excluded_ids, same_machine_block).
+        (enabled, status==active, excluded_ids, mutex availability).
 
         ``mutex_check``: when True, local endpoints with a busy per-machine
         MLX mutex are skipped in favour of the next chain entry; the first
@@ -1345,10 +1330,6 @@ class Router:
                 continue
             if ep_id in excluded_ids or resolved_ep_id in excluded_ids:
                 continue
-            if same_machine_block and ep.get("type") == "local":
-                if ep.get("machine") == same_machine_block:
-                    continue
-
             if mutex_check and ep.get("type") == "local":
                 machine_id = ep.get("machine") or DEFAULT_MACHINE_ID
                 try:

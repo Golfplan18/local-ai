@@ -16,6 +16,7 @@ sys.path.insert(0, str(WORKSPACE / 'server'))
 
 import conversation_memory as runtime_memory
 from orchestrator import conversation_memory as package_memory
+from orchestrator import active_configuration as ac
 from orchestrator import model_profiles as mp
 from orchestrator import project_meta as pm
 from server import app as server
@@ -66,6 +67,70 @@ class ModelProfileApiTests(unittest.TestCase):
     def tearDown(self):
         self._sessions_stack.close()
         self._sessions_tmp.cleanup()
+
+    def test_configuration_inventory_rebake_reloads_router_after_write(self):
+        events = []
+        catalog = {
+            'presets': {name: None for name in ac.PRESET_ORDER},
+            'customs': [], 'active_name': 'free', 'active_toggles': {},
+        }
+        with (
+            mock.patch.object(
+                server, '_refresh_local_model_inventory',
+                side_effect=lambda: (events.append('scan') or ({}, None)),
+            ),
+            mock.patch.object(
+                ac, 'bake_missing_presets',
+                side_effect=lambda *a, **k: (events.append('bake') or ['free']),
+            ) as bake,
+            mock.patch.object(
+                server, '_reload_pipeline_router_after_config_change',
+                side_effect=lambda: (events.append('reload') or True),
+            ),
+            mock.patch.object(ac, 'list_configurations', return_value=catalog),
+            mock.patch.object(
+                mp, 'decorate_configuration_catalog', side_effect=lambda value: value,
+            ),
+        ):
+            response = self.client.get('/api/configurations')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(events, ['scan', 'bake', 'reload'])
+        bake.assert_called_once_with(force=True, preset_names=('free',))
+
+    def test_toggle_rebake_reloads_router_after_all_profile_writes(self):
+        events = []
+        with (
+            mock.patch.object(
+                ac, 'set_preset_toggles',
+                side_effect=lambda body: (events.append('toggle') or body),
+            ),
+            mock.patch.object(
+                ac, 'bake_missing_presets',
+                side_effect=lambda *a, **k: (events.append('bake') or list(ac.PRESET_ORDER)),
+            ),
+            mock.patch.object(
+                ac, 'get_preset_toggles',
+                return_value={'adversarial_diversity': False,
+                              'vision_only': False, 'min_context_1m': False},
+            ),
+            mock.patch.object(ac, 'get_active_name', return_value='custom'),
+            mock.patch.object(
+                ac, 'set_toggles',
+                side_effect=lambda *a, **k: events.append('custom'),
+            ),
+            mock.patch.object(
+                server, '_reload_pipeline_router_after_config_change',
+                side_effect=lambda: (events.append('reload') or True),
+            ),
+        ):
+            response = self.client.post(
+                '/api/configurations/active/toggles',
+                json={'adversarial_diversity': False},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(events, ['toggle', 'bake', 'custom', 'reload'])
 
     def test_generic_project_patch_rejects_browser_supplied_locks(self):
         response = self.client.post('/api/projects/example', json={

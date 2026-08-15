@@ -19003,16 +19003,24 @@ def configurations_list():
     saved customs, the active configuration name, and the active
     toggle state. Backs the presets row + custom-previous grid + header.
 
-    First-load preset baking: when any of the four presets is missing
-    a configuration file (fresh install state), the auto-populate
-    engine runs against the catalog and writes the missing files
-    before the listing returns. Idempotent — already-baked presets
-    are skipped, so subsequent calls cost nothing.
+    Before returning, refresh the disk-authoritative local inventory and
+    re-bake Free from its cloud baseline plus the current compatible local
+    models. Other presets retain the existing first-load-only bake behavior.
     """
     try:
         from orchestrator import active_configuration as ac
         from orchestrator import model_profiles as _mp
-        ac.bake_missing_presets()
+        # Keep the inventory scan and Free re-bake in one serialized section:
+        # the returned card must describe the physical models found by this
+        # pane load, not whichever scan won a concurrent Promise.all request.
+        with _local_model_inventory_lock:
+            local_refresh, _local_error = _refresh_local_model_inventory()
+            if local_refresh is not None:
+                ac.bake_missing_presets(
+                    force=True, preset_names=("free",))
+            else:
+                ac.bake_missing_presets()
+            _reload_pipeline_router_after_config_change()
         return _json_response(_mp.decorate_configuration_catalog(
             ac.list_configurations()))
     except Exception as exc:
@@ -19380,6 +19388,11 @@ def configurations_active_toggles():
                 per_config_updated = True
             except FileNotFoundError:
                 pass  # active points to nothing — skip silently
+
+        # Re-baking writes named profiles after the inventory-triggered Router
+        # reload. Invalidate again only after every preset/custom write so the
+        # next dispatch cannot reuse a stale named-profile cache entry.
+        _reload_pipeline_router_after_config_change()
 
         return _json_response({
             "name": name,

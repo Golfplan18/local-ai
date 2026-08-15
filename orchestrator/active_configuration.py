@@ -275,6 +275,149 @@ def validate_profile_allocation(
     return allocation
 
 
+def _apply_free_local_overlay(
+    config: dict,
+    *,
+    local_models=_LOCAL_MODELS_UNSET,
+    system_ram_gb: float | None = None,
+    toggles: dict | None = None,
+) -> dict:
+    """Overlay compatible installed locals onto a cloud-baked Free profile."""
+    installed = _installed_local_models(local_models)
+    effective_toggles = toggles or {}
+    vision_only = bool(effective_toggles.get("vision_only"))
+    min_context_1m = bool(effective_toggles.get("min_context_1m"))
+    adversarial = bool(effective_toggles.get("adversarial_diversity"))
+
+    try:
+        system_ram = float(
+            system_ram_gb if system_ram_gb is not None else _get_system_ram_gb()
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("system RAM is unavailable for Free local selection") from exc
+    if not math.isfinite(system_ram) or system_ram <= 0:
+        raise ValueError("system RAM is unavailable for Free local selection")
+    target = system_ram * AUTOMATIC_RAM_TARGET_RATIO
+    hard_cap = system_ram * HARD_RAM_CAP_RATIO
+
+    candidates: dict[str, list[dict]] = {"big": [], "fast": [], "small": []}
+    for model in installed.values():
+        if not model.get("enabled", True):
+            continue
+        if model.get("status", "active") != "active":
+            continue
+        try:
+            context_window = float(model.get("context_window") or 0)
+            parameters_b = float(model.get("parameters_b"))
+        except (TypeError, ValueError):
+            continue
+        if (
+            not math.isfinite(context_window)
+            or context_window <= 0
+            or not math.isfinite(parameters_b)
+            or parameters_b <= 0
+        ):
+            continue
+        if vision_only and model.get("vision_capable") is not True:
+            continue
+        if min_context_1m and context_window < 900_000:
+            continue
+        if parameters_b > 50:
+            category = "big"
+        elif parameters_b >= 12:
+            category = "fast"
+        else:
+            category = "small"
+        candidates[category].append({**model, "parameters_b": parameters_b})
+    for rows in candidates.values():
+        rows.sort(key=lambda row: (-row["parameters_b"], row["id"]))
+
+    selected: dict[str, dict] = {}
+    used_ids: set[str] = set()
+    allocated = 0.0
+
+    def fits(model: dict) -> bool:
+        if model["id"] in used_ids:
+            return True
+        proposed = allocated + float(model["ram_gb"])
+        return proposed <= target and proposed <= hard_cap
+
+    def select_largest(label: str, category: str, *, family_not=None) -> None:
+        nonlocal allocated
+        for model in candidates[category]:
+            if model["id"] in used_ids:
+                continue
+            family = model.get("training_family") or model.get("provider")
+            if family_not is not None and (
+                not family or str(family).strip().lower() == family_not
+            ):
+                continue
+            if not fits(model):
+                continue
+            selected[label] = model
+            used_ids.add(model["id"])
+            allocated += float(model["ram_gb"])
+            return
+
+    # Core local coverage comes first. Pair slots are filled only after these
+    # three have had their chance at the shared automatic-RAM target.
+    select_largest("big 1", "big")
+    select_largest("fast 1", "fast")
+    select_largest("small", "small")
+
+    if adversarial:
+        if "big 1" in selected:
+            first = selected["big 1"]
+            family = first.get("training_family") or first.get("provider")
+            if family:
+                select_largest(
+                    "big 2", "big", family_not=str(family).strip().lower())
+        if "fast 1" in selected:
+            first = selected["fast 1"]
+            family = first.get("training_family") or first.get("provider")
+            if family:
+                select_largest(
+                    "fast 2", "fast", family_not=str(family).strip().lower())
+    else:
+        if "big 1" in selected:
+            selected["big 2"] = selected["big 1"]
+        if "fast 1" in selected:
+            selected["fast 2"] = selected["fast 1"]
+
+    local_ids = set(installed)
+    cells = config.setdefault("cells", {})
+    for label, model in selected.items():
+        for path in SLOT_LABEL_TO_PATHS[label]:
+            node = cells
+            for key in path[:-1]:
+                child = node.get(key)
+                if not isinstance(child, dict):
+                    child = {}
+                    node[key] = child
+                node = child
+            cell = node.get(path[-1])
+            if not isinstance(cell, dict):
+                cell = {"primary": None, "fallback": []}
+                node[path[-1]] = cell
+            displaced = cell.get("primary")
+            cloud_fallbacks: list[str] = []
+            for model_id in [displaced, *(cell.get("fallback") or [])]:
+                if (
+                    isinstance(model_id, str)
+                    and model_id
+                    and model_id not in local_ids
+                    and model_id not in cloud_fallbacks
+                ):
+                    cloud_fallbacks.append(model_id)
+            cell["primary"] = model["id"]
+            cell["fallback"] = cloud_fallbacks
+
+    config["diversity_override"] = adversarial
+    validate_profile_allocation(
+        config, system_ram_gb=system_ram, local_models=list(installed.values()))
+    return config
+
+
 def get_active_name(*, strict: bool = False) -> str:
     """Return the active configuration name.
 
@@ -515,7 +658,11 @@ def set_preset_toggles(toggles: dict) -> dict:
     return current
 
 
-def bake_missing_presets(force: bool = False) -> list:
+def bake_missing_presets(
+    force: bool = False,
+    *,
+    preset_names: tuple[str, ...] | list[str] | None = None,
+) -> list:
     """Run the auto-populate engine for any preset that doesn't have a
     configuration file on disk.
 
@@ -612,8 +759,17 @@ def bake_missing_presets(force: bool = False) -> list:
     # may have supplied pricing/intelligence data to the catalog picker.
     canonical_aliases: dict = xref.get("canonical_aliases") or {}
 
+    if preset_names is None:
+        selected_presets = PRESET_ORDER
+    else:
+        requested = set(preset_names)
+        unknown = requested.difference(PRESET_ORDER)
+        if unknown:
+            raise ValueError(f"unknown preset names: {sorted(unknown)!r}")
+        selected_presets = [name for name in PRESET_ORDER if name in requested]
+
     baked: list = []
-    for preset_name in PRESET_ORDER:
+    for preset_name in selected_presets:
         # Skip if a config file already claims this preset, unless
         # force-rebake is requested.
         target_path = _config_path(preset_name, for_write=True)
@@ -661,6 +817,13 @@ def bake_missing_presets(force: bool = False) -> list:
             # UI's per-config toggle reader picks it up immediately
             # without needing to consult the global file separately.
             config["toggles"] = dict(global_toggles)
+            if preset_name == "free":
+                _apply_free_local_overlay(
+                    config,
+                    local_models=_load_local_models(),
+                    system_ram_gb=_get_system_ram_gb(),
+                    toggles=global_toggles,
+                )
             _save_config(preset_name, config)
             baked.append(preset_name)
         except Exception:
