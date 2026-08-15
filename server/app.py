@@ -8367,7 +8367,19 @@ def _validate_public_model_profile_override(config_name):
 
 
 def _normalize_explicit_history(history) -> list[dict]:
-    """Return the truthful subset accepted from a legacy/API caller."""
+    """Return the truthful subset accepted from a legacy/API caller.
+
+    Role and content are the transcript, and the server does not let a caller
+    replace its own record of those — see _authoritative_dialogue_history.
+    Canvas state is different: a user turn's spatial_representation and
+    annotations are the caller's own drawing, not a claim about what was said,
+    and for a conversation with no envelope on disk the request is their only
+    source. Dropping them here (as this function did from 2026-08-10) silently
+    disabled WP-5.3 spatial continuity on that path — the handler's own
+    get_prior_spatial_state lookup could never find a prior turn, so layout
+    evolution stopped reaching the model. Both are type-checked before being
+    carried through, and only on user turns.
+    """
     if not isinstance(history, list):
         return []
     normalized = []
@@ -8380,7 +8392,15 @@ def _normalize_explicit_history(history) -> list[dict]:
             continue
         if not isinstance(content, str):
             continue
-        normalized.append({"role": role, "content": content})
+        turn = {"role": role, "content": content}
+        if role == "user":
+            spatial = message.get("spatial_representation")
+            if isinstance(spatial, dict):
+                turn["spatial_representation"] = spatial
+            annotations = message.get("annotations")
+            if isinstance(annotations, list):
+                turn["annotations"] = annotations
+        normalized.append(turn)
     return normalized
 
 
@@ -10348,6 +10368,13 @@ def _browser_normalize_tags(value) -> list[str]:
     tags: list[str] = []
     seen: set[str] = set()
     for item in values:
+        if item is None or item == "":
+            # Same rule the top-level guard applies, enforced per item: callers
+            # pass composite sources such as [meta.get("tags"), meta.get("tag")]
+            # and an absent key arrives as None. Without this, str(None) becomes
+            # a literal "none" tag on every record that lacks the key — a
+            # phantom entry in the Library's tag filters since 2026-08-11.
+            continue
         if isinstance(item, (list, tuple, set, frozenset)):
             candidates = _browser_normalize_tags(item)
         elif isinstance(item, str) and (

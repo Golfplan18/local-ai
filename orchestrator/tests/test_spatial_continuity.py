@@ -98,6 +98,17 @@ def _minimal_context_pkg(
 # ---------------------------------------------------------------------------
 
 
+from oversight_sandbox import redirect_sessions_root  # noqa: E402
+
+
+def setUpModule():
+    # Keep this module's Dialogue writes out of the live sessions store, and
+    # out of the previous run's. An envelope on disk is authoritative, so a
+    # leftover one from an earlier run makes the endpoint ignore the history
+    # this suite supplies — the module passes on a clean tree and fails on the
+    # second run.
+    redirect_sessions_root()
+
 class PriorStateFromHistoryTests(unittest.TestCase):
     """Walking a passed-in history list identifies the most recent user-turn
     spatial_representation."""

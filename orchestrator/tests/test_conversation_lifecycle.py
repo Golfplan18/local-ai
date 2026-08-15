@@ -1339,11 +1339,32 @@ class TestDeleteConversationForever(unittest.TestCase):
             raise AssertionError(f"unexpected logical collection {logical_name}")
 
         class LogicalClient:
+            """Stand-in for a PersistentClient holding one live collection.
+
+            get_collection matters: config/chromadb.json can declare retired
+            physical copies (collection_history), and the closeout opens those
+            directly on the client rather than through the embedder-bound
+            helper — deliberately, since metadata-only lifecycle work must not
+            bind a dimension-incompatible embedding function. A store that does
+            not hold the retired copy raises NotFoundError and the closeout
+            skips it. Without that behaviour here, this fixture failed on any
+            machine whose chromadb.json carried a migration history (this one
+            does, from the 2026-08-11 conversations migration) and passed on
+            every other — a test result decided by local config.
+            """
+
             def list_collections(self):
                 return [types.SimpleNamespace(
                     name=embedding.resolve_collection("conversations"),
                     metadata={"ora:logical_collection": "conversations"},
                 )]
+
+            def get_collection(self, name=None, **_kwargs):
+                if name == embedding.resolve_collection("conversations"):
+                    return logical_collection(self, "conversations")
+                import chromadb.errors
+                raise chromadb.errors.NotFoundError(
+                    f"Collection {name} does not exist.")
 
         modules_before = set(sys.modules)
         try:

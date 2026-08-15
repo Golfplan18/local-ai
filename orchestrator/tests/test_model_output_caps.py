@@ -1,6 +1,6 @@
 """Output caps come from the model, not from a flat default.
 
-Before 2026-08-01 every API call used _DEFAULT_API_MAX_TOKENS regardless of the
+Before 2026-08-01 every API call used one flat default regardless of the
 model. That was wrong in both directions: it exceeded gpt-4o's ceiling, so the
 provider rejected the request and _call_api_with_truncation_retry returned the
 rejection as *text* rather than raising — a silent failure — while throttling
@@ -14,6 +14,16 @@ import unittest
 from unittest import mock
 
 from orchestrator import boot
+
+# What one first call requests when the endpoint declares neither an explicit
+# cap nor any context metadata: a conservative quarter of the fail-small
+# 32_768 window (boot._endpoint_initial_output_tokens). Until 2026-08-10 this
+# was a flat default regardless of the endpoint, which reserved the whole
+# unknown window for output and could reject even a short prompt.
+NO_METADATA_FALLBACK = 8192
+# An endpoint that declares a real context window but no cap gets the full
+# frontier-model allowance instead.
+DECLARED_WINDOW_FALLBACK = 32_000
 
 
 class ModelOutputCapResolutionTests(unittest.TestCase):
@@ -43,12 +53,16 @@ class ModelOutputCapResolutionTests(unittest.TestCase):
         boot._MODEL_OUTPUT_CAPS = {"listed-model": 16384}
         seen, _ = self._capture({"model": "listed-model"})
         self.assertEqual(seen[0], 16384)
-        self.assertNotEqual(seen[0], boot._DEFAULT_API_MAX_TOKENS)
+        self.assertNotEqual(seen[0], NO_METADATA_FALLBACK)
 
     def test_unlisted_model_falls_back_to_the_default(self):
         boot._MODEL_OUTPUT_CAPS = {}
         seen, _ = self._capture({"model": "not-in-registry"})
-        self.assertEqual(seen[0], boot._DEFAULT_API_MAX_TOKENS)
+        self.assertEqual(seen[0], NO_METADATA_FALLBACK)
+        # A declared window is enough to lift the reservation off the floor.
+        seen, _ = self._capture(
+            {"model": "not-in-registry", "context_window": 128_000})
+        self.assertEqual(seen[0], DECLARED_WINDOW_FALLBACK)
 
     def test_explicit_endpoint_max_tokens_outranks_the_published_cap(self):
         boot._MODEL_OUTPUT_CAPS = {"listed-model": 16384}
@@ -62,9 +76,12 @@ class ModelOutputCapResolutionTests(unittest.TestCase):
             "32000. This model supports at most 16384 completion tokens, "
             "whereas you provided 32000.', 'type': 'invalid_request_error'}}")
         boot._MODEL_OUTPUT_CAPS = {}
-        seen, text = self._capture({"model": "stale-registry-model"},
-                                   raises=rejection)
-        self.assertEqual(seen, [boot._DEFAULT_API_MAX_TOKENS, 16384])
+        # The endpoint declares its window, so the first attempt asks for the
+        # 32000 the rejection above quotes back.
+        seen, text = self._capture(
+            {"model": "stale-registry-model", "context_window": 128_000},
+            raises=rejection)
+        self.assertEqual(seen, [DECLARED_WINDOW_FALLBACK, 16384])
         self.assertEqual(text, "body")
         self.assertNotIn("Error calling", text)
 

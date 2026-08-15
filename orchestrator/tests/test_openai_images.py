@@ -107,7 +107,7 @@ class OpenAIImageRegistrationTests(unittest.TestCase):
     def test_register_binds_image_generates_slot(self) -> None:
         openai_images.register(self.registry)
         self.assertIn(
-            openai_images.PROVIDER_IMAGE_GENERATES,
+            "openai:gpt-image-1",
             self.registry.providers_for("image_generates"),
         )
 
@@ -117,15 +117,25 @@ class OpenAIImageRegistrationTests(unittest.TestCase):
         over the LoRA's spec-compliance, with the LoRA as the fallback)."""
         openai_images.register(self.registry)
         self.assertIn(
-            openai_images.PROVIDER_IMAGE_GENERATES,
+            "openai:gpt-image-1",
             self.registry.providers_for("image_generates_cartoon"),
         )
 
-    def test_provider_constant_matches_routing_config_preference(self) -> None:
-        """The provider ID must match what routing-config.json references
-        as `preferred`. If this test fails, either openai_images.py or
-        routing-config.json drifted."""
-        self.assertEqual(openai_images.PROVIDER_IMAGE_GENERATES, "openai-gpt-image-1")
+    def test_every_model_registers_under_the_slot_config_id_format(self) -> None:
+        """Provider ids are ``openai:<model_id>``, one per model.
+
+        Until 2026-05-22 this module registered a single provider whose id was
+        the bare ``openai-gpt-image-1``, and this test pinned that string as
+        "what routing-config.json references as preferred". Commit 8990cb5d
+        stopped the dispatcher assuming any one model: register() now binds
+        every model in OPENAI_IMAGE_MODELS under ``openai:<model_id>`` so slot
+        config can route to a specific one. That id format IS the coupling to
+        routing-config now, so it is what this test holds.
+        """
+        openai_images.register(self.registry)
+        registered = set(self.registry.providers_for("image_generates"))
+        for model_id in openai_images.OPENAI_IMAGE_MODELS:
+            self.assertIn(f"openai:{model_id}", registered)
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +165,7 @@ class OpenAIImageDispatchMockedTests(unittest.TestCase):
             )
 
         self.assertEqual(result.output, self.PNG_PAYLOAD)
-        self.assertEqual(result.provider_id, "openai-gpt-image-1")
+        self.assertEqual(result.provider_id, "openai:gpt-image-1")
 
         # The dispatcher should have called images.generate with our prompt
         # and the size derived from the default 1:1 aspect ratio. gpt-image-1
