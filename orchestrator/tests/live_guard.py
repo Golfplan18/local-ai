@@ -54,6 +54,21 @@ ENV_VAR = "ORA_OVERSIGHT_SANDBOX"
 # migrated to runtime_paths separately.
 CHROMADB_ENV_VAR = "ORA_CHROMADB_PATH"
 
+# The conversation corpus needs the same quarantine for the same reason. The
+# endpoint suites POST to /chat and /chat/multipart, and every accepted
+# submission writes a raw submission record plus a Markdown chunk file under
+# the conversations root — the corpus Ora searches when it answers the user.
+# Test fixture prose ("Just text, please.") therefore became retrievable as if
+# it were the user's own writing, and an absent conversation_id defaults to
+# "main", so the user's own Dialogue absorbed the bulk of it.
+#
+# Unlike the two variables above, which runtime_paths resolves at call time,
+# this one is baked into module-level constants when runtime_paths is first
+# imported (CONVERSATIONS / CONVERSATIONS_STR). It must therefore be armed
+# BEFORE that first import — which is what importing this guard from the tests
+# package __init__, and from each test file's own header, guarantees.
+CONVERSATIONS_ENV_VAR = "ORA_CONVERSATIONS"
+
 
 def arm() -> str:
     """Ensure ORA_OVERSIGHT_SANDBOX points at a directory under the system temp
@@ -105,5 +120,27 @@ def arm_chromadb() -> str:
     return box
 
 
+def arm_conversations() -> str:
+    """Point ORA_CONVERSATIONS at a throwaway corpus unless already set.
+
+    Same contract as ``arm``: a pre-set ABSOLUTE path is honored (so a test can
+    aim at a fixture corpus), a relative one is replaced loudly, and a freshly
+    created directory is removed at exit.
+    """
+    box = os.environ.get(CONVERSATIONS_ENV_VAR)
+    if box and not os.path.isabs(box):
+        sys.stderr.write(
+            f"[live_guard] ignoring non-absolute {CONVERSATIONS_ENV_VAR}={box!r}; "
+            "a relative conversations root would write corpus residue into the "
+            "cwd — using a fresh tempdir instead\n")
+        box = None
+    if not box:
+        box = tempfile.mkdtemp(prefix="ora-conversations-sandbox-")
+        os.environ[CONVERSATIONS_ENV_VAR] = box
+        atexit.register(shutil.rmtree, box, ignore_errors=True)
+    return box
+
+
 SANDBOX_DIR = arm()
 CHROMADB_SANDBOX_DIR = arm_chromadb()
+CONVERSATIONS_SANDBOX_DIR = arm_conversations()
