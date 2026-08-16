@@ -18268,6 +18268,114 @@ def capability_video_generates():
     }), status=200, mimetype="application/json")
 
 
+@app.route("/api/capability/style_trains", methods=["POST"])
+def capability_style_trains():
+    """Dispatch the `style_trains` capability slot (Contracts §3.10, async).
+
+    The other async slot. Everything this needs already existed — the slot
+    contract, the Replicate routing entry, ``dispatch_style_trains``, and
+    ``capability-style-trains.js`` posting here — but the route itself was
+    never written, so the Style Trains control 404'd on click.
+
+    Body JSON:
+      inputs: { reference_images (list, >=3, required),
+                name (str, required — trigger word for the adapter),
+                training_depth ('quick'|'standard'|'deep', optional) },
+      provider_override (str, optional),
+      conversation_id (str, optional — sets the queue bucket).
+
+    Response:
+      200 { job: {...}, conversation_id: str | None }
+      4xx { error: { code: 'insufficient_examples'|'prompt_rejected', message } }
+      5xx { error: { code: 'model_unavailable', message } }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return Response(json.dumps({"error": {
+            "code": "prompt_rejected",
+            "message": "Request body must be JSON."
+        }}), status=400, mimetype="application/json")
+
+    inputs = data.get("inputs") or {}
+    if not isinstance(inputs, dict):
+        inputs = {}
+
+    refs = inputs.get("reference_images")
+    if not isinstance(refs, list) or len(refs) < 3:
+        return Response(json.dumps({"error": {
+            "code": "insufficient_examples",
+            "message": "style_trains requires at least 3 reference images."
+        }}), status=400, mimetype="application/json")
+
+    name = (inputs.get("name") or "").strip()
+    if not name:
+        return Response(json.dumps({"error": {
+            "code": "prompt_rejected",
+            "message": "style_trains requires a non-empty 'name' for the adapter."
+        }}), status=400, mimetype="application/json")
+
+    handler_inputs = {"reference_images": refs, "name": name}
+    depth = inputs.get("training_depth")
+    if isinstance(depth, str) and depth.strip().lower() in ("quick", "standard", "deep"):
+        handler_inputs["training_depth"] = depth.strip().lower()
+
+    conversation_id = (
+        data.get("conversation_id") or inputs.get("conversation_id") or "default"
+    )
+
+    # Async slot: no mock path, same as video_generates. Gate on the queue and
+    # integration importing so a missing module is a clean 503 rather than an
+    # opaque 500. style_trains routes to Replicate only, so unlike
+    # video_generates there is no OpenRouter chain to register here.
+    try:
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
+        from capability_registry import load_registry as _load_registry
+        import replicate as _replicate
+        registry = _load_registry()
+        _replicate.register_replicate_provider(registry)
+        try:
+            _replicate.set_active_conversation(conversation_id)
+        except Exception:
+            pass
+    except Exception as exc:
+        return Response(json.dumps({"error": {
+            "code": "model_unavailable",
+            "message": f"Replicate provider unavailable: {exc}"
+        }}), status=503, mimetype="application/json")
+
+    provider_override = (
+        data.get("provider_override") or inputs.get("provider_override") or None
+    )
+
+    try:
+        result = registry.invoke(
+            "style_trains",
+            handler_inputs,
+            provider_id=provider_override,
+        )
+    except Exception as exc:
+        code = getattr(exc, "code", "model_unavailable")
+        status = 400 if code in ("insufficient_examples", "prompt_rejected") else 502
+        return Response(json.dumps({"error": {
+            "code": code,
+            "message": str(exc)
+        }}), status=status, mimetype="application/json")
+
+    job = getattr(result, "output", result)
+    if not isinstance(job, dict) or not job.get("id"):
+        return Response(json.dumps({"error": {
+            "code": "model_unavailable",
+            "message": "Async dispatcher returned no job descriptor."
+        }}), status=502, mimetype="application/json")
+
+    return Response(json.dumps({
+        "job":             job,
+        "conversation_id": conversation_id,
+    }), status=200, mimetype="application/json")
+
+
 # ── model switcher ───────────────────────────────────────────────────────────
 
 LOCAL_MODELS_DIR = Path.home() / "ora" / "models"
