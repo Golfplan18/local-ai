@@ -346,7 +346,7 @@
         </svg>
       </button>
       <button class="sidebar-dash-icon" type="button" id="sidebarDashProject"
-              aria-label="Choose Active Project" title="Active Project">
+              aria-label="Manage projects" title="Manage projects">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
           <path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h7l2 2"/>
@@ -568,6 +568,23 @@
           stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
         }
         .project-manager-empty { padding: 18px 8px; color: var(--text-muted); font-size: 14px; }
+        /* Priority ordering: the Active list is a ranked work queue, dragged
+           top (most important) to bottom. */
+        .project-manager-rows.is-orderable .project-manager-row { cursor: grab; }
+        .project-manager-row.is-dragging { opacity: 0.45; cursor: grabbing; }
+        .project-manager-grip {
+          display: inline-flex; align-items: center; color: var(--text-faint);
+          flex-shrink: 0; margin-right: -4px;
+        }
+        .project-manager-grip svg {
+          width: 14px; height: 14px; fill: none; stroke: currentColor;
+          stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+        }
+        .project-manager-rank {
+          min-width: 1.6em; text-align: right; flex-shrink: 0;
+          color: var(--text-faint); font-size: 12px;
+          font-variant-numeric: tabular-nums;
+        }
         @media (max-width: 720px) {
           .project-manager-overlay { padding: 72px 12px 0; justify-content: center; }
         }
