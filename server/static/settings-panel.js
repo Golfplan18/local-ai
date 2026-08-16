@@ -25,7 +25,11 @@
   var _tabsEl = null;
   var _tabContentEl = null;
   var _statusEl = null;
-  var _activeTab = 'models';
+  // Where the panel lands when it has nowhere else to go — first open, and
+  // the fallback when the active tab is a plugin section that has since been
+  // unregistered (see _ensureActiveTabResolvable).
+  var DEFAULT_TAB = 'models';
+  var _activeTab = DEFAULT_TAB;
   var _settings = null;
   var _retrieval = null;
   var _apiKeys = [];
@@ -77,6 +81,134 @@
     aside:         { tab: 'general', section: 'aside' },
     interface:     { tab: 'general', section: 'interface' },
   };
+
+  // ── plugin sections (window.OraSettingsSections) ─────────────────────────
+  //
+  // A plugin contributes its own Settings page by registering with
+  // js/v3-settings-sections.js. Core TABS and the core render branches are
+  // untouched; registered sections are appended to the strip and painted into
+  // the same chrome _sectionInto produces.
+  //
+  // The registry is optional: when its script isn't loaded these helpers
+  // return null / empty and Settings behaves exactly as before.
+  //
+  // Reserved ids flow one way — the panel hands the registry the ids core
+  // already owns (TABS + the legacy TAB_ALIASES keys) so a plugin can't shadow
+  // a core tab. The registry never reads the panel, and the list is not
+  // duplicated there. The push is lazy so it does not depend on which script
+  // tag comes first: whichever order they load in, the first paint reserves,
+  // and the registry evicts any collider that got in ahead of it.
+
+  // The registry object we last reserved into — not a boolean. A boolean latch
+  // would leave a REPLACED registry (a second copy of the module, a plugin
+  // shipping its own) unreserved forever: its reserved list is empty, so it
+  // would accept 'models' and 'general' and the strip would grow duplicate
+  // core tabs with nothing logged.
+  var _reservedRegistry = null;
+
+  function _sectionsRegistry() {
+    var reg = root.OraSettingsSections;
+    if (!reg) return null;
+    if (_reservedRegistry !== reg && typeof reg.reserveIds === 'function') {
+      // reserveIds is a plugin-supplied function like any other: it must not
+      // be able to escape into open(). Latch only after it actually succeeds,
+      // so a failed reservation is retried on the next paint rather than
+      // leaving core ids claimable for the rest of the session.
+      try {
+        reg.reserveIds(
+          TABS.map(function (t) { return t.id; })
+            .concat(Object.keys(TAB_ALIASES))
+        );
+        _reservedRegistry = reg;
+      } catch (err) {
+        console.warn('[settings] plugin section registry failed to reserve '
+          + 'core tab ids:', err);
+      }
+    }
+    return reg;
+  }
+
+  // Every registry call is inside the guard, _sectionsRegistry() included:
+  // reading window.OraSettingsSections, reading .list, and calling it are all
+  // plugin-controlled, and none of them may escape into open().
+  function _pluginSections() {
+    try {
+      var reg = _sectionsRegistry();
+      if (!reg || typeof reg.list !== 'function') return [];
+      var listed = reg.list();
+      if (!Array.isArray(listed)) {
+        console.warn('[settings] plugin section registry list() did not return '
+          + 'an array; ignoring it:', listed);
+        return [];
+      }
+      var sections = [];
+      var dropped = 0;
+      for (var i = 0; i < listed.length; i++) {
+        if (listed[i] && typeof listed[i] === 'object') sections.push(listed[i]);
+        else dropped++;
+      }
+      if (dropped) {
+        console.warn('[settings] plugin section registry list() returned '
+          + dropped + ' entr' + (dropped === 1 ? 'y' : 'ies')
+          + ' that are not objects; ignoring them');
+      }
+      return sections;
+    } catch (err) {
+      console.warn('[settings] plugin section registry failed to list:', err);
+      return [];
+    }
+  }
+
+  function _pluginSection(id) {
+    try {
+      var reg = _sectionsRegistry();
+      if (!reg || typeof reg.get !== 'function') return null;
+      return reg.get(id);
+    } catch (err) {
+      console.warn('[settings] plugin section registry failed to resolve "'
+        + id + '":', err);
+      return null;
+    }
+  }
+
+  function _isCoreTabId(id) {
+    for (var i = 0; i < TABS.length; i++) {
+      if (TABS[i].id === id) return true;
+    }
+    return false;
+  }
+
+  // The registered section the panel is currently showing, or null when the
+  // active tab is a core one (or a plugin id nothing answers to any more).
+  function _activePluginSection() {
+    if (_isCoreTabId(_activeTab)) return null;
+    return _pluginSection(_activeTab);
+  }
+
+  // A section can be unregistered while it is the selected tab (the plugin
+  // shut down, or the user removed it). Rendering would then paint nothing.
+  // Fall back loudly instead of showing an empty modal.
+  function _ensureActiveTabResolvable() {
+    if (_isCoreTabId(_activeTab)) return;
+    if (_pluginSection(_activeTab)) return;
+    console.warn('[settings] tab "' + _activeTab + '" is no longer registered; '
+      + 'falling back to "' + DEFAULT_TAB + '"');
+    _activeTab = DEFAULT_TAB;
+  }
+
+  // What a plugin's render(body, ctx) is given, and nothing more. `body` is
+  // its own section element — it owns everything inside it. `ctx` carries only
+  // what it cannot get for itself without reaching into the panel:
+  //   id     — so one render function can serve several registered sections.
+  //   close  — so a control that takes the user elsewhere can dismiss the
+  //            modal, without a plugin having to hunt for a global.
+  // Deliberately absent: Ora's settings object, the dirty map, the autosave
+  // hooks, and any DOM helper. A plugin owns its own storage and its own
+  // markup; handing it panel state would make every future panel refactor a
+  // breaking change for every plugin.
+  function _sectionCtx(id) {
+    return { id: id, close: close };
+  }
 
   var WHISPER_MODELS = [
     { id: 'tiny',     label: 'tiny (fastest, lowest accuracy)' },
@@ -155,37 +287,100 @@
     return _backdropEl;
   }
 
+  // Core main tabs, then registered main-group sections, then core advanced
+  // tabs, then registered advanced sections — so the one "Advanced" divider
+  // still falls immediately before the first advanced entry whichever side
+  // it comes from.
+  //
+  // Ordering happens before the per-entry guard in _renderTabs, so a plugin's
+  // `group` is resolved HERE, once, inside a guard of its own. Read bare it
+  // was the one plugin-controlled field on the strip-painting path that could
+  // still escape: a throwing getter propagated out of _renderTabs → out of
+  // open(), after _tabsEl had already been emptied — an empty strip, no
+  // warning, no /api/settings fetch, and no Escape handler (open() installs it
+  // after the paint), so the modal could not even be closed. Resolving once
+  // also keeps ordering and rendering in step: a getter that answers
+  // differently on successive reads can no longer sort an entry into one group
+  // and paint it into the other. Entries are handed on as {entry, advanced}
+  // records so _renderTabs paints from the resolved flag instead of re-reading.
+  function _tabStripOrder() {
+    var mainSections = [];
+    var advancedSections = [];
+    _pluginSections().forEach(function (e) {
+      try {
+        var rec = { entry: e, advanced: (e.group === 'advanced') };
+        (rec.advanced ? advancedSections : mainSections).push(rec);
+      } catch (err) {
+        console.warn('[settings] a tab entry could not be ordered and was '
+          + 'skipped:', err);
+      }
+    });
+    function coreOf(advanced) {
+      return TABS.filter(function (t) {
+        return (t.group === 'advanced') === advanced;
+      }).map(function (t) { return { entry: t, advanced: advanced }; });
+    }
+    return coreOf(false)
+      .concat(mainSections, coreOf(true), advancedSections);
+  }
+
   function _renderTabs() {
+    _ensureActiveTabResolvable();
     _tabsEl.innerHTML = '';
     var advancedDividerDrawn = false;
-    TABS.forEach(function (t) {
-      if (t.group === 'advanced' && !advancedDividerDrawn) {
-        advancedDividerDrawn = true;
-        var sep = document.createElement('span');
-        sep.className = 'ora-settings-tab-divider';
-        sep.setAttribute('aria-hidden', 'true');
-        sep.textContent = 'Advanced';
-        _tabsEl.appendChild(sep);
+    _tabStripOrder().forEach(function (rec) {
+      // A registered entry's fields are re-read on every paint, and a plugin
+      // may compute them lazily — a label getter that throws is enough. Read
+      // them first and paint from the locals, so one bad entry is skipped
+      // instead of aborting the whole strip (which would also take out the
+      // core tabs, the Escape handler open() installs afterwards, and the
+      // /api/settings fetch). `advanced` is not re-read here: _tabStripOrder
+      // already resolved it, under its own guard, exactly once.
+      try {
+        var advanced = rec.advanced;
+        var id = rec.entry.id;
+        var label = rec.entry.label;
+        if (advanced && !advancedDividerDrawn) {
+          advancedDividerDrawn = true;
+          var sep = document.createElement('span');
+          sep.className = 'ora-settings-tab-divider';
+          sep.setAttribute('aria-hidden', 'true');
+          sep.textContent = 'Advanced';
+          _tabsEl.appendChild(sep);
+        }
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ora-settings-tab';
+        btn.setAttribute('role', 'tab');
+        btn.dataset.tab = id;
+        btn.textContent = label;
+        if (id === _activeTab) btn.classList.add('ora-settings-tab--active');
+        btn.addEventListener('click', function () {
+          _activeTab = id;
+          _renderTabs();
+          _renderTabContent();
+        });
+        _tabsEl.appendChild(btn);
+      } catch (err) {
+        console.warn('[settings] a tab entry could not be painted and was '
+          + 'skipped:', err);
       }
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'ora-settings-tab';
-      btn.setAttribute('role', 'tab');
-      btn.dataset.tab = t.id;
-      btn.textContent = t.label;
-      if (t.id === _activeTab) btn.classList.add('ora-settings-tab--active');
-      btn.addEventListener('click', function () {
-        _activeTab = t.id;
-        _renderTabs();
-        _renderTabContent();
-      });
-      _tabsEl.appendChild(btn);
     });
   }
 
   function _renderTabContent() {
+    _ensureActiveTabResolvable();
     if (_activeTab !== 'apis') _stopChatGPTPolling();
     _tabContentEl.innerHTML = '';
+    // One branch for every registered plugin section (see the registry block
+    // above). It sits above the core chain — including the `if (!_settings)`
+    // gate further down — because a plugin section reads nothing from Ora's
+    // settings state and must paint whether or not that state loaded. Every
+    // caller of this function reaches it after /api/settings has resolved;
+    // the failure path in _fetchState calls back here for exactly this
+    // branch, which is the only way a plugin page paints without _settings.
+    var pluginSection = _activePluginSection();
+    if (pluginSection) { _renderPluginSection(pluginSection); return; }
     // The Models tab hosts OraModelsPane (install Chunk 10); the Visual
     // tab hosts OraVisualSlotsPane (install Chunk 11). Buckets was
     // retired (see the TABS comment above).
@@ -238,6 +433,54 @@
     sec.appendChild(body);
     grid.appendChild(sec);
     return body;
+  }
+
+  var PLUGIN_SECTION_FAILED_TEXT = 'This section could not be displayed.';
+
+  // Paints a registered plugin section into the same chrome the consolidated
+  // core tabs use, so it needs no CSS of its own. The plugin owns the section
+  // body and nothing else. Three ways it can fail, all contained the same way
+  // — a warning plus a readable message where the section is, with every other
+  // tab still working:
+  //   · the section title throws (entry.label is read here, inside the guard);
+  //   · render() throws;
+  //   · render() returns a promise that rejects — the normal shape for a
+  //     section that loads its own data, and an unhandled rejection otherwise.
+  function _renderPluginSection(entry) {
+    // The panel resolved this entry from _activeTab, so the id is a known-good
+    // string; entry.id may be a getter and is not re-read on the failure path.
+    var id = _activeTab;
+    var grid = document.createElement('div');
+    grid.className = 'ora-settings-sections-grid';
+    _tabContentEl.appendChild(grid);
+    var body = null;
+
+    function failed(err) {
+      console.warn('[settings] plugin section "' + id
+        + '" failed to render:', err);
+      // No body means the section chrome itself never got built (a throwing
+      // label) — build plain chrome so the message still lands where the
+      // section would have been rather than leaving the tab blank.
+      if (!body) body = _sectionInto(grid, id, id);
+      body.textContent = PLUGIN_SECTION_FAILED_TEXT;
+    }
+
+    try {
+      // Each plugin-controlled field is read once and painted from the local.
+      // entry.id in particular was read twice — once for the section's
+      // data-settings-section, once for the ctx handed to render() — so a
+      // getter that answered differently on the second read could hand the
+      // plugin a ctx.id naming a different section than the body it was
+      // given.
+      var entryId = entry.id;
+      body = _sectionInto(grid, entryId, entry.label);
+      var painting = entry.render(body, _sectionCtx(entryId));
+      if (painting && typeof painting.then === 'function') {
+        painting.then(null, failed);
+      }
+    } catch (err) {
+      failed(err);
+    }
   }
 
   function _renderAVMediaTab() {
@@ -2317,6 +2560,12 @@
       })
       .catch(function (err) {
         _setStatus('Couldn’t load settings: ' + err.message, 'error');
+        // Additive: core tabs still wait for a successful fetch (they read
+        // _settings), but a plugin section reads nothing from it, so its page
+        // must not go blank because an unrelated core fetch failed. Repaint
+        // only when the active tab is a plugin section — nothing else about
+        // the failure path changes.
+        if (_activePluginSection()) _renderTabContent();
       });
   }
 
@@ -2524,17 +2773,25 @@
     // Unknown tab ids are silently ignored (defensive against future
     // tab additions / removals).
     if (opts.tab) {
-      var alias = TAB_ALIASES[opts.tab];
+      // Own properties only: a plain lookup answers 'constructor', 'toString',
+      // '__proto__' and friends with an inherited Object.prototype member,
+      // whose .tab is undefined — which silently swallowed the open() call
+      // and left a plugin registered under such an id unreachable by deep
+      // link even though its tab worked on click.
+      var alias = Object.prototype.hasOwnProperty.call(TAB_ALIASES, opts.tab)
+        ? TAB_ALIASES[opts.tab] : null;
       var wantedTab = alias ? alias.tab : opts.tab;
       if (_isValidTabId(wantedTab)) {
         _activeTab = wantedTab;
         _pendingSection = alias ? alias.section : null;
-        // _renderTabs reflects the new active tab in the tab strip;
-        // _renderTabContent is called by _fetchState below for the
-        // models tab and runs synchronously for the others.
-        if (_tabsEl) _renderTabs();
       }
     }
+    // Always repaint the strip, not just when opts.tab was passed: a plugin
+    // section registered after the panel was first built only appears here.
+    // _renderTabs reads _activeTab rather than setting it, so the tab the
+    // user was last on stays selected. _renderTabContent is called by
+    // _fetchState below.
+    if (_tabsEl) _renderTabs();
     if (opts.highlight) {
       _pendingHighlight = String(opts.highlight).toLowerCase();
     }
@@ -2542,11 +2799,11 @@
     document.addEventListener('keydown', _onKeydown);
   }
 
+  // Core tab ids plus the ids of currently registered plugin sections, so
+  // open({tab: '<plugin-id>'}) reaches a plugin's page too.
   function _isValidTabId(id) {
-    for (var i = 0; i < TABS.length; i++) {
-      if (TABS[i].id === id) return true;
-    }
-    return false;
+    if (_isCoreTabId(id)) return true;
+    return !!_pluginSection(id);
   }
 
   // Find the API-key row tagged with data-provider=<id> and apply a
