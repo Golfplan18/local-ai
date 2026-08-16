@@ -248,9 +248,18 @@
 <script src="/static/js/sidebar-oversight.js" defer></script>
 <script src="/static/js/review-queue-panel.js" defer></script>
 <script src="/static/js/v3-layout.js" defer></script>
-<!-- Plugin button mount points. Loaded before the feature scripts so anything
-     that wants to contribute a button can register during its own init. -->
+<!-- Plugin extension seams. Loaded before the feature scripts so anything that
+     wants to contribute can register during its own init. Each module is loaded
+     from exactly one path — a second path would give it a second copy of its
+     state. All four are inert with no plugin present.
+       v3-mount-points.js      — where a plugin puts its buttons
+       v3-settings-sections.js — where a plugin puts its settings
+       v3-pane-ownership.js    — how a plugin takes over a pane, and gives it back
+       v3-browse-overlay.js    — how a plugin offers a docked file browser -->
 <script src="/static/js/v3-mount-points.js" defer></script>
+<script src="/static/js/v3-settings-sections.js" defer></script>
+<script src="/static/js/v3-pane-ownership.js" defer></script>
+<script src="/static/js/v3-browse-overlay.js" defer></script>
 <script src="/static/js/tooltip.js" defer></script>
 <script src="/static/js/v3-bootstrap.js" defer></script>
 <script src="/static/js/v3-state.js" defer></script>
