@@ -189,6 +189,10 @@ def start_proxy_render(conversation_id: str) -> str:
         )
 
     state = {"resolved": False, "unsubscribe": None}
+    # Guards the resolve check-and-set. The terminal event and the
+    # already-finished catch-up below can arrive on two threads, and without
+    # this both could pass the `resolved` check and run the rename twice.
+    resolve_lock = threading.Lock()
 
     def _on_event(event: dict) -> None:
         if event.get("render_id") != render_id:
@@ -196,9 +200,10 @@ def start_proxy_render(conversation_id: str) -> str:
         kind = event.get("type")
         if kind not in ("complete", "failed", "cancelled"):
             return
-        if state["resolved"]:
-            return
-        state["resolved"] = True
+        with resolve_lock:
+            if state["resolved"]:
+                return
+            state["resolved"] = True
 
         if kind == "complete":
             try:
@@ -229,6 +234,27 @@ def start_proxy_render(conversation_id: str) -> str:
                 pass
 
     state["unsubscribe"] = manager.subscribe(_on_event)
+
+    # The render is started before this subscription exists, so a short proxy
+    # can reach a terminal state in the gap. Its event fires with nobody
+    # listening, and the handler that would have promoted the output to
+    # preview-proxy.mp4 AND unsubscribed itself never runs — leaving a dead
+    # closure that every later render then pays for on every progress event.
+    # Ask whether that already happened and, if so, feed the handler the
+    # terminal event it missed. _on_event is idempotent under resolve_lock,
+    # so a real event arriving concurrently is harmless.
+    try:
+        current = manager.get_state(render_id)
+    except KeyError:
+        current = None
+    if current and current.get("state") in ("complete", "failed", "cancelled"):
+        _on_event({
+            "render_id":   render_id,
+            "type":        current["state"],
+            "output_path": current.get("output_path"),
+            "duration_ms": current.get("duration_ms") or 0,
+        })
+
     return render_id
 
 
