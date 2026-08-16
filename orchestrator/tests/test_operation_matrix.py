@@ -480,6 +480,19 @@ class OperationMilestoneFormTests(unittest.TestCase):
         self.assertIn("## Directions of Travel", text)
 
 
+    def test_empty_patch_does_not_restamp_the_file(self):
+        """Opening a project and saving nothing must not churn the vault.
+
+        The vault auto-syncs on a timer, so a gratuitous `date modified` bump
+        lands as a real commit against every matrix the user merely looked at.
+        """
+        p = self.mdir / "Operation Matrix Op.md"
+        before = p.read_text(encoding="utf-8")
+        result = om.write_mom("op-matrix", "Op", vault=self.vault)
+        self.assertIsNotNone(result)
+        self.assertEqual(p.read_text(encoding="utf-8"), before)
+
+
 class NewMatrixTemplateTests(unittest.TestCase):
     def test_created_matrix_is_writable_by_the_gate(self):
         """A matrix Ora creates must not fail Ora's own MOM write gate."""

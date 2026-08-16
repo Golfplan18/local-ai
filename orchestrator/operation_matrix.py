@@ -637,6 +637,14 @@ def write_mom(
     """
     if (nexus or "").strip().lower() in ("", "commons", "general"):
         return None  # Commons is synthetic — no matrix file
+    if (
+        mission is None and objectives is None
+        and milestones is None and milestones_raw is None
+    ):
+        # Nothing to patch. Returning early keeps a no-op save from re-stamping
+        # `date modified`, which the vault's auto-sync would otherwise commit as
+        # a spurious change to every matrix the user merely opened.
+        return read_mom(nexus, folder_name, vault=vault)
     path = resolve_matrix_path(nexus, folder_name, vault=vault)
     if path is None:
         if not create_if_missing or not folder_name:
