@@ -20,9 +20,27 @@ Design choices
   confined to the vault's ``Matrix/`` directory.
 
 Milestones round-trip both ways: ``read_mom`` returns a parsed ``milestones``
-list (``{text, done, indent}`` for ``- [ ]`` / ``- [x]`` task lines) *and* the
-raw ``milestones_raw`` markdown, so the modal can offer checkbox editing while
-falling back to raw-text editing when a section has non-task content.
+list (``{text, done, indent}``) *and* the raw ``milestones_raw`` markdown, so
+the modal can offer checkbox editing while falling back to raw-text editing
+when a section has non-task content.
+
+Two milestone forms exist, reported as ``milestone_form``:
+
+* ``checkbox`` — a Project's ``## Milestones`` section of ``- [ ]`` task lines.
+  Structured edits round-trip through the ``milestones`` list.
+* ``operation`` — an Operation's Appendix A prose milestones
+  (``- **Milestone A1 — …**`` plus verification / status sub-bullets) living
+  under ``## Active Milestones (Recurring)`` and ``## Aspirational Milestones
+  (Maturity Gates)``. These parse for display but edit as raw markdown, and
+  ``write_mom`` splits the composed blob back to its source headings — writing
+  them as checkboxes would destroy the form.
+
+A Passion Matrix has no milestones at all by design (``## Practices`` and
+``## Directions of Travel`` replace them); saving one must not grow a section.
+
+The ``<!-- MASTER_MATRIX_PROJECTION_START/END -->`` markers that 35 vault
+matrices carry are invisible to readers and preserved across writes: reads stop
+at the closing marker, writes re-attach it with the file's own separator.
 """
 
 from __future__ import annotations
@@ -191,6 +209,9 @@ def resolve_matrix_path(
 # ---------------------------------------------------------------------------
 
 _H2_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+_PROJECTION_END_RE = re.compile(
+    r"^[ \t]*<!--[ \t]*MASTER_MATRIX_PROJECTION_END[ \t]*-->[ \t]*$", re.MULTILINE
+)
 
 
 def _section_bounds(text: str, heading: str) -> tuple[int, int, int] | None:
@@ -216,7 +237,11 @@ def _extract_section(text: str, heading: str) -> str:
     if bounds is None:
         return ""
     _, body_start, section_end = bounds
-    return text[body_start:section_end]
+    # Stop at the projection END marker so it never leaks into the editable
+    # body. Read and write are symmetric about this line: the marker is
+    # invisible to the reader and re-attached by ``_replace_section``, so a
+    # round-trip neither drops nor duplicates it.
+    return text[body_start:_protected_tail_start(text, body_start, section_end)]
 
 
 def _format_section(heading: str, body: str) -> str:
@@ -245,12 +270,42 @@ def _insert_index(text: str, heading: str) -> int:
     return len(text)
 
 
+def _protected_tail_start(text: str, body_start: int, section_end: int) -> int:
+    """Offset where trailing content that must survive a section rewrite begins.
+
+    35 of the vault's Matrix files wrap their strategic block in
+    ``<!-- MASTER_MATRIX_PROJECTION_START … -->`` / ``<!-- …_END -->`` markers
+    projected from ``Administration/Reference — Master Matrix.md``. ``Milestones``
+    is the last section inside that block, so its span runs past the closing
+    marker to the next ``## `` heading — and a naive splice deletes the marker,
+    breaking the projection's authentication for every governed matrix.
+
+    Returns ``section_end`` when there is nothing to protect.
+    """
+    m = _PROJECTION_END_RE.search(text, body_start, section_end)
+    return m.start() if m else section_end
+
+
 def _replace_section(text: str, heading: str, body: str) -> str:
     block = _format_section(heading, body)
     bounds = _section_bounds(text, heading)
     if bounds is not None:
-        head_start, _, section_end = bounds
-        return text[:head_start] + block + text[section_end:]
+        head_start, body_start, section_end = bounds
+        tail_start = _protected_tail_start(text, body_start, section_end)
+        if tail_start < section_end:
+            # Protected content (the projection END marker) trails the body.
+            # Rebuild around it using the file's own separator so an unchanged
+            # save is byte-identical rather than drifting a blank line each time.
+            original = text[body_start:tail_start]
+            sep = original[len(original.rstrip("\n")):] or "\n"
+            core = (body or "").strip("\n")
+            block = f"## {heading}\n\n{core}{sep}" if core else f"## {heading}\n\n"
+        return text[:head_start] + block + text[tail_start:]
+    # Never conjure a section that does not exist just to hold nothing — a
+    # Passion Matrix has no ``## Milestones`` by design (Practices and
+    # Directions of Travel replace it), and saving must not grow one.
+    if not (body or "").strip():
+        return text
     idx = _insert_index(text, heading)
     prefix = text[:idx]
     # Guarantee a blank line before the inserted heading.
@@ -264,6 +319,7 @@ def _replace_section(text: str, heading: str, body: str) -> str:
 # ---------------------------------------------------------------------------
 
 _TASK_RE = re.compile(r"^([ \t]*)-[ \t]+\[([ xX])\][ \t]?(.*)$")
+_BULLET_RE = re.compile(r"^([ \t]*)-[ \t]+(.*)$")
 
 
 def _parse_tasks(raw: str) -> list[dict[str, Any]]:
@@ -281,8 +337,94 @@ def _parse_tasks(raw: str) -> list[dict[str, Any]]:
     return tasks
 
 
+#: An Operation Matrix records milestones as prose bullets, not checkboxes —
+#: ``- **Milestone A1 — Statement.** …`` or ``- **Milestone B1:** …`` — per the
+#: Operations Manifest Appendix A template, each followed by indented
+#: Delivering-framework / Verification-criterion / Status sub-bullets.
+_OPERATION_MILESTONE_RE = re.compile(
+    r"^([ \t]*)-[ \t]+\*\*(Milestone[^*]*)\*\*[ \t]*(.*)$"
+)
+
+
+#: ``read_mom`` composes an Operation's milestones from these two ``## ``
+#: sections into one ``### ``-delimited blob; ``write_mom`` splits on the same
+#: delimiters to put each body back where it came from. Without the split, a
+#: write would append a synthetic ``## Milestones`` section duplicating content
+#: that already lives under the Appendix A headings.
+_OPERATION_MILESTONE_SECTIONS = (
+    "Active Milestones (Recurring)",
+    "Aspirational Milestones (Maturity Gates)",
+)
+_H3_RE = re.compile(r"^###[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+
+
+def _split_operation_milestones(raw: str) -> dict[str, str] | None:
+    """Split a composed Operation milestones blob back into {heading: body}.
+
+    Returns None when ``raw`` is not in the composed shape, so the caller falls
+    back to writing a single ``## Milestones`` section.
+    """
+    heads = list(_H3_RE.finditer(raw or ""))
+    if not heads:
+        return None
+    known = {h.lower(): h for h in _OPERATION_MILESTONE_SECTIONS}
+    out: dict[str, str] = {}
+    for i, m in enumerate(heads):
+        name = known.get(m.group(1).strip().lower())
+        if name is None:
+            return None  # unrecognized shape — do not guess
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(raw)
+        out[name] = raw[m.end():end].strip("\n")
+    return out or None
+
+
+def has_operation_milestones(raw: str) -> bool:
+    """True when the section uses the Operation prose form rather than tasks."""
+    return any(
+        _OPERATION_MILESTONE_RE.match(line) for line in (raw or "").splitlines()
+    )
+
+
+def _parse_operation_milestones(raw: str) -> list[dict[str, Any]]:
+    """Parse Operation prose milestones for DISPLAY.
+
+    ``done`` is always False: a recurring per-cycle milestone has no binary
+    completed state — its disposition lives in the ``Status:`` sub-bullet, which
+    is preserved as an indented child row. These rows are display-only; edits
+    round-trip through ``milestones_raw`` so the Appendix A form is never
+    rewritten into checkboxes.
+    """
+    items: list[dict[str, Any]] = []
+    for line in (raw or "").splitlines():
+        m = _OPERATION_MILESTONE_RE.match(line)
+        if m:
+            label = m.group(2).strip().rstrip(":").strip()
+            trailing = m.group(3).strip()
+            items.append({
+                "text": f"{label} {trailing}".strip() if trailing else label,
+                "done": False,
+                "indent": len(m.group(1).replace("\t", "  ")) // 2,
+            })
+            continue
+        b = _BULLET_RE.match(line)
+        if b and items:
+            # Sub-bullet of the milestone above it (verification criterion,
+            # status, P-Feasibility verdict).
+            items.append({
+                "text": b.group(2).strip(),
+                "done": False,
+                "indent": max(1, len(b.group(1).replace("\t", "  ")) // 2),
+            })
+    return items
+
+
 def parse_milestones(raw: str) -> list[dict[str, Any]]:
-    """Public: parse markdown task lines into ``[{text, done, indent}]``."""
+    """Public: parse a Milestones section into ``[{text, done, indent}]``.
+
+    Handles both the Project checkbox form and the Operation prose form.
+    """
+    if has_operation_milestones(raw):
+        return _parse_operation_milestones(raw)
     return _parse_tasks(raw)
 
 
@@ -363,13 +505,18 @@ def read_mom(
                 f"{aspirational}"
             )
         milestones_raw = "\n\n".join(blocks)
+    operation_form = has_operation_milestones(milestones_raw)
     return {
         "exists": True,
         "matrix_path": str(path),
         "mission": _extract_section(text, "Mission").strip(),
         "objectives": _extract_section(text, "Objectives").strip(),
-        "milestones": _parse_tasks(milestones_raw),
+        "milestones": parse_milestones(milestones_raw),
         "milestones_raw": milestones_raw,
+        # "operation" milestones are prose (Operations Manifest Appendix A) and
+        # must be edited as raw markdown — rendering them as checkboxes would
+        # rewrite the form and drop the verification / status sub-bullets.
+        "milestone_form": "operation" if operation_form else "checkbox",
     }
 
 
@@ -380,6 +527,11 @@ def _new_matrix_text(nexus: str, display_name: str) -> str:
         "nexus:\n"
         f"  - {nexus}\n"
         "type: matrix\n"
+        # Required in list form: the MOM write gate rejects a matrix whose
+        # project_type is absent or scalar, so omitting it here would make every
+        # matrix Ora creates unwritable on its very next save.
+        "project_type:\n"
+        "  - project\n"
         f"date created: {today}\n"
         f"date modified: {today}\n"
         "---\n\n"
@@ -507,7 +659,20 @@ def write_mom(
     if objectives is not None:
         text = _replace_section(text, "Objectives", objectives)
     if milestones_raw is not None:
-        text = _replace_section(text, "Milestones", milestones_raw)
+        # An Operation Matrix has no ``## Milestones`` section — its milestones
+        # live under the Appendix A headings. Write each body back to the
+        # section it was read from rather than appending a duplicate.
+        split = (
+            _split_operation_milestones(milestones_raw)
+            if _section_bounds(text, "Milestones") is None
+            else None
+        )
+        if split:
+            for heading, body in split.items():
+                if _section_bounds(text, heading) is not None:
+                    text = _replace_section(text, heading, body)
+        else:
+            text = _replace_section(text, "Milestones", milestones_raw)
     elif milestones is not None:
         text = _replace_section(text, "Milestones", _render_tasks(milestones))
 
@@ -530,4 +695,5 @@ __all__ = [
     "write_mom",
     "parse_milestones",
     "render_milestones",
+    "has_operation_milestones",
 ]

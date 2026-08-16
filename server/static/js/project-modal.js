@@ -360,7 +360,13 @@
     if (els.convoSearch) els.convoSearch.value = '';
     if (els.convosClosed) els.convosClosed.checked = false;
     if (els.convoAddList) els.convoAddList.innerHTML = '';
-    if (els.momRawToggle) els.momRawToggle.checked = false;
+    if (els.momRawToggle) {
+      els.momRawToggle.checked = false;
+      // Cleared so an Operation project does not leave the toggle pinned when
+      // the modal reopens on a checkbox-form project.
+      els.momRawToggle.disabled = false;
+      els.momRawToggle.title = '';
+    }
   }
 
   // MOM-guided creation (graceful): name the project, create the record +
@@ -750,6 +756,22 @@
     }
   }
 
+  // Operation matrices are prose-milestone files: pin the editor to raw mode
+  // and say why, so a save can never rewrite Appendix A form into checkboxes.
+  function applyMilestoneForm(form) {
+    const isOperation = form === 'operation';
+    if (els.momRawToggle) {
+      if (isOperation) els.momRawToggle.checked = true;
+      els.momRawToggle.disabled = isOperation;
+      els.momRawToggle.title = isOperation
+        ? 'This is an Operation Matrix — its milestones are prose with '
+          + 'verification and status detail, edited as markdown.'
+        : '';
+    }
+    toggleMomRaw();
+    if (isOperation && els.momAddBtn) els.momAddBtn.style.display = 'none';
+  }
+
   async function loadMom() {
     if (isCommons()) {
       momCache = {};
@@ -778,6 +800,14 @@
       els.mission.value = mom.mission || '';
       els.objectives.value = mom.objectives || '';
       renderMilestones(mom.milestones || []);
+      // Always seed the raw editor from the canonical file, so toggling into
+      // raw mode shows what is actually in the matrix rather than a re-render
+      // of the checkbox rows.
+      if (els.momRaw) els.momRaw.value = mom.milestones_raw || '';
+      // Operation matrices record milestones as Appendix A prose with
+      // verification / status sub-bullets. The checkbox editor cannot represent
+      // that, so raw markdown is the edit surface for them.
+      applyMilestoneForm(mom.milestone_form);
       els.momNote.textContent = mom.storage_available === false
         ? 'Vault storage is unavailable. No Operation-Matrix can be created until the vault is restored or configured.'
         : (mom.exists ? '' : 'No Operation-Matrix file yet — saving creates it in the vault Matrix folder.');
@@ -856,8 +886,10 @@
       const data = await r.json();
       if (r.ok && data && data.ok) {
         momCache = data.mom;
-        // Re-render from the canonical re-read so checkbox/raw stay in sync.
-        if (!momRawMode) renderMilestones(data.mom.milestones || []);
+        // Re-render BOTH surfaces from the canonical re-read so checkbox and
+        // raw stay in sync with what actually landed in the vault.
+        renderMilestones(data.mom.milestones || []);
+        if (els.momRaw) els.momRaw.value = data.mom.milestones_raw || '';
         els.momNote.textContent = '';
         setStatus(els.momMsg, 'Saved to the vault Operation-Matrix.', 'ok');
       } else {
