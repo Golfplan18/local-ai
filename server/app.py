@@ -6140,6 +6140,30 @@ def api_projects_set_status(nexus):
     return _json_response({"ok": True, "project": meta})
 
 
+@app.route("/api/projects/order", methods=["POST"])
+def api_projects_reorder():
+    """Set the user's project priority order. Body: ``{"order": [nexus, …]}``.
+
+    The whole list is sent, not a single move, so ranks are always contiguous
+    and the order on disk matches the order the user is looking at. Projects
+    omitted from the list become unranked and sort after every ranked one.
+    """
+    try:
+        from orchestrator import project_meta as _pm
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    order = data.get("order")
+    if not isinstance(order, list):
+        return _json_response(
+            {"ok": False, "error": "order must be a list of project nexuses"}, 400)
+    try:
+        projects = _pm.reorder_projects([str(n) for n in order])
+    except _pm.ProjectMetaError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    return _json_response({"ok": True, "projects": projects})
+
+
 @app.route("/api/projects/<nexus>/rename-nexus", methods=["POST"])
 def api_projects_rename_nexus(nexus):
     """Rename a project's nexus across the vault, conversations, and pointers
@@ -6226,7 +6250,12 @@ def api_projects_mom_set(nexus):
     except (_pm.ProjectStorageError, _om.MatrixError) as exc:
         return _json_response(
             {"ok": False, "migration_required": True, "error": str(exc)}, 409)
-    # Write gate: MOM writes require explicit schema-valid project_type: [project].
+    # Write gate: MOM writes require a schema-valid project_type declaration.
+    # Every classification the MOM framework defines is writable — a Project's
+    # checkbox milestones, an Operation's Appendix A prose milestones, and a
+    # Passion's Practices / Directions of Travel are all edited here. What the
+    # gate still refuses is an ABSENT or scalar project_type, because the
+    # classification then cannot be trusted to pick the right milestone form.
     try:
         from matrix_classifier import classify_matrix as _cm_classify, schema_valid as _cm_schema_valid, InvalidProjectTypeError
     except ImportError:
@@ -6237,18 +6266,19 @@ def api_projects_mom_set(nexus):
             _m_text = _m_path.read_text(encoding="utf-8")
             _m_fm, _ = _om._split_frontmatter(_m_text)
             _m_class, _m_warns = _cm_classify(_m_fm, str(_m_path))
-            if _m_class != "project" or not _cm_schema_valid(_m_fm):
+            if not _cm_schema_valid(_m_fm):
                 return _json_response({
                     "ok": False,
                     "error": (
-                        "MOM writes require explicit project_type: [project] in the "
-                        "Matrix frontmatter. Current classification is "
-                        f"{_m_class!r} with schema_valid={_cm_schema_valid(_m_fm)}. "
-                        "Add project_type:\\n  - project to the Matrix file first."
+                        "MOM writes require an explicit list-form project_type in "
+                        "the Matrix frontmatter (project, operation, passion, or "
+                        f"incubator). Current classification is {_m_class!r} with "
+                        "schema_valid=False. Add e.g. project_type:\\n  - project "
+                        "to the Matrix file first."
                     ),
                     "write_gate": {
                         "classification": _m_class,
-                        "schema_valid": _cm_schema_valid(_m_fm),
+                        "schema_valid": False,
                         "warnings": _m_warns,
                     },
                 }, 403)

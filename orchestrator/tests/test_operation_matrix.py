@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import unittest
@@ -254,6 +255,252 @@ class OperationMatrixWriteTests(unittest.TestCase):
         # Objectives sits between Mission and Projects.
         self.assertLess(text.index("## Mission"), text.index("## Objectives"))
         self.assertLess(text.index("## Objectives"), text.index("## Projects"))
+
+
+_PROJECTED_MATRIX = """---
+nexus:
+  - projected
+type: matrix
+project_type:
+  - project
+---
+
+# Project Matrix Projected
+
+<!-- MASTER_MATRIX_PROJECTION_START nexus=projected -->
+## Mission
+
+- **Core Essence:** Ship the thing.
+
+## Objectives
+
+- To build it.
+
+## Milestones
+
+- [ ] M1: First draft is complete.
+- [x] M2: Outline is accepted.
+<!-- MASTER_MATRIX_PROJECTION_END -->
+
+## Problem Solving
+
+Keep me.
+"""
+
+# Operations Manifest Appendix A form: prose milestones with structured
+# sub-bullets, under two headings, and no `## Milestones` section at all.
+_OPERATION_MATRIX = """---
+nexus:
+  - op-matrix
+type: matrix
+project_type:
+  - operation
+---
+
+# Operation Matrix Op
+
+## Mission
+
+- **Service Statement:** Ships a daily edition.
+
+## Objectives
+
+- To sustain the cadence.
+
+## Active Milestones (Recurring)
+
+- **Milestone A1 — Cycle closes.** Each cycle ships by 9am ET.
+  - Verification criterion: Cycle Close Verification.
+  - P-Feasibility Verdict: Reachable
+  - Status: active
+
+## Aspirational Milestones (Maturity Gates)
+
+- **Milestone B1:** 100 cycles shipped without missing cadence.
+  - Gate condition: Performance Log shows 100 consecutive successes.
+
+## Performance Log
+
+Keep me.
+"""
+
+_PASSION_MATRIX = """---
+nexus:
+  - a-passion
+type: matrix
+project_type:
+  - passion
+---
+
+# Passion Matrix A Passion
+
+## Mission
+
+- **Core Essence:** Keep learning.
+
+## Objectives
+
+- To read widely.
+
+## Practices
+
+1. Weekly reading.
+
+## Directions of Travel
+
+1. Toward fluency.
+"""
+
+
+class ProjectionMarkerTests(unittest.TestCase):
+    """The Master Matrix projection block must survive an MOM edit.
+
+    35 of the vault's matrices carry these markers; a splice that drops the
+    closing marker breaks the projection's authentication for all of them.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.vault = pathlib.Path(self.tmp.name)
+        self.mdir = self.vault / "Matrix"
+        self.mdir.mkdir()
+        self.addCleanup(self.tmp.cleanup)
+
+    def _write(self, name, text):
+        p = self.mdir / name
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def test_end_marker_survives_milestone_write(self):
+        p = self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
+        om.write_mom(
+            "projected", "Projected",
+            milestones=[{"text": "M9: replaced.", "done": False, "indent": 0}],
+            vault=self.vault,
+        )
+        text = p.read_text(encoding="utf-8")
+        self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_START"), 1)
+        self.assertEqual(text.count("MASTER_MATRIX_PROJECTION_END"), 1)
+        self.assertIn("- [ ] M9: replaced.", text)
+        self.assertIn("## Problem Solving\n\nKeep me.", text)
+        # The marker still closes the block: it follows the milestones.
+        self.assertLess(
+            text.index("M9: replaced."),
+            text.index("MASTER_MATRIX_PROJECTION_END"),
+        )
+
+    def test_marker_never_leaks_into_the_editable_body(self):
+        self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
+        mom = om.read_mom("projected", "Projected", vault=self.vault)
+        self.assertNotIn("MASTER_MATRIX_PROJECTION", mom["milestones_raw"])
+        self.assertEqual(len(mom["milestones"]), 2)
+
+    def test_unchanged_save_is_byte_identical(self):
+        """Re-saving what was just read must not drift the file.
+
+        Only ``date modified`` may move — every other byte, including the
+        blank-line separator before the projection marker, must be preserved.
+        """
+        p = self._write("Project Matrix Projected.md", _PROJECTED_MATRIX)
+        before = p.read_text(encoding="utf-8")
+        mom = om.read_mom("projected", "Projected", vault=self.vault)
+        om.write_mom(
+            "projected", "Projected", mission=mom["mission"],
+            objectives=mom["objectives"], milestones_raw=mom["milestones_raw"],
+            vault=self.vault,
+        )
+        strip_stamp = lambda s: re.sub(r"date modified: [0-9-]+\n", "", s)
+        self.assertEqual(
+            strip_stamp(p.read_text(encoding="utf-8")), strip_stamp(before))
+
+
+class OperationMilestoneFormTests(unittest.TestCase):
+    """Operation matrices record milestones as prose, not checkboxes."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.vault = pathlib.Path(self.tmp.name)
+        self.mdir = self.vault / "Matrix"
+        self.mdir.mkdir()
+        (self.mdir / "Operation Matrix Op.md").write_text(
+            _OPERATION_MATRIX, encoding="utf-8")
+        (self.mdir / "Passion Matrix A Passion.md").write_text(
+            _PASSION_MATRIX, encoding="utf-8")
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_prose_milestones_are_parsed_not_empty(self):
+        mom = om.read_mom("op-matrix", "Op", vault=self.vault)
+        self.assertEqual(mom["milestone_form"], "operation")
+        texts = [m["text"] for m in mom["milestones"]]
+        self.assertTrue(any(t.startswith("Milestone A1") for t in texts), texts)
+        self.assertTrue(any(t.startswith("Milestone B1") for t in texts), texts)
+        # Sub-bullets are preserved as indented children.
+        self.assertIn("Status: active", texts)
+        self.assertTrue(
+            all(m["done"] is False for m in mom["milestones"]),
+            "a recurring milestone has no binary done state",
+        )
+
+    def test_write_returns_to_source_sections_without_duplicating(self):
+        p = self.mdir / "Operation Matrix Op.md"
+        mom = om.read_mom("op-matrix", "Op", vault=self.vault)
+        om.write_mom(
+            "op-matrix", "Op", milestones_raw=mom["milestones_raw"],
+            vault=self.vault,
+        )
+        text = p.read_text(encoding="utf-8")
+        # No synthetic `## Milestones` section is appended.
+        self.assertNotIn("\n## Milestones", text)
+        self.assertEqual(text.count("## Active Milestones (Recurring)"), 1)
+        self.assertEqual(text.count("## Aspirational Milestones (Maturity Gates)"), 1)
+        self.assertIn("## Performance Log\n\nKeep me.", text)
+
+    def test_editing_a_prose_milestone_lands_in_its_own_section(self):
+        p = self.mdir / "Operation Matrix Op.md"
+        mom = om.read_mom("op-matrix", "Op", vault=self.vault)
+        edited = mom["milestones_raw"].replace("by 9am ET", "by 7am ET")
+        om.write_mom("op-matrix", "Op", milestones_raw=edited, vault=self.vault)
+        text = p.read_text(encoding="utf-8")
+        self.assertIn("by 7am ET", text)
+        self.assertNotIn("by 9am ET", text)
+        self.assertIn("Gate condition:", text)
+
+    def test_passion_save_does_not_grow_a_milestones_section(self):
+        p = self.mdir / "Passion Matrix A Passion.md"
+        mom = om.read_mom("a-passion", "A Passion", vault=self.vault)
+        self.assertEqual(mom["milestones_raw"], "")
+        om.write_mom(
+            "a-passion", "A Passion", mission=mom["mission"],
+            objectives=mom["objectives"], milestones_raw=mom["milestones_raw"],
+            vault=self.vault,
+        )
+        text = p.read_text(encoding="utf-8")
+        self.assertNotIn("## Milestones", text)
+        self.assertIn("## Practices", text)
+        self.assertIn("## Directions of Travel", text)
+
+
+    def test_empty_patch_does_not_restamp_the_file(self):
+        """Opening a project and saving nothing must not churn the vault.
+
+        The vault auto-syncs on a timer, so a gratuitous `date modified` bump
+        lands as a real commit against every matrix the user merely looked at.
+        """
+        p = self.mdir / "Operation Matrix Op.md"
+        before = p.read_text(encoding="utf-8")
+        result = om.write_mom("op-matrix", "Op", vault=self.vault)
+        self.assertIsNotNone(result)
+        self.assertEqual(p.read_text(encoding="utf-8"), before)
+
+
+class NewMatrixTemplateTests(unittest.TestCase):
+    def test_created_matrix_is_writable_by_the_gate(self):
+        """A matrix Ora creates must not fail Ora's own MOM write gate."""
+        from orchestrator.matrix_classifier import classify_matrix, schema_valid
+        text = om._new_matrix_text("fresh", "Fresh")
+        fm, _ = om._split_frontmatter(text)
+        self.assertEqual(classify_matrix(fm, "Project Matrix Fresh.md")[0], "project")
+        self.assertTrue(schema_valid(fm))
 
 
 if __name__ == "__main__":

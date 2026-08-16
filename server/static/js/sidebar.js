@@ -581,6 +581,54 @@
       + 'data-icon-fallback="no-resolver" data-icon="' + safe + '"></svg>';
   };
 
+  // ── Priority ordering ─────────────────────────────────────────────────
+  // The Active list is the user's ranked work queue: top is most important.
+  // A drag sends the WHOLE resulting order, so ranks stay contiguous and what
+  // is on disk always matches what is on screen.
+  const persistProjectOrder = async (rowsEl) => {
+    const order = [...rowsEl.querySelectorAll('.project-manager-row')]
+      .map(r => r.dataset.projectId)
+      .filter(Boolean);
+    if (!order.length) return;
+    try {
+      await fetch('/api/projects/order', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+      });
+    } catch (e) { /* order is advisory; a failed save just leaves it as-was */ }
+    await fetchProjects();
+    await renderProjectManager();
+  };
+
+  const attachRowDragHandlers = (row, rowsEl) => {
+    row.addEventListener('dragstart', (ev) => {
+      row.classList.add('is-dragging');
+      // Firefox will not start a drag without payload.
+      try { ev.dataTransfer.setData('text/plain', row.dataset.projectId || ''); } catch (e) {}
+      ev.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', async () => {
+      row.classList.remove('is-dragging');
+      await persistProjectOrder(rowsEl);
+    });
+    row.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      const dragging = rowsEl.querySelector('.is-dragging');
+      if (!dragging || dragging === row) return;
+      const box = row.getBoundingClientRect();
+      const after = ev.clientY > box.top + box.height / 2;
+      rowsEl.insertBefore(dragging, after ? row.nextSibling : row);
+      renumberProjectRanks(rowsEl);
+    });
+  };
+
+  const renumberProjectRanks = (rowsEl) => {
+    [...rowsEl.querySelectorAll('.project-manager-row')].forEach((r, i) => {
+      const rank = r.querySelector('.project-manager-rank');
+      if (rank) rank.textContent = String(i + 1);
+    });
+  };
+
   const ensureProjectManager = () => {
     if (projectManagerEl) return projectManagerEl;
     projectManagerEl = document.createElement('div');
@@ -643,10 +691,28 @@
       rowsEl.appendChild(empty);
       return;
     }
-    rows.forEach(p => {
+    // Priority order is only meaningful for the Active list — a paused or
+    // archived project is not competing for attention.
+    const orderable = projectManagerStatus === 'active' && !q && rows.length > 1;
+    rowsEl.classList.toggle('is-orderable', orderable);
+    rows.forEach((p, index) => {
       const row = document.createElement('div');
       row.className = 'project-manager-row';
       const id = canonicalProjectRecordId(p);
+      if (orderable) {
+        row.draggable = true;
+        row.dataset.projectId = id;
+        const grip = document.createElement('span');
+        grip.className = 'project-manager-grip';
+        grip.setAttribute('aria-hidden', 'true');
+        grip.innerHTML = resolveProjectActionIcon('grip-vertical');
+        row.appendChild(grip);
+        const rank = document.createElement('span');
+        rank.className = 'project-manager-rank';
+        rank.textContent = String(index + 1);
+        row.appendChild(rank);
+        attachRowDragHandlers(row, rowsEl);
+      }
       const main = document.createElement('div');
       main.className = 'project-manager-row-main';
       main.innerHTML = `<div class="project-manager-row-name"></div><div class="project-manager-row-meta"></div>`;

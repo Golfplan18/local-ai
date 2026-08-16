@@ -179,38 +179,43 @@ class MomWriteGateTests(unittest.TestCase):
         self.assertEqual(status, 403)
         self.assertFalse(body["ok"])
 
-    def test_operation_classification_blocks_write(self):
-        """project_type: [operation] → write blocked (403)."""
+    # Every classification the MOM framework defines is editable. The gate's
+    # job is to refuse an untrustworthy project_type declaration, not to refuse
+    # three of the four lifecycles — a read-only pane on the user's Operations
+    # was the defect these three tests used to enshrine.
+
+    def test_operation_classification_allows_write(self):
+        """project_type: [operation] → write allowed (200)."""
         self._write_pointer("op-only", self._pointer("op-only", "OpOnly"))
         self._write_matrix(
             "Operation Matrix OpOnly.md",
             _matrix("op-only", "\n  - operation\n"),
         )
         status, body = self._post_mom("op-only")
-        self.assertEqual(status, 403)
-        self.assertFalse(body["ok"])
+        self.assertEqual(status, 200)
+        self.assertTrue(body["ok"])
 
-    def test_passion_classification_blocks_write(self):
-        """project_type: [passion] → write blocked (403)."""
+    def test_passion_classification_allows_write(self):
+        """project_type: [passion] → write allowed (200)."""
         self._write_pointer("passion", self._pointer("passion", "Passion"))
         self._write_matrix(
             "Passion Matrix Passion.md",
             _matrix("passion", "\n  - passion\n"),
         )
         status, body = self._post_mom("passion")
-        self.assertEqual(status, 403)
-        self.assertFalse(body["ok"])
+        self.assertEqual(status, 200)
+        self.assertTrue(body["ok"])
 
-    def test_incubator_classification_blocks_write(self):
-        """project_type: [incubator] → write blocked (403)."""
+    def test_incubator_classification_allows_write(self):
+        """project_type: [incubator] → write allowed (200)."""
         self._write_pointer("incu", self._pointer("incu", "Incu"))
         self._write_matrix(
             "Incubator Matrix Incu.md",
             _matrix("incu", "\n  - incubator\n"),
         )
         status, body = self._post_mom("incu")
-        self.assertEqual(status, 403)
-        self.assertFalse(body["ok"])
+        self.assertEqual(status, 200)
+        self.assertTrue(body["ok"])
 
     # ---- Gate response shape ----
 

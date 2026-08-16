@@ -158,12 +158,20 @@ function _scanSourceFiles(opts) {
   return files;
 }
 
+// Icons requested from JavaScript rather than a toolbar/pack JSON file. Only
+// JSON is scanned, so an icon named solely in a .js file is invisible here and
+// gets tree-shaken out — which is how all four Manage Projects lifecycle
+// buttons came to render the fallback glyph. Keep in sync with _UI_ICON_NAMES
+// in orchestrator/icon_set_builder.py.
+var UI_ICON_NAMES = ['pause', 'archive', 'check', 'rotate-ccw', 'grip-vertical'];
+
 function _extractReferencedNames(files, opts) {
   var refs = new Set();
   for (var i = 0; i < files.length; i++) {
     var data = _readJsonSafe(files[i]);
     if (data) _collectIconRefs(data, refs);
   }
+  for (var j = 0; j < UI_ICON_NAMES.length; j++) refs.add(UI_ICON_NAMES[j]);
   _log(opts, 'extracted ' + refs.size + ' unique icon reference(s)');
   return refs;
 }
