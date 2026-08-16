@@ -34,7 +34,7 @@
  *   .register(template)
  *     Register a prompt template. Idempotent for re-registration of the same
  *     id only when the template object is identical; otherwise throws
- *     'already-registered' (mirrors macro/toolbar registries).
+ *     'already-registered' (mirrors the toolbar registry).
  *
  *   .unregister(id)            → boolean
  *   .has(id) / .get(id) / .list()

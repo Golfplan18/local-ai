@@ -3,7 +3,7 @@
  *
  * Drives OraPackInstallReview through the §13.7 acceptance criterion:
  *   "load 3rd-party pack; modal shows all 4 categories; capability scope
- *    reflects macros' invocations; install only fires after explicit
+ *    reflects every capability the pack can reach; install only fires after explicit
  *    click."
  *
  * Run:
@@ -299,7 +299,7 @@ var THIRD_PARTY_PACK = {
   ora_compatibility: ">=0.7.0",
   author: { name: "An Outside Author", url: "https://example.com/cartoon",
             email: "author@example.com" },
-  description: "Comic-book toolbar with speech-bubble macro and panel layouts.",
+  description: "Comic-book toolbar with speech bubbles and panel layouts.",
   toolbars: [
     {
       id: "cartoon-tb",
@@ -309,30 +309,13 @@ var THIRD_PARTY_PACK = {
         { id: "select", icon: "mouse-pointer", label: "Select", shortcut: "V",
           binding: "tool:select" },
         { id: "speech",  icon: "message-circle", label: "Speech bubble",
-          binding: "macro:add-speech-bubble" },
+          binding: "tool:speech_bubble" },
+        { id: "img-edit", icon: "wand", label: "Edit image",
+          binding: "capability:image_edits" },
+        { id: "img-desc", icon: "eye", label: "Describe image",
+          binding: "capability:image_describes" },
         { id: "img-gen", icon: "sparkles", label: "Generate image",
           binding: "capability:image_generates" }
-      ]
-    }
-  ],
-  macros: [
-    {
-      id: "add-speech-bubble",
-      label: "Add speech bubble",
-      icon: "message-circle",
-      steps: [
-        { tool: "shape:speech_bubble", params: { click_to_place: true } },
-        { tool: "text_input",          params: { var: "dialogue", label: "Dialogue" } },
-        { tool: "set_bubble_text",     params: { text: "{{dialogue}}" } }
-      ]
-    },
-    {
-      id: "stylize-panel",
-      label: "Stylize panel",
-      icon: "wand-2",
-      steps: [
-        { capability: "image_edits",     params: { instruction: "comic-book ink and color" } },
-        { capability: "image_describes", params: {} }
       ]
     }
   ],
@@ -372,8 +355,7 @@ process.stdout.write('\n--- TEST 1: capability scope per Toolbar Pack Format §1
 
 (function () {
   var scope = reviewMod.computeCapabilityScope(THIRD_PARTY_PACK);
-  // Toolbar item: capability:image_generates
-  // Macro steps: image_edits, image_describes
+  // Toolbar items: image_edits, image_describes, image_generates
   // Prompt template: image_generates (already present, dedup)
   check('1a. computeCapabilityScope returns sorted, deduplicated slot list',
     arraysEqual(scope, ['image_describes', 'image_edits', 'image_generates']),
@@ -419,7 +401,6 @@ process.stdout.write('\n--- TEST 2: §13.7 — modal shows all four categories -
     html.indexOf('/Users/oracle/Downloads/cartoon-studio.pack.json') >= 0);
 
   check('2h. body has Toolbars section heading',           html.indexOf('Toolbars') >= 0);
-  check('2i. body has Macros section heading',             html.indexOf('Macros') >= 0);
   check('2j. body has Prompt templates section heading',   html.indexOf('Prompt templates') >= 0);
   check('2k. body has Composition templates section heading', html.indexOf('Composition templates') >= 0);
 
@@ -428,17 +409,6 @@ process.stdout.write('\n--- TEST 2: §13.7 — modal shows all four categories -
   check('2m. body lists the toolbar items',
     html.indexOf('mouse-pointer') >= 0 && html.indexOf('Speech bubble') >= 0
     && html.indexOf('Generate image') >= 0);
-
-  // Macro contents — both macros + their step bindings.
-  check('2n. body lists the speech-bubble macro',
-    html.indexOf('add-speech-bubble') >= 0
-    && html.indexOf('shape:speech_bubble') >= 0
-    && html.indexOf('text_input') >= 0
-    && html.indexOf('set_bubble_text') >= 0);
-  check('2o. body lists the stylize-panel macro and its capability steps',
-    html.indexOf('stylize-panel') >= 0
-    && html.indexOf('capability: image_edits') >= 0
-    && html.indexOf('capability: image_describes') >= 0);
 
   // Prompt template contents.
   check('2p. body shows the cartoon-bg template + its prompt body',
@@ -453,12 +423,12 @@ process.stdout.write('\n--- TEST 2: §13.7 — modal shows all four categories -
   check('2r. body shows the 4-panel composition + thumbnail SVG',
     html.indexOf('4-panel') >= 0 && html.indexOf('viewBox') >= 0);
 
-  // Capability scope reflects macros' invocations (acceptance criterion).
+  // Capability scope reflects every slot the pack can reach (acceptance criterion).
   check('2s. body shows the capability-scope section',
     html.indexOf('Capability scope') >= 0);
-  check('2t. capability scope reflects macros\' invocations (image_edits)',
+  check('2t. capability scope reflects a toolbar binding (image_edits)',
     html.indexOf('image_edits') >= 0);
-  check('2u. capability scope reflects macros\' invocations (image_describes)',
+  check('2u. capability scope reflects a toolbar binding (image_describes)',
     html.indexOf('image_describes') >= 0);
   check('2v. capability scope reflects toolbar binding (image_generates)',
     html.indexOf('image_generates') >= 0);

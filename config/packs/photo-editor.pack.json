@@ -6,7 +6,7 @@
     "name": "Ora",
     "url": "https://ora.local"
   },
-  "description": "Photoshop-equivalent operations on canvas images \u2014 crop, adjust, AI edits, outpaint, upscale, style transfer, and critique.",
+  "description": "Photoshop-equivalent operations on canvas images — crop, adjust, AI edits, outpaint, upscale, style transfer, and critique.",
   "toolbars": [
     {
       "id": "photo-editor",
@@ -106,28 +106,6 @@
           "label": "Ask Ora",
           "shortcut": "Shift+A",
           "binding": "tool:ask_ora"
-        }
-      ]
-    }
-  ],
-  "macros": [
-    {
-      "id": "auto-enhance",
-      "label": "Auto enhance",
-      "icon": "wand",
-      "shortcut": null,
-      "steps": [
-        {
-          "tool": "image_brightness",
-          "params": {
-            "delta": 10
-          }
-        },
-        {
-          "tool": "image_contrast",
-          "params": {
-            "delta": 10
-          }
         }
       ]
     }

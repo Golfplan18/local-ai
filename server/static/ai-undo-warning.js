@@ -2,8 +2,7 @@
  * ai-undo-warning.js — WP-7.7.2
  *
  * One-time-per-session warning shown the first time the user undoes a
- * history frame whose origin was an AI-generated content insertion (or a
- * macro that invoked one).
+ * history frame whose origin was an AI-generated content insertion.
  *
  * ── Why this exists (Plan §11.15, §12 Q17, §13.7) ─────────────────────────
  *
@@ -29,12 +28,11 @@
  *      the active panel's current cursor, and tag frame index
  *      `cursor - 1` as AI-sourced in a side map keyed by frame index.
  *
- *   4. Macro-undo: when the macro engine invokes an AI capability, the
- *      same `canvas-state-changed` event fires from the capability
- *      handler. So macro-driven AI insertions tag automatically. A
- *      `markRange()` helper is also exposed for callers that want to
- *      explicitly tag a span (e.g., a macro that batches several
- *      inserts under a single conceptual undo unit).
+ *   4. Indirect insertions: any caller that invokes an AI capability
+ *      fires the same `canvas-state-changed` event from the capability
+ *      handler, so those insertions tag automatically. A `markRange()`
+ *      helper is also exposed for callers that want to explicitly tag a
+ *      span of frames as one conceptual undo unit.
  *
  *   5. We wrap `OraPanels.visual.undo` (and the panel instance's `undo`
  *      via prototype patch) so before each undo we inspect the frame
@@ -60,7 +58,7 @@
  *
  *   OraAIUndoWarning.markRange({ panel, from, to })
  *     Tag a contiguous range of frame indices [from, to) as AI-sourced.
- *     Useful for macro batch operations.
+ *     Useful for batch operations.
  *
  *   OraAIUndoWarning.hasBeenWarned()      // session flag read
  *   OraAIUndoWarning.reset()              // clear session flag
