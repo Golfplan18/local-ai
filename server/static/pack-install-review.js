@@ -11,7 +11,7 @@
  * Per the §11.15 declarative-only security model, packs cannot execute
  * code, but they can:
  *   - Add toolbars and tools that the user will click.
- *   - Bundle macros that invoke capability slots (which talk to commercial
+ *   - Bundle prompt templates that invoke capability slots (which talk to commercial
  *     APIs).
  *   - Ship prompt templates that get fed to LLMs / image models.
  *   - Place starter composition templates (with embedded SVG thumbnails)
@@ -39,7 +39,7 @@
  *
  *   OraPackInstallReview.computeCapabilityScope(packDefinition)
  *     → [string, ...]
- *     Pure function. Walks toolbars/macros/prompt_templates per §10 and
+ *     Pure function. Walks toolbars/prompt_templates per §10 and
  *     returns the de-duplicated, sorted list of capability slots the pack
  *     can reach. Exposed for tests + diagnostics.
  *
@@ -58,7 +58,7 @@
  * ── Why this is its own file (not folded into pack-loader.js) ─────────────
  *
  * pack-loader.js stays headless — it has no DOM, runs in Node tests, and
- * is the seam the macro / prompt-template / composition-template runtimes
+ * is the seam the prompt-template / composition-template runtimes
  * call into. Mounting a modal there would couple the loader to the
  * browser. The review modal is purely a UI gate; the loader is the data
  * pipeline. Separating them keeps the loader testable without jsdom and
@@ -136,17 +136,6 @@
       }
     }
 
-    if (pack && Array.isArray(pack.macros)) {
-      for (var m = 0; m < pack.macros.length; m++) {
-        var mc = pack.macros[m];
-        if (!mc || !Array.isArray(mc.steps)) continue;
-        for (var s = 0; s < mc.steps.length; s++) {
-          var step = mc.steps[s];
-          if (step && _isStr(step.capability)) note(step.capability);
-        }
-      }
-    }
-
     if (pack && Array.isArray(pack.prompt_templates)) {
       for (var p = 0; p < pack.prompt_templates.length; p++) {
         var pt = pack.prompt_templates[p];
@@ -194,42 +183,6 @@
     return html;
   }
 
-  function _renderMacrosSection(macros) {
-    if (!Array.isArray(macros) || macros.length === 0) {
-      return '<p class="ora-pack-install-review__empty">No macros.</p>';
-    }
-    var html = '';
-    for (var m = 0; m < macros.length; m++) {
-      var mc = macros[m] || {};
-      html += '<div class="ora-pack-install-review__macro">'
-            + '<h4>' + _renderIcon(mc.icon) + _esc(mc.label || mc.id || '(unnamed macro)') + '</h4>'
-            + '<p class="ora-pack-install-review__id">id: <code>' + _esc(mc.id || '') + '</code>'
-            +   (mc.shortcut ? ' · shortcut: <kbd>' + _esc(mc.shortcut) + '</kbd>' : '')
-            + '</p>';
-      var steps = Array.isArray(mc.steps) ? mc.steps : [];
-      if (steps.length === 0) {
-        html += '<p class="ora-pack-install-review__empty">No steps.</p>';
-      } else {
-        html += '<ol class="ora-pack-install-review__steps">';
-        for (var s = 0; s < steps.length; s++) {
-          var step = steps[s] || {};
-          var kind = _isStr(step.tool)       ? 'tool: '       + step.tool
-                   : _isStr(step.capability) ? 'capability: ' + step.capability
-                   : '(unknown)';
-          var paramsStr = '';
-          try {
-            paramsStr = step.params ? JSON.stringify(step.params) : '';
-          } catch (_) { paramsStr = '(unstringifiable params)'; }
-          html += '<li><code>' + _esc(kind) + '</code>'
-                + (paramsStr ? ' <span class="ora-pack-install-review__params">' + _esc(paramsStr) + '</span>' : '')
-                + '</li>';
-        }
-        html += '</ol>';
-      }
-      html += '</div>';
-    }
-    return html;
-  }
 
   function _renderPromptTemplatesSection(templates) {
     if (!Array.isArray(templates) || templates.length === 0) {
@@ -362,7 +315,6 @@
     html += '</section>';
 
     html += '<section class="ora-pack-install-review__section">';
-    html += '<h3>Macros</h3>' + _renderMacrosSection(pack.macros);
     html += '</section>';
 
     html += '<section class="ora-pack-install-review__section">';

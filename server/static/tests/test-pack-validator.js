@@ -154,8 +154,7 @@ var pack_mood_board = {
 };
 expectValid('§14 example pack — Mood Board', pack_mood_board);
 
-// Pack 2 — Photo Editor (toolbars + macros + prompt templates), exercises:
-//   * macros with steps using both 'tool' and 'capability' forms
+// Pack 2 — Photo Editor (toolbars + prompt templates), exercises:
 //   * prompt template with capability_route (image route)
 //   * inline SVG icon for a custom tool (with viewBox)
 var pack_photo_editor = {
@@ -173,19 +172,7 @@ var pack_photo_editor = {
         { id: "select", icon: "mouse-pointer", label: "Select", shortcut: "V", binding: "tool:select" },
         { id: "crop", icon: "crop", label: "Crop", shortcut: "C", binding: "tool:crop" },
         { id: "custom", icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/></svg>', label: "Custom", binding: "tool:custom_op" },
-        { id: "ai-fill", icon: "sparkles", label: "AI Fill", binding: "macro:ai-fill-selection", enabled_when: "selection_active" }
-      ]
-    }
-  ],
-  macros: [
-    {
-      id: "ai-fill-selection",
-      label: "AI Fill Selection",
-      icon: "wand-sparkles",
-      shortcut: null,
-      steps: [
-        { tool: "ensure_selection", params: {} },
-        { capability: "image_inpaint", params: { prompt: "{{prompt}}" } }
+        { id: "ai-fill", icon: "sparkles", label: "AI Fill", binding: "capability:image_edits", enabled_when: "selection_active" }
       ]
     }
   ],
@@ -202,7 +189,7 @@ var pack_photo_editor = {
     }
   ]
 };
-expectValid('synthetic Photo Editor pack (toolbars + macros + templates)', pack_photo_editor);
+expectValid('synthetic Photo Editor pack (toolbars + templates)', pack_photo_editor);
 
 // Pack 3 — Diagram Thinking (toolbars only), text-route prompt template,
 // enum prompt variable.
@@ -244,30 +231,28 @@ var pack_diagram = {
 };
 expectValid('synthetic Diagram Thinking pack (text-route, enum var)', pack_diagram);
 
-// Pack 4 — minimal pack carrying only macros (validates the empty-pack
-// rejection logic admits any single non-empty section).
-var pack_macros_only = {
-  pack_name: "Macros Only",
+// Pack 4 — minimal pack carrying only composition templates (validates the
+// empty-pack rejection logic admits any single non-empty section).
+var pack_single_section = {
+  pack_name: "Compositions Only",
   pack_version: "0.0.1",
   ora_compatibility: ">=0.7.0",
   author: { name: "anon" },
-  macros: [
+  composition_templates: [
     {
-      id: "greet",
-      label: "Greet",
-      steps: [
-        { tool: "say", params: { text: "hello" } }
-      ]
+      id: "starter",
+      label: "Starter",
+      canvas_state: { schema_version: "0.1", format_id: "ora-canvas" }
     }
   ]
 };
-expectValid('synthetic minimal pack (macros only)', pack_macros_only);
+expectValid('synthetic minimal pack (one section only)', pack_single_section);
 
 // ---- malformed pack fixtures ----------------------------------------------
 
 process.stdout.write('\n--- malformed packs (must fail with specific codes) ---\n');
 
-// 1. Empty pack — no toolbars / macros / templates
+// 1. Empty pack — no toolbars / templates
 expectInvalid(
   'empty pack (no sections present)',
   {
@@ -288,7 +273,7 @@ expectInvalid(
     ora_compatibility: ">=0.7.0",
     author: { name: "x" },
     extras: { stuff: 1 },
-    macros: [{ id: "m", label: "M", steps: [{ tool: "t", params: {} }] }]
+    composition_templates: [{ id: "c", label: "C", canvas_state: { schema_version: "0.1", format_id: "ora-canvas" } }]
   },
   ['schema_additionalProperties']
 );
@@ -316,7 +301,7 @@ expectInvalid(
     pack_name: "No Version",
     ora_compatibility: ">=0.7.0",
     author: { name: "x" },
-    macros: [{ id: "m", label: "M", steps: [{ tool: "t", params: {} }] }]
+    composition_templates: [{ id: "c", label: "C", canvas_state: { schema_version: "0.1", format_id: "ora-canvas" } }]
   },
   ['schema_required']
 );
@@ -329,7 +314,7 @@ expectInvalid(
     pack_version: "1.x",
     ora_compatibility: ">=0.7.0",
     author: { name: "x" },
-    macros: [{ id: "m", label: "M", steps: [{ tool: "t", params: {} }] }]
+    composition_templates: [{ id: "c", label: "C", canvas_state: { schema_version: "0.1", format_id: "ora-canvas" } }]
   },
   ['schema_pattern']
 );
@@ -412,22 +397,6 @@ expectInvalid(
   ['icon_external_reference']
 );
 
-// 10. Macro step has both 'tool' and 'capability' (oneOf violation)
-expectInvalid(
-  'macro step with both tool and capability',
-  {
-    pack_name: "Bad Step",
-    pack_version: "1.0.0",
-    ora_compatibility: ">=0.7.0",
-    author: { name: "x" },
-    macros: [{
-      id: "m", label: "M",
-      steps: [{ tool: "x", capability: "y", params: {} }]
-    }]
-  },
-  ['schema_oneOf']
-);
-
 // 11. Prompt template declaring both gear_preference and capability_route
 expectInvalid(
   'prompt template with both gear_preference and capability_route',
@@ -449,7 +418,7 @@ expectInvalid(
 
 // 12. Bad binding form
 expectInvalid(
-  'bad binding (no tool:/capability:/macro: prefix)',
+  'bad binding (no tool:/capability: prefix)',
   {
     pack_name: "Bad Binding",
     pack_version: "1.0.0",

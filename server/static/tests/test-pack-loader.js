@@ -122,7 +122,7 @@ function arraysEqual(a, b) {
 // ---- fixtures --------------------------------------------------------------
 
 // Pack A — exercises all four artifact types. Spec §14 mood-board pack
-// expanded with a macro and a prompt template.
+// expanded with a prompt template.
 var SAMPLE_PACK_A = {
   pack_name: "Sample Loader Pack A",
   pack_version: "1.0.0",
@@ -137,16 +137,6 @@ var SAMPLE_PACK_A = {
       items: [
         { id: "select",   icon: "mouse-pointer", label: "Select",   shortcut: "V", binding: "tool:select" },
         { id: "annotate", icon: "highlighter",   label: "Annotate", binding: "tool:annotate" }
-      ]
-    }
-  ],
-  macros: [
-    {
-      id: "loader-test-macro-a",
-      label: "Speech Bubble (test)",
-      icon: "message-circle",
-      steps: [
-        { tool: "shape:speech_bubble", params: { click_to_place: true } }
       ]
     }
   ],
@@ -194,11 +184,6 @@ var SAMPLE_PACK_B = {
       ]
     }
   ],
-  macros: [
-    { id: "loader-test-macro-b", label: "Macro B", steps: [
-      { tool: "shape:speech_bubble", params: {} }
-    ]}
-  ],
   prompt_templates: [
     { id: "loader-test-tpl-b", label: "Template B",
       template: "Hello {{name}}", variables: [{ name: "name", type: "text" }],
@@ -210,15 +195,16 @@ var SAMPLE_PACK_B = {
   ]
 };
 
-// Pack C — collides with pack A on a macro id.
+// Pack C — collides with pack A on a prompt-template id.
 var SAMPLE_PACK_C_COLLIDING = {
   pack_name: "Sample Loader Pack C",
   pack_version: "1.0.0",
   ora_compatibility: ">=0.7.0",
   author: { name: "Ora Tests" },
-  macros: [
-    { id: "loader-test-macro-a", label: "Collides w/ pack A",
-      steps: [{ tool: "shape:speech_bubble", params: {} }] }
+  prompt_templates: [
+    { id: "loader-test-tpl-a", label: "Collides w/ pack A",
+      template: "collides on id", variables: [],
+      capability_route: "image_generates" }
   ]
 };
 
@@ -227,7 +213,6 @@ var SAMPLE_PACK_D_INVALID = {
   pack_version: "1.0.0",
   ora_compatibility: ">=0.7.0",
   author: { name: "Ora Tests" },
-  macros: [{ id: "x", label: "x", steps: [{ tool: "noop", params: {} }] }]
 };
 
 // ---- TEST 1 — §13.2 acceptance criterion ----------------------------------
@@ -257,9 +242,6 @@ var SAMPLE_PACK_D_INVALID = {
   check('1c. registered.toolbars contains loader-test-a',
     arraysEqual(loadRes.registered.toolbars, ['loader-test-a']),
     loadRes.registered.toolbars);
-  check('1d. registered.macros contains loader-test-macro-a',
-    arraysEqual(loadRes.registered.macros, ['loader-test-macro-a']),
-    loadRes.registered.macros);
   check('1e. registered.prompt_templates contains loader-test-tpl-a',
     arraysEqual(loadRes.registered.prompt_templates, ['loader-test-tpl-a']),
     loadRes.registered.prompt_templates);
@@ -271,12 +253,8 @@ var SAMPLE_PACK_D_INVALID = {
   check('1g. toolbar registry has loader-test-a',
     toolbarMod.has('loader-test-a'), toolbarMod.list());
 
-  // Stub stores hold macro/template/composition defs (no external registry
+  // Stub stores hold template/composition defs (no external registry
   // wired in this test).
-  check('1h. listMacros() returns the macro def',
-    loaderMod.listMacros().length === 1
-    && loaderMod.listMacros()[0].id === 'loader-test-macro-a',
-    loaderMod.listMacros());
   check('1i. listPromptTemplates() returns the template def',
     loaderMod.listPromptTemplates().length === 1
     && loaderMod.listPromptTemplates()[0].id === 'loader-test-tpl-a',
@@ -298,16 +276,12 @@ var SAMPLE_PACK_D_INVALID = {
     unloadRes);
   check('1m. removed.toolbars',
     arraysEqual(unloadRes.removed.toolbars, ['loader-test-a']));
-  check('1n. removed.macros',
-    arraysEqual(unloadRes.removed.macros, ['loader-test-macro-a']));
   check('1o. removed.prompt_templates',
     arraysEqual(unloadRes.removed.prompt_templates, ['loader-test-tpl-a']));
   check('1p. removed.composition_templates',
     arraysEqual(unloadRes.removed.composition_templates, ['loader-test-comp-a']));
   check('1q. toolbar registry no longer has loader-test-a',
     !toolbarMod.has('loader-test-a'));
-  check('1r. listMacros() is now empty',
-    loaderMod.listMacros().length === 0);
   check('1s. listInstalled() is now empty',
     loaderMod.listInstalled().length === 0);
 
@@ -336,10 +310,7 @@ var SAMPLE_PACK_D_INVALID = {
     !toolbarMod.has('loader-test-a'));
   check('2g. toolbar B still present',
     toolbarMod.has('loader-test-b'));
-  // Stub stores: B's macro/template/composition still there; A's gone.
-  var macroIds = loaderMod.listMacros().map(function (m) { return m.id; });
-  check('2h. only pack B macro remains',
-    arraysEqual(macroIds, ['loader-test-macro-b']), macroIds);
+  // Stub stores: B's template/composition still there; A's gone.
   var tplIds = loaderMod.listPromptTemplates().map(function (t) { return t.id; });
   check('2i. only pack B prompt template remains',
     arraysEqual(tplIds, ['loader-test-tpl-b']), tplIds);
@@ -350,7 +321,7 @@ var SAMPLE_PACK_D_INVALID = {
   // ---- TEST 3 — duplicate-id collision rejected ---------------------------
   process.stdout.write('\n--- TEST 3: duplicate-id collision rejected ---\n');
 
-  // Pack C re-uses macro id "loader-test-macro-a" which pack A still owns
+  // Pack C re-uses prompt-template id "loader-test-tpl-a" which pack A still owns
   // here (we haven't unloaded B which doesn't carry that id).
   // Re-load A so it's back in flight.
   toolbarMod.clear();
@@ -409,30 +380,34 @@ var SAMPLE_PACK_D_INVALID = {
     jsonRes.success === true && jsonRes.pack_id === 'Sample Loader Pack B@1.0.0',
     jsonRes);
 
-  // ---- TEST 8 — external macro registry -----------------------------------
-  process.stdout.write('\n--- TEST 8: external macro registry passthrough ---\n');
+  // ---- TEST 8 — external registry passthrough ----------------------------
+  // Guards the generic contract: when a caller supplies its own registry,
+  // the loader hands artifacts to it and keeps nothing in its fallback store.
+  // Originally written against macros; repointed at prompt templates when
+  // macros were removed, so the guarantee survives the feature.
+  process.stdout.write('\n--- TEST 8: external registry passthrough ---\n');
   toolbarMod.clear();
   loaderMod.clear();
 
-  var externalMacros = Object.create(null);
+  var externalTemplates = Object.create(null);
   var externalRegistry = {
-    register: function (def) { externalMacros[def.id] = def; },
-    unregister: function (id) { delete externalMacros[id]; }
+    register: function (def) { externalTemplates[def.id] = def; },
+    unregister: function (id) { delete externalTemplates[id]; }
   };
-  // Re-init the loader to swap in the external macro registry.
+  // Re-init the loader to swap in the external prompt-template registry.
   await loaderMod.init({
     validator: validatorMod,
     toolbarRegistry: toolbarMod,
-    macroRegistry: externalRegistry
+    promptTemplateRegistry: externalRegistry
   });
   await loaderMod.loadPack(SAMPLE_PACK_A);
-  check('8a. external registry received the macro',
-    externalMacros['loader-test-macro-a'] != null);
+  check('8a. external registry received the prompt template',
+    externalTemplates['loader-test-tpl-a'] != null);
   check('8b. fallback store stays empty when external registry is wired',
-    loaderMod.listMacros().length === 0);
+    loaderMod.listPromptTemplates().length === 0);
   loaderMod.unloadPack('Sample Loader Pack A@1.0.0');
   check('8c. external registry was unregistered on unload',
-    externalMacros['loader-test-macro-a'] == null);
+    externalTemplates['loader-test-tpl-a'] == null);
 
   // Restore plain config for any later use.
   await loaderMod.init({ validator: validatorMod, toolbarRegistry: toolbarMod });

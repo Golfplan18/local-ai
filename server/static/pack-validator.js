@@ -83,9 +83,9 @@
     } else if (err.keyword === 'pattern' && err.params && err.params.pattern) {
       msg = "value does not match expected pattern " + err.params.pattern + " (" + msg + ").";
     } else if (err.keyword === 'oneOf') {
-      msg = "must satisfy exactly one of the alternative shapes (e.g. macro step has 'tool' XOR 'capability'; prompt template has 'gear_preference' XOR 'capability_route').";
+      msg = "must satisfy exactly one of the alternative shapes (e.g. a prompt template has 'gear_preference' XOR 'capability_route').";
     } else if (err.keyword === 'anyOf' && (path === '(root)' || path === '')) {
-      msg = "pack must contain at least one of toolbars, macros, prompt_templates, composition_templates — empty packs are rejected.";
+      msg = "pack must contain at least one of toolbars, prompt_templates, composition_templates — empty packs are rejected.";
     }
     return _finding('error', 'schema_' + err.keyword, msg, path, 'schema');
   }

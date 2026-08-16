@@ -12,7 +12,6 @@
  *                                   (defaults to global OraPackValidator)
  *       options.toolbarRegistry     OraVisualToolbar-shaped object
  *                                   (defaults to global OraVisualToolbar)
- *       options.macroRegistry       optional — see "stub registration"
  *       options.promptTemplateRegistry  optional — see "stub registration"
  *       options.compositionRegistry optional — see "stub registration"
  *       options.fetch               function(urlOrPath) → Promise<string>
@@ -28,7 +27,6 @@
  *         errors:     [Finding|Error, ...],
  *         registered: {
  *           toolbars:              [id, ...],
- *           macros:                [id, ...],
  *           prompt_templates:      [id, ...],
  *           composition_templates: [id, ...]
  *         }
@@ -41,7 +39,6 @@
  *         errors:     [Error, ...],
  *         removed: {
  *           toolbars:              [id, ...],
- *           macros:                [id, ...],
  *           prompt_templates:      [id, ...],
  *           composition_templates: [id, ...]
  *         }
@@ -71,14 +68,13 @@
  *
  * Artifact-to-pack mapping
  * ------------------------
- * For every registered artifact (toolbar, macro, prompt template,
+ * For every registered artifact (toolbar, prompt template,
  * composition template), the loader records (artifact_kind, artifact_id,
  * pack_id). Unloading walks that record and removes only that pack's
  * artifacts. Concretely:
  *
  *   _artifactOwners = {
  *     toolbars:              { toolbarId: packId },
- *     macros:                { macroId: packId },
  *     prompt_templates:      { templateId: packId },
  *     composition_templates: { compId: packId }
  *   }
@@ -89,35 +85,28 @@
  *
  * Stub registration for §7.2.2 / §7.2.3 / §7.2.4
  * ----------------------------------------------
- * The macro runtime (§7.2.2), prompt-template runtime (§7.2.3), and
+ * The prompt-template runtime (§7.2.3) and the
  * composition-template runtime / New Canvas dialog (§7.7.5 / §7.2.4) are
  * not in flight at the time of this WP. To stay declarative-only and avoid
- * blocking on those WPs, this loader stores the macro, prompt-template,
+ * blocking on those WPs, this loader stores the prompt-template
  * and composition-template definitions in its own state when the matching
  * registry isn't supplied. Each definition is exposed via:
  *
- *   listMacros()                  → [macroDef, ...]
- *   getMacro(macroId)             → macroDef|null
  *   listPromptTemplates()         → [tplDef, ...]
  *   getPromptTemplate(id)         → tplDef|null
  *   listCompositionTemplates()    → [compDef, ...]
  *   getCompositionTemplate(id)    → compDef|null
  *
- * Integration point for §7.2.2 — the macro runtime should call
- * `OraPackLoader.listMacros()` (or pass itself as `options.macroRegistry`
- * to `init()`) to consume the loader's stored macros. The expected shape
- * for `options.macroRegistry` is:
+ * Integration point — a runtime is passed as
+ * `options.promptTemplateRegistry` (§7.2.3) or `options.compositionRegistry`
+ * (§7.2.4 / §7.7.5). The expected shape for either is:
  *
  *   {
- *     register(macroDef)                 → registered_id  (or throws)
- *     unregister(macroId)                → boolean
+ *     register(def)                      → registered_id  (or throws)
+ *     unregister(id)                     → boolean
  *     // optional:
- *     has?(macroId), get?(macroId), list?()
+ *     has?(id), get?(id), list?()
  *   }
- *
- * §7.2.3 (prompt template runtime) — same contract under
- * `options.promptTemplateRegistry`. §7.2.4 / §7.7.5 (composition template /
- * New Canvas dialog) — same contract under `options.compositionRegistry`.
  *
  * When a registry IS supplied, loadPack calls registry.register(def) for
  * each artifact and the loader does not retain the def — the registry
@@ -182,7 +171,6 @@
     initialized: false,
     validator: null,
     toolbarRegistry: null,
-    macroRegistry: null,
     promptTemplateRegistry: null,
     compositionRegistry: null,
     fetchFn: null,
@@ -194,14 +182,12 @@
     // Artifact-to-pack mapping. Each entry is { artifactId: packId }.
     artifactOwners: {
       toolbars:              Object.create(null),
-      macros:                Object.create(null),
       prompt_templates:      Object.create(null),
       composition_templates: Object.create(null)
     },
 
     // Fallback storage when no external registry is provided.
     fallback: {
-      macros:                Object.create(null),
       prompt_templates:      Object.create(null),
       composition_templates: Object.create(null)
     }
@@ -217,7 +203,6 @@
     _state.toolbarRegistry =
          options.toolbarRegistry
       || (typeof root !== 'undefined' ? root.OraVisualToolbar : null);
-    _state.macroRegistry           = options.macroRegistry           || null;
     _state.promptTemplateRegistry  = options.promptTemplateRegistry  || null;
     _state.compositionRegistry     = options.compositionRegistry     || null;
     _state.fetchFn                 = options.fetch                   || null;
@@ -381,7 +366,6 @@
       }
     }
     check('toolbars',              pack.toolbars);
-    check('macros',                pack.macros);
     check('prompt_templates',      pack.prompt_templates);
     check('composition_templates', pack.composition_templates);
     return clashes;
@@ -412,7 +396,6 @@
         errors: [],
         registered: {
           toolbars:              [],
-          macros:                [],
           prompt_templates:      [],
           composition_templates: []
         }
@@ -486,22 +469,6 @@
           result.registered.toolbars.push(tb.id);
         }
 
-        // Macros (stub-registered if no registry).
-        var macros = Array.isArray(pack.macros) ? pack.macros : [];
-        for (var m = 0; m < macros.length; m++) {
-          var mc = macros[m];
-          _registerOrStore('macros', mc,
-            _state.macroRegistry, _state.fallback.macros, packId);
-          (function (id) {
-            trackRollback(function () {
-              _unregisterOrForget('macros', id,
-                _state.macroRegistry, _state.fallback.macros);
-              delete _state.artifactOwners.macros[id];
-            });
-          })(mc.id);
-          result.registered.macros.push(mc.id);
-        }
-
         // Prompt templates.
         var pts = Array.isArray(pack.prompt_templates) ? pack.prompt_templates : [];
         for (var p = 0; p < pts.length; p++) {
@@ -536,7 +503,7 @@
       } catch (e) {
         doRollback();
         result.registered = {
-          toolbars: [], macros: [], prompt_templates: [], composition_templates: []
+          toolbars: [], prompt_templates: [], composition_templates: []
         };
         var asErr = (e && e.code) ? e : _err('registration_failed',
           'pack-loader: artifact registration failed: ' + (e && e.message));
@@ -555,7 +522,6 @@
         source:            source,
         registered: {
           toolbars:              result.registered.toolbars.slice(),
-          macros:                result.registered.macros.slice(),
           prompt_templates:      result.registered.prompt_templates.slice(),
           composition_templates: result.registered.composition_templates.slice()
         }
@@ -571,7 +537,7 @@
         errors: [err && err.code ? err : _err('load_failed',
           'loadPack: ' + (err && err.message ? err.message : String(err)))],
         registered: {
-          toolbars: [], macros: [], prompt_templates: [], composition_templates: []
+          toolbars: [], prompt_templates: [], composition_templates: []
         }
       };
     });
@@ -586,7 +552,6 @@
       errors: [],
       removed: {
         toolbars:              [],
-        macros:                [],
         prompt_templates:      [],
         composition_templates: []
       }
@@ -619,9 +584,8 @@
       }
     }
 
-    // Macros / prompt_templates / composition_templates — generic path.
+    // prompt_templates / composition_templates — generic path.
     var kinds = [
-      ['macros',                _state.macroRegistry,           _state.fallback.macros],
       ['prompt_templates',      _state.promptTemplateRegistry,  _state.fallback.prompt_templates],
       ['composition_templates', _state.compositionRegistry,     _state.fallback.composition_templates]
     ];
@@ -668,7 +632,6 @@
         source:            e.source,
         registered: {
           toolbars:              e.registered.toolbars.slice(),
-          macros:                e.registered.macros.slice(),
           prompt_templates:      e.registered.prompt_templates.slice(),
           composition_templates: e.registered.composition_templates.slice()
         }
@@ -694,7 +657,6 @@
       source:            e.source,
       registered: {
         toolbars:              e.registered.toolbars.slice(),
-        macros:                e.registered.macros.slice(),
         prompt_templates:      e.registered.prompt_templates.slice(),
         composition_templates: e.registered.composition_templates.slice()
       }
@@ -705,12 +667,10 @@
     _state.installed = Object.create(null);
     _state.artifactOwners = {
       toolbars:              Object.create(null),
-      macros:                Object.create(null),
       prompt_templates:      Object.create(null),
       composition_templates: Object.create(null)
     };
     _state.fallback = {
-      macros:                Object.create(null),
       prompt_templates:      Object.create(null),
       composition_templates: Object.create(null)
     };
@@ -725,12 +685,6 @@
     return out;
   }
 
-  function listMacros() {
-    return _listFallback(_state.fallback.macros);
-  }
-  function getMacro(id) {
-    return _state.fallback.macros[id] || null;
-  }
   function listPromptTemplates() {
     return _listFallback(_state.fallback.prompt_templates);
   }
@@ -755,8 +709,6 @@
     getInstalled:             getInstalled,
     clear:                    clear,
     // Stub-registry accessors for §7.2.2/3/4 integration.
-    listMacros:               listMacros,
-    getMacro:                 getMacro,
     listPromptTemplates:      listPromptTemplates,
     getPromptTemplate:        getPromptTemplate,
     listCompositionTemplates: listCompositionTemplates,
