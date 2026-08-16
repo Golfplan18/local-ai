@@ -1212,6 +1212,18 @@ class RenderManager:
                 proc.wait()
                 t_err.join(timeout=2.0)
 
+                # Close both pipes explicitly. ``r.process`` keeps a reference
+                # to this Popen for the lifetime of the render record, so
+                # Python's own finalizer never runs and the two pipe file
+                # descriptors are never returned to the OS — a permanent leak
+                # of two descriptors per pass, against a 256 soft limit.
+                for _pipe in (proc.stdout, proc.stderr):
+                    if _pipe is not None:
+                        try:
+                            _pipe.close()
+                        except Exception:
+                            pass
+
                 if r.cancel_requested:
                     break
 
