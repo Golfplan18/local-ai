@@ -1715,6 +1715,11 @@
   };
 
   const startBrowserPositioning = () => {
+    // Idempotent across repeat opens, the way the ResizeObserver below already
+    // is. positionBrowser is a stable reference, so the browser's dedupe of an
+    // identical (type, listener, capture) triple happened to keep this from
+    // leaking — an accident to depend on, not a guarantee to rely on.
+    window.removeEventListener('resize', positionBrowser);
     window.addEventListener('resize', positionBrowser);
     if (!browserResizeObserver && 'ResizeObserver' in window) {
       browserResizeObserver = new ResizeObserver(positionBrowser);
@@ -1758,8 +1763,37 @@
     }, 0);
   };
 
+  const browserHoldsFocus = (node) => {
+    if (!browserOverlay || !node) return false;
+    return browserOverlay === node || browserOverlay.contains(node);
+  };
+
+  // The Library is docked, not modal: the rest of Ora stays usable the whole
+  // time it is up, so at close time somebody else may hold focus for reasons
+  // that have nothing to do with the Library. Hand focus back only when the
+  // Library still holds it, or when nobody does.
+  // MIRRORS v3-browse-overlay.js::_focusIsOursToHandBack — the two must move
+  // together.
+  const browserFocusIsOursToHandBack = (focusBefore) => {
+    const body = document.body;
+    const now = document.activeElement;
+    // The Library still holds it — including its own now-hidden panel, which
+    // is exactly the case focus restoration exists for.
+    if (browserHoldsFocus(now)) return true;
+    // Somebody else holds it: an input the user moved to while the Library was
+    // docked. Taking it would be a theft.
+    if (now && now !== body) return false;
+    // Nobody holds it. Claim it back only if the Library — or nobody — held it
+    // when the close began. Focus that some third element merely lost is not
+    // ours to take.
+    return browserHoldsFocus(focusBefore) || !focusBefore || focusBefore === body;
+  };
+
   const closeBrowser = () => {
     const wasOpen = !!(browserOverlay && browserOverlay.classList.contains('is-open'));
+    // Read BEFORE the close work: hiding the overlay can already have sent
+    // focus to the body.
+    const focusBefore = document.activeElement;
     if (browserOverlay) browserOverlay.classList.remove('is-open');
     stopBrowserPositioning();
     if (!wasOpen) return;
@@ -1767,7 +1801,8 @@
       ? browserReturnFocus
       : browseCmd;
     browserReturnFocus = null;
-    if (focusTarget && typeof focusTarget.focus === 'function') {
+    if (focusTarget && typeof focusTarget.focus === 'function'
+        && browserFocusIsOursToHandBack(focusBefore)) {
       try { focusTarget.focus(); } catch (e) {}
     }
   };
