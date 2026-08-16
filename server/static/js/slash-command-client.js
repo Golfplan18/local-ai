@@ -264,9 +264,42 @@
     return true;
   };
 
+  // Pack-shipped prompt templates. The pack loader registers each pack's
+  // `prompt_templates[]` into OraPromptTemplateRuntime at boot; this is the
+  // only place a user can reach one by typing its slash command. Built-in
+  // LOCAL_COMMANDS always win, so a pack cannot shadow `/new`. Anything we
+  // can't resolve falls through and submits as an ordinary prompt.
+  const _tryPromptTemplate = (parsed) => {
+    const runtime = window.OraPromptTemplateRuntime;
+    if (!runtime || typeof runtime.invoke !== 'function'
+        || typeof runtime.list !== 'function') return false;
+
+    let slashParsed = null;
+    let known = false;
+    try {
+      slashParsed = runtime.parseSlash(parsed.raw);
+      if (!slashParsed) return false;
+      known = (runtime.list() || []).some((tpl) => tpl && (
+        tpl.slash_command === parsed.command || tpl.id === slashParsed.templateId
+      ));
+    } catch (_) {
+      return false;
+    }
+    if (!known) return false;
+
+    Promise.resolve()
+      .then(() => runtime.invoke(slashParsed))
+      .catch((error) => {
+        console.warn('[slash-command-client] prompt template ' + parsed.command
+          + ' failed: ' + ((error && error.message) || error));
+      });
+    return true;
+  };
+
   const handleClientCommand = (text) => {
     const parsed = parse(text);
-    if (!parsed || !LOCAL_COMMANDS.has(parsed.command)) return false;
+    if (!parsed) return false;
+    if (!LOCAL_COMMANDS.has(parsed.command)) return _tryPromptTemplate(parsed);
 
     if (parsed.command === '/new') {
       document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {

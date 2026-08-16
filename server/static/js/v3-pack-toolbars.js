@@ -330,6 +330,41 @@
     return rows;
   }
 
+  // Collect every `binding` in a toolbar definition. Items nest, so this
+  // walks children as well as the top level.
+  function _collectBindings(items, out) {
+    (items || []).forEach(function (it) {
+      if (!it || typeof it !== 'object') return;
+      if (typeof it.binding === 'string' && it.binding) {
+        out.push({ id: it.id || '(unnamed)', binding: it.binding });
+      }
+      ['items', 'children', 'buttons'].forEach(function (k) {
+        if (Array.isArray(it[k])) _collectBindings(it[k], out);
+      });
+    });
+    return out;
+  }
+
+  // Report bindings that resolve to no handler. The pack schema validates
+  // only a binding's surface form, so an unresolvable target installs
+  // cleanly and renders a button that does nothing when clicked. This
+  // warns rather than blocks: a partly-dead toolbar is more useful than
+  // no toolbar, and refusing to mount would hide the rest of the pack.
+  function _warnUnresolvedBindings(id, def, registry) {
+    try {
+      var dead = _collectBindings(def && def.items, []).filter(function (b) {
+        return typeof registry[b.binding] !== 'function';
+      });
+      if (!dead.length) return;
+      console.warn(
+        '[v3-pack-toolbars] toolbar "' + id + '" has ' + dead.length
+        + ' binding(s) that resolve to no handler — those buttons will render '
+        + 'but do nothing: '
+        + dead.map(function (b) { return b.id + ' → ' + b.binding; }).join(', ')
+      );
+    } catch (e) { /* diagnostics must never break a mount */ }
+  }
+
   function mountPack(panel, id) {
     var Toolbar = window.OraVisualToolbar;
     var Dock = panel && panel._dockController;
@@ -344,8 +379,10 @@
     }
 
     try {
+      var actionRegistry = buildExtendedRegistry(panel);
+      _warnUnresolvedBindings(id, def, actionRegistry);
       var ctl = Toolbar.render(def, {
-        actionRegistry:    buildExtendedRegistry(panel),
+        actionRegistry:    actionRegistry,
         predicateRegistry: buildExtendedPredicateRegistry(panel),
         context:           panel
       });

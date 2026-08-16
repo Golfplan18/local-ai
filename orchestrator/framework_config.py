@@ -353,6 +353,7 @@ def compose_framework_spec(
     framework_name: str,
     project_nexus: Optional[str] = None,
     profile_name: Optional[str] = None,
+    spec_text: Optional[str] = None,
 ) -> str:
     """Load + bind a framework spec for runtime invocation.
 
@@ -374,8 +375,15 @@ def compose_framework_spec(
     are dropped; supplied overlays for ids without markers in the
     current spec are silently ignored. With no project context, all
     markers are dropped (the spec reads project-neutral).
+
+    ``spec_text`` lets a caller that already holds the spec body — the
+    milestone executor, which is handed an explicit ``framework_path``
+    rather than a bare id — supply it directly. Without it the body is
+    read from ``frameworks/book/<framework_name>.md``, which is only
+    the same file when the framework lives in the book directory.
     """
-    spec_text = _load_spec_file(framework_name)
+    if spec_text is None:
+        spec_text = _load_spec_file(framework_name)
     declared = parse_config_interface(spec_text)
 
     supplied: dict = {}

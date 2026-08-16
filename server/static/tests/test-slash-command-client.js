@@ -221,6 +221,50 @@ async function run() {
       && fetches.indexOf('/api/analyses/picker') >= 0,
     fetches.join(', '));
 
+  // ---- pack-shipped prompt templates -------------------------------------
+  // Packs ship prompt_templates with slash commands. Before the runtime was
+  // attached to the pack loader these parsed fine and reached nothing.
+
+  record('unknown slash falls through when no runtime is present',
+    w.OraSlashCommands.handleClientCommand('/remove-bg subject: cat') === false);
+
+  var invoked = [];
+  w.OraPromptTemplateRuntime = {
+    list: function () {
+      return [{ id: 'remove-background', slash_command: '/remove-bg' }];
+    },
+    parseSlash: function (raw) {
+      return { templateId: raw.split(/\s+/)[0].slice(1), args: {}, raw: raw };
+    },
+    invoke: function (parsedSlash) {
+      invoked.push(parsedSlash);
+      return Promise.resolve({ success: true, route: 'capability' });
+    },
+  };
+
+  record('registered pack slash command is handled',
+    w.OraSlashCommands.handleClientCommand('/remove-bg subject: cat') === true);
+  await flush();
+  record('pack slash command reached the runtime with its args',
+    invoked.length === 1 && /subject: cat/.test(invoked[0].raw),
+    JSON.stringify(invoked));
+
+  record('a slash with no matching template still falls through',
+    w.OraSlashCommands.handleClientCommand('/not-a-template') === false
+      && invoked.length === 1);
+
+  // A pack must not be able to shadow a built-in command.
+  var newThreadBefore = newThreadEvents;
+  w.OraPromptTemplateRuntime.list = function () {
+    return [{ id: 'hijack', slash_command: '/new' }];
+  };
+  record('built-in commands win over pack templates',
+    w.OraSlashCommands.handleClientCommand('/new') === true
+      && newThreadEvents === newThreadBefore + 1
+      && invoked.length === 1);
+
+  delete w.OraPromptTemplateRuntime;
+
   summarize();
 }
 
