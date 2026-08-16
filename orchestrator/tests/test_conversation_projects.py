@@ -564,5 +564,63 @@ class MasterMatrixPathTests(unittest.TestCase):
             ve._MASTER_MATRIX_CANDIDATES = original
 
 
+class ArchiveConversationBindingTests(unittest.TestCase):
+    """An imported archive conversation must be filable under a project.
+
+    Its turns live in the markdown archive and the vector index, never in the
+    envelope, so binding has to be able to mint an identity-and-membership-only
+    envelope. Before this, set_conversation_projects returned None and silently
+    did nothing for all ~3,600 imported conversations.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _read(self, conv_id):
+        return cm.load_conversation_json(conv_id, sessions_root=self.root)
+
+    def test_binding_creates_the_envelope_when_asked(self):
+        path = cm.set_conversation_projects(
+            "historical-0005570335ae", ["ora", "quantum_mechanics"],
+            create_if_missing=True, display_name="[citations for paper]",
+            sessions_root=self.root,
+        )
+        self.assertIsNotNone(path)
+        data = self._read("historical-0005570335ae")
+        self.assertEqual(data["project_ids"], ["ora", "quantum_mechanics"])
+        self.assertEqual(data["display_name"], "[citations for paper]")
+        self.assertEqual(data["messages"], [])
+
+    def test_default_still_refuses_to_create(self):
+        """An ordinary membership edit against a typo must not mint a stub."""
+        self.assertIsNone(
+            cm.set_conversation_projects(
+                "historical-typo", ["ora"], sessions_root=self.root)
+        )
+        self.assertFalse((self.root / "historical-typo").exists())
+
+    def test_created_binding_normalizes_like_any_other(self):
+        cm.set_conversation_projects(
+            "historical-abc", ["ora", "commons", "ora", "general", "golf"],
+            create_if_missing=True, sessions_root=self.root,
+        )
+        self.assertEqual(self._read("historical-abc")["project_ids"], ["ora", "golf"])
+
+    def test_rebinding_an_created_envelope_does_not_duplicate_it(self):
+        first = cm.set_conversation_projects(
+            "historical-abc", ["ora"], create_if_missing=True, sessions_root=self.root)
+        second = cm.set_conversation_projects(
+            "historical-abc", ["golf"], create_if_missing=True, sessions_root=self.root)
+        self.assertEqual(first, second)
+        self.assertEqual(self._read("historical-abc")["project_ids"], ["golf"])
+
+    def test_unsafe_id_is_never_created(self):
+        with self.assertRaises(ValueError):
+            cm.set_conversation_projects(
+                "../escape", ["ora"], create_if_missing=True, sessions_root=self.root)
+
+
 if __name__ == "__main__":
     unittest.main()

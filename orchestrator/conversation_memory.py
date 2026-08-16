@@ -690,6 +690,7 @@ def ensure_conversation_envelope(
     *,
     tag: str = "",
     project_ids: list[str] | None = None,
+    display_name: str = "",
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Create a zero-turn envelope for a server-managed artifact if absent.
@@ -699,6 +700,11 @@ def ensure_conversation_envelope(
     privacy state durable across browser/server restarts. Existing readable
     envelopes are never changed; existing unreadable envelopes are reported
     and never overwritten.
+
+    Also the seam an imported archive conversation uses to become addressable:
+    its turns live in the markdown archive and the vector index, not here, so
+    the envelope carries identity and membership only. ``display_name`` keeps
+    such a row from listing as a blank title.
     """
     from datetime import datetime as _dt
     import sys as _sys
@@ -718,7 +724,7 @@ def ensure_conversation_envelope(
     envelope_tag = tag if tag in CONVERSATION_TAGS else ""
     envelope = {
         "conversation_id": cid,
-        "display_name": "",
+        "display_name": display_name.strip() if isinstance(display_name, str) else "",
         "tag": envelope_tag,
         "created": _dt.now().isoformat(timespec="seconds"),
         "parent_conversation_id": None,
@@ -2012,6 +2018,8 @@ def set_conversation_projects(
     conversation_id: str,
     project_ids: list[str],
     *,
+    create_if_missing: bool = False,
+    display_name: str = "",
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Replace a conversation's explicit project memberships (G1.33).
@@ -2024,13 +2032,34 @@ def set_conversation_projects(
     membership-edit path used by the project modal; conversation *creation*
     sets membership via ``save_turn_spatial_state``'s ``project_ids`` arg.
 
-    Returns the path written, or None if the envelope is missing.
+    ``create_if_missing`` mints a zero-turn envelope when none exists. An
+    imported archive conversation has no envelope — its turns live in the
+    markdown archive and the vector index — so without this it could not be
+    filed under a project at all, and the call returned None silently. It
+    stays opt-in so an ordinary membership edit against a typo'd id still
+    fails loudly rather than conjuring an empty conversation.
+
+    Returns the path written, or None if the envelope is missing (and
+    ``create_if_missing`` is False) or could not be created.
     """
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
 
     def mutate(data: dict[str, Any]) -> None:
         data["project_ids"] = normalize_project_ids(project_ids)
 
+    written = _mutate_conversation_envelope(conversation_id, root, mutate)
+    if written is not None or not create_if_missing:
+        return written
+    created = ensure_conversation_envelope(
+        conversation_id,
+        project_ids=project_ids,
+        display_name=display_name,
+        sessions_root=root,
+    )
+    if created is None:
+        return None
+    # Re-run the mutation so the stored list goes through exactly the same
+    # normalization as an edit to a pre-existing envelope.
     return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
