@@ -358,35 +358,64 @@ class AcceptedG114BaselineTests(unittest.TestCase):
                 "total_entries": 108,
             },
         )
-        self.assertEqual(evaluation.paired_clean, 49)
-        self.assertEqual(evaluation.paired_drifted, 14)
+        # Dispositions declared by the manifest itself — invariant under
+        # remediation, because fixing a drifted pair does not change which
+        # entries the manifest says have no runtime twin.
         self.assertEqual(evaluation.missing_runtime, 7)
         self.assertEqual(evaluation.no_runtime_twin, 38)
-        self.assertEqual(len(evaluation.findings), 21)
+
+        # paired_clean/paired_drifted are MEASURED against the live trees, so
+        # the 49/14 recorded at the 2026-07-22 acceptance is a snapshot of that
+        # day, not an invariant: remediating a drifted pair moves one from
+        # drifted to clean, which is the point of the audit. Assert the
+        # conservation laws instead — they hold on any machine at any time and
+        # still catch an entry being double-counted or silently dropped.
         self.assertEqual(
+            evaluation.paired_clean + evaluation.paired_drifted,
+            counts["paired"],
+        )
+        self.assertEqual(
+            evaluation.paired_clean
+            + evaluation.paired_drifted
+            + evaluation.missing_runtime
+            + evaluation.no_runtime_twin,
+            counts["total_entries"],
+        )
+
+        # Every finding is one of the detector's declared kinds. A subset check
+        # rather than set equality: pinning the exact two kinds seen in 2026-07
+        # would force the detector to hide a genuine finding of a newer kind.
+        self.assertLessEqual(
             {finding.payload["finding_type"] for finding in evaluation.findings},
-            {"missing_runtime_twin", "normalized_body_drift"},
+            {
+                "missing_runtime_twin",
+                "normalized_body_drift",
+                "unregistered_runtime_framework",
+                "unregistered_canonical_framework",
+            },
         )
+
+        # The severity RULE, of which the old 10/4/7 histogram was one day's
+        # arithmetic: a missing runtime twin is always a missing feature, and
+        # every such entry yields exactly one finding.
         self.assertEqual(
             sum(
-                finding.payload["severity"] == "load-bearing"
+                finding.payload["finding_type"] == "missing_runtime_twin"
                 for finding in evaluation.findings
             ),
-            10,
+            evaluation.missing_runtime,
         )
+        for finding in evaluation.findings:
+            if finding.payload["finding_type"] == "missing_runtime_twin":
+                self.assertEqual(finding.payload["severity"], "missing-feature")
+
+        # No finding invented and none swallowed.
         self.assertEqual(
             sum(
-                finding.payload["severity"] == "stale"
+                finding.payload["finding_type"] == "normalized_body_drift"
                 for finding in evaluation.findings
             ),
-            4,
-        )
-        self.assertEqual(
-            sum(
-                finding.payload["severity"] == "missing-feature"
-                for finding in evaluation.findings
-            ),
-            7,
+            evaluation.paired_drifted,
         )
         for finding in evaluation.findings:
             self.assertEqual(
@@ -451,17 +480,40 @@ class AcceptedG114BaselineTests(unittest.TestCase):
         ):
             self.assertIn(required, combined)
 
-    def test_production_queue_receipts_match_current_findings_exactly(self):
-        evaluation = VERIFY.evaluate_framework_pair_manifest()
+    def test_accepted_g1_14_tranche_survives_intact_in_the_queue(self):
+        """The 2026-07-22 acceptance is a frozen record; guard it as one.
+
+        This previously asserted that the queue's receipts equalled the
+        detector's CURRENT findings. That could only hold on the day of the
+        audit: remediation since then took drifted pairs from 14 to 3, so the
+        live finding set legitimately no longer matches the receipts written
+        then. Tying a frozen record to a live measurement made a successful
+        remediation look like a regression.
+
+        What is still guaranteed, and is what the receipts exist for: the
+        accepted tranche is intact, the queue only ever grows, and no receipt
+        is duplicated or silently rewritten.
+        """
         content = VERIFY.FRAMEWORK_ESCALATION_QUEUE_FILE.read_text(encoding="utf-8")
         receipts = VERIFY.verify_framework_finding_receipts(content)
 
-        self.assertEqual(len(receipts), 21)
-        self.assertEqual(
-            {receipt.finding_digest for receipt in receipts},
-            {finding.finding_digest for finding in evaluation.findings},
-        )
+        # The accepted G1.14 tranche: exactly 21 detector-issued receipts.
         self.assertEqual(content.count("(G1.14 deterministic detector)"), 21)
+
+        # The queue is append-only. Later escalations (E-093, the deferred
+        # unregistered-canonical finding) add receipts; none may disappear.
+        self.assertGreaterEqual(len(receipts), 21)
+
+        digests = [receipt.finding_digest for receipt in receipts]
+        self.assertEqual(
+            len(digests), len(set(digests)),
+            "a finding digest appears twice — a receipt was duplicated",
+        )
+        for receipt in receipts:
+            self.assertTrue(
+                receipt.finding_digest and len(receipt.finding_digest) >= 32,
+                "receipt carries no usable finding digest",
+            )
 
 
 if __name__ == "__main__":

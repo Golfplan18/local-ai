@@ -2,6 +2,8 @@
 
 *A reader-facing explanation of what Ora is and why it exists. It derives entirely from [[Reference — Ora Technical Documentation]] and introduces no new claims — where you want the mechanism in full, that document has it. This one is for the door you walk through first: why any of this matters.*
 
+> This overview describes the installed system as of the technical documentation's pinned commit `7a5e8f40`. Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
+
 ---
 
 ## What Ora is
@@ -127,5 +129,16 @@ Some pieces are built but not yet finished, and the system says so rather than b
 In short: Ora is a working demonstration that reliability is a system problem, not a model problem — and a working system, on the platform it is built for, with the honesty to tell you where it isn't finished.
 
 ---
+
+---
+
+## Changelog
+
+- **2026-08-11** — Rewrote the "Memory that survives you leaving" section for clarity. In the same pass the pin banner and this changelog were dropped from the document; both were restored on 2026-08-16 with no body change. Terminology and prose only — content remains pinned to ora commit `7a5e8f40`.
+- **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (it includes both empty-membership and explicitly project-assigned material); its canonical runtime sentinel is `commons`, while legacy `general` remains accepted. Commons saves now land at the vault root, and the live V3 interface is one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
+- **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this overview — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
+- **2026-07-11** — User-facing nomenclature pass: Dialogues (conversations), Exhibits pane (visual canvas). Terminology only — content remains pinned to ora commit `7a5e8f40`; this is not a re-pin and the parity audit was not re-run.
+- **2026-07-11** — Code-level rename landed (ora PR #218, commit `062b67a7`, well after this document's `7a5e8f40` pin): the default project's internal nexus id is now `commons`, with the legacy id `general` still recognized everywhere, permanently — not a one-time migration. This overview names no internal ids, so no body text changed. A currency note only; this document's pinned content is not re-audited against `062b67a7`.
+- **2026-07-04** — Initial version (Documentation-Code Parity closeout, pinned to `7a5e8f40`).
 
 *Companion documents: [[Reference — Ora Technical Documentation]] (the full mechanism, for engineers and evaluators) and [[Guide — Using Ora]] (how to install, run, and operate it).*

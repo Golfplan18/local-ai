@@ -888,10 +888,20 @@ class LocalModelTrashEndpoint(unittest.TestCase):
 
     def test_registry_returns_one_local_row_per_discovered_path(self):
         p1, p2, p3 = self._server_patches()
+        # The routing_config_path patch below redirects the SHARED runtime_paths
+        # module, so the router reload this endpoint triggers would rebind
+        # boot's process-lifetime Router singleton onto this test's tempdir.
+        # The tempdir is gone by the time later modules run, which stranded
+        # five trace-manifest tests on a dead configuration. Sibling tests in
+        # this class already suppress the reload for the same reason.
         with p1, p2, p3, mock.patch.object(
             self.server.rp,
             "routing_config_path",
             return_value=self.routing_config,
+        ), mock.patch.object(
+            self.server,
+            "_reload_pipeline_router_after_config_change",
+            return_value=True,
         ):
             response = self.client.get("/api/model-registry?categories=all")
 

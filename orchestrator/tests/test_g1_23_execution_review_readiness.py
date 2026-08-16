@@ -131,7 +131,13 @@ def test_direct_vendor_family_metadata_reaches_the_live_review_selector():
         executor_fam=executor_family, config=config, config_name=profile
     )
 
-    assert executor_family == "minimax"
+    # The guarantee is cross-family adversarial review: whatever model the
+    # executor resolves to, the verifier must come from a DIFFERENT training
+    # family. The executor's family itself is whatever the live 'budget'
+    # profile currently selects — it was "minimax" when this was written and
+    # became "gpt" when the preset was re-populated on 2026-08-10. Pinning the
+    # vendor name asserted the owner's model shortlist, not the property.
+    assert executor_family, "executor training family must be resolvable"
     assert endpoint["training_family"]
     assert endpoint["training_family"] != executor_family
     assert same_family is False

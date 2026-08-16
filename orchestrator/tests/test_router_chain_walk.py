@@ -11,6 +11,7 @@ import sys
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ORCH_DIR = Path(__file__).resolve().parent.parent
 if str(ORCH_DIR) not in sys.path:
@@ -19,6 +20,23 @@ if str(ORCH_DIR) not in sys.path:
 import endpoint_health
 import mlx_mutex
 from router import Router
+
+
+def _disable_local_discovery_merge(case):
+    """Keep these fixtures off the machine's real local-model inventory.
+
+    ``Router.__init__`` always merges ``config/models.json`` into its endpoint
+    table, deleting every statically declared ``type: local`` endpoint first —
+    correct in production, where installed models are the source of truth, but
+    it means a fixture's own local endpoints are discarded and replaced by
+    whatever this developer happens to have installed. These tests are about
+    chain-walk order over explicit endpoints, so the discovery merge is off.
+    Same treatment as ``test_aside.py`` and ``test_router_config_name.py``.
+    """
+    merge = mock.patch.object(
+        Router, "_merge_models_json_local_endpoints", lambda self: None)
+    merge.start()
+    case.addCleanup(merge.stop)
 
 
 def _make_config(endpoints, configurations=None, slot_assignments=None):
@@ -61,6 +79,7 @@ class TestChainWalkConfiguration(unittest.TestCase):
     """The configuration-driven path (production v2)."""
 
     def setUp(self):
+        _disable_local_discovery_merge(self)
         mlx_mutex.reset_for_tests()
         endpoint_health.reset_for_tests()
 
@@ -222,6 +241,7 @@ class TestChainWalkLegacyBucketPath(unittest.TestCase):
     """Bucket-walk fallback when no configuration is resolved."""
 
     def setUp(self):
+        _disable_local_discovery_merge(self)
         mlx_mutex.reset_for_tests()
         endpoint_health.reset_for_tests()
 

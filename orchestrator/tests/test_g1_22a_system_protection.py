@@ -1025,7 +1025,14 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             "independent re-judgment pending",
             "full G1.22 can pass",
             "G1.21 remains blocked on G1.17",
-            "Static Windows refusal is fail-closed",
+            # The Windows-refusal claim moved when the 2026-08-07 consolidation
+            # made this entry the single record. Same guarantee, asserted
+            # against the wording that now carries it — deliberately stricter
+            # than the old one-liner, because it also pins the static/live
+            # distinction and the excluded-but-required suite.
+            "Static Windows refusal path — STATIC PASS; LIVE EVIDENCE REQUIRED",
+            "makes no orchestrated-enforcement claim",
+            "the live-Windows suite deliberately excluded and still required",
         ):
             self.assertIn(token, records)
 
