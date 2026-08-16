@@ -510,8 +510,10 @@
         }
         .project-manager-overlay.is-open { display: flex; }
         .project-manager-card {
-          width: min(420px, calc(100vw - 32px));
-          max-height: min(620px, calc(100vh - 110px));
+          /* Wide enough for three columns of projects at a typical desktop
+             size, so a 40-project list is scanned rather than scrolled. */
+          width: min(1180px, calc(100vw - 32px));
+          max-height: min(820px, calc(100vh - 80px));
           display: flex; flex-direction: column;
           background: var(--background-primary);
           border: 1px solid var(--background-modifier-border);
@@ -550,7 +552,14 @@
           background: var(--background-modifier-hover); color: var(--text-normal);
         }
         .project-manager-tab.is-active { font-weight: 700; }
-        .project-manager-rows { overflow-y: auto; min-height: 80px; }
+        .project-manager-rows {
+          overflow-y: auto; min-height: 80px;
+          /* Multi-column: as many ~330px columns as fit. Reading order is
+             left-to-right then down, which is the priority order. */
+          display: grid; align-content: start; gap: 2px 10px;
+          grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        }
+        .project-manager-empty { grid-column: 1 / -1; }
         .project-manager-row {
           display: flex; align-items: center; gap: 10px;
           padding: 9px 8px; border-radius: var(--radius-s, 6px);

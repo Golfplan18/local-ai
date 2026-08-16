@@ -616,10 +616,27 @@
       const dragging = rowsEl.querySelector('.is-dragging');
       if (!dragging || dragging === row) return;
       const box = row.getBoundingClientRect();
-      const after = ev.clientY > box.top + box.height / 2;
+      // In a multi-column grid, reading order runs across before it runs down,
+      // so the drop side is decided horizontally when the pointer is level
+      // with the row and vertically otherwise. A single column has no
+      // horizontal axis to speak of and always uses the vertical midpoint.
+      const after = isMultiColumn(rowsEl)
+        ? (ev.clientY >= box.top && ev.clientY <= box.bottom
+            ? ev.clientX > box.left + box.width / 2
+            : ev.clientY > box.top + box.height / 2)
+        : ev.clientY > box.top + box.height / 2;
       rowsEl.insertBefore(dragging, after ? row.nextSibling : row);
       renumberProjectRanks(rowsEl);
     });
+  };
+
+  const isMultiColumn = (rowsEl) => {
+    try {
+      const tracks = getComputedStyle(rowsEl).gridTemplateColumns || '';
+      return tracks.trim().split(/\s+/).filter(Boolean).length > 1;
+    } catch (e) {
+      return false;
+    }
   };
 
   const renumberProjectRanks = (rowsEl) => {
