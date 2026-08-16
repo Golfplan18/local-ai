@@ -486,6 +486,32 @@ class TranscriptionManager:
                 job._cleanup_errors.clear()
         return {"transcriptions": len(jobs), "errors": errors}
 
+    def release_finished(self, conversation_id: str) -> dict:
+        """Forget every finished transcription for a Dialogue on Close.
+
+        Close is reversible — a closed Dialogue can be restored from Manage —
+        so this deliberately neither tombstones the conversation nor cancels
+        anything. Only jobs that already reached STATE_COMPLETE or
+        STATE_FAILED are dropped; queued / extracting / transcribing jobs stay
+        registered, their whisper and ffmpeg process handles are untouched,
+        and no file on disk is read, moved, or removed.
+        """
+        identity = str(conversation_id or "").strip().casefold()
+        if not identity:
+            raise ValueError("conversation_id required")
+        with self._lock:
+            # State is read without the per-job operation lock, matching
+            # forget_conversation. Taking that lock while holding self._lock
+            # would invert the order the workers use.
+            jobs = [
+                job for job in self._jobs.values()
+                if job.conversation_id.casefold() == identity
+                and job.state in (STATE_COMPLETE, STATE_FAILED)
+            ]
+            for job in jobs:
+                self._jobs.pop(job.transcription_id, None)
+        return {"transcriptions": len(jobs)}
+
     @staticmethod
     def _job_deleted(job: _Transcription) -> bool:
         if job._cancel_event.is_set():

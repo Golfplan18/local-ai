@@ -242,6 +242,23 @@ class URLImportManager:
                           flush=True)
         return {"imports": len(jobs), "errors": errors}
 
+    def release_finished(self, conversation_id: str) -> dict:
+        """Drop finished imports on Close, leaving in-flight ones alone.
+
+        Close is reversible — a closed Dialogue can be restored from Manage —
+        so this neither tombstones the conversation (a restored one must still
+        be able to import) nor cancels anything: queued / fetching_metadata /
+        downloading / registering jobs stay, yt-dlp processes untouched.
+        """
+        identity = conversation_id.casefold()
+        with self._lock:
+            jobs = [job for job in self._jobs.values()
+                    if job.conversation_id.casefold() == identity
+                    and job.state in (STATE_COMPLETE, STATE_FAILED)]
+            for job in jobs:
+                self._jobs.pop(job.import_id, None)
+        return {"imports": len(jobs)}
+
     def _is_deleted(self, conversation_id: str) -> bool:
         with self._lock:
             return conversation_id.casefold() in self._deleted_conversations

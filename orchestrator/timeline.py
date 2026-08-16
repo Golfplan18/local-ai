@@ -439,10 +439,27 @@ def forget_timeline(conversation_id: str) -> bool:
         return _timelines.pop(identity, None) is not None
 
 
+def release_timeline(conversation_id: str) -> bool:
+    """Drop one cached timeline on Close, without tombstoning it.
+
+    Close is reversible — a closed Dialogue can be restored from Manage —
+    so this neither adds to ``_deleted_timelines`` nor cancels anything.
+    The Timeline object is a pure cache over ``timeline.json``; dropping it
+    frees the in-memory record and the next ``get_timeline`` rebuilds it
+    from disk. The file itself is left untouched.
+
+    Returns True when a cached entry was actually dropped.
+    """
+    identity = conversation_id.casefold()
+    with _timelines_lock:
+        return _timelines.pop(identity, None) is not None
+
+
 __all__ = [
     "Timeline",
     "get_timeline",
     "forget_timeline",
+    "release_timeline",
     "VALID_TRACK_KINDS",
     "VALID_TRANSITIONS_IN",
     "VALID_TRANSITIONS_OUT",

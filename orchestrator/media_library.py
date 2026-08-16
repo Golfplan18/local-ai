@@ -376,10 +376,25 @@ def forget_library(conversation_id: str) -> bool:
     return True
 
 
+def release_library(conversation_id: str) -> bool:
+    """Drop one cached library on Close, without tombstoning or cancelling.
+
+    Close is reversible — a closed Dialogue can be restored from Manage — so
+    unlike ``forget_library`` this adds nothing to ``_deleted_libraries``, does
+    not call ``mark_deleted()``, and touches no in-flight work.  The library is
+    a pure cache over ``media-library.json``; the dropped instance simply
+    reloads from disk on the next ``get_library``.  No file is modified.
+    """
+    identity = conversation_id.casefold()
+    with _libraries_lock:
+        return _libraries.pop(identity, None) is not None
+
+
 __all__ = [
     "MediaLibrary",
     "get_library",
     "forget_library",
+    "release_library",
     "VIDEO_EXTS",
     "AUDIO_EXTS",
     "IMAGE_EXTS",
