@@ -13747,6 +13747,75 @@ def _quiesce_conversation_workers(conversation_id: str) -> dict:
     return {"cleaned": cleaned, "errors": errors}
 
 
+def _release_conversation_runtime_memory(conversation_id: str) -> dict:
+    """Release finished media bookkeeping for a conversation being closed.
+
+    Ora keeps per-conversation records in memory for renders, transcriptions,
+    captures, URL imports and queued jobs, plus cached timelines and media
+    libraries. Until now the only thing that released them was Delete Forever,
+    which is available on Off-Record Dialogues alone — so for every Standard
+    and Private Dialogue those records lived for the life of the process.
+
+    Close is the right place to release them, but Close is REVERSIBLE and
+    retains data, so this is deliberately not the Delete Forever path:
+
+      * nothing is tombstoned — a restored Dialogue can still render, record
+        and import, which ``forget_conversation`` would have made impossible;
+      * nothing in flight is disturbed — a render, transcription, capture or
+        download still running keeps its record and its subprocess, because
+        closing a Dialogue is not a request to abandon work;
+      * no file is touched — the outputs, and the on-disk mirrors the two
+        caches reload from, are exactly as they were.
+
+    Best-effort by design: a failure here must never stop a Close, so every
+    call is guarded and the errors are reported rather than raised.
+    """
+    released: dict[str, object] = {}
+    errors: list[str] = []
+
+    def run(label, callback):
+        try:
+            released[label] = callback()
+        except Exception as exc:
+            errors.append(f"{label}: {exc}")
+            print(f"[conversation-lifecycle] memory release {label}: {exc}",
+                  flush=True)
+
+    if _HAS_CAPTURE and _get_capture_manager is not None:
+        run("captures", lambda: _get_capture_manager().release_finished(
+            conversation_id))
+    if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
+        run("transcriptions",
+            lambda: _get_transcription_manager().release_finished(
+                conversation_id))
+    if _HAS_URL_IMPORT and _get_url_import_manager is not None:
+        run("url_imports", lambda: _get_url_import_manager().release_finished(
+            conversation_id))
+    if _HAS_RENDER and _get_render_manager is not None:
+        run("renders", lambda: _get_render_manager().release_finished(
+            conversation_id))
+    if _HAS_JOB_QUEUE and _get_job_queue is not None:
+        run("job_queue", lambda: _get_job_queue().release_cached(
+            conversation_id))
+
+    # The two disk-backed caches. Both import identities are probed for the
+    # same reason the purge path does it — orchestrator/ is on sys.path, so a
+    # packaged and a bare import are separate module objects with separate
+    # caches, and only the copies this process actually has are touched.
+    for label, module_name, function_name in (
+        ("timeline", "timeline", "release_timeline"),
+        ("timeline_package", "orchestrator.timeline", "release_timeline"),
+        ("media_library", "media_library", "release_library"),
+        ("media_library_package", "orchestrator.media_library", "release_library"),
+    ):
+        module = sys.modules.get(module_name)
+        callback = getattr(module, function_name, None) if module else None
+        if callback is not None:
+            run(label, lambda _cb=callback: _cb(conversation_id))
+
+    return {"released": released, "errors": errors}
+
+
 def _clear_conversation_runtime_state(conversation_id: str) -> dict:
     """Drop content-bearing caches and Ora-owned staging copies."""
     counts: dict[str, object] = {}
@@ -14124,6 +14193,12 @@ def conversation_close(conversation_id):
                     _closed_conversations.add(
                         _conversation_storage_identity(conversation_id)
                     )
+                # Release finished media bookkeeping now the Dialogue is
+                # closed. Reversible and data-retaining: nothing tombstoned,
+                # nothing in flight disturbed, no file touched.
+                release = _release_conversation_runtime_memory(conversation_id)
+                if release.get("errors"):
+                    result.setdefault("errors", []).extend(release["errors"])
     except Exception as e:
         return json.dumps({
             "error": f"close_conversation failed: {e}",

@@ -542,6 +542,23 @@ class JobQueue:
             jobs = self._jobs.pop(identity, [])
             return len(jobs)
 
+    def release_cached(self, conversation_id: str) -> int:
+        """Drop a conversation's in-memory jobs, keeping jobs.json intact.
+
+        For Close, which is reversible and retains data. Unlike
+        ``forget_conversation`` this does not tombstone the conversation, and
+        unlike ``purge_terminal`` it removes nothing from disk — the queue is
+        mirrored to ``jobs.json`` and reloads on the next read. Purely a
+        memory release; a restored Dialogue sees the same jobs it had.
+        """
+        if not isinstance(conversation_id, str):
+            raise ValueError("conversation_id must be a string")
+        identity = conversation_id.strip().casefold()
+        if not identity:
+            raise ValueError("invalid conversation_id")
+        with self._lock:
+            return len(self._jobs.pop(identity, []))
+
     def purge_terminal(self, conversation_id: str) -> int:
         """Drop terminal jobs from the on-disk + in-memory queue. Returns
         the count removed. Useful in tests + as a future user-triggered

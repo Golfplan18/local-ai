@@ -1074,6 +1074,25 @@ class RenderManager:
                           flush=True)
         return {"renders": len(renders), "errors": errors}
 
+    def release_finished(self, conversation_id: str) -> dict:
+        """Drop finished render jobs for a closed conversation.
+
+        Close is reversible — a closed Dialogue can be restored from
+        Manage — so this neither tombstones the conversation nor cancels
+        anything. Renders still queued / preparing / rendering are left
+        in place; only jobs that already reached a terminal state are
+        released. No file on disk is touched.
+        """
+        identity = conversation_id.casefold()
+        terminal = (STATE_COMPLETE, STATE_FAILED, STATE_CANCELLED)
+        with self._lock:
+            renders = [render for render in self._renders.values()
+                       if render.conversation_id.casefold() == identity
+                       and render.state in terminal]
+            for render in renders:
+                self._renders.pop(render.render_id, None)
+        return {"renders": len(renders)}
+
     def start(self, conversation_id: str, preset_name: str,
               timeline: dict, library_entries: list[dict],
               export_dir: Path | None = None) -> str:

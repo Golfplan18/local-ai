@@ -610,6 +610,30 @@ class CaptureManager:
                           flush=True)
         return {"captures": len(captures), "errors": errors}
 
+    def release_finished(self, conversation_id: str) -> dict:
+        """Drop the records of captures that have already finished.
+
+        Called on Close, which is reversible — a closed Dialogue can be
+        restored from Manage. So this neither tombstones the conversation
+        (a restored Dialogue must still be able to record) nor touches any
+        FFmpeg process: only captures already in ``STATE_COMPLETE`` or
+        ``STATE_FAILED`` are released. Idle, recording, paused and stopping
+        captures are left exactly as they are — the user may still be
+        recording while they close the Dialogue.
+
+        No file is removed; the source recordings stay where they were
+        written.
+        """
+        identity = conversation_id.casefold()
+        terminal = (STATE_COMPLETE, STATE_FAILED)
+        with self._lock:
+            captures = [capture for capture in self._captures.values()
+                        if capture.conversation_id.casefold() == identity
+                        and capture.state in terminal]
+            for capture in captures:
+                self._captures.pop(capture.capture_id, None)
+        return {"captures": len(captures)}
+
     # ── internals ────────────────────────────────────────────────────────────
 
     def _require(self, capture_id: str) -> _Capture:
