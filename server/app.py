@@ -6140,6 +6140,30 @@ def api_projects_set_status(nexus):
     return _json_response({"ok": True, "project": meta})
 
 
+@app.route("/api/projects/order", methods=["POST"])
+def api_projects_reorder():
+    """Set the user's project priority order. Body: ``{"order": [nexus, …]}``.
+
+    The whole list is sent, not a single move, so ranks are always contiguous
+    and the order on disk matches the order the user is looking at. Projects
+    omitted from the list become unranked and sort after every ranked one.
+    """
+    try:
+        from orchestrator import project_meta as _pm
+    except Exception as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 503)
+    data = request.get_json(silent=True) or {}
+    order = data.get("order")
+    if not isinstance(order, list):
+        return _json_response(
+            {"ok": False, "error": "order must be a list of project nexuses"}, 400)
+    try:
+        projects = _pm.reorder_projects([str(n) for n in order])
+    except _pm.ProjectMetaError as exc:
+        return _json_response({"ok": False, "error": str(exc)}, 400)
+    return _json_response({"ok": True, "projects": projects})
+
+
 @app.route("/api/projects/<nexus>/rename-nexus", methods=["POST"])
 def api_projects_rename_nexus(nexus):
     """Rename a project's nexus across the vault, conversations, and pointers

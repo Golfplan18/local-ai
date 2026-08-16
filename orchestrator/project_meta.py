@@ -107,6 +107,12 @@ _DEFAULT_SLOTS: dict[str, Any] = {
     "persona": None,
     "model_locks": {},
     "private": False,
+    # Rank in the user's priority order, ascending — 0 is most important.
+    # ``None`` means unranked and sorts after every ranked project, so adding a
+    # project never silently jumps the queue and an empty store keeps the
+    # previous recency ordering. Lives on the record rather than in a separate
+    # order file so it cannot drift from the set of projects that exist.
+    "priority": None,
 }
 
 _lock = threading.RLock()
@@ -491,8 +497,65 @@ def list_project_meta(pointer_dir: Path | None = None) -> list[dict[str, Any]]:
             meta = read_project_meta(nexus, pointer_dir)
             if meta:
                 out.append(meta)
-    out.sort(key=lambda m: (m.get("last_accessed_at") or ""), reverse=True)
+    out.sort(key=_priority_sort_key)
     return [default_project_meta()] + out
+
+
+def _priority_sort_key(meta: dict[str, Any]) -> tuple:
+    """Rank ascending, unranked last, recency breaking ties within each group.
+
+    This is the order the sidebar, the dropdown, and any future work-selection
+    pass read: the top of the list is the most important project.
+    """
+    priority = meta.get("priority")
+    ranked = isinstance(priority, int) and priority >= 0
+    return (
+        0 if ranked else 1,
+        priority if ranked else 0,
+        # Negated via reverse-friendly comparison: recency descends inside a
+        # tie, matching the pre-priority behavior for an unranked store.
+        _invert_timestamp(meta.get("last_accessed_at") or ""),
+    )
+
+
+def _invert_timestamp(value: str) -> tuple:
+    """Sort ISO timestamps newest-first inside an ascending sort."""
+    return tuple(-ord(c) for c in value)
+
+
+def reorder_projects(
+    order: list[str], pointer_dir: Path | None = None
+) -> list[dict[str, Any]]:
+    """Assign ``priority`` 0..n-1 across ``order``; unlisted projects unranked.
+
+    Reordering is expressed as the whole list rather than per-project patches so
+    a drag can never leave two projects sharing a rank or a gap that later
+    renumbering has to guess at.
+    """
+    seen: set[str] = set()
+    rank = 0
+    for nexus in order or []:
+        try:
+            canonical = validate_existing_nexus_source(nexus)
+        except NexusValidationError:
+            continue
+        if canonical in seen or canonicalize_project_nexus(canonical) == DEFAULT_NEXUS:
+            continue
+        if update_project_meta(canonical, {"priority": rank}, pointer_dir) is None:
+            continue  # vanished mid-reorder; skip rather than shift the rest
+        seen.add(canonical)
+        rank += 1
+    # Anything omitted from the payload loses its rank, so the list the user
+    # sees and the ranks on disk cannot disagree.
+    for meta in list_project_meta(pointer_dir):
+        nexus = meta.get("nexus")
+        if (
+            not meta.get("is_default")
+            and nexus not in seen
+            and meta.get("priority") is not None
+        ):
+            update_project_meta(nexus, {"priority": None}, pointer_dir)
+    return list_project_meta(pointer_dir)
 
 
 def _write_pointer(nexus: str, data: dict, pointer_dir: Path | None = None) -> Path:
@@ -764,7 +827,7 @@ def touch_project(nexus: str, pointer_dir: Path | None = None) -> dict[str, Any]
 # Fields the management modal / API may patch on a project record.
 _UPDATABLE_FIELDS = {
     "name", "status", "interaction_style", "output_style", "persona",
-    "private", "last_accessed_at",
+    "private", "last_accessed_at", "priority",
 }
 
 
@@ -774,6 +837,13 @@ def _clean_project_updates(updates: dict | None) -> dict[str, Any]:
         raise ProjectMetaError(
             f"status must be one of {PROJECT_STATUSES}; got {clean['status']!r}"
         )
+    if "priority" in clean and clean["priority"] is not None:
+        try:
+            clean["priority"] = max(0, int(clean["priority"]))
+        except (TypeError, ValueError):
+            raise ProjectMetaError(
+                f"priority must be an integer or null; got {clean['priority']!r}"
+            ) from None
     if "name" in clean:
         nm = clean["name"]
         if not isinstance(nm, str) or not nm.strip():

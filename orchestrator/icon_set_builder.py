@@ -35,6 +35,20 @@ OUT_PATH = ORA_ROOT / "server" / "static" / "runtime" / "icon-set.json"
 
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
+#: Icons requested from JavaScript rather than a toolbar/pack JSON file. The
+#: scan below only reads JSON, so an icon named solely in a .js file is
+#: invisible to it and silently tree-shaken out — which is how all four Manage
+#: Projects lifecycle buttons came to render the fallback "?" glyph. Anything
+#: referenced from JS must be declared here to survive the build.
+_UI_ICON_NAMES: frozenset[str] = frozenset({
+    # server/static/js/sidebar.js — project lifecycle actions
+    "pause",       # active  → inactive
+    "archive",     # any     → archived
+    "check",       # paused/archived → active
+    "rotate-ccw",  # archived → inactive
+    "grip-vertical",  # priority drag handle
+})
+
 
 def _scan_source_files() -> list[Path]:
     """Every toolbar and pack JSON the icon registry could reference."""
@@ -120,6 +134,7 @@ def _is_stale(source_files: list[Path], existing: dict | None) -> tuple[bool, st
         except Exception:
             continue
         _collect_icon_refs(data, refs)
+    refs |= _UI_ICON_NAMES
     prev = set(existing.get("referenced_names", []) or [])
     if refs != prev:
         return True, "referenced-names changed"
@@ -154,6 +169,9 @@ def rebuild_if_stale() -> dict:
         except Exception:
             continue
         _collect_icon_refs(data, refs)
+    # JS-referenced icons are not in any JSON source; union them in so the
+    # staleness check and the build agree on the same set.
+    refs |= _UI_ICON_NAMES
 
     version, canonical = _load_canonical_names()
 

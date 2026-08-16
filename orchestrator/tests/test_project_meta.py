@@ -855,5 +855,67 @@ class ProjectMetaTests(unittest.TestCase):
         self.assertTrue(idx["truncated"])
 
 
+class ProjectPriorityOrderTests(unittest.TestCase):
+    """Priority is the user's ranked work queue: top of the list is next up.
+
+    It lives on the project record rather than a separate order file so it
+    cannot drift from the set of projects that actually exist.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        for nexus, stamp in (
+            ("alpha", "2026-01-01T00:00:00"),
+            ("beta", "2026-05-01T00:00:00"),
+            ("gamma", "2026-03-01T00:00:00"),
+        ):
+            (self.dir / f"{nexus}.json").write_text(json.dumps({
+                "nexus": nexus, "name": nexus, "display_name": nexus,
+                "folder_name": nexus, "status": "active",
+                "last_accessed_at": stamp,
+            }), encoding="utf-8")
+
+    def _order(self):
+        return [m["nexus"] for m in pm.list_project_meta(self.dir)]
+
+    def test_unranked_keeps_recency_order(self):
+        self.assertEqual(self._order(), ["commons", "beta", "gamma", "alpha"])
+
+    def test_reorder_assigns_contiguous_ranks(self):
+        pm.reorder_projects(["gamma", "alpha", "beta"], self.dir)
+        self.assertEqual(self._order(), ["commons", "gamma", "alpha", "beta"])
+        ranks = {m["nexus"]: m.get("priority")
+                 for m in pm.list_project_meta(self.dir) if not m.get("is_default")}
+        self.assertEqual(ranks, {"gamma": 0, "alpha": 1, "beta": 2})
+
+    def test_omitted_projects_become_unranked_and_sort_last(self):
+        pm.reorder_projects(["gamma", "alpha", "beta"], self.dir)
+        pm.reorder_projects(["beta"], self.dir)
+        metas = {m["nexus"]: m.get("priority") for m in pm.list_project_meta(self.dir)}
+        self.assertEqual(metas["beta"], 0)
+        self.assertIsNone(metas["alpha"])
+        self.assertIsNone(metas["gamma"])
+        self.assertEqual(self._order()[1], "beta")
+
+    def test_duplicates_and_unknown_nexuses_do_not_shift_ranks(self):
+        pm.reorder_projects(["beta", "ghost", "beta", "alpha"], self.dir)
+        ranks = {m["nexus"]: m.get("priority")
+                 for m in pm.list_project_meta(self.dir) if not m.get("is_default")}
+        self.assertEqual(ranks["beta"], 0)
+        self.assertEqual(ranks["alpha"], 1)
+        self.assertIsNone(ranks["gamma"])
+
+    def test_priority_rejects_non_integers(self):
+        with self.assertRaises(pm.ProjectMetaError):
+            pm.update_project_meta("alpha", {"priority": "nope"}, self.dir)
+
+    def test_priority_accepts_null_to_clear(self):
+        pm.update_project_meta("alpha", {"priority": 3}, self.dir)
+        meta = pm.update_project_meta("alpha", {"priority": None}, self.dir)
+        self.assertIsNone(meta["priority"])
+
+
 if __name__ == "__main__":
     unittest.main()
