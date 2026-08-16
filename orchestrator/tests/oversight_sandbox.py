@@ -146,6 +146,72 @@ def redirect_oversight_logs(test_case: unittest.TestCase) -> str:
     return tmpdir
 
 
+def redirect_active_project(test_case=None):
+    """Point the active-project pointer and project registry at a throwaway dir.
+
+    Same class of leak as ``redirect_sessions_root``, one layer up: a handler
+    that asks "which project is active?" reads ``data/active-project.json`` and
+    ``data/projects/`` from the live checkout, so a suite's verdict depends on
+    which projects the developer happens to have registered. On 2026-08-16 that
+    made an endpoint test see a real project's model-profile locks and fail an
+    assertion written for a fresh checkout.
+
+    With the pointer absent, ``get_active_project()`` returns the default and
+    the model-profile context resolves empty — the fresh-checkout behaviour the
+    assertions were written against.
+
+    Both constants are read at call time, so patching the attribute is enough;
+    an env var would not work because runtime_paths bakes DATA_DIR at import.
+
+    Usage mirrors ``redirect_sessions_root``:
+
+        def setUpModule():
+            redirect_active_project()
+
+    Pass a TestCase instead to scope the redirect to one test.
+    """
+    tmpdir = tempfile.mkdtemp(prefix="ora-active-project-sandbox-")
+    root = pathlib.Path(tmpdir)
+    (root / "projects").mkdir(parents=True, exist_ok=True)
+
+    # Import them first. server/app.py imports both lazily, inside the handler,
+    # so at setUpModule time they are not yet in sys.modules and a lookup-only
+    # approach would patch nothing at all — silently.
+    from orchestrator import (  # noqa: F401 — imported for their attributes
+        active_project,
+        project_meta,
+    )
+
+    patches = []
+    # Both spellings of each module may exist as separate objects, exactly as
+    # in redirect_sessions_root — orchestrator/ is on sys.path, so a packaged
+    # import and a bare import are distinct modules with distinct constants.
+    for module in (sys.modules.get("orchestrator.active_project"),
+                   sys.modules.get("active_project")):
+        if module is not None and hasattr(module, "ACTIVE_PROJECT_POINTER"):
+            patches.append(mock.patch.object(
+                module, "ACTIVE_PROJECT_POINTER", root / "active-project.json"))
+    for module in (sys.modules.get("orchestrator.project_meta"),
+                   sys.modules.get("project_meta")):
+        if module is not None and hasattr(module, "POINTER_DIR"):
+            patches.append(mock.patch.object(
+                module, "POINTER_DIR", root / "projects"))
+
+    for p in patches:
+        p.start()
+
+    def _restore():
+        for p in reversed(patches):
+            p.stop()
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    if test_case is not None:
+        test_case.addCleanup(_restore)
+    else:
+        unittest.addModuleCleanup(_restore)
+    return tmpdir
+
+
 def redirect_sessions_root(test_case=None):
     """Point every sessions-root consumer at a throwaway directory.
 

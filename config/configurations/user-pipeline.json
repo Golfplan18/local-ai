@@ -54,7 +54,6 @@
           "fallback": [
             "moonshot/kimi-k2.6",
             "local-mlx-qwen3.5-122b",
-            "local-mlx-mistral-medium-128b",
             "qwen/qwen3.5-122b-a10b",
             "nvidia/nemotron-3-super-120b-a12b:free"
           ],
@@ -65,7 +64,7 @@
         "depth": {
           "primary": "xiaomi/mimo-v2.5",
           "fallback": [
-            "local-mlx-mistral-medium-128b",
+            "local-mlx-qwen3.5-122b",
             "qwen/qwen3.6-plus",
             "moonshot/kimi-k2.6",
             "qwen/qwen3.5-122b-a10b",
@@ -85,7 +84,6 @@
         "fallback": [
           "moonshot/kimi-k2.6",
           "local-mlx-qwen3.5-122b",
-          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
@@ -96,7 +94,6 @@
         "fallback": [
           "moonshot/kimi-k2.6",
           "local-mlx-qwen3.5-122b",
-          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],
@@ -107,7 +104,6 @@
         "fallback": [
           "moonshot/kimi-k2.6",
           "local-mlx-qwen3.5-122b",
-          "local-mlx-mistral-medium-128b",
           "qwen/qwen3.5-122b-a10b",
           "nvidia/nemotron-3-super-120b-a12b:free"
         ],

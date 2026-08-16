@@ -19,9 +19,13 @@ import user_settings      # noqa: E402
 import boot               # noqa: E402
 
 _orig = (active_project.get_active_project, project_registry.get_project)
-# Neutralize the account-default (settings) source by default; the tests that
-# exercise it set get_setting explicitly and reset to this neutralizer.
-user_settings.get_setting = lambda *a, **k: None
+# The account-default (settings) source is neutralized per-test by the autouse
+# fixture below, NOT at import time. Assigning it at module scope leaked into
+# every other test in the process: under `unittest discover` this module is
+# imported but contributes no tests, so the fixture that restores it never
+# runs and every later caller of user_settings.get_setting got None.
+# The standalone self-runner re-applies it inside __main__, where it cannot
+# escape.
 
 
 @pytest.fixture(autouse=True)
@@ -153,6 +157,9 @@ def test_project_beats_settings_default():
 
 
 if __name__ == "__main__":
+    # The self-runner has no pytest fixture, so it installs the neutralizer
+    # itself. Scoped to __main__ so it cannot leak into a shared test process.
+    user_settings.get_setting = lambda *a, **k: None
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
     for t in tests:

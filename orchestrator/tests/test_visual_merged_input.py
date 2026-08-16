@@ -43,7 +43,10 @@ sys.path.insert(0, str(ORCHESTRATOR))
 sys.path.insert(0, str(WORKSPACE / "server"))
 
 
-from oversight_sandbox import redirect_sessions_root  # noqa: E402
+from oversight_sandbox import (  # noqa: E402
+    redirect_active_project,
+    redirect_sessions_root,
+)
 
 
 def setUpModule():
@@ -51,6 +54,10 @@ def setUpModule():
     # endpoint handlers default an absent conversation_id to "main" — the
     # user's own Dialogue — and persist envelopes under the sessions root.
     redirect_sessions_root()
+    # And keep its verdict off the live project registry: the chat handler
+    # attaches the active project's model-profile locks, so a registered
+    # project on the developer's machine leaks into the request context.
+    redirect_active_project()
 
 class _NoopThread:
     """Stub thread that fires no side-effects — mirrors test_visual_e2e."""

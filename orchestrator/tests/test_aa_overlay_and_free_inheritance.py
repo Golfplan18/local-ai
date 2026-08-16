@@ -22,6 +22,7 @@ from sync_model_registry import (  # noqa: E402
     build_aa_overlay,
     layer_aa_enrichment,
     merge_sources,
+    MIN_CONTEXT_LENGTH,
     _aa_canonical_or_id,
     _apply_free_suffix_inheritance,
     _project_aa_view,
@@ -253,7 +254,10 @@ def _or_model(mid, benchmarks=None):
     return {
         "id": mid,
         "name": mid,
-        "context_length": 8192,
+        # Bound to the constant, not a literal: merge_sources drops anything
+        # under this floor (sync_model_registry.py), so a hard-coded number
+        # silently empties the registry the next time the threshold moves.
+        "context_length": MIN_CONTEXT_LENGTH,
         "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
         "pricing": {"prompt": "0.000001", "completion": "0.000002"},
         "benchmarks": benchmarks or {},
