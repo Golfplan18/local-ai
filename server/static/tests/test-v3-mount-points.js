@@ -210,4 +210,340 @@ record('list() reports only the buttons that actually mounted',
        === 'bad-icon,thrower,vid',
   M.list('exhibits').map(function (e) { return e.id; }).join(','));
 
+// ---- an unregister handle belongs to its own registration ------------------
+// Two add-ons can pick the same id, and one of them can outlive its own button
+// while still holding the handle it was given. That handle must never reach
+// past its own registration into whatever now sits under the id.
+
+var staleHandle = M.register(entry({ id: 'seat', label: 'Plugin A button' }));
+staleHandle();
+M.register(entry({ id: 'seat', label: 'Plugin B button' }));
+var seatBefore = w.document.querySelector('[data-ora-mount="seat"]');
+var staleReturn = staleHandle();
+var seatAfter = w.document.querySelector('[data-ora-mount="seat"]');
+record('a stale unregister handle leaves a later button with the same id alone',
+  staleReturn === false && !!seatAfter && seatAfter === seatBefore
+    && seatAfter.getAttribute('aria-label') === 'Plugin B button',
+  'handle returned ' + staleReturn + '; Plugin B\'s button '
+    + (seatAfter ? 'survived' : 'was unmounted'));
+
+record('unregister(id) still removes whatever currently holds that id',
+  M.unregister('seat') === true
+    && !w.document.querySelector('[data-ora-mount="seat"]'));
+
+// ---- inherited Object.prototype keys are not positions ---------------------
+// A plain object literal answers to 'constructor', '__proto__' and friends, so
+// a typo or a hostile value used to pass validation and be reported as a
+// missing container — which is what a plugin author would then go and look for.
+
+var protoFailures = [];
+['constructor', '__proto__', 'hasOwnProperty', 'toString', 'valueOf'].forEach(function (key) {
+  warnings.length = 0;
+  M.register(entry({ id: 'proto-' + key, position: key }));
+  var said = warnings.join(' | ');
+  if (w.document.querySelector('[data-ora-mount="proto-' + key + '"]')) {
+    protoFailures.push(key + ': mounted a button');
+  }
+  if (!/unknown position/.test(said)) {
+    protoFailures.push(key + ': wrong diagnostic — ' + (said || 'no warning at all'));
+  }
+  if (said.indexOf('inquiry, exhibits, spine, sidebar') === -1) {
+    protoFailures.push(key + ': warning does not list the four real positions');
+  }
+});
+record('Object.prototype keys are rejected as unknown positions, with the right warning',
+  protoFailures.length === 0, protoFailures.join('; '));
+
+// ---- the same two guarantees on the pending queue --------------------------
+// The queue is a second removal path, and _flush is a second caller of _build.
+// Both need a module whose document is still loading, which this file's own
+// window stopped being at the first _flush() above — so use a fresh window and
+// a fresh copy of the module.
+
+var pendingDom = new jsdom.JSDOM(
+  '<!doctype html><html><body>'
+  + '<div class="input-pane-toolbar bridge-toolbar bridge-toolbar--right"></div>'
+  + '<div class="spine-bottom"></div>'
+  + '</body></html>',
+  { url: 'http://localhost/' }
+);
+var pw = pendingDom.window;
+Object.defineProperty(pw.document, 'readyState', { value: 'loading', configurable: true });
+var pendingWarnings = [];
+pw.console = Object.assign({}, console, {
+  warn: function (m) { pendingWarnings.push(String(m)); }
+});
+global.window = pw;
+global.document = pw.document;
+var MODULE = path.resolve(__dirname, '..', 'js', 'v3-mount-points.js');
+delete require.cache[require.resolve(MODULE)];
+require(MODULE);
+var PM = pw.OraMounts;
+
+function queued(over) {
+  return Object.assign({
+    position: 'exhibits', id: 'queued', label: 'Queued', icon: SVG,
+    onSelect: function () {}
+  }, over || {});
+}
+
+var staleQueuedHandle = PM.register(queued({ label: 'Queued A' }));
+record('a registration made while the document is loading is queued, not mounted',
+  !pw.document.querySelector('[data-ora-mount="queued"]'));
+staleQueuedHandle();
+PM.register(queued({ label: 'Queued B' }));
+
+// A queued entry is a live plugin object: its position can change before the
+// flush that builds it, which is the one way _build sees a position validate
+// never saw.
+var mutant = queued({ id: 'mutant', position: 'spine' });
+PM.register(mutant);
+mutant.position = 'constructor';
+
+var stalePendingReturn = staleQueuedHandle();
+pendingWarnings.length = 0;
+PM._flush();
+
+var queuedEl = pw.document.querySelector('[data-ora-mount="queued"]');
+record('a stale handle does not evict a later queued entry with the same id',
+  stalePendingReturn === false && !!queuedEl
+    && queuedEl.getAttribute('aria-label') === 'Queued B',
+  'handle returned ' + stalePendingReturn + '; flushed label '
+    + (queuedEl ? queuedEl.getAttribute('aria-label') : 'nothing mounted'));
+
+var mutantSaid = pendingWarnings.join(' | ');
+record('a queued entry whose position became an Object.prototype key is reported as unknown',
+  !pw.document.querySelector('[data-ora-mount="mutant"]')
+    && /unknown position "constructor"/.test(mutantSaid)
+    && !/no container/.test(mutantSaid),
+  mutantSaid || 'no warning at all');
+
+// Each remaining case needs its own still-loading document and its own copy of
+// the module, because a module instance is one-way: the first flush sets
+// _domReady and every later registration mounts immediately.
+function freshLoadingModule(html) {
+  var d = new jsdom.JSDOM(
+    '<!doctype html><html><body>' + html + '</body></html>',
+    { url: 'http://localhost/' }
+  );
+  var win = d.window;
+  Object.defineProperty(win.document, 'readyState', { value: 'loading', configurable: true });
+  var said = [];
+  win.console = Object.assign({}, console, { warn: function (m) { said.push(String(m)); } });
+  global.window = win;
+  global.document = win.document;
+  delete require.cache[require.resolve(MODULE)];
+  require(MODULE);
+  return { win: win, M: win.OraMounts, warnings: said };
+}
+
+function spineEntry(id) {
+  return {
+    position: 'spine', id: id, label: id, icon: SVG, onSelect: function () {}
+  };
+}
+
+// ---- one id, named the same way by everything ------------------------------
+// A queued entry is a live plugin object, so it can rename itself between
+// register() and the flush that builds it. Whichever id wins, all three ways
+// of naming the button must pick the SAME one: the key it is filed under, the
+// data-ora-mount attribute it advertises to the DOM, and the id unregister()
+// answers to. Any disagreement strands the button — mounted, visible, and
+// impossible to remove by the only id anyone can read off it.
+
+var renameEnv = freshLoadingModule('<div class="spine-bottom"></div>');
+var renamer = spineEntry('panel');
+renameEnv.M.register(renamer);
+renamer.id = 'panel-v2';
+renameEnv.M._flush();
+
+var renamedEl = renameEnv.win.document.querySelector('[data-ora-mount]');
+var advertised = renamedEl && renamedEl.getAttribute('data-ora-mount');
+var keyedAsAdvertised = !!advertised && renameEnv.M.has(advertised) === true;
+var removedByAdvertised = keyedAsAdvertised
+  && renameEnv.M.unregister(advertised) === true;
+var goneFromDom = removedByAdvertised
+  && !renameEnv.win.document.querySelector('[data-ora-mount="' + advertised + '"]');
+record('after a rename before the flush, the map key, data-ora-mount and unregister still name one id',
+  !!advertised && keyedAsAdvertised && removedByAdvertised && goneFromDom,
+  'button advertises ' + JSON.stringify(advertised) + '; has()=' + keyedAsAdvertised
+    + '; unregister()=' + removedByAdvertised + '; left the DOM=' + goneFromDom);
+
+var handleEnv = freshLoadingModule('<div class="spine-bottom"></div>');
+var handleRenamer = spineEntry('panel');
+var renamedHandle = handleEnv.M.register(handleRenamer);
+handleRenamer.id = 'panel-v2';
+handleEnv.M._flush();
+var handleReturn = renamedHandle();
+record('the handle register() returned still removes the button after a rename',
+  handleReturn === true
+    && !handleEnv.win.document.querySelector('[data-ora-mount]'),
+  'handle returned ' + handleReturn + '; button '
+    + (handleEnv.win.document.querySelector('[data-ora-mount]') ? 'survived' : 'removed'));
+
+// ---- a position that cannot become a property key --------------------------
+// POSITIONS[entry.position] coerces its key, so a Symbol or an object with no
+// usable toString throws in the lookup itself — before any guard downstream of
+// it can run. That throw escapes _build, escapes the flush loop, and escapes
+// the DOMContentLoaded listener, with the queue already drained.
+
+var hostileEnv = freshLoadingModule('<div class="spine-bottom"></div>');
+var symBad = spineEntry('sym-bad');
+var objBad = spineEntry('obj-bad');
+[spineEntry('good-before'), symBad, spineEntry('good-middle'), objBad,
+  spineEntry('good-after')].forEach(function (p) { hostileEnv.M.register(p); });
+symBad.position = Symbol('spine');
+objBad.position = { toString: null };
+
+var hostileThrew = null;
+try {
+  hostileEnv.win.document.dispatchEvent(new hostileEnv.win.Event('DOMContentLoaded'));
+} catch (err) { hostileThrew = (err && err.message) || String(err); }
+
+var hostileSaid = hostileEnv.warnings.join(' | ');
+var hostileMounted = [].slice.call(
+  hostileEnv.win.document.querySelectorAll('[data-ora-mount]')
+).map(function (el) { return el.getAttribute('data-ora-mount'); });
+record('a position that cannot be coerced to a string is reported as unknown, not thrown',
+  hostileThrew === null
+    && hostileMounted.indexOf('sym-bad') === -1
+    && hostileMounted.indexOf('obj-bad') === -1
+    && (hostileSaid.match(/unknown position/g) || []).length === 2
+    && /button "sym-bad" not mounted/.test(hostileSaid)
+    && /button "obj-bad" not mounted/.test(hostileSaid),
+  hostileThrew ? 'flush threw: ' + hostileThrew : (hostileSaid || 'no warning at all'));
+
+record('one unmountable queued entry does not cost the plugins queued behind it',
+  hostileMounted.join(',') === 'good-before,good-middle,good-after',
+  'mounted: ' + (hostileMounted.join(',') || '(nothing)'));
+
+// ---- containment is not specific to the position ---------------------------
+// Everything _build reads off a queued entry is read late, so anything on it
+// can be unusable by flush time. The label below throws where the DOM coerces
+// it, well past the position guard. The entry behind it must still mount.
+
+var lateEnv = freshLoadingModule('<div class="spine-bottom"></div>');
+var badLabel = spineEntry('bad-label');
+[spineEntry('before-bad'), badLabel, spineEntry('after-bad')]
+  .forEach(function (p) { lateEnv.M.register(p); });
+badLabel.label = { toString: null };
+var lateThrew = null;
+try {
+  lateEnv.M._flush();
+} catch (err) { lateThrew = (err && err.message) || String(err); }
+var lateMounted = [].slice.call(
+  lateEnv.win.document.querySelectorAll('[data-ora-mount]')
+).map(function (el) { return el.getAttribute('data-ora-mount'); });
+record('a queued entry that throws for any other reason is contained, warns, and the queue continues',
+  lateThrew === null
+    && lateMounted.join(',') === 'before-bad,after-bad'
+    && /button "bad-label" could not be mounted/.test(lateEnv.warnings.join(' | ')),
+  lateThrew ? 'flush threw: ' + lateThrew
+    : 'mounted: ' + (lateMounted.join(',') || '(nothing)')
+      + '; said: ' + (lateEnv.warnings.join(' | ') || 'nothing'));
+
+// ---- a thrown value that refuses to become text ----------------------------
+// Describing the thrown value is the last thing standing between one bad
+// plugin and the whole queue, and it runs INSIDE _flush's catch — so if the
+// description throws, the throw originates inside the catch, escapes it,
+// escapes the flush loop, and escapes _flush, with _pending already drained
+// and _domReady already true. Nothing retries the abandoned entries and
+// nothing says so, because the DOM event dispatcher swallows a listener error.
+//
+// Two values refuse every ordinary description. The obvious fallback,
+// Object.prototype.toString, READS Symbol.toStringTag off the value, so a
+// throwing getter defeats it; and a revoked Proxy refuses that read — and
+// every other operation — outright.
+
+var UNDESCRIBABLE = [
+  {
+    what: 'an object with no toString or valueOf and a throwing Symbol.toStringTag',
+    make: function () {
+      var v = { toString: null, valueOf: null };
+      Object.defineProperty(v, Symbol.toStringTag, {
+        get: function () { throw new Error('toStringTag getter'); }
+      });
+      return v;
+    }
+  },
+  {
+    what: 'a revoked Proxy',
+    make: function () {
+      var revocable = Proxy.revocable({}, {});
+      revocable.revoke();
+      return revocable.proxy;
+    }
+  }
+];
+
+UNDESCRIBABLE.forEach(function (kind, i) {
+  var env = freshLoadingModule('<div class="spine-bottom"></div>');
+  var badId = 'undescribable-' + i;
+  var bad = spineEntry(badId);
+  [spineEntry('first-' + i), bad, spineEntry('third-' + i), spineEntry('fourth-' + i)]
+    .forEach(function (p) { env.M.register(p); });
+  // The plugin turns bad only after queueing. The label is read late, at
+  // setAttribute, well past every guard _build applies.
+  Object.defineProperty(bad, 'label', {
+    get: function () { throw kind.make(); }
+  });
+
+  var escaped = null;
+  try {
+    env.M._flush();
+  } catch (err) { escaped = 'flush threw: ' + _safely(err); }
+
+  var stillMounted = [].slice.call(
+    env.win.document.querySelectorAll('[data-ora-mount]')
+  ).map(function (el) { return el.getAttribute('data-ora-mount'); });
+  var said = env.warnings.join(' | ');
+
+  record('a queued entry that throws ' + kind.what
+    + ' costs its own button and nothing else',
+    escaped === null
+      && stillMounted.join(',') === ['first-' + i, 'third-' + i, 'fourth-' + i].join(',')
+      && said.indexOf('button "' + badId + '" could not be mounted') >= 0,
+    escaped || ('mounted: ' + (stillMounted.join(',') || '(nothing)')
+      + '; said: ' + (said || 'nothing at all')));
+});
+
+// Describing the thrown value must not be how the test itself blows up.
+function _safely(v) {
+  try { return String(v); } catch (e) { return '(indescribable)'; }
+}
+
+global.window = w;
+global.document = w.document;
+
+// ---- the same value thrown by a click handler ------------------------------
+// Same root cause, inside the click listener's own catch. The handler's error
+// is read for a .message — a property read a revoked Proxy refuses — and then
+// described. If either step throws, the throw leaves the listener uncaught,
+// breaking "a plugin's handler must never break the shell", and no warning is
+// emitted to say a handler failed at all.
+
+UNDESCRIBABLE.forEach(function (kind, i) {
+  warnings.length = 0;
+  var id = 'hostile-thrower-' + i;
+  M.register(entry({ id: id, onSelect: function () { throw kind.make(); } }));
+  w.document.querySelector('[data-ora-mount="' + id + '"]')
+    .dispatchEvent(new w.Event('click'));
+
+  // The shell is still working: a button registered after the bad one still
+  // mounts, and its handler still runs.
+  var neighbourRan = 0;
+  M.register(entry({
+    id: id + '-neighbour', onSelect: function () { neighbourRan++; }
+  }));
+  var neighbour = w.document.querySelector('[data-ora-mount="' + id + '-neighbour"]');
+  if (neighbour) neighbour.dispatchEvent(new w.Event('click'));
+
+  record('a click handler that throws ' + kind.what + ' warns and the shell survives',
+    warnings.some(function (m) {
+      return m.indexOf('handler for "' + id + '" threw') >= 0;
+    }) && neighbourRan === 1,
+    'neighbour handler ran ' + neighbourRan + ' time(s); said: '
+      + (warnings.join(' | ') || 'nothing at all'));
+});
+
 summarize();

@@ -454,6 +454,11 @@ async function run() {
   record('Escape closes Library from every control and restores focus',
     escapeFailures.length === 0, escapeFailures.join('; '));
 
+  function describeFocus(el) {
+    if (!el) return 'null';
+    return el.id || el.className || el.tagName;
+  }
+
   browseButton.focus();
   browseButton.click();
   await flush();
@@ -463,7 +468,61 @@ async function run() {
     key: 'Escape', bubbles: true, cancelable: true,
   }));
   record('Escape closes non-modal Library when focus is elsewhere',
-    !library.classList.contains('is-open') && w.document.activeElement === browseButton);
+    !library.classList.contains('is-open'));
+  // The Library is docked, not modal — the user can go on working while it is
+  // up. Closing it must not pull the caret out of whatever they moved to.
+  record('closing the docked Library leaves focus where the user moved it',
+    w.document.activeElement === workspaceInput,
+    'activeElement=' + describeFocus(w.document.activeElement));
+
+  browseButton.focus();
+  browseButton.click();
+  await flush();
+  w.document.querySelector('.conversation-browser-search').focus();
+  w.document.querySelector('.conversation-browser-close').click();
+  record('closing the Library while it still holds focus returns focus to the opener',
+    !library.classList.contains('is-open') && w.document.activeElement === browseButton,
+    'activeElement=' + describeFocus(w.document.activeElement));
+
+  browseButton.focus();
+  browseButton.click();
+  await flush();
+  w.document.querySelector('.conversation-browser-search').blur();
+  w.document.querySelector('.conversation-browser-close').click();
+  record('closing the Library when nobody holds focus returns focus to the opener',
+    !library.classList.contains('is-open') && w.document.activeElement === browseButton,
+    'activeElement=' + describeFocus(w.document.activeElement));
+
+  // Counted from the registrations the module actually makes, not from any
+  // flag it sets: the browser collapses an identical (type, listener, capture)
+  // triple, so the live DOM listener count reads 1 whether or not the module
+  // removes before adding.
+  var realAdd = w.addEventListener;
+  var realRemove = w.removeEventListener;
+  var liveResize = [];
+  w.addEventListener = function (type, fn, opts) {
+    if (type === 'resize') liveResize.push(fn);
+    return realAdd.call(w, type, fn, opts);
+  };
+  w.removeEventListener = function (type, fn, opts) {
+    if (type === 'resize') {
+      var at = liveResize.indexOf(fn);
+      if (at !== -1) liveResize.splice(at, 1);
+    }
+    return realRemove.call(w, type, fn, opts);
+  };
+  for (var openPass = 0; openPass < 3; openPass += 1) {
+    browseButton.click();
+    await flush();
+  }
+  var resizeAfterOpens = liveResize.length;
+  w.document.querySelector('.conversation-browser-close').click();
+  var resizeAfterClose = liveResize.length;
+  w.addEventListener = realAdd;
+  w.removeEventListener = realRemove;
+  record('repeat Library opens keep exactly one live resize listener, and close drops it',
+    resizeAfterOpens === 1 && resizeAfterClose === 0,
+    'after 3 opens=' + resizeAfterOpens + ', after close=' + resizeAfterClose);
 
   var passed = results.filter(function (r) { return r.ok; }).length;
   console.log('\n' + passed + ' / ' + results.length + ' tests passed');
