@@ -41,6 +41,7 @@ from framework_parser import (
     Framework,
     Milestone,
     parse_framework_file,
+    parse_framework_text,
     FrameworkParseError,
 )
 from framework_invocability import resolve_user_invocable_framework
@@ -199,6 +200,96 @@ def _authenticated_project_visual_locks(project_nexus: Optional[str]) -> dict | 
     return model_profiles.validate_project_binding(record, expected_nexus=nexus)
 
 
+def _load_framework_bound_to_project(
+    framework_path: str,
+    project_nexus: Optional[str],
+) -> Framework:
+    """Parse a framework spec with the active project's configuration bound in.
+
+    Plugin Convention §14: a project may declare a
+    ``framework_configurations`` profile supplying ``${config.<key>}``
+    values and extension-point overlays that splice into the spec at its
+    ``<!-- ora-project-extension: <id> -->`` markers. The composition
+    engine lives in :mod:`framework_config`; this is the production call
+    site that binds it to a real framework run.
+
+    Profile selection is by uniqueness: when the active project declares
+    exactly one profile for this framework, that profile is used. There
+    is no per-invocation profile selector today, so a project declaring
+    two profiles for the same framework gets neither — it runs
+    project-neutral with a loud warning rather than a silent guess.
+
+    Fails open by design. Any composition error — unresolved reference,
+    unreadable overlay, unregistered project — logs and falls back to the
+    raw spec file, because a framework that runs without its project
+    overlay is recoverable and one that refuses to run is not.
+    """
+    def _neutral() -> Framework:
+        return parse_framework_file(framework_path)
+
+    if not isinstance(project_nexus, str) or not project_nexus.strip():
+        return _neutral()
+
+    # Mirror parse_framework_file's own resolution so a relative path
+    # binds its project instead of quietly falling through to neutral.
+    resolved_path = framework_path
+    if not os.path.isabs(resolved_path):
+        from framework_parser import FRAMEWORKS_DIR as _FW_DIR
+        resolved_path = os.path.join(_FW_DIR, resolved_path)
+
+    framework_id = os.path.basename(resolved_path)
+    if framework_id.endswith(".md"):
+        framework_id = framework_id[:-3]
+
+    try:
+        try:
+            from . import framework_config as _fc
+            from .project_registry import get_project
+        except ImportError:
+            import framework_config as _fc  # type: ignore
+            from project_registry import get_project  # type: ignore
+
+        project = get_project(project_nexus.strip())
+        if project is None:
+            return _neutral()
+
+        profiles = [
+            fc.profile_name
+            for fc in project.framework_configurations
+            if fc.framework == framework_id
+        ]
+        if not profiles:
+            return _neutral()
+        if len(profiles) > 1:
+            print(
+                f"[milestone_executor] project {project_nexus!r} declares "
+                f"{len(profiles)} framework_configurations profiles for "
+                f"{framework_id!r} ({', '.join(sorted(profiles))}); no "
+                f"invocation-time selector exists, so the framework runs "
+                f"project-neutral. Declare one profile per framework.",
+                file=sys.stderr,
+            )
+            return _neutral()
+
+        with open(resolved_path, encoding="utf-8") as fh:
+            raw = fh.read()
+        composed = _fc.compose_framework_spec(
+            framework_id,
+            project_nexus=project_nexus.strip(),
+            profile_name=profiles[0],
+            spec_text=raw,
+        )
+        return parse_framework_text(composed, path=resolved_path)
+    except Exception as exc:
+        print(
+            f"[milestone_executor] project binding failed for "
+            f"{framework_id!r} under project {project_nexus!r} ({exc}); "
+            f"running the raw spec instead.",
+            file=sys.stderr,
+        )
+        return _neutral()
+
+
 def _maybe_persist_self_mindspec(framework_name, mode, final_output):
     """Archive MSI-Self and compile one inactive Persona.
 
@@ -303,7 +394,7 @@ def execute_framework(
     if config is None:
         config = load_routing_config()
 
-    fw = parse_framework_file(framework_path)
+    fw = _load_framework_bound_to_project(framework_path, project_nexus)
     if trace_context is not None:
         trace_context["framework_id"] = fw.name
 

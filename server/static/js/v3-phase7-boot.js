@@ -107,7 +107,21 @@
       };
     }
 
-    return window.OraPackLoader.init({ compositionRegistry: compositionRegistry })
+    // Wire OraPromptTemplateRuntime as the registry pack-loader delegates
+    // prompt_template registration to. Without this the templates load into
+    // the loader's own fallback store and nothing can invoke them — which is
+    // why every pack-shipped slash command was inert.
+    var promptTemplateRegistry = null;
+    var ptr = window.OraPromptTemplateRuntime;
+    if (ptr && typeof ptr.asPackLoaderRegistry === 'function') {
+      try { ptr.init({}); } catch (e) { /* idempotent — ignore */ }
+      promptTemplateRegistry = ptr.asPackLoaderRegistry();
+    }
+
+    return window.OraPackLoader.init({
+      compositionRegistry: compositionRegistry,
+      promptTemplateRegistry: promptTemplateRegistry
+    })
       .then(function () {
         return fetch(DEFAULTS_URL).then(function (r) {
           if (!r || !r.ok) throw new Error('defaults fetch failed: ' + (r && r.status));
