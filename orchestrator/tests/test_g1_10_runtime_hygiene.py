@@ -164,6 +164,90 @@ class SchedulerBoundaryTests(unittest.TestCase):
                      "remove_scheduled_task"):
             self.assertNotIn(name, dispatcher.TOOL_REGISTRY)
 
+    def test_paths_file_round_trip_survives_hostile_filenames(self):
+        """The writer and the hook must agree on the exact path set.
+
+        Both sides are ours, so the contract is only as good as the tests on
+        it: a mutation to either serialization was previously undetected. A
+        newline is a legal macOS filename character, and the earlier
+        newline-delimited form split such a name into two bogus paths and
+        bound them into the exactly-once event contract.
+        """
+        import importlib.util, json as _json, subprocess, sys, tempfile as _tf
+        hook = (Path(__file__).resolve().parents[2] / "operations" /
+                "g1-10-current" / "macos" / "vault-event-pipeline.py")
+        self.assertTrue(hook.is_file(), hook)
+
+        hostile = [
+            "/vault/ordinary.md",
+            "/vault/two\nlines.md",
+            "/vault/trailing space .md",
+            "/vault/unicodé — em dash.md",
+            "/vault/carriage\rreturn.md",
+        ]
+        # Writer side, exactly as runtime_event_dispatcher writes it.
+        with _tf.NamedTemporaryFile("w", encoding="utf-8", suffix=".paths",
+                                    delete=False) as handle:
+            _json.dump(hostile, handle)
+            paths_file = handle.name
+        self.addCleanup(lambda: Path(paths_file).unlink(missing_ok=True))
+
+        # Reader side, loaded from the hook module itself.
+        spec = importlib.util.spec_from_file_location("_vep", hook)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["_vep"] = module
+        self.addCleanup(lambda: sys.modules.pop("_vep", None))
+        spec.loader.exec_module(module)
+
+        listed = _json.loads(Path(paths_file).read_text(encoding="utf-8"))
+        self.assertEqual(listed, hostile)
+        self.assertEqual([x for x in listed if x.strip()], hostile)
+
+        # And the real CLI accepts the file (it rejects on the vault boundary,
+        # which proves it parsed all five paths rather than splitting them).
+        proc = subprocess.run(
+            ["/opt/homebrew/bin/python3", str(hook), "--paths-file", paths_file],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("outside the vault", proc.stdout + proc.stderr)
+
+    def test_hook_prunes_terminal_events_but_keeps_in_flight(self):
+        """The state map is rewritten and fsync'd on every step.
+
+        At 4,452 finished events it was 31 MB, so each notification cost
+        ~157 MB of fsync for entries nothing reads. Terminal records are
+        bounded; anything still running is never dropped.
+        """
+        import importlib.util, sys
+        hook = (Path(__file__).resolve().parents[2] / "operations" /
+                "g1-10-current" / "macos" / "vault-event-pipeline.py")
+        spec = importlib.util.spec_from_file_location("_vep_prune", hook)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["_vep_prune"] = module
+        self.addCleanup(lambda: sys.modules.pop("_vep_prune", None))
+        spec.loader.exec_module(module)
+
+        state = {"events": {}}
+        for n in range(50):
+            state["events"][f"done-{n:03d}"] = {
+                "status": "completed", "completed_at": f"2026-08-16T00:{n:02d}:00Z",
+            }
+        state["events"]["still-running"] = {
+            "status": "running", "started_at": "2020-01-01T00:00:00Z",
+        }
+        with mock.patch.object(module, "TERMINAL_EVENT_RETENTION", 10):
+            dropped = module._prune_terminal_events(state)
+
+        self.assertEqual(dropped, 40)
+        self.assertIn("still-running", state["events"],
+                      "an in-flight event must never be pruned")
+        remaining = sorted(k for k in state["events"] if k.startswith("done-"))
+        self.assertEqual(len(remaining), 10)
+        # The newest are kept, so duplicate suppression still covers recent work.
+        self.assertEqual(remaining[0], "done-040")
+        self.assertEqual(remaining[-1], "done-049")
+
     def test_inbound_root_is_the_real_folder_not_ora_home(self):
         """The watched inbound root must be the folder documents land in.
 
@@ -335,6 +419,60 @@ class LedgerTests(RuntimeHygieneBase):
         """Losing the event is worse than the sink growing."""
         missing = self.data / "runtime-hygiene" / "not-there.jsonl"
         self.assertIsNone(hygiene.rotate_if_oversized(missing, limit_mb=1))
+        # An unreadable parent is the realistic failure: it must return, not raise.
+        blocked = self.data / "runtime-hygiene" / "blocked.jsonl"
+        blocked.parent.mkdir(parents=True, exist_ok=True)
+        blocked.write_bytes(b"x" * 4096)
+        with mock.patch.object(hygiene.Path, "rename",
+                               side_effect=OSError("read-only file system")):
+            self.assertIsNone(hygiene.rotate_if_oversized(blocked, limit_mb=0.001))
+        self.assertTrue(blocked.exists(), "the sink must survive a failed rotation")
+
+    def test_rotation_never_overwrites_an_existing_archive(self):
+        """Two rotations inside one second must not destroy the first archive.
+
+        The stamp has one-second granularity and `Path.rename` replaces its
+        destination silently on POSIX, so without a uniquifier a whole
+        rotation's evidence disappears with no error.
+        """
+        sink = self.data / "runtime-hygiene" / "twice.jsonl"
+        sink.parent.mkdir(parents=True, exist_ok=True)
+
+        sink.write_bytes(b"first")
+        first = hygiene.rotate_if_oversized(sink, limit_mb=0.000001)
+        sink.write_bytes(b"second")
+        second = hygiene.rotate_if_oversized(sink, limit_mb=0.000001)
+
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertNotEqual(first, second)
+        self.assertEqual(Path(first).read_bytes(), b"first")
+        self.assertEqual(Path(second).read_bytes(), b"second")
+
+    def test_rotated_archives_are_bounded(self):
+        """Bounding one file while its archives grow forever fixes nothing.
+
+        There is no clock left to prune them — G1.10 removed the retention
+        sweeper's interval — so rotation time is the only reliable moment.
+        """
+        sink = self.data / "runtime-hygiene" / "many.jsonl"
+        sink.parent.mkdir(parents=True, exist_ok=True)
+        with mock.patch.object(hygiene, "AUDIT_ARCHIVE_KEEP", 3):
+            for n in range(8):
+                sink.write_bytes(f"gen{n}".encode())
+                hygiene.rotate_if_oversized(sink, limit_mb=0.000001)
+        archives = sorted(p.name for p in sink.parent.glob("many.jsonl.*"))
+        self.assertEqual(len(archives), 3, archives)
+        # The survivors must be the NEWEST three, not an arbitrary subset.
+        kept = {Path(sink.parent / a).read_bytes() for a in archives}
+        self.assertEqual(kept, {b"gen5", b"gen6", b"gen7"})
+
+    def test_malformed_rotation_threshold_falls_back(self):
+        """A typo in the env var must not stop the runtime from starting."""
+        for bad in ("64MB", "", "  ", "none"):
+            with mock.patch.dict("os.environ",
+                                 {"ORA_RUNTIME_AUDIT_ROTATE_MB": bad}):
+                self.assertEqual(hygiene._audit_rotate_mb(), 32.0)
 
     def test_unknown_deadline_handler_fails_once_without_killing_lane(self):
         queue = hygiene.DeadlineQueue()

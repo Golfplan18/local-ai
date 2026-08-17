@@ -40,10 +40,27 @@ _PROCESS_LOCK = threading.RLock()
 # Provisional — 32 MB is roughly a month of ordinary event volume while
 # staying small enough to open. The append IS the size-threshold event the
 # hygiene framework names; nothing here runs on a clock.
-AUDIT_ROTATE_MB = int(os.environ.get("ORA_RUNTIME_AUDIT_ROTATE_MB", "32"))
+def _audit_rotate_mb() -> float:
+    """Threshold in MB. A malformed value falls back rather than raising.
+
+    This is read at import in two places; a typo in the env var must not stop
+    the runtime from starting.
+    """
+    try:
+        return float(os.environ.get("ORA_RUNTIME_AUDIT_ROTATE_MB") or 32)
+    except (TypeError, ValueError):
+        return 32.0
 
 
-def rotate_if_oversized(path: Path | str, *, limit_mb: int | None = None) -> str | None:
+AUDIT_ROTATE_MB = _audit_rotate_mb()
+# Rotated siblings kept per sink. Provisional. Bounding one file while letting
+# its archives accumulate forever would just relocate the unbounded growth, and
+# there is no clock left to prune them: the retention sweeper's interval was
+# removed by G1.10, so rotation time is the only reliable moment to enforce it.
+AUDIT_ARCHIVE_KEEP = int(os.environ.get("ORA_RUNTIME_AUDIT_ARCHIVE_KEEP") or 6)
+
+
+def rotate_if_oversized(path: Path | str, *, limit_mb: float | None = None) -> str | None:
     """Roll an append-only sink aside once it exceeds the size threshold.
 
     Returns the archive path when a rotation happened, else None. Never
@@ -57,10 +74,42 @@ def rotate_if_oversized(path: Path | str, *, limit_mb: int | None = None) -> str
             return None
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         archive = target.with_name(f"{target.name}.{stamp}")
+        # Path.rename replaces an existing destination silently on POSIX, so
+        # two rotations inside the same second would destroy the first
+        # archive with no error. Never overwrite evidence.
+        suffix = 0
+        while archive.exists():
+            suffix += 1
+            archive = target.with_name(f"{target.name}.{stamp}.{suffix}")
         target.rename(archive)
+        _prune_archives(target)
         return str(archive)
     except OSError:
         return None
+
+
+def _prune_archives(target: Path) -> None:
+    """Keep only the newest AUDIT_ARCHIVE_KEEP siblings of one sink.
+
+    Ordered by modification time, not by name. The name carries a one-second
+    stamp plus a collision suffix, and pruning frees suffixes for reuse — so a
+    name sort can rank a freshly written archive below an older one and delete
+    the very archive just created.
+    """
+    try:
+        if AUDIT_ARCHIVE_KEEP <= 0:
+            return
+        siblings = sorted(
+            (p for p in target.parent.glob(f"{target.name}.*") if p.is_file()),
+            key=lambda p: (p.stat().st_mtime_ns, p.name),
+        )
+        for stale in siblings[:max(0, len(siblings) - AUDIT_ARCHIVE_KEEP)]:
+            try:
+                stale.unlink()
+            except OSError:
+                pass
+    except OSError:
+        return
 
 
 def _root() -> Path:

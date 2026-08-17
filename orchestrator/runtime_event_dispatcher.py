@@ -210,7 +210,11 @@ def dispatch_paths(paths: set[str]) -> dict:
                 with tempfile.NamedTemporaryFile(
                     "w", encoding="utf-8", suffix=".paths", delete=False
                 ) as handle:
-                    handle.write("\n".join(exact_paths))
+                    # JSON array, not newline-delimited: a newline is a legal
+                    # macOS filename character, and splitting on one would
+                    # manufacture two bogus paths and bind them into the
+                    # hook's exactly-once event contract.
+                    json.dump(exact_paths, handle)
                     paths_file = handle.name
                 try:
                     result = subprocess.run(

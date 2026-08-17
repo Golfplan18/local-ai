@@ -2307,7 +2307,7 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 - **[implemented]** `~/ora/orchestrator/oversight_router.py` — observational event logger with Stealth suppression, fan-out recursion guard, and child-to-parent visibility.
 - **[partial]** `~/ora/orchestrator/corpus_runtime.py` — Mechanical CFF: c_instance + c_validate; emits CorpusInstanceCreated/CorpusValidated
 - **[partial]** `~/ora/orchestrator/output_runtime.py` — Mechanical OFF O-Render: corpus+bespoke-OFF -> md/html/docx/pptx/xlsx artifact; emits OFFRendered
-- **[retired compatibility]** `~/ora/orchestrator/scheduler.py` — Migration-evidence surface for `config/scheduled-tasks.json`; all public and private execution paths fail closed under G1.10
+- **[deleted 2026-08-16]** `~/ora/orchestrator/scheduler.py` and `config/scheduled-tasks.json` — the retired interval scheduler and its permanently empty registry, together with the four chat tools that managed it. Previously kept as a fail-closed migration-evidence surface; removed because absence is a stronger guarantee than a stub whose every path raises, and the tool surface was presenting a control panel for a machine that no longer existed. Recoverable from git history
 - **[stale]** `~/ora/orchestrator/job_queue.py` — Async capability-dispatch queue (WP-7.6, video/training) — NOT part of oversight subsystem
 
 ### B.13 — Execution-Review Architecture
