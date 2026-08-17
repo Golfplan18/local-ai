@@ -1,11 +1,9 @@
 {
-  "schema_version": 1,
-  "purpose": "G1.10 tracked post-cutover operational source identities",
-  "deployment_commit_binding": "recorded in installed-state and closeout receipts after this package is committed",
   "dcp_reservation": [
     "G1.24 owns external DCP routine verification",
     "G1.24 owns the delivered full-state audit"
   ],
+  "deployment_commit_binding": "recorded in installed-state and closeout receipts after this package is committed",
   "files": {
     "operations/g1-10-current/README.md": "6bfc595e085d4793834ff8b926e5b7158d37df94675361e47076c43a44827cc0",
     "operations/g1-10-current/cloud/README.md": "2d08fd25d47ed5fb75c7f60e8139bbba0c5b4e0d905e26d5afb7defb2c2bac9d",
@@ -24,7 +22,9 @@
     "operations/g1-10-current/macos/rollback-macos-cutover.sh": "bbabfdd1519cb8360469899eb4aac06c1276a3bd752b4a84a0d3d9f750ea0e61",
     "operations/g1-10-current/macos/vault-cloud-sync.py": "af3d2f260f31d9605dad1d5eb0df4957cf1b800f2a47a730287259da32158a89",
     "operations/g1-10-current/macos/vault-derive-sync.sh": "93fc2c711214a1430d6152bb01cebebe7d85de3766f200c331bc54faaf4ab4b4",
-    "operations/g1-10-current/macos/vault-event-pipeline.py": "ac01fd2dbd89b5feb5d5c0a347d9005a2155c78700dfd6990215cc8df262ceb7",
+    "operations/g1-10-current/macos/vault-event-pipeline.py": "111f7af2d58c93e41fc7e73cf4359d7cf4706942b3d90e1f5dafcd230b01fbf5",
     "operations/g1-10-current/macos/vault-git-sync.py": "946f3b9f2dabe1662a059993702438a0213a62b647a3bff04844386f6ca55a64"
-  }
+  },
+  "purpose": "G1.10 tracked post-cutover operational source identities",
+  "schema_version": 1
 }

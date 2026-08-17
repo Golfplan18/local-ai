@@ -392,6 +392,11 @@ class OversightDaemon:
         self._fast_tick = 0.0
         self._slow_tick = 0.0
         self._resources_tick = 0.0
+        # Watchdog restarts per lane, and when the most recent one happened.
+        # A lane that keeps dying reads as "alive" on every liveness check;
+        # only the count exposes the loop.
+        self._lane_restarts: dict[str, int] = {}
+        self._lane_restart_at: dict[str, float] = {}
         self._vault_scan_done = False
         self._event_thread: threading.Thread | None = None
         self._deadline_thread: threading.Thread | None = None
@@ -736,6 +741,7 @@ class OversightDaemon:
             try:
                 if self._event_thread is not None and not self._event_thread.is_alive():
                     print("[oversight_daemon] WATCHDOG: event lane died — restarting")
+                    self._record_restart("event_lane")
                     self._event_thread = threading.Thread(
                         target=self._event_loop, daemon=True,
                         name="oversight-file-events-restart")
@@ -743,6 +749,7 @@ class OversightDaemon:
                 if (self._deadline_thread is not None
                         and not self._deadline_thread.is_alive()):
                     print("[oversight_daemon] WATCHDOG: deadline lane died — restarting")
+                    self._record_restart("deadline_lane")
                     self._deadline_thread = threading.Thread(
                         target=self._deadline_loop, daemon=True,
                         name="oversight-deadlines-restart")
@@ -759,12 +766,24 @@ class OversightDaemon:
                 import traceback
                 print(f"[oversight_daemon] watchdog error: {e}\n{traceback.format_exc()}")
 
+    def _record_restart(self, lane: str) -> None:
+        """Count watchdog restarts so a crash loop is distinguishable from health.
+
+        Thread liveness alone always reads healthy under a watchdog: the lane
+        is dead for under 30s and alive again by the next check. The event lane
+        crashed 2,257 times before 2026-08-16 without one warning reaching the
+        user. The count is what makes the loop visible.
+        """
+        self._lane_restarts[lane] = self._lane_restarts.get(lane, 0) + 1
+        self._lane_restart_at[lane] = time.time()
+
     def _check_lane(self, name: str, thread, tick: float, stall_sec: int, restart):
         if thread is None or not self._running:
             return
         age = time.time() - tick
         if not thread.is_alive():
             print(f"[oversight_daemon] WATCHDOG: {name} lane thread died — restarting lane")
+            self._record_restart(f"{name}_lane")
             restart()
         elif age > stall_sec:
             print(f"[oversight_daemon] WATCHDOG: {name} lane has not completed a loop "
@@ -893,7 +912,10 @@ def runtime_health() -> dict:
     """
     daemon = _daemon
     if daemon is None or not daemon._running:
-        return {"running": False, "event_lane": False, "deadline_lane": False}
+        return {
+            "running": False, "event_lane": False, "deadline_lane": False,
+            "lane_restarts": {}, "lane_restart_at": {},
+        }
     return {
         "running": True,
         "event_lane": bool(
@@ -903,6 +925,10 @@ def runtime_health() -> dict:
             daemon._deadline_thread is not None
             and daemon._deadline_thread.is_alive()
         ),
+        # Liveness says "alive right now"; the restart count says "and it has
+        # died N times getting there". Both are needed to judge lane health.
+        "lane_restarts": dict(daemon._lane_restarts),
+        "lane_restart_at": dict(daemon._lane_restart_at),
     }
 
 

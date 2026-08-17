@@ -52,9 +52,40 @@ class RuntimePathTests(unittest.TestCase):
         daemon._event_thread = alive
         daemon._deadline_thread = alive
         with mock.patch.object(od, "_daemon", daemon):
-            self.assertEqual(od.runtime_health(), {
-                "running": True, "event_lane": True, "deadline_lane": True,
-            })
+            health = od.runtime_health()
+        self.assertEqual(
+            {k: health[k] for k in ("running", "event_lane", "deadline_lane")},
+            {"running": True, "event_lane": True, "deadline_lane": True},
+        )
+        # Liveness alone cannot distinguish a healthy lane from one the
+        # watchdog keeps resurrecting, so the contract also carries restart
+        # counts. A never-restarted daemon reports them empty.
+        self.assertEqual(health["lane_restarts"], {})
+        self.assertEqual(health["lane_restart_at"], {})
+
+    def test_runtime_health_reports_watchdog_restart_counts(self):
+        daemon = od.OversightDaemon()
+        alive = mock.MagicMock()
+        alive.is_alive.return_value = True
+        daemon._running = True
+        daemon._event_thread = alive
+        daemon._deadline_thread = alive
+        daemon._record_restart("event_lane")
+        daemon._record_restart("event_lane")
+        with mock.patch.object(od, "_daemon", daemon):
+            health = od.runtime_health()
+        # Alive AND repeatedly restarted — the crash-loop shape that went
+        # unreported for 2,257 event-lane deaths before 2026-08-16.
+        self.assertTrue(health["event_lane"])
+        self.assertEqual(health["lane_restarts"]["event_lane"], 2)
+        self.assertIn("event_lane", health["lane_restart_at"])
+
+    def test_runtime_health_when_stopped_carries_empty_restart_maps(self):
+        with mock.patch.object(od, "_daemon", None):
+            health = od.runtime_health()
+        self.assertFalse(health["running"])
+        self.assertEqual(health["lane_restarts"], {})
+        self.assertEqual(health["lane_restart_at"], {})
 
     def test_startup_recovers_exact_retention_intents_before_lanes_start(self):
         daemon = od.OversightDaemon()

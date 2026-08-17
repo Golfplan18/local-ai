@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import json
 import subprocess
+import tempfile
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,9 +20,24 @@ try:
 except ImportError:  # pragma: no cover
     from orchestrator import runtime_paths as _rp
 
+try:
+    import export as _export
+except ImportError:  # pragma: no cover
+    from orchestrator import export as _export
+
+
+def _resources_root() -> Path:
+    """The inbound folder resources_watcher actually converts from.
+
+    It is the external ``~/Documents/Ora Resources`` (configurable), NOT
+    ``ORA_HOME/Resources`` — that path has never existed, so from the G1.10
+    cutover until 2026-08-16 no dropped document ever raised an event.
+    """
+    return Path(_export.current_resources_dir())
+
 
 def _roots() -> list[str]:
-    candidates = [Path(_rp.VAULT_STR), Path(_rp.ORA_HOME) / "Resources"]
+    candidates = [Path(_rp.VAULT_STR), _resources_root()]
     return [str(path.resolve()) for path in candidates if path.is_dir()]
 
 
@@ -81,8 +97,7 @@ def _artifact_kind(path: str) -> str | None:
     except ValueError:
         pass
     try:
-        parts = exact.relative_to(
-            (Path(_rp.ORA_HOME) / "Resources").resolve()).parts
+        parts = exact.relative_to(_resources_root().resolve()).parts
         return "inbound_resource" if len(parts) == 1 else None
     except ValueError:
         return None
@@ -100,8 +115,7 @@ def dispatch_paths(paths: set[str]) -> dict:
     }
     vault_changes = {path for path in paths if _under(path, _rp.VAULT_STR)}
     resource_changes = {
-        path for path in paths
-        if _under(path, Path(_rp.ORA_HOME) / "Resources")
+        path for path in paths if _under(path, _resources_root())
     }
     summary = {
         "paths": sorted(paths), "supersession_events": [],
@@ -183,24 +197,53 @@ def dispatch_paths(paths: set[str]) -> dict:
         hook = (Path(_rp.ORA_HOME) / "operations" / "g1-10-current" /
                 "macos" / "vault-event-pipeline.py")
         if hook.is_file():
-            exact_paths = sorted(str(Path(path).resolve()) for path in vault_changes)
-            argv = ["/opt/homebrew/bin/python3", str(hook)]
-            for path in exact_paths:
-                argv.extend(("--path", path))
-            result = subprocess.run(argv, capture_output=True, text=True)
-            event_id = None
+            # A coalesced batch can hold thousands of paths. One --path pair
+            # per file overflows the OS argument-length limit and, because
+            # this was the only block in this function without a guard, took
+            # the whole listener down with it (2,257 recorded crashes before
+            # 2026-08-16). The paths go through a temp file instead, and the
+            # block degrades like its six siblings.
             try:
-                event_id = json.loads(result.stdout.splitlines()[-1]).get("event_id")
-            except (IndexError, json.JSONDecodeError, AttributeError):
-                pass
-            summary["operational_hook"] = {
-                "event_id": event_id, "exit_status": result.returncode,
-            }
-            if result.returncode:
-                summary["errors"].append(
-                    f"vault operational hook failed ({result.returncode}): "
-                    f"{result.stderr[-1000:]}"
+                exact_paths = sorted(
+                    str(Path(path).resolve()) for path in vault_changes
                 )
+                with tempfile.NamedTemporaryFile(
+                    "w", encoding="utf-8", suffix=".paths", delete=False
+                ) as handle:
+                    # JSON array, not newline-delimited: a newline is a legal
+                    # macOS filename character, and splitting on one would
+                    # manufacture two bogus paths and bind them into the
+                    # hook's exactly-once event contract.
+                    json.dump(exact_paths, handle)
+                    paths_file = handle.name
+                try:
+                    result = subprocess.run(
+                        ["/opt/homebrew/bin/python3", str(hook),
+                         "--paths-file", paths_file],
+                        capture_output=True, text=True,
+                    )
+                finally:
+                    try:
+                        os.unlink(paths_file)
+                    except OSError:
+                        pass
+                event_id = None
+                try:
+                    event_id = json.loads(
+                        result.stdout.splitlines()[-1]
+                    ).get("event_id")
+                except (IndexError, json.JSONDecodeError, AttributeError):
+                    pass
+                summary["operational_hook"] = {
+                    "event_id": event_id, "exit_status": result.returncode,
+                }
+                if result.returncode:
+                    summary["errors"].append(
+                        f"vault operational hook failed ({result.returncode}): "
+                        f"{result.stderr[-1000:]}"
+                    )
+            except Exception as exc:
+                summary["errors"].append(f"vault operational hook: {exc}")
     return summary
 
 

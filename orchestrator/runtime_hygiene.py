@@ -36,6 +36,81 @@ except ImportError:  # pragma: no cover
 SCHEMA_VERSION = 1
 _PROCESS_LOCK = threading.RLock()
 
+# Size at which an append-only audit sink is rolled to a dated sibling.
+# Provisional — 32 MB is roughly a month of ordinary event volume while
+# staying small enough to open. The append IS the size-threshold event the
+# hygiene framework names; nothing here runs on a clock.
+def _audit_rotate_mb() -> float:
+    """Threshold in MB. A malformed value falls back rather than raising.
+
+    This is read at import in two places; a typo in the env var must not stop
+    the runtime from starting.
+    """
+    try:
+        return float(os.environ.get("ORA_RUNTIME_AUDIT_ROTATE_MB") or 32)
+    except (TypeError, ValueError):
+        return 32.0
+
+
+AUDIT_ROTATE_MB = _audit_rotate_mb()
+# Rotated siblings kept per sink. Provisional. Bounding one file while letting
+# its archives accumulate forever would just relocate the unbounded growth, and
+# there is no clock left to prune them: the retention sweeper's interval was
+# removed by G1.10, so rotation time is the only reliable moment to enforce it.
+AUDIT_ARCHIVE_KEEP = int(os.environ.get("ORA_RUNTIME_AUDIT_ARCHIVE_KEEP") or 6)
+
+
+def rotate_if_oversized(path: Path | str, *, limit_mb: float | None = None) -> str | None:
+    """Roll an append-only sink aside once it exceeds the size threshold.
+
+    Returns the archive path when a rotation happened, else None. Never
+    raises: a failure to rotate must not take down the caller's write — the
+    sink growing is strictly less bad than the event being lost.
+    """
+    limit = (AUDIT_ROTATE_MB if limit_mb is None else limit_mb) * 1024 * 1024
+    target = Path(path)
+    try:
+        if limit <= 0 or not target.is_file() or target.stat().st_size <= limit:
+            return None
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        archive = target.with_name(f"{target.name}.{stamp}")
+        # Path.rename replaces an existing destination silently on POSIX, so
+        # two rotations inside the same second would destroy the first
+        # archive with no error. Never overwrite evidence.
+        suffix = 0
+        while archive.exists():
+            suffix += 1
+            archive = target.with_name(f"{target.name}.{stamp}.{suffix}")
+        target.rename(archive)
+        _prune_archives(target)
+        return str(archive)
+    except OSError:
+        return None
+
+
+def _prune_archives(target: Path) -> None:
+    """Keep only the newest AUDIT_ARCHIVE_KEEP siblings of one sink.
+
+    Ordered by modification time, not by name. The name carries a one-second
+    stamp plus a collision suffix, and pruning frees suffixes for reuse — so a
+    name sort can rank a freshly written archive below an older one and delete
+    the very archive just created.
+    """
+    try:
+        if AUDIT_ARCHIVE_KEEP <= 0:
+            return
+        siblings = sorted(
+            (p for p in target.parent.glob(f"{target.name}.*") if p.is_file()),
+            key=lambda p: (p.stat().st_mtime_ns, p.name),
+        )
+        for stale in siblings[:max(0, len(siblings) - AUDIT_ARCHIVE_KEEP)]:
+            try:
+                stale.unlink()
+            except OSError:
+                pass
+    except OSError:
+        return
+
 
 def _root() -> Path:
     return Path(_rp.DATA_DIR_STR) / "runtime-hygiene"
@@ -150,6 +225,7 @@ class EventLedger:
 
     def _append(self, record: dict) -> None:
         self.audit_file.parent.mkdir(parents=True, exist_ok=True)
+        rotate_if_oversized(self.audit_file)
         envelope = {"schema_version": SCHEMA_VERSION, "recorded_at": _now(), **record}
         with open(self.audit_file, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(envelope, sort_keys=True) + "\n")
@@ -418,6 +494,7 @@ class DeadlineQueue:
 
     def _append(self, kind: str, record: dict) -> None:
         self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        rotate_if_oversized(self.audit_path)
         envelope = {
             "schema_version": SCHEMA_VERSION,
             "kind": kind,
@@ -521,6 +598,14 @@ class DeadlineQueue:
                 # A newly inserted earlier deadline changes the next record;
                 # re-read rather than dispatching stale queue state.
                 if self.next_due() != next_record:
+                    continue
+                # The wait also returns on any queue change that leaves this
+                # record at the head — every finalized trace registers one.
+                # Without this check the head deadline fires the moment an
+                # unrelated deadline is inserted, which walked the daily-note
+                # chain days into the future in a single burst on 2026-08-11.
+                # Time is the cause here: re-sleep until it has actually come.
+                if time.time() < due:
                     continue
             if stop.is_set():
                 return

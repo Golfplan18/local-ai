@@ -72,6 +72,11 @@ HEARTBEAT_INTERVALS = {
 
 STALE_MULTIPLIER = 2  # heartbeat older than 2× interval is stale
 
+# Watchdog restarts of one runtime lane before it is reported as flapping.
+# Provisional — a genuinely healthy lane restarts zero times, so any non-zero
+# count is a signal; 3 only suppresses one-off restarts around a code reload.
+LANE_RESTART_WARN_COUNT = 3
+
 
 def heartbeat_path(watcher_name: str) -> str:
     # The watcher modules write to files with dash-separated names
@@ -121,12 +126,6 @@ def check_health() -> list[dict]:
     the "nothing is running" case.
     """
     warnings: list[dict] = []
-
-    # If there are no projects under oversight at all, the daemon doesn't
-    # need to be running and warnings would be noise.
-    if not _oversight_active():
-        return warnings
-
     now = time.time()
     any_recent_heartbeat = False
 
@@ -149,6 +148,29 @@ def check_health() -> list[dict]:
                     "threshold_seconds": None,
                     "message": f"Oversight {lane.replace('_', ' ')} is not running.",
                 })
+        # A lane the watchdog keeps resurrecting passes every liveness check
+        # while losing every event between the crash and the next 30s tick.
+        restarts = runtime.get("lane_restarts") or {}
+        restart_at = runtime.get("lane_restart_at") or {}
+        for lane, count in sorted(restarts.items()):
+            if count < LANE_RESTART_WARN_COUNT:
+                continue
+            last = restart_at.get(lane)
+            recency = (
+                f", most recently {_format_age(now - last)} ago"
+                if isinstance(last, (int, float)) else ""
+            )
+            warnings.append({
+                "watcher": lane,
+                "status": "runtime_lane_flapping",
+                "age_seconds": int(now - last) if isinstance(last, (int, float)) else None,
+                "threshold_seconds": None,
+                "message": (
+                    f"Oversight {lane.replace('_', ' ')} has been restarted "
+                    f"{count} times{recency}. It is running, but work arriving "
+                    f"during each crash is dropped — check the server log."
+                ),
+            })
         # MLX has its own real clock heartbeat; preserve that independent
         # health check without consulting retired maintenance heartbeats.
         beat_at = read_heartbeat("mlx_worker")
@@ -165,6 +187,15 @@ def check_health() -> list[dict]:
                         f"(expected within {HEARTBEAT_INTERVALS['mlx_worker']}s)"
                     ),
                 })
+        return warnings
+
+    # Past this point the checks are about the oversight WATCHERS, which only
+    # matter once a project is registered — the runtime-lane checks above are
+    # unconditional because those lanes drive daily notes, trace expiry and
+    # inbound conversion whether or not any project is under oversight. Before
+    # 2026-08-16 this gate sat at the top of the function and suppressed the
+    # lane checks too, which is why 2,257 event-lane crashes went unreported.
+    if not _oversight_active():
         return warnings
 
     per_watcher: list[dict] = []
