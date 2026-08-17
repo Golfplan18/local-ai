@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import tempfile
 import threading
@@ -14,7 +15,6 @@ from orchestrator import maintenance_scheduler as scheduler
 from orchestrator import runtime_hygiene as hygiene
 from orchestrator.tools import supersession_sweep as supersession
 from orchestrator import runtime_event_dispatcher as event_dispatcher
-from orchestrator import scheduler as legacy_scheduler
 
 
 class RuntimeHygieneBase(unittest.TestCase):
@@ -73,6 +73,10 @@ class SchedulerBoundaryTests(unittest.TestCase):
         with (
             mock.patch.object(event_dispatcher._rp, "VAULT_STR", "/vault"),
             mock.patch.object(event_dispatcher._rp, "ORA_HOME", "/runtime"),
+            # The inbound root is the external Resources folder, not
+            # ORA_HOME/Resources — see test_inbound_root_is_the_real_folder.
+            mock.patch.object(event_dispatcher, "_resources_root",
+                              return_value=Path("/runtime/Resources")),
         ):
             self.assertEqual(
                 event_dispatcher._artifact_kind("/vault/Resources/exact.md"),
@@ -135,11 +139,45 @@ class SchedulerBoundaryTests(unittest.TestCase):
         self.assertTrue(any("model unavailable" in value
                             for value in result["errors"]))
 
-    def test_legacy_private_scheduler_paths_fail_closed(self):
-        with self.assertRaisesRegex(RuntimeError, "retired"):
-            legacy_scheduler._run_task({"id": "x"}, {"tasks": []})
-        with self.assertRaisesRegex(RuntimeError, "retired"):
-            legacy_scheduler.Scheduler()._check_tasks()
+    def test_legacy_interval_scheduler_no_longer_exists(self):
+        """The retired module is gone, not merely fail-closed.
+
+        It previously survived as a compatibility surface whose every path
+        raised. Deletion is the stronger guarantee: there is no scheduler to
+        route recurring work to, and the registry file it read is gone too.
+        """
+        with self.assertRaises(ImportError):
+            importlib.import_module("orchestrator.scheduler")
+        root = Path(__file__).resolve().parents[2]
+        self.assertFalse((root / "orchestrator" / "scheduler.py").exists())
+        self.assertFalse((root / "config" / "scheduled-tasks.json").exists())
+
+    def test_schedule_task_tool_surface_is_absent(self):
+        """No chat tool may offer recurring scheduling.
+
+        The four registry-management tools outlived the engine and presented a
+        control panel for a machine that had been removed.
+        """
+        from orchestrator import dispatcher
+        for name in ("schedule_task", "list_scheduled_tasks",
+                     "pause_scheduled_task", "resume_scheduled_task",
+                     "remove_scheduled_task"):
+            self.assertNotIn(name, dispatcher.TOOL_REGISTRY)
+
+    def test_inbound_root_is_the_real_folder_not_ora_home(self):
+        """The watched inbound root must be the folder documents land in.
+
+        From the G1.10 cutover until 2026-08-16 the dispatcher watched
+        ORA_HOME/Resources — a directory that has never existed — so a document
+        dropped into the real inbound folder raised no event at all, and the
+        interval lane that used to cover it is never started.
+        """
+        real = Path(event_dispatcher._export.current_resources_dir())
+        self.assertEqual(event_dispatcher._resources_root(), real)
+        self.assertNotEqual(
+            event_dispatcher._resources_root().resolve(),
+            (Path(event_dispatcher._rp.ORA_HOME) / "Resources").resolve(),
+        )
 
 
 class LedgerTests(RuntimeHygieneBase):
@@ -227,6 +265,76 @@ class LedgerTests(RuntimeHygieneBase):
         state = queue._load()["deadlines"]["deadline-ok"]
         self.assertEqual(state["status"], "completed")
         self.assertEqual(state["receipt"], {"handled": 2})
+
+    def test_future_deadline_does_not_fire_when_queue_is_nudged(self):
+        """A queue insert must not fire a deadline whose time has not come.
+
+        The worker waits on a condition that is notified by every ``put``. It
+        re-read the head record but never re-checked the clock, so any
+        unrelated insert that left the head in place dispatched it early —
+        and every finalized pipeline trace inserts one. On 2026-08-11 that
+        walked the daily-note chain nine days into the future in two bursts,
+        writing empty notes for days that had not happened; because an
+        existing note is never overwritten, those stubs then permanently
+        blocked the real notes.
+        """
+        queue = hygiene.DeadlineQueue()
+        far_future = "2099-01-01T00:00:00+00:00"
+        queue.put("deadline-future", far_future, "test", {"id": 9})
+        stop = threading.Event()
+        fired: list[dict] = []
+
+        def handler(payload):
+            fired.append(payload)
+            stop.set()
+            return {"ok": True}
+
+        def nudge():
+            # A later deadline: notifies the worker, leaves the head
+            # unchanged. Deliberately does NOT set stop — setting it here
+            # would short-circuit the dispatch path this test exists to
+            # exercise, and the test would pass with the bug present.
+            queue.put("deadline-later", "2099-06-01T00:00:00+00:00",
+                      "test", {"id": 10})
+            with queue._condition:
+                queue._condition.notify_all()
+
+        def end():
+            stop.set()
+            with queue._condition:
+                queue._condition.notify_all()
+
+        threading.Timer(0.25, nudge).start()
+        threading.Timer(0.75, end).start()
+        queue.run({"test": handler}, stop)
+
+        self.assertEqual(fired, [])
+        state = queue._load()["deadlines"]["deadline-future"]
+        self.assertEqual(state["status"], "pending")
+
+    def test_oversized_audit_sink_rotates_on_append(self):
+        """An append-only sink must not grow without bound.
+
+        ``mac-vault-events.jsonl`` reached 113 MB unrotated. The append is the
+        size-threshold event; no clock is involved.
+        """
+        sink = self.data / "runtime-hygiene" / "big.jsonl"
+        sink.parent.mkdir(parents=True, exist_ok=True)
+        sink.write_bytes(b"x" * 2048)
+
+        self.assertIsNone(hygiene.rotate_if_oversized(sink, limit_mb=1))
+        self.assertTrue(sink.exists())
+
+        archive = hygiene.rotate_if_oversized(sink, limit_mb=0.001)
+        self.assertIsNotNone(archive)
+        self.assertFalse(sink.exists())
+        self.assertTrue(Path(archive).is_file())
+        self.assertEqual(Path(archive).read_bytes(), b"x" * 2048)
+
+    def test_rotation_failure_never_breaks_the_append(self):
+        """Losing the event is worse than the sink growing."""
+        missing = self.data / "runtime-hygiene" / "not-there.jsonl"
+        self.assertIsNone(hygiene.rotate_if_oversized(missing, limit_mb=1))
 
     def test_unknown_deadline_handler_fails_once_without_killing_lane(self):
         queue = hygiene.DeadlineQueue()

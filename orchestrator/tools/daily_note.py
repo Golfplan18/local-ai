@@ -59,6 +59,10 @@ except ImportError:  # pragma: no cover - package-qualified import context
 _DEFAULT_VAULT_PATH = _rp.VAULT_STR
 VAULT_PATH = _DEFAULT_VAULT_PATH
 DAILY_DIR_NAME = "Daily Notes"
+# Most wikilinks rendered per Created/Modified line. Provisional — chosen so an
+# ordinary day (tens of files) is listed in full while a bulk operation is
+# summarised rather than dumped. The frontmatter count stays exact either way.
+VAULT_ACTIVITY_LINK_CAP = 150
 _DEFAULT_CONVERSATIONS_DIR = _rp.CONVERSATIONS_STR
 CONVERSATIONS_DIR = _DEFAULT_CONVERSATIONS_DIR
 SESSIONS_DIR = os.path.join(_rp.WORKSPACE, "sessions")
@@ -402,6 +406,23 @@ def _conversation_summary_visible(conversation: dict) -> str:
     return line
 
 
+def _wikilink_list(names: list[str]) -> str:
+    """Render note names as wikilinks, bounded, with a truthful remainder.
+
+    A bulk vault operation makes a day's change set enormous: 2026-08-12 moved
+    75,719 files and the unbounded list produced a 5.8 MB note whose Modified
+    line was a single 5 MB line — unreadable, and heavy enough to hurt Obsidian.
+    The count in frontmatter stays exact; the body shows a bounded sample and
+    says plainly how many it did not list.
+    """
+    listed = names[:VAULT_ACTIVITY_LINK_CAP]
+    rendered = ", ".join(f"[[{n}]]" for n in listed)
+    remainder = len(names) - len(listed)
+    if remainder > 0:
+        rendered += f" — and {remainder:,} more (not listed)"
+    return rendered
+
+
 def _conversation_summary_line(conversation: dict) -> str:
     """Render one summary plus durable, exact lifecycle provenance."""
     visible = _conversation_summary_visible(conversation)
@@ -720,10 +741,10 @@ def render_note(date_str: str, conversations: list[dict],
         out.append("## Vault activity")
         out.append("")
         if created:
-            out.append("**Created:** " + ", ".join(f"[[{n}]]" for n in created))
+            out.append("**Created:** " + _wikilink_list(created))
             out.append("")
         if modified:
-            out.append("**Modified:** " + ", ".join(f"[[{n}]]" for n in modified))
+            out.append("**Modified:** " + _wikilink_list(modified))
             out.append("")
     if ora_lines:
         out.append("## Ora activity")

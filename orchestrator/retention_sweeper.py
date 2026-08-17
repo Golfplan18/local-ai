@@ -137,6 +137,14 @@ ROTATABLE_JSONL = [
     # events are suppressed at write time; the stealth purge additionally
     # rewrites the live file (conversation_closeout Layer 6a).
     _te.global_sink_path(),
+    # The G1.10 event substrate's own append-only sinks. These were never
+    # listed, and by 2026-08-16 mac-vault-events.jsonl had reached 113 MB
+    # (inflated further by the event-lane crash loop) with no upper bound.
+    # An event log that grows forever is the same unbounded-sink problem this
+    # sweeper exists to solve; it is rotated on size like the others.
+    os.path.join(DATA_DIR, "runtime-hygiene", "mac-vault-events.jsonl"),
+    os.path.join(DATA_DIR, "runtime-hygiene", "events.jsonl"),
+    os.path.join(DATA_DIR, "runtime-hygiene", "retention-intent-events.jsonl"),
 ]
 
 

@@ -4772,8 +4772,6 @@ def _tool_status_label(tool_name, params):
         return f"[searching files: {params.get('pattern', '')}]"
     elif tool_name == "spawn_subagent":
         return "[running subagent task…]"
-    elif tool_name == "schedule_task":
-        return "[scheduling task…]"
     elif tool_name.startswith("mcp_"):
         parts = tool_name.split("_", 2)
         return f"[calling {parts[1] if len(parts) > 1 else 'mcp'}: {parts[2] if len(parts) > 2 else tool_name}]"
@@ -21071,12 +21069,6 @@ if __name__ == "__main__":
     except Exception:
         mcp_count = 0
 
-    # Start scheduler if requested
-    if args.scheduler:
-        from scheduler import get_scheduler
-        sched = get_scheduler()
-        sched.start()
-
     # Start meta-layer oversight daemon if requested
     if args.oversight:
         try:
@@ -21110,8 +21102,6 @@ if __name__ == "__main__":
         print(f"Model registry: status check failed: {e}")
     if mcp_count:
         print(f"MCP tools: {mcp_count}")
-    if args.scheduler:
-        print("Scheduler: running")
     print("Press Ctrl+C to stop.")
 
     def _shutdown_handler(sig, frame):
@@ -21126,8 +21116,6 @@ if __name__ == "__main__":
             cleanup_all()
         except Exception:
             pass
-        if args.scheduler:
-            sched.stop()
         raise SystemExit(0)
 
     _signal.signal(_signal.SIGINT, _shutdown_handler)

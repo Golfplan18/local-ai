@@ -47,8 +47,28 @@ def _load() -> dict:
         return {"schema_version": 1, "events": {}}
 
 
+def _rotate_if_oversized() -> None:
+    """Roll the audit sink aside once it passes the size threshold.
+
+    This file reached 113 MB by 2026-08-16 with no upper bound. The append is
+    the size-threshold event; there is no clock here. Failing to rotate must
+    never cost the caller its write, so every error is swallowed.
+    """
+    limit = int(os.environ.get("ORA_RUNTIME_AUDIT_ROTATE_MB", "32")) * 1024 * 1024
+    try:
+        if limit <= 0 or not AUDIT_FILE.is_file():
+            return
+        if AUDIT_FILE.stat().st_size <= limit:
+            return
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        AUDIT_FILE.rename(AUDIT_FILE.with_name(f"{AUDIT_FILE.name}.{stamp}"))
+    except OSError:
+        return
+
+
 def _append(value: dict) -> None:
     AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _rotate_if_oversized()
     with AUDIT_FILE.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(value, sort_keys=True) + "\n")
         handle.flush()
@@ -110,10 +130,19 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-id")
     parser.add_argument("--path", action="append", default=[])
+    # A large coalesced batch (an iCloud sync settling, a bulk commit) exceeds
+    # the OS argument-length limit when every path is its own --path pair.
+    # --paths-file carries the identical newline-delimited exact paths with no
+    # size ceiling; the two forms compose and the contract is unchanged.
+    parser.add_argument("--paths-file")
     args = parser.parse_args(argv)
-    if not args.path:
-        parser.error("at least one exact --path is required")
-    identities = _event_contract(args.path)
+    exact_paths = list(args.path)
+    if args.paths_file:
+        listed = Path(args.paths_file).read_text(encoding="utf-8").splitlines()
+        exact_paths.extend(line for line in listed if line.strip())
+    if not exact_paths:
+        parser.error("at least one exact --path or --paths-file entry is required")
+    identities = _event_contract(exact_paths)
     STATE_ROOT.mkdir(parents=True, exist_ok=True)
     with LOCK_FILE.open("a+", encoding="utf-8") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
