@@ -395,6 +395,100 @@ record('capability-dispatch with no mask emits capability-error', function () {
   ImageEdits.detach();
 });
 
+record('capability-dispatch with no prompt emits capability-error', function () {
+  // `prompt` is the third required input of §3.2. An image and a mask are
+  // both present here, so the only thing missing is the prompt — the
+  // dispatch must stop at the same guard rail the other two get, not
+  // manufacture a prompt and edit the user's image with invented words.
+  var errors = [];
+  var fetchCalls = 0;
+  var hostListeners = {};
+  var hostEl = {
+    addEventListener: function (n, fn) { (hostListeners[n] = hostListeners[n] || []).push(fn); },
+    removeEventListener: function (n, fn) {
+      if (!hostListeners[n]) return;
+      hostListeners[n] = hostListeners[n].filter(function (g) { return g !== fn; });
+    },
+    dispatchEvent: function (evt) {
+      if (evt.type === 'capability-error') errors.push(evt.detail);
+      (hostListeners[evt.type] || []).forEach(function (fn) { fn(evt); });
+      return true;
+    }
+  };
+
+  var fakeNode = {
+    attrs: { naturalWidth: 200, naturalHeight: 100, image_id: 'panel-img-1' },
+    getAttrs: function () { return this.attrs; },
+    image: function (newImg) { if (newImg) this._img = newImg; return this._img; },
+    setAttrs: function (a) { Object.assign(this.attrs, a); },
+    getClientRect: function () { return { x: 0, y: 0, width: 200, height: 100 }; },
+    id: function () { return 'panel-img-1'; },
+    name: function () { return 'vp-background-image'; },
+    toDataURL: function () { return 'data:image/png;base64,SOURCE_BASE64'; },
+    getLayer: function () { return { draw: function () {} }; }
+  };
+  var panel = {
+    el: hostEl,
+    stage: {},
+    backgroundLayer: { add: function () {}, draw: function () {} },
+    _backgroundImageNode: fakeNode,
+    _pendingImage: { dataUrl: 'data:image/png;base64,SOURCE_BASE64', name: 'a.png' }
+  };
+
+  ImageEdits.attach({
+    hostEl: hostEl,
+    panel: panel,
+    endpointUrl: '/api/capability/image_edits',
+    fetch: function () {
+      fetchCalls++;
+      return Promise.reject(new Error('should not fetch with a blank prompt'));
+    }
+  });
+
+  // Seed a valid mask so the image/mask guards both pass.
+  hostEl.dispatchEvent(new CustomEvent('ora:selection-mask', {
+    detail: {
+      mask: {
+        kind: 'rectangle',
+        image_ref: { image_id: 'panel-img-1', natural_width: 200, natural_height: 100 },
+        geometry: { x: 10, y: 10, width: 50, height: 50 },
+        bbox: { x: 10, y: 10, width: 50, height: 50 }
+      },
+      capability: 'image_edits'
+    }
+  }));
+
+  // Whitespace-only counts as blank. The popover gates this too, so this case
+  // only arrives from a programmatic capability-dispatch — the handler is the
+  // last line of defence for emitters that bypass the form.
+  hostEl.dispatchEvent(new CustomEvent('capability-dispatch', {
+    detail: { slot: 'image_edits', inputs: { prompt: '   ' } }
+  }));
+
+  // The error-emit is synchronous, before normalization or any fetch.
+  assert.strictEqual(errors.length, 1);
+  assert.strictEqual(errors[0].code, 'missing_required_input');
+  assert.strictEqual(errors[0].slot, 'image_edits');
+
+  // An absent `prompt` key behaves the same way.
+  hostEl.dispatchEvent(new CustomEvent('capability-dispatch', {
+    detail: { slot: 'image_edits', inputs: {} }
+  }));
+  assert.strictEqual(errors.length, 2);
+  assert.strictEqual(errors[1].code, 'missing_required_input');
+
+  // Give the async normalize/POST tail a chance to run had it been
+  // reached: it must not have been.
+  return new Promise(function (resolve) {
+    setTimeout(function () {
+      assert.strictEqual(fetchCalls, 0, 'must not POST without a prompt');
+      assert.strictEqual(errors.length, 2, 'must not continue into normalization');
+      ImageEdits.detach();
+      resolve();
+    }, 50);
+  });
+});
+
 // ── Drain async tests ────────────────────────────────────────────────
 
 _queue.then(function () {

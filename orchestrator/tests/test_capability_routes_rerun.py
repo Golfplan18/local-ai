@@ -11,6 +11,9 @@ Routes covered:
 * ``POST /api/capability/image_varies``      — Contracts §3.6 (sync, list)
 * ``POST /api/capability/image_to_prompt``   — Contracts §3.7 (sync, text)
 * ``POST /api/capability/video_generates``   — Contracts §3.9 (async, job)
+* ``POST /api/capability/image_edits``       — Contracts §3.2 (sync, bytes);
+  required-input handling only, added when the route stopped backfilling a
+  prompt the caller never wrote.
 
 Run::
 
@@ -342,6 +345,99 @@ class CapabilityVideoGeneratesRouteTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
         # 'resolution' should not be in handler_inputs since 8k is rejected.
         self.assertNotIn("resolution", captured.get("inputs", {}))
+
+
+class CapabilityImageEditsRouteTests(unittest.TestCase):
+    """Required-input handling for /api/capability/image_edits (§3.2).
+
+    ``prompt`` is one of three required inputs alongside ``image`` and
+    ``mask``. The route used to invent a prompt when the caller left it
+    blank; these tests pin the rejection. Every blank-prompt case below
+    supplies valid image and mask data URLs, so a 400 can only be coming
+    from the prompt and not from data-URL decoding.
+    """
+
+    def setUp(self) -> None:
+        from server import app as server  # noqa: WPS433
+        self.server = server
+        self.client = server.app.test_client()
+
+    def _post(self, body: dict):
+        return self.client.post(
+            "/api/capability/image_edits",
+            data=json.dumps(body),
+            content_type="application/json",
+        )
+
+    def test_absent_prompt_returns_400(self) -> None:
+        """No `prompt` key at all → missing_required_input, no invention."""
+        resp = self._post({
+            "slot": "image_edits",
+            "image_data_url": _tiny_png_data_url(),
+            "mask_data_url": _tiny_png_data_url(),
+            "mock": True,
+        })
+        self.assertEqual(resp.status_code, 400, resp.data)
+        payload = json.loads(resp.data)
+        self.assertEqual(payload["error"]["code"], "missing_required_input")
+        self.assertIn("prompt", payload["error"]["message"])
+
+    def test_blank_prompt_returns_400(self) -> None:
+        """Whitespace-only `prompt` is blank, not a prompt."""
+        resp = self._post({
+            "slot": "image_edits",
+            "prompt": "   \n\t ",
+            "image_data_url": _tiny_png_data_url(),
+            "mask_data_url": _tiny_png_data_url(),
+            "mock": True,
+        })
+        self.assertEqual(resp.status_code, 400, resp.data)
+        payload = json.loads(resp.data)
+        self.assertEqual(payload["error"]["code"], "missing_required_input")
+
+    def test_wellformed_request_unaffected(self) -> None:
+        """A real prompt still round-trips through the mock path."""
+        resp = self._post({
+            "slot": "image_edits",
+            "prompt": "make it blue",
+            "image_data_url": _tiny_png_data_url(),
+            "mask_data_url": _tiny_png_data_url(),
+            "mock": True,
+        })
+        self.assertEqual(resp.status_code, 200, resp.data)
+        payload = json.loads(resp.data)
+        self.assertTrue(payload.get("mocked"))
+        self.assertEqual(payload.get("mode"), "inpaint")
+        self.assertIsInstance(payload.get("image_b64"), str)
+        self.assertTrue(len(payload["image_b64"]) > 50, "expected non-empty base64")
+        base64.b64decode(payload["image_b64"])
+
+    def test_prompt_reaches_the_provider_verbatim(self) -> None:
+        """The real path hands the caller's own words to the registry."""
+        captured: dict = {}
+
+        from capability_registry import InvocationResult
+
+        def fake_invoke(self, slot, inputs, provider_id=None, **kw):
+            captured["inputs"] = dict(inputs)
+            return InvocationResult(
+                slot=slot,
+                provider_id="local-diffusers",
+                output=b"\x89PNG\r\n\x1a\nfake",
+                execution_pattern="sync",
+            )
+
+        with mock.patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}), \
+                mock.patch("capability_registry.CapabilityRegistry.invoke",
+                           new=fake_invoke):
+            resp = self._post({
+                "slot": "image_edits",
+                "prompt": "make it blue",
+                "image_data_url": _tiny_png_data_url(),
+                "mask_data_url": _tiny_png_data_url(),
+            })
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(captured.get("inputs", {}).get("prompt"), "make it blue")
 
 
 if __name__ == "__main__":

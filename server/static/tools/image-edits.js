@@ -534,9 +534,6 @@
 
     var inputs = detail.inputs || {};
     var prompt = (inputs.prompt || '').toString().trim();
-    if (!prompt) {
-      prompt = 'Fill the selected area naturally using the surrounding image context.';
-    }
 
     // Resolve the mask. Three lookup paths, in priority order:
     //   1. inputs.mask is already a usable envelope from the UI
@@ -563,6 +560,18 @@
         slot: 'image_edits',
         code: 'no_mask_drawn',
         message: 'Draw a mask on the image first (rectangle, brush, or lasso).'
+      });
+      return;
+    }
+    // Third required input of §3.2, checked exactly like the image and the
+    // mask above. A blank prompt is not a thing to guess at: inventing one
+    // edits the user's image with words they did not write, and the server
+    // rejects it anyway with this same `missing_required_input` code.
+    if (!prompt) {
+      _emit(_state.hostEl, 'capability-error', {
+        slot: 'image_edits',
+        code: 'missing_required_input',
+        message: 'Describe what should appear in the masked region.'
       });
       return;
     }

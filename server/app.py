@@ -16684,9 +16684,9 @@ def capability_image_edits():
     """Dispatch the `image_edits` capability slot.
 
     Body JSON:
-      prompt (str | optional), image_data_url (str), mask_data_url (str),
-      parent_image_id (str | optional), strength (float | optional),
-      provider_override (str | optional).
+      prompt (str, required — non-empty), image_data_url (str),
+      mask_data_url (str), parent_image_id (str | optional),
+      strength (float | optional), provider_override (str | optional).
 
     Response:
       200 { image_b64: str, provider_id: str, mode: 'inpaint' }
@@ -16700,9 +16700,20 @@ def capability_image_edits():
             "message": "Request body must be JSON."
         }}), status=400, mimetype="application/json")
 
+    # `prompt` is a required input (capabilities.json §3.2), so a blank one
+    # is rejected rather than backfilled. A blank prompt is not a thing to
+    # guess at: inventing one edits the user's image with words they did
+    # not write, and the provider rejects it anyway (see
+    # local_diffusers.dispatch_image_edits, which raises the same code).
     prompt = (data.get("prompt") or "").strip()
     if not prompt:
-        prompt = "Fill the masked region naturally using the surrounding image context."
+        return Response(json.dumps({"error": {
+            "code": "missing_required_input",
+            "message": (
+                "image_edits requires a non-empty prompt. Describe what "
+                "should appear in the masked region and try again."
+            )
+        }}), status=400, mimetype="application/json")
 
     try:
         image_bytes = _decode_data_url(data.get("image_data_url"), "image_data_url")
