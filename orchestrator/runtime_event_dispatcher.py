@@ -50,6 +50,22 @@ def _under(path: str, root: str | Path) -> bool:
 
 
 _IGNORED_PARTS = {".git", ".obsidian", ".trash", "__pycache__"}
+
+# Vault subtrees that are machine-synced mirrors rather than user writes.
+#
+# `MSI News` is the rsync'd cloud-pipeline mirror. A mirror refresh is not a
+# vault edit, and treating it as one is self-sustaining: the sync writes ~17k
+# files, the notification fires, the handler runs vault_git_sync +
+# vault_cloud_sync, and the sync writes them again. Until 2026-08-16 the loop
+# was hidden because a batch that size overflowed the OS argument limit and
+# killed the lane before it could recur — the crash was acting as an
+# accidental circuit breaker. Fixing the crash exposed the loop, so the
+# exclusion has to be explicit.
+#
+# `daily_note.SKIP_DIRS` already excludes this directory for the same reason
+# ("machine-synced articles, not the user's work"); this is the event-side
+# half of that rule, which was never written.
+_MIRROR_DIRS = {"MSI News"}
 _AUTONOMOUS_HANDLER_SENTINEL = "autonomous-handlers.disabled"
 
 
@@ -77,7 +93,22 @@ def _actionable(path: str) -> bool:
     candidate = Path(path)
     if any(part in _IGNORED_PARTS for part in candidate.parts):
         return False
+    if _in_mirror(candidate):
+        return False
     return not candidate.name.startswith((".", "~$"))
+
+
+def _in_mirror(candidate: Path) -> bool:
+    """True when the path is inside a machine-synced vault mirror.
+
+    Anchored at the vault root, so a user-authored note that merely happens to
+    have a folder of the same name deeper in the tree is still a real write.
+    """
+    try:
+        parts = candidate.resolve().relative_to(Path(_rp.VAULT_STR).resolve()).parts
+    except (ValueError, OSError):
+        return False
+    return bool(parts) and parts[0] in _MIRROR_DIRS
 
 
 def _artifact_kind(path: str) -> str | None:

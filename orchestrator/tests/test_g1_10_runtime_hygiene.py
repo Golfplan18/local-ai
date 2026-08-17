@@ -193,11 +193,8 @@ class SchedulerBoundaryTests(unittest.TestCase):
         self.addCleanup(lambda: Path(paths_file).unlink(missing_ok=True))
 
         # Reader side, loaded from the hook module itself.
-        spec = importlib.util.spec_from_file_location("_vep", hook)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["_vep"] = module
+        module, _ = self._load_hook("_vep")
         self.addCleanup(lambda: sys.modules.pop("_vep", None))
-        spec.loader.exec_module(module)
 
         listed = _json.loads(Path(paths_file).read_text(encoding="utf-8"))
         self.assertEqual(listed, hostile)
@@ -222,11 +219,8 @@ class SchedulerBoundaryTests(unittest.TestCase):
         import importlib.util, sys
         hook = (Path(__file__).resolve().parents[2] / "operations" /
                 "g1-10-current" / "macos" / "vault-event-pipeline.py")
-        spec = importlib.util.spec_from_file_location("_vep_prune", hook)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["_vep_prune"] = module
+        module, _ = self._load_hook("_vep_prune")
         self.addCleanup(lambda: sys.modules.pop("_vep_prune", None))
-        spec.loader.exec_module(module)
 
         state = {"events": {}}
         for n in range(50):
@@ -247,6 +241,28 @@ class SchedulerBoundaryTests(unittest.TestCase):
         # The newest are kept, so duplicate suppression still covers recent work.
         self.assertEqual(remaining[0], "done-040")
         self.assertEqual(remaining[-1], "done-049")
+
+    @staticmethod
+    def _load_hook(alias: str):
+        """Import the standalone hook without leaving bytecode behind.
+
+        `operations/g1-10-current/` is hash-bound by the G1.10 operational
+        manifest, so a stray __pycache__ inside it fails the manifest test —
+        which is the guard doing exactly its job.
+        """
+        import importlib.util, sys
+        hook = (Path(__file__).resolve().parents[2] / "operations" /
+                "g1-10-current" / "macos" / "vault-event-pipeline.py")
+        previous = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            spec = importlib.util.spec_from_file_location(alias, hook)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[alias] = module
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous
+        return module, hook
 
     def test_inbound_root_is_the_real_folder_not_ora_home(self):
         """The watched inbound root must be the folder documents land in.
@@ -853,3 +869,70 @@ class SupersessionEventTests(RuntimeHygieneBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MirrorExclusionTests(unittest.TestCase):
+    """The MSI News mirror is machine-synced output, not a vault write.
+
+    Treating a mirror refresh as a user edit is self-sustaining: the cloud
+    sync writes ~17k files, the notification fires, the handler runs
+    vault_git_sync + vault_cloud_sync, and the sync writes them again. The
+    loop was invisible until 2026-08-16 only because a batch that size
+    overflowed the OS argument limit and killed the lane before it could
+    recur.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.vault = Path(self.temp.name) / "vault"
+        (self.vault / "MSI News").mkdir(parents=True)
+        (self.vault / "Projects" / "Ora").mkdir(parents=True)
+        (self.vault / "Notes" / "MSI News").mkdir(parents=True)
+        patcher = mock.patch.object(
+            event_dispatcher._rp, "VAULT_STR", str(self.vault))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_mirror_writes_are_not_actionable(self):
+        article = self.vault / "MSI News" / "2024-05-14-some-article.md"
+        article.write_text("# x\n", encoding="utf-8")
+        self.assertFalse(event_dispatcher._actionable(str(article)))
+
+    def test_ordinary_vault_writes_remain_actionable(self):
+        note = self.vault / "Projects" / "Ora" / "Framework — Thing.md"
+        note.write_text("# x\n", encoding="utf-8")
+        self.assertTrue(event_dispatcher._actionable(str(note)))
+
+    def test_exclusion_is_anchored_at_the_vault_root(self):
+        """A same-named folder deeper in the tree is still the user's work."""
+        note = self.vault / "Notes" / "MSI News" / "my own thoughts.md"
+        note.write_text("# x\n", encoding="utf-8")
+        self.assertTrue(event_dispatcher._actionable(str(note)))
+
+    def test_a_mirror_only_batch_dispatches_nothing(self):
+        """The exact shape that drove the loop: every path in the mirror."""
+        paths = set()
+        for n in range(50):
+            p = self.vault / "MSI News" / f"2024-01-{n:02d}-article.md"
+            p.write_text("# x\n", encoding="utf-8")
+            paths.add(str(p))
+        inert = {
+            "oversight_events": SimpleNamespace(emit=lambda _e: None),
+            "ped_watcher": SimpleNamespace(sweep=lambda: []),
+            "corpus_watcher": SimpleNamespace(sweep=lambda: []),
+            "workflow_spec_sweeper": SimpleNamespace(sweep=lambda **_k: []),
+            "revisit_sweeper": SimpleNamespace(
+                sweep=lambda **_k: [], register_age_review_deadlines=lambda: []),
+        }
+        with (
+            mock.patch.dict("sys.modules", inert),
+            mock.patch.object(event_dispatcher._rp, "DATA_DIR_STR",
+                              str(Path(self.temp.name) / "data")),
+            mock.patch.object(event_dispatcher._rp, "ORA_HOME",
+                              str(Path(self.temp.name) / "runtime")),
+        ):
+            result = event_dispatcher.dispatch_paths(paths)
+        self.assertEqual(result["paths"], [])
+        self.assertIsNone(result["operational_hook"],
+                          "a mirror refresh must not run the sync pipeline")
