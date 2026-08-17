@@ -246,7 +246,14 @@
   border-bottom: 1px solid var(--error-border, #e0a199);
   font-size: 12px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  z-index: 20;
+  /* Above .ora-excalidraw-island (z-index 32). The island and this bar are
+     siblings inside .right-pane, and the island paints an opaque
+     background over the whole pane — so at the historical z-index 20
+     every message written here (capability failures, crop/resize errors,
+     compile errors) was invisible whenever Excalidraw was the active
+     editor. Kept below .visual-panel__fallback-overlay (40) so the
+     pre-existing order of those two is unchanged. */
+  z-index: 33;
 }
 
 .visual-panel__errorbar[hidden] {
