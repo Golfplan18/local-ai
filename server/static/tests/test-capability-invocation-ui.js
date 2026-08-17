@@ -477,9 +477,31 @@ async function testImageRefAndMaskUseContext() {
   var ctl = UI.init({
     hostEl: host,
     capabilities: capabilities,
-    slotName: 'image_edits',  // requires image + mask; prompt is optional
+    // image_edits requires image + mask + prompt — all three. The slot
+    // contract is the source of truth for this gate: the UI reads
+    // `contract.required_inputs` directly (no hardcoded slot list), so the
+    // assertions below are derived from the contract rather than restating
+    // it. Canonical: vault "Reference — Capability Invocation Contracts"
+    // §3.2, mirrored by config/capabilities.json, which is what this test
+    // loads. `prompt` was promoted optional → required in 866c8028.
+    slotName: 'image_edits',
     contextProvider: function () { return ctxState; },
   });
+
+  // Pin the contract itself. If `prompt` is ever demoted back to optional,
+  // this fails here — loudly and by name — instead of silently loosening
+  // the gate assertions that follow.
+  var editRequireds = capabilities.slots.image_edits.required_inputs || [];
+  var requiredNames = editRequireds.map(function (s) { return s.name; });
+  record('contract: image_edits requires image + mask + prompt',
+    requiredNames.indexOf('image') !== -1
+    && requiredNames.indexOf('mask') !== -1
+    && requiredNames.indexOf('prompt') !== -1,
+    'required_inputs=' + requiredNames.join(','));
+  var promptSpec = editRequireds.filter(function (s) { return s.name === 'prompt'; })[0];
+  // The tooltip renders each missing input as `description || name`.
+  var promptLabel = promptSpec ? (promptSpec.description || promptSpec.name) : 'prompt';
+
   var btn = host.querySelector('.ora-cap-runbtn');
   record('image_edits button starts disabled (no image, no mask)',
     btn && btn.disabled === true);
@@ -488,25 +510,34 @@ async function testImageRefAndMaskUseContext() {
     tooltip && /Missing inputs/i.test(tooltip.textContent || ''),
     tooltip ? tooltip.textContent : 'no tooltip');
 
-  // Provide a selection + mask via the context provider, refresh via setContextProvider
+  // Provide a selection + mask via the context provider, refresh via
+  // setContextProvider. The prompt is still missing, so the gate must hold.
   ctxState.canvasSelection = { id: 'img_42', kind: 'image' };
   ctxState.maskRef = { kind: 'rect', x: 10, y: 10, w: 100, h: 100 };
   ctl.setContextProvider(function () { return ctxState; });
   await _flushFrames();
-  record('button enables after selection + mask without prompt',
-    btn && btn.disabled === false,
+  record('button stays disabled with image + mask but no prompt',
+    btn && btn.disabled === true,
     'disabled=' + (btn && btn.disabled));
 
+  // Exactly one input is outstanding, and it is `prompt` — not image, not
+  // mask. The single-missing tooltip form pins that down by name.
+  tooltip = host.querySelector('.ora-cap-tooltip');
+  record('disabled tooltip names the missing prompt specifically',
+    tooltip && (tooltip.textContent || '') === 'Missing: ' + promptLabel,
+    tooltip ? ('tooltip="' + tooltip.textContent + '"') : 'no tooltip');
+  record('disabled title attribute names the missing prompt too',
+    btn && (btn.getAttribute('title') || '') === 'Missing: ' + promptLabel,
+    btn ? ('title="' + btn.getAttribute('title') + '"') : 'no btn');
+
   var dispatchedBlank = null;
-  host.addEventListener('capability-dispatch', function onBlank(e) { dispatchedBlank = e.detail; }, { once: true });
-  ctl.submit();
-  record('dispatch can omit optional fill prompt',
-    dispatchedBlank
-    && dispatchedBlank.inputs.image === 'img_42'
-    && dispatchedBlank.inputs.mask
-    && dispatchedBlank.inputs.mask.kind === 'rect'
-    && !Object.prototype.hasOwnProperty.call(dispatchedBlank.inputs, 'prompt'),
+  function onBlank(e) { dispatchedBlank = e.detail; }
+  host.addEventListener('capability-dispatch', onBlank);
+  var blankResult = ctl.submit();
+  record('submit() does not dispatch while the required prompt is missing',
+    dispatchedBlank === null && blankResult === null,
     dispatchedBlank ? JSON.stringify(dispatchedBlank.inputs) : 'no dispatch');
+  host.removeEventListener('capability-dispatch', onBlank);
 
   ctl.destroy();
   host = _resetHost();
@@ -522,13 +553,16 @@ async function testImageRefAndMaskUseContext() {
   });
   btn = host.querySelector('.ora-cap-runbtn');
   await _flushFrames();
+  record('fresh image_edits form starts disabled until the prompt is typed',
+    btn && btn.disabled === true,
+    'disabled=' + (btn && btn.disabled));
 
-  // Type a prompt
+  // Type a prompt — the last outstanding requirement.
   var promptInput = host.querySelector('textarea[name="prompt"], input[name="prompt"]');
   promptInput.value = 'Replace the masked area with a tree.';
   promptInput.dispatchEvent(new w.Event('input', { bubbles: true }));
   await _flushFrames();
-  record('button stays enabled after optional prompt',
+  record('button enables once the required prompt is supplied',
     btn && btn.disabled === false,
     'disabled=' + (btn && btn.disabled));
 
