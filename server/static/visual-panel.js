@@ -1615,6 +1615,10 @@
 
   VisualPanel.prototype._showErrorBar = function (msg) {
     if (!this._errorBar) return;
+    // Drop the image-warning tint _showImageError applies. Without this an
+    // error following an upload warning inherits the amber styling and reads
+    // as a warning rather than a failure.
+    this._errorBar.classList.remove('visual-panel__errorbar--image');
     this._errorBar.textContent = msg;
     this._errorBar.hidden = false;
   };

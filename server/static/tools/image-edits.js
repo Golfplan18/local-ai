@@ -92,9 +92,33 @@
  *
  * ── Error mapping ──────────────────────────────────────────────────────
  *
- * Server errors come back as { error: { code, message } }. We re-emit
- * them as `capability-error` events on the host so the WP-7.3.1 UI
- * surfaces the slot's declared fix-paths.
+ * Server errors come back as { error: { code, message } }. Every failure
+ * — server-side or caught locally before we ever POST — goes through
+ * `_fail()`, which writes the reason onto the Exhibits pane's error bar
+ * (`panel._showErrorBar`, the same strip visual-panel.js already uses
+ * for image-upload and crop failures) and emits the `capability-error`
+ * event that existing listeners subscribe to.
+ *
+ * The error bar — not the WP-7.3.1 invocation popover — is the surface
+ * the user can actually read, because the popover does not survive its
+ * own dispatch. v3-pack-toolbars.js schedules
+ * `setTimeout(_closeCapabilityPopover, 250)` from `onDispatch` on every
+ * submit, and that close calls `controller.destroy()`. So a guard that
+ * fires synchronously would flash for a quarter-second, and every
+ * post-POST failure (server error body, missing image_b64, network
+ * error, undecodable result) arrives after the controller is gone. The
+ * error bar sits over the canvas the user is already looking at and
+ * stays up until the next dispatch, a new artifact, or a canvas reset
+ * replaces it.
+ *
+ * The bar is cleared at the start of each `image_edits` dispatch, so a
+ * previous run's verdict never outlives the run it described — and only
+ * when the bar still carries the exact text this module wrote, so an
+ * unrelated message (a compile error, an upload warning) is left alone.
+ *
+ * A panel that cannot show the bar — a headless driver, the module's own
+ * harness, an attach that ran before the canvas mounted — never stops
+ * the `capability-error` event.
  *
  * ── Public API ─────────────────────────────────────────────────────────
  *
@@ -125,6 +149,61 @@
 
   function _doc() {
     return (typeof document !== 'undefined') ? document : null;
+  }
+
+  /**
+   * Write a failure onto the canvas pane's error bar — the surface that
+   * outlives the invocation popover (see the "Error mapping" note at the
+   * top of this file). Returns true when the bar took it.
+   *
+   * (`_state` is declared further down; it is a hoisted `var` assigned
+   * during module init, so it is always populated by the time any
+   * caller reaches this.)
+   */
+  function _showPanelError(code, message) {
+    var panel = _state.panel;
+    if (!panel || typeof panel._showErrorBar !== 'function') return false;
+    var text = 'Image edit failed [' + code + '] — ' + message;
+    try {
+      panel._showErrorBar(text);
+      _state.panelErrorText = text;
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Retract our own error bar. Only clears when the bar still carries the
+   * exact text we last wrote, so a compile error or an upload warning
+   * that has since replaced it survives untouched.
+   */
+  function _clearPanelError() {
+    var bar = _state.panel && _state.panel._errorBar;
+    if (!bar || _state.panelErrorText == null) return;
+    try {
+      if (bar.textContent === _state.panelErrorText) {
+        bar.textContent = '';
+        bar.hidden = true;
+      }
+    } catch (_e) { /* swallow */ }
+    _state.panelErrorText = null;
+  }
+
+  /**
+   * Surface a failure two ways: the persistent error bar the user reads,
+   * and the `capability-error` event existing listeners depend on. The
+   * two are independent — a panel that cannot show the bar, or one whose
+   * bar throws, must never swallow the event. Nothing depends on which
+   * of the two happens first, so nothing here claims an order.
+   */
+  function _fail(targetEl, code, message) {
+    _showPanelError(code, message);
+    _emit(targetEl, 'capability-error', {
+      slot: 'image_edits',
+      code: code,
+      message: message
+    });
   }
 
   // ── Pure mask normalization ──────────────────────────────────────────
@@ -464,12 +543,9 @@
 
     newImg.onload = _afterLoad;
     newImg.onerror = function () {
-      // Non-fatal; surface as an error event so the UI can show it.
-      _emit(panel.el, 'capability-error', {
-        slot: 'image_edits',
-        code: 'model_unavailable',
-        message: 'Result image failed to decode in browser.'
-      });
+      // Non-fatal, but the user's edit silently didn't land — surface it.
+      _fail(panel.el, 'model_unavailable',
+            'Result image failed to decode in browser.');
     };
     try { newImg.src = dataUrl; } catch (e) { /* swallow */ }
     return true;
@@ -480,6 +556,7 @@
   var _state = {
     hostEl: null,
     panel: null,
+    panelErrorText: null,    // exact text we last wrote to panel._errorBar
     endpointUrl: ENDPOINT_DEFAULT,
     fetchFn: null,
     onDispatch: null,
@@ -532,6 +609,13 @@
     if (detail.slot !== 'image_edits') return;
     if (typeof e.preventDefault === 'function') e.preventDefault();
 
+    // A new run supersedes the previous run's verdict. Clear before the
+    // guards below so a stale "Image edit failed …" can't sit over the
+    // canvas while this attempt is in flight. Two dispatches can overlap
+    // (the popover auto-closes, so a second can be started while the first
+    // is still in flight), in which case the later failure is the one shown.
+    _clearPanelError();
+
     var inputs = detail.inputs || {};
     var prompt = (inputs.prompt || '').toString().trim();
 
@@ -548,19 +632,13 @@
 
     var sourceMeta = readSourceImageFromPanel(_state.panel);
     if (!sourceMeta) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_edits',
-        code: 'no_image_selected',
-        message: 'No image is currently mounted on the canvas.'
-      });
+      _fail(_state.hostEl, 'no_image_selected',
+            'No image is currently mounted on the canvas.');
       return;
     }
     if (!mask) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_edits',
-        code: 'no_mask_drawn',
-        message: 'Draw a mask on the image first (rectangle, brush, or lasso).'
-      });
+      _fail(_state.hostEl, 'no_mask_drawn',
+            'Draw a mask on the image first (rectangle, brush, or lasso).');
       return;
     }
     // Third required input of §3.2, checked exactly like the image and the
@@ -568,29 +646,20 @@
     // edits the user's image with words they did not write, and the server
     // rejects it anyway with this same `missing_required_input` code.
     if (!prompt) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_edits',
-        code: 'missing_required_input',
-        message: 'Describe what should appear in the masked region.'
-      });
+      _fail(_state.hostEl, 'missing_required_input',
+            'Describe what should appear in the masked region.');
       return;
     }
 
     _normalizeAsync(mask, sourceMeta).then(function (normalized) {
       if (!normalized || normalized.error || !normalized.dataUrl) {
-        _emit(_state.hostEl, 'capability-error', {
-          slot: 'image_edits',
-          code: 'mask_invalid',
-          message: (normalized && normalized.error) || 'Mask normalization failed.'
-        });
+        _fail(_state.hostEl, 'mask_invalid',
+              (normalized && normalized.error) || 'Mask normalization failed.');
         return;
       }
       if (normalized.mask_pixel_count === 0) {
-        _emit(_state.hostEl, 'capability-error', {
-          slot: 'image_edits',
-          code: 'mask_invalid',
-          message: 'Mask has zero overlap with the image.'
-        });
+        _fail(_state.hostEl, 'mask_invalid',
+              'Mask has zero overlap with the image.');
         return;
       }
 
@@ -607,11 +676,8 @@
 
       var fetchFn = _state.fetchFn || (typeof fetch === 'function' ? fetch : null);
       if (!fetchFn) {
-        _emit(_state.hostEl, 'capability-error', {
-          slot: 'image_edits',
-          code: 'model_unavailable',
-          message: 'fetch unavailable in this environment.'
-        });
+        _fail(_state.hostEl, 'model_unavailable',
+              'fetch unavailable in this environment.');
         return;
       }
 
@@ -625,26 +691,18 @@
         if (!resp.ok) {
           return resp.json().then(function (j) {
             var err = (j && j.error) || { code: 'model_unavailable', message: 'Server returned ' + resp.status };
-            _emit(_state.hostEl, 'capability-error', {
-              slot: 'image_edits',
-              code: err.code || 'model_unavailable',
-              message: err.message || 'image_edits failed.'
-            });
+            _fail(_state.hostEl,
+                  err.code || 'model_unavailable',
+                  err.message || 'image_edits failed.');
           }).catch(function () {
-            _emit(_state.hostEl, 'capability-error', {
-              slot: 'image_edits',
-              code: 'model_unavailable',
-              message: 'Server returned ' + resp.status
-            });
+            _fail(_state.hostEl, 'model_unavailable',
+                  'Server returned ' + resp.status);
           });
         }
         return resp.json().then(function (payload) {
           if (!payload || !payload.image_b64) {
-            _emit(_state.hostEl, 'capability-error', {
-              slot: 'image_edits',
-              code: 'model_unavailable',
-              message: 'Server response missing image_b64.'
-            });
+            _fail(_state.hostEl, 'model_unavailable',
+                  'Server response missing image_b64.');
             return;
           }
           var mode = (root && root.OraSettings && root.OraSettings.imageEditsResultMode)
@@ -663,11 +721,8 @@
           }
         });
       }).catch(function (err) {
-        _emit(_state.hostEl, 'capability-error', {
-          slot: 'image_edits',
-          code: 'model_unavailable',
-          message: 'Network error: ' + (err && err.message ? err.message : String(err))
-        });
+        _fail(_state.hostEl, 'model_unavailable',
+              'Network error: ' + (err && err.message ? err.message : String(err)));
       });
     });
 
@@ -707,6 +762,7 @@
 
     _state.hostEl      = opts.hostEl || null;
     _state.panel       = opts.panel || null;
+    _state.panelErrorText = null;
     _state.endpointUrl = opts.endpointUrl || ENDPOINT_DEFAULT;
     _state.fetchFn     = opts.fetch || null;
     _state.onDispatch  = opts.onDispatch || null;
@@ -737,6 +793,7 @@
     _removeAllListeners();
     _state.hostEl = null;
     _state.panel = null;
+    _state.panelErrorText = null;
     _state.lastMaskByImageId = {};
   }
 
