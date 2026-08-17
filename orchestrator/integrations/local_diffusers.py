@@ -727,14 +727,13 @@ def register(registry: CapabilityRegistry) -> list[str]:
     return bound
 
 
-_default_registered = False
-
-
 def register_with_default_registry() -> CapabilityRegistry:
-    """Lazy-register against the standard registry. Idempotent."""
-    global _default_registered
+    """Register against a freshly loaded standard registry.
+
+    ``load_registry()`` builds a NEW registry per call rather than
+    memoising one, so ``register()`` must run against each. Safe to call
+    repeatedly — ``register()`` is idempotent per registry object.
+    """
     registry = load_registry()
-    if not _default_registered:
-        register(registry)
-        _default_registered = True
+    register(registry)
     return registry

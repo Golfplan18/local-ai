@@ -137,6 +137,67 @@ class OpenAIImageRegistrationTests(unittest.TestCase):
         for model_id in openai_images.OPENAI_IMAGE_MODELS:
             self.assertIn(f"openai:{model_id}", registered)
 
+    def test_register_twice_on_one_registry_neither_duplicates_nor_raises(self) -> None:
+        """``register()`` must be idempotent per registry object.
+
+        ``register_with_default_registry()`` relies on this: it registers
+        against every freshly loaded registry, so a re-register on the
+        same object must be harmless. ``register_provider`` replaces the
+        handler for an existing provider id and guards the slot's
+        provider list against duplicate appends.
+        """
+        openai_images.register(self.registry)
+        first = list(self.registry.providers_for("image_generates"))
+
+        # Must not raise, and must not grow the provider list.
+        openai_images.register(self.registry)
+        openai_images.register(self.registry)
+        after = list(self.registry.providers_for("image_generates"))
+
+        self.assertEqual(first, after)
+        self.assertEqual(len(after), len(set(after)), f"duplicate providers: {after}")
+
+    def test_every_default_registry_call_binds_providers(self) -> None:
+        """Successive calls must EACH return a registry with providers bound.
+
+        ``capability_registry.load_registry()`` constructs a new registry
+        on every call — it does not memoise. A module-level
+        "already registered" latch therefore left the second and every
+        later caller holding a registry with none of this module's
+        providers bound, silently dropping the OpenAI chain for both
+        image-generation slots. Regression guard for that latch.
+        """
+        built: list[CapabilityRegistry] = []
+
+        def _fresh_registry() -> CapabilityRegistry:
+            reg = CapabilityRegistry(config_dict=_stub_capabilities_dict())
+            built.append(reg)
+            return reg
+
+        with patch.object(openai_images, "load_registry", _fresh_registry):
+            first = openai_images.register_with_default_registry()
+            second = openai_images.register_with_default_registry()
+
+        # Guard the premise: the loader really did hand back two distinct
+        # registries, so the assertions below are not vacuous.
+        self.assertEqual(len(built), 2)
+        self.assertIsNot(first, second)
+
+        for call_no, registry in ((1, first), (2, second)):
+            for slot in ("image_generates", "image_generates_cartoon"):
+                with self.subTest(call=call_no, slot=slot):
+                    self.assertIn(
+                        "openai:gpt-image-1",
+                        registry.providers_for(slot),
+                        f"call {call_no} returned a registry with no OpenAI "
+                        f"provider bound to {slot}",
+                    )
+                    self.assertIsNotNone(
+                        registry.resolve_provider(slot),
+                        f"call {call_no} returned a registry that cannot "
+                        f"resolve a provider for {slot}",
+                    )
+
 
 # ---------------------------------------------------------------------------
 # Mocked dispatch — no network

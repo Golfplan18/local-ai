@@ -59,8 +59,9 @@ Importing this module registers ``dispatch_image_generates`` against
 ``image_generates`` on a registry instance. The registration helper
 accepts an explicit ``registry`` argument so tests can drive a fresh
 registry; calling ``register_with_default_registry()`` with no
-arguments lazily loads the standard registry from ``~/ora/config/``
-via ``capability_registry.load_registry``.
+arguments loads a standard registry from ``~/ora/config/`` via
+``capability_registry.load_registry`` and registers against it. That
+loader builds a new registry per call, so every call registers.
 """
 from __future__ import annotations
 
@@ -386,19 +387,22 @@ def register(registry: CapabilityRegistry) -> None:
                     pass
 
 
-_default_registered = False
-
-
 def register_with_default_registry() -> CapabilityRegistry:
-    """Lazy-register this provider against the standard registry.
+    """Register this provider against a freshly loaded standard registry.
 
-    Idempotent: subsequent calls return the already-loaded registry
-    without re-binding. Returns the registry so callers can invoke
-    immediately (``register_with_default_registry().invoke(...)``).
+    ``load_registry()`` constructs a NEW ``CapabilityRegistry`` on every
+    call — it does not memoise — so ``register()`` must run against each
+    one. A module-level "already registered" latch here would leave the
+    second and every later caller holding a registry with none of this
+    module's providers bound.
+
+    Safe to call repeatedly: ``register()`` is idempotent per registry
+    object (re-binding a provider id replaces its handler and never
+    duplicates the slot's provider list).
+
+    Returns the registry so callers can invoke immediately
+    (``register_with_default_registry().invoke(...)``).
     """
-    global _default_registered
     registry = load_registry()
-    if not _default_registered:
-        register(registry)
-        _default_registered = True
+    register(registry)
     return registry
