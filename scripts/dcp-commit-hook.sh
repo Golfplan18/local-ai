@@ -26,7 +26,23 @@ VERIFY="$ORA_ROOT/scripts/verify-implementation.py"
 LOG="$ORA_ROOT/logs/dcp-commit-hook.log"
 PYTHON="${ORA_PYTHON:-python3}"
 
-log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$LOG" 2>/dev/null; }
+# Rotate at append time — the write is the event. Framework — Event-Driven
+# Hygiene Patterns names the unbounded append-only sink as a failure mode and
+# prescribes exactly this: a size threshold checked on write, with no sweeper
+# to depend on. One generation is kept; the retention sweeper has no automatic
+# trigger today, so this log must bound itself.
+LOG_MAX_BYTES="${DCP_HOOK_LOG_MAX_BYTES:-1048576}"
+
+log() {
+    if [ -f "$LOG" ]; then
+        SIZE=$(wc -c < "$LOG" 2>/dev/null | tr -d ' ')
+        case "$SIZE" in
+            ''|*[!0-9]*) : ;;
+            *) [ "$SIZE" -gt "$LOG_MAX_BYTES" ] && mv -f "$LOG" "$LOG.1" 2>/dev/null ;;
+        esac
+    fi
+    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$LOG" 2>/dev/null
+}
 
 # Re-entry guard. The enqueue writes to a vault file, whose commit fires this
 # hook again. The idempotent enqueue would append nothing and the chain would
