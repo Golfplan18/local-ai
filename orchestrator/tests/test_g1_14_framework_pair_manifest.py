@@ -276,6 +276,113 @@ class FrameworkPairManifestAdversarialTests(TemporaryManifestCase):
         self.assertEqual(len(receipts), 1)
         self.assertFalse(self.queue.with_name(self.queue.name + ".lock").exists())
 
+    def test_cosmetic_manifest_edit_does_not_requeue_an_unchanged_finding(self):
+        """A manifest edit that changes no entry must append nothing.
+
+        `manifest_sha256` digests the whole manifest document, so before the
+        identity split any edit — a typo in a rationale — minted a fresh
+        identity for every open finding and the next enqueue duplicated the
+        entire queue.
+        """
+        canonical = self.write_canonical("Framework — A.md")
+        entry = _entry(canonical, "frameworks/book/a.md", "missing_runtime")
+        _write_manifest(self.manifest, [entry])
+        first = VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+        before = self.queue.read_bytes()
+        digest_before = VERIFY.load_framework_pair_manifest(self.manifest).manifest_sha256
+
+        cosmetic = dict(entry, rationale="Reworded rationale; no entry changed.")
+        _write_manifest(self.manifest, [cosmetic])
+        digest_after = VERIFY.load_framework_pair_manifest(self.manifest).manifest_sha256
+        second = VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+
+        self.assertNotEqual(digest_before, digest_after)
+        self.assertEqual(first, (1, 1))
+        self.assertEqual(second, (0, 1))
+        self.assertEqual(before, self.queue.read_bytes())
+
+    def test_identity_ignores_evidence_but_digest_still_seals_it(self):
+        """Body digests are evidence, not identity — and stay under the seal."""
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "missing_runtime")],
+        )
+        finding = self.evaluate().findings[0]
+
+        moved = dict(
+            finding.payload,
+            manifest_sha256="0" * 64,
+            canonical_body_sha256="1" * 64,
+        )
+        self.assertEqual(
+            VERIFY._framework_finding_identity(finding.payload),
+            VERIFY._framework_finding_identity(moved),
+        )
+        # The tamper seal must still cover every evidence field it reports.
+        self.assertNotEqual(
+            VERIFY._sha256_text(VERIFY._canonical_json(finding.payload)),
+            VERIFY._sha256_text(VERIFY._canonical_json(moved)),
+        )
+        # A genuinely different problem on the same pair keeps its own identity.
+        other = dict(finding.payload, finding_type="normalized_body_drift")
+        self.assertNotEqual(
+            VERIFY._framework_finding_identity(finding.payload),
+            VERIFY._framework_finding_identity(other),
+        )
+
+    def test_legacy_receipt_authenticates_without_migration(self):
+        """Receipts written before the identity split must still verify."""
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "missing_runtime")],
+        )
+        VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+        receipts = VERIFY.verify_framework_finding_receipts(
+            self.queue.read_text(encoding="utf-8")
+        )
+        self.assertEqual(len(receipts), 1)
+        payload = receipts[0].payload
+        # The seal is still the digest over the full payload, evidence included.
+        self.assertEqual(
+            receipts[0].finding_digest,
+            VERIFY._sha256_text(VERIFY._canonical_json(payload)),
+        )
+        self.assertIn("manifest_sha256", payload)
+
+    def test_gitignored_runtime_directory_raises_no_finding(self):
+        """frameworks/personal/ exists only in a working tree; ignore it."""
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "paired")],
+        )
+        self.write_runtime("a.md")
+        personal = self.ora / "frameworks" / "personal"
+        personal.mkdir(parents=True)
+        (personal / "README.md").write_text("Personal frameworks.\n", encoding="utf-8")
+
+        findings = self.evaluate().findings
+        self.assertEqual(
+            [], [f for f in findings if f.payload["finding_type"] == "unregistered_runtime_framework"]
+        )
+
     def test_queue_receipt_tampering_fails_closed(self):
         canonical = self.write_canonical("Framework — A.md")
         _write_manifest(
