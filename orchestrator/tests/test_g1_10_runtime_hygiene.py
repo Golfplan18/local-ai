@@ -1082,3 +1082,122 @@ class EventRecordFormatTests(unittest.TestCase):
         self.assertNotIn("paths", resumed)
         self.assertEqual(resumed["identities_digest"], digest)
         self.assertEqual(resumed["path_count"], 4)
+
+
+class LedgerRecordFormatTests(RuntimeHygieneBase):
+    """EventLedger writes each fact once, and bounds what it keeps resident.
+
+    The state file is rewritten and fsync'd in full on every claim and
+    transition, so both the per-record size and the record count are per-event
+    write costs. By 2026-08-17 it held 4,311 finished records in 3.21 MB, of
+    which `subject` alone was 882 KB — re-emitted into the audit log on every
+    transition as well.
+    """
+
+    def _claim(self, ledger, n, *, subject=None):
+        subject = subject or {"path": f"/vault/Notes/n{n}.md", "sha256": f"{n:064x}"}
+        return ledger.claim(event_id=f"evt-{n:05d}",
+                            event_type="test.artifact_written", subject=subject)
+
+    def _audit_lines(self, ledger):
+        text = ledger.audit_file.read_text(encoding="utf-8")
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+    def test_transition_lines_carry_the_delta_not_the_whole_record(self):
+        ledger = hygiene.EventLedger()
+        self._claim(ledger, 1)
+        ledger.transition("evt-00001", {"claimed"}, "prepared", rollback_manifest={"a": 1})
+        ledger.transition("evt-00001", {"prepared"}, "completed", after=[{"path": "/x"}])
+
+        lines = self._audit_lines(ledger)
+        claimed = [l for l in lines if l.get("kind") == "event_claimed"]
+        self.assertEqual(len(claimed), 1)
+        self.assertIn("subject", claimed[0])
+        self.assertIn("event_type", claimed[0])
+
+        for line in lines:
+            if line.get("kind") == "event_claimed":
+                continue
+            self.assertNotIn("subject", line, line)
+            self.assertNotIn("event_type", line, line)
+            self.assertIn("subject_digest", line)
+        # A field appears on the transition that introduced it, and not again.
+        self.assertEqual(sum("rollback_manifest" in l for l in lines), 1)
+        self.assertEqual(sum("after" in l for l in lines), 1)
+
+    def test_subject_digest_joins_a_transition_line_to_its_claim(self):
+        ledger = hygiene.EventLedger()
+        subject = {"path": "/vault/Notes/joined.md", "sha256": "a" * 64}
+        ledger.claim(event_id="evt-join", event_type="t", subject=subject)
+        ledger.transition("evt-join", {"claimed"}, "completed")
+        line = [l for l in self._audit_lines(ledger) if l.get("kind") == "event_completed"][0]
+        self.assertEqual(line["subject_digest"], hygiene.subject_digest(subject))
+
+    def test_state_record_and_return_value_are_unchanged(self):
+        """Only the audit shape changed; state stays the accumulated record."""
+        ledger = hygiene.EventLedger()
+        self._claim(ledger, 2)
+        result = ledger.transition("evt-00002", {"claimed"}, "completed",
+                                   after=[{"path": "/y", "sha256": "b" * 64}])
+        self.assertEqual(result["status"], "completed")
+        self.assertIn("subject", result)
+        stored = ledger.get("evt-00002")
+        self.assertIn("subject", stored)
+        self.assertIn("after", stored)
+
+    def test_finished_records_are_bounded(self):
+        ledger = hygiene.EventLedger()
+        with mock.patch.object(hygiene, "LEDGER_TERMINAL_RETENTION", 10):
+            for n in range(40):
+                self._claim(ledger, n)
+                ledger.transition(f"evt-{n:05d}", {"claimed"}, "completed")
+            self._claim(ledger, 99)          # the claim that triggers the prune
+        events = json.loads(ledger.state_file.read_text())["events"]
+        terminal = [k for k, r in events.items() if r.get("status") == "completed"]
+        self.assertEqual(len(terminal), 10)
+        # The newest survive, so recent history stays inspectable.
+        self.assertIn("evt-00039", events)
+        self.assertNotIn("evt-00000", events)
+
+    def test_autonomous_judgment_records_are_never_pruned(self):
+        """These back the self-write suppression join, so they must survive.
+
+        completed_mutation_causing scans them to recognise Ora's own
+        rollback-protected writes when the OS reports them back. Dropping one
+        would let a bounded autonomous judgment recurse into another.
+        """
+        ledger = hygiene.EventLedger()
+        auto_subject = {"path": "/vault/Resources/auto.md", "sha256": "c" * 64}
+        after = [{"path": "/vault/Resources/auto.md", "sha256": "d" * 64, "exists": True}]
+        ledger.claim(event_id="evt-auto", event_type="news_supersession.artifact_written",
+                     subject=auto_subject)
+        ledger.transition("evt-auto", {"claimed"}, "completed",
+                          autonomous_judgment=True, after=after)
+
+        with mock.patch.object(hygiene, "LEDGER_TERMINAL_RETENTION", 5):
+            for n in range(60):
+                self._claim(ledger, n)
+                ledger.transition(f"evt-{n:05d}", {"claimed"}, "completed")
+            self._claim(ledger, 999)
+
+        events = json.loads(ledger.state_file.read_text())["events"]
+        self.assertIn("evt-auto", events, "the self-write guard's record was pruned")
+        # And the guard itself still resolves.
+        self.assertEqual(
+            ledger.completed_mutation_causing(
+                {"path": "/vault/Resources/auto.md", "sha256": "d" * 64}),
+            "evt-auto",
+        )
+
+    def test_in_flight_records_are_never_pruned(self):
+        ledger = hygiene.EventLedger()
+        ledger.claim(event_id="evt-open", event_type="t", subject={"path": "/open"})
+        ledger.transition("evt-open", {"claimed"}, "applying")
+        with mock.patch.object(hygiene, "LEDGER_TERMINAL_RETENTION", 2):
+            for n in range(20):
+                self._claim(ledger, n)
+                ledger.transition(f"evt-{n:05d}", {"claimed"}, "completed")
+            self._claim(ledger, 888)
+        events = json.loads(ledger.state_file.read_text())["events"]
+        self.assertIn("evt-open", events)
+        self.assertEqual(events["evt-open"]["status"], "applying")
