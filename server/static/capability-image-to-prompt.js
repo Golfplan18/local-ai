@@ -289,7 +289,7 @@
         var message = (err && err.message) || String(err);
         if (state.ui && typeof state.ui.renderError === 'function') {
           try {
-            state.ui.renderError({ code: code, message: message });
+            state.ui.renderError({ slot: 'image_to_prompt', code: code, message: message });
           } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {

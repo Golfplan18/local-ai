@@ -323,7 +323,7 @@
           'image_critique requires an image input.'
         );
         if (state.ui && typeof state.ui.renderError === 'function') {
-          try { state.ui.renderError({ code: err.code, message: err.message }); } catch (_e) { /* swallow */ }
+          try { state.ui.renderError({ slot: 'image_critique', code: err.code, message: err.message }); } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
           slot:    'image_critique',
@@ -349,7 +349,7 @@
           'image_critique needs at least a rubric or a genre.'
         );
         if (state.ui && typeof state.ui.renderError === 'function') {
-          try { state.ui.renderError({ code: noGuide.code, message: noGuide.message }); } catch (_e) { /* swallow */ }
+          try { state.ui.renderError({ slot: 'image_critique', code: noGuide.code, message: noGuide.message }); } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
           slot:    'image_critique',
@@ -415,7 +415,7 @@
         var message = (err && err.message) || String(err);
         if (state.ui && typeof state.ui.renderError === 'function') {
           try {
-            state.ui.renderError({ code: code, message: message });
+            state.ui.renderError({ slot: 'image_critique', code: code, message: message });
           } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {

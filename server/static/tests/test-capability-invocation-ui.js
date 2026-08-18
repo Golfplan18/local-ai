@@ -733,6 +733,608 @@ async function testDestroyCleansUp() {
     host.children.length === 0);
 }
 
+// ── Where a failure goes when the popover is gone or belongs elsewhere ───────
+//
+// Capability modules report failures through the singleton, and by the time
+// most failures arrive there is no popover left: v3-pack-toolbars.js closes
+// it 250 ms after dispatch and that close calls destroy(). image_generates
+// is also dispatched from three places that never open a popover at all.
+// A plain delegate therefore threw into the module's swallow-catch (silence),
+// or painted one slot's failure into another slot's popover and cleared that
+// slot's in-flight state mid-run.
+//
+// The pane fixture is the real component: visual-panel.js mounts cleanly in
+// jsdom without Konva and registers itself as OraPanels.visual._getActive(),
+// which is the surface the routing code resolves. A spy would prove the call
+// was made; a real panel proves the user can read the result.
+
+require(path.resolve(__dirname, '..', 'visual-panel.js'));
+
+var _paneSeq = 0;
+
+function _mountPane() {
+  var el = w.document.createElement('div');
+  w.document.body.appendChild(el);
+  // Each panel needs its own id — VisualPanel builds element ids from it.
+  var panel = new w.VisualPanel(el, { id: 'cap-ui-pane-' + (++_paneSeq) });
+  panel.init();
+  // A Konva-less init leaves "Konva not loaded …" on the bar. Start clean so
+  // every assertion below is about what the routing code wrote.
+  panel._errorBar.textContent = '';
+  panel._errorBar.hidden = true;
+  return panel;
+}
+
+function _unmountPane(panel) {
+  try { panel.destroy(); } catch (_e) { /* ignore */ }
+  if (panel.el && panel.el.parentNode) panel.el.parentNode.removeChild(panel.el);
+}
+
+// What the user can actually read off the pane right now.
+function _paneText(panel) {
+  var bar = panel && panel._errorBar;
+  if (!bar || bar.hidden) return null;
+  return (bar.textContent || '') || null;
+}
+
+function _noPaneMounted() {
+  var active = w.OraPanels && w.OraPanels.visual && w.OraPanels.visual._getActive();
+  if (active) _unmountPane(active);
+  return !(w.OraPanels && w.OraPanels.visual && w.OraPanels.visual._getActive());
+}
+
+async function testErrorRendersInLivePopoverForItsOwnSlot() {
+  var host = _resetHost();
+  var pane = _mountPane();
+  UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+
+  UI.renderError({
+    slot: '_stub_test',
+    code: 'model_unavailable',
+    message: 'No provider configured for this slot.',
+  });
+
+  var errorEl = host.querySelector('.ora-cap-error');
+  record('live popover for the failing slot renders the error itself',
+    errorEl && errorEl.style.display !== 'none'
+      && /No provider configured/i.test(errorEl.textContent || ''),
+    errorEl ? ('text="' + (errorEl.textContent || '').slice(0, 60) + '"') : 'no error el');
+  record('the popover path still surfaces the fix-path button',
+    !!host.querySelector('.ora-cap-fix-btn'));
+  record('nothing is written to the pane when the popover took it',
+    _paneText(pane) === null,
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  _unmountPane(pane);
+}
+
+async function testErrorRoutesToPaneWhenPopoverWasDestroyed() {
+  var host = _resetHost();
+  var pane = _mountPane();
+  var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  ctl.destroy();   // exactly what v3-pack-toolbars.js does 250 ms after dispatch
+
+  var threw = null;
+  var ret;
+  try {
+    ret = UI.renderError({
+      slot: '_stub_test',
+      code: 'quota_exceeded',
+      message: 'Provider rate limit hit.',
+    });
+  } catch (e) { threw = e; }
+
+  record('a late failure does not throw into the module swallow-catch',
+    !threw, threw ? String(threw.message) : '');
+  record('a destroyed popover routes the failure to the Exhibits pane bar',
+    /_stub_test failed \[quota_exceeded\]/.test(_paneText(pane) || '')
+      && /rate limit/i.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+  record('the reporter reports that a surface took the error',
+    ret === true, 'ret=' + ret);
+
+  _unmountPane(pane);
+}
+
+async function testLateFailureCannotContaminateAnotherSlotsPopover() {
+  var host = _resetHost();
+  var pane = _mountPane();
+
+  // Slot A ran; its popover has since auto-closed.
+  var a = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  a.destroy();
+
+  // The user has opened slot B's popover and started a run there. B is the
+  // non-privacy control fixture, so its submit dispatches straight through
+  // and leaves it genuinely in flight.
+  var hostB = w.document.createElement('div');
+  w.document.body.appendChild(hostB);
+  var b = UI.init({ hostEl: hostB, capabilities: capabilities, slotName: '_control_test' });
+  var nameInput = hostB.querySelector('input[name="name"], textarea[name="name"]');
+  nameInput.value = 'Premium';
+  nameInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  b.submit();
+  record('slot B is genuinely in flight before the sibling failure arrives',
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+
+  // Slot A's request now fails, long after A's popover is gone.
+  UI.renderError({
+    slot: '_stub_test',
+    code: 'quota_exceeded',
+    message: 'Provider rate limit hit.',
+  });
+
+  record("slot A's late failure lands on the pane, not on slot B's popover",
+    /_stub_test failed \[quota_exceeded\]/.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+  var bError = hostB.querySelector('.ora-cap-error');
+  record("slot B's popover shows no error that was never slot B's",
+    !bError || bError.style.display === 'none' || !(bError.textContent || '').trim(),
+    bError ? ('B error="' + (bError.textContent || '').slice(0, 60) + '"') : 'no error el');
+  record("slot B's in-flight state survives its sibling's failure",
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+  var bStatus = hostB.querySelector('.ora-cap-status');
+  record("slot B's spinner keeps running for slot B's own request",
+    bStatus && /Working/i.test(bStatus.textContent || ''),
+    bStatus ? ('status="' + bStatus.textContent + '"') : 'no status');
+
+  b.destroy();
+  hostB.parentNode.removeChild(hostB);
+  _unmountPane(pane);
+}
+
+async function testPopoverlessDispatchStillReachesTheUser() {
+  _resetHost();
+  UI.destroy();
+  var pane = _mountPane();
+  record('no popover is mounted (the image_generates dispatch shape)',
+    UI._getActive() === null, 'active=' + UI._getActive());
+
+  var ret = UI.renderError({
+    slot: 'image_generates',
+    code: 'model_unavailable',
+    message: 'No image provider is configured.',
+  });
+
+  record('a popover-less dispatch failure reaches the Exhibits pane bar',
+    ret === true
+      && /image_generates failed \[model_unavailable\]/.test(_paneText(pane) || '')
+      && /No image provider/i.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  _unmountPane(pane);
+}
+
+async function testNoPopoverAndNoPaneWarnsRatherThanSwallows() {
+  _resetHost();
+  UI.destroy();
+  record('no pane is mounted either', _noPaneMounted());
+
+  var warned = [];
+  var realWarn = console.warn;
+  console.warn = function () {
+    warned.push(Array.prototype.slice.call(arguments).join(' '));
+  };
+  var threw = null;
+  var ret;
+  try {
+    ret = UI.renderError({
+      slot: 'image_generates',
+      code: 'model_unavailable',
+      message: 'No image provider is configured.',
+    });
+  } catch (e) {
+    threw = e;
+  } finally {
+    console.warn = realWarn;
+  }
+
+  record('reporting with no surface at all does not throw',
+    !threw, threw ? String(threw.message) : '');
+  record('...it warns loudly instead of failing silently',
+    warned.length === 1
+      && /image_generates/.test(warned[0])
+      && /model_unavailable/.test(warned[0]),
+    JSON.stringify(warned));
+  record('...and reports that no surface took it',
+    ret === false, 'ret=' + ret);
+}
+
+async function testPaneRetractionOnlyClearsThisLayersOwnMessage() {
+  var host = _resetHost();
+  UI.destroy();
+  var pane = _mountPane();
+
+  // This layer writes a failure to the pane (no popover to take it).
+  UI.renderError({
+    slot: 'image_generates',
+    code: 'model_unavailable',
+    message: 'No image provider is configured.',
+  });
+  record('the pane carries this layer\'s failure',
+    /image_generates failed/.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  // Someone else — the compiler's fallback path — replaces it.
+  pane._showErrorBar('Visual could not be rendered');
+
+  var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  var input = host.querySelector('textarea[name="prompt"], input[name="prompt"]');
+  input.value = 'A new run.';
+  input.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  ctl.submit();
+
+  record('a new run does not retract a message this layer did not write',
+    _paneText(pane) === 'Visual could not be rendered',
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  // Same again, but with this layer's own message still on the bar.
+  ctl.destroy();
+  UI.destroy();
+  UI.renderError({
+    slot: 'image_generates',
+    code: 'model_unavailable',
+    message: 'No image provider is configured.',
+  });
+  record('this layer\'s message is back on the bar',
+    /image_generates failed/.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  var ctl2 = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  var input2 = host.querySelector('textarea[name="prompt"], input[name="prompt"]');
+  input2.value = 'A newer run.';
+  input2.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  ctl2.submit();
+
+  record('a new run does retract this layer\'s own previous message',
+    _paneText(pane) === null,
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  ctl2.destroy();
+  _unmountPane(pane);
+}
+
+// submit() is the start-of-run retraction, but the three popover-less
+// dispatch paths (index-v3.html, js/slash-command-client.js,
+// prompt-template-runtime.js) never call it. Without an end-of-run
+// retraction a failed run's verdict outlived the next SUCCESSFUL run and
+// sat pinned over the image that run had just produced — indefinitely,
+// since the panel's own auto-clear (_hideImageError) early-returns on a
+// bar _showErrorBar has stripped the --image class from.
+async function testPopoverlessSuccessRetractsThePreviousFailure() {
+  var host = _resetHost();
+  UI.destroy();                       // the popover-less dispatch shape
+  var pane = _mountPane();
+
+  var Generates = require(path.resolve(__dirname, '..', 'capability-image-generates.js'));
+
+  var mode = 'fail';
+  function scriptedFetch() {
+    if (mode === 'fail') {
+      return Promise.resolve({
+        ok: false,
+        status: 503,
+        json: function () {
+          return Promise.resolve({
+            error: { code: 'model_unavailable', message: 'Provider is down.' },
+          });
+        },
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: function () {
+        return Promise.resolve({ image: { data: 'QUJD', mime_type: 'image/png' } });
+      },
+    });
+  }
+
+  // visualPanel is left null: where the bytes land is a separate concern
+  // (covered in test-capability-image-generates.js), and the module calls
+  // renderResult on success either way.
+  Generates.init({ hostEl: host, visualPanel: null, fetchImpl: scriptedFetch });
+
+  try {
+    await Generates.handleDispatch({ slot: 'image_generates', inputs: { prompt: 'a serene mountain' } });
+  } catch (_e) { /* reported on the pane, then re-raised */ }
+  await _flushFrames();
+
+  record('a popover-less failure is on the pane before the next run',
+    /image_generates failed \[model_unavailable\]/.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  mode = 'ok';
+  await Generates.handleDispatch({ slot: 'image_generates', inputs: { prompt: 'a serene mountain' } });
+  await _flushFrames();
+
+  record('a SUCCESSFUL popover-less run retracts the previous failure',
+    _paneText(pane) === null,
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  // The end-of-run retraction is ownership-scoped exactly as the
+  // start-of-run one is: a message this layer did not write survives.
+  mode = 'fail';
+  try {
+    await Generates.handleDispatch({ slot: 'image_generates', inputs: { prompt: 'a serene mountain' } });
+  } catch (_e) { /* reported on the pane, then re-raised */ }
+  await _flushFrames();
+  pane._showErrorBar('Visual could not be rendered');
+
+  mode = 'ok';
+  await Generates.handleDispatch({ slot: 'image_generates', inputs: { prompt: 'a serene mountain' } });
+  await _flushFrames();
+
+  record('a success does not retract a pane message this layer did not write',
+    _paneText(pane) === 'Visual could not be rendered',
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  if (typeof Generates.destroy === 'function') {
+    try { Generates.destroy(); } catch (_e) { /* ignore */ }
+  }
+  _unmountPane(pane);
+}
+
+// VisualPanel.prototype._showErrorBar opens `if (!this._errorBar) return;`
+// — a silent no-op. Reading "it didn't throw" as "the user can read it"
+// made the reporter claim success, skip the console.warn arm, and display
+// the failure nowhere at all: the exact swallow this routing exists to stop.
+async function testPaneWithNoErrorBarFallsThroughToTheConsole() {
+  _resetHost();
+  UI.destroy();
+  var pane = _mountPane();
+  var realBar = pane._errorBar;
+  pane._errorBar = null;              // the state _showErrorBar no-ops in
+
+  var warned = [];
+  var realWarn = console.warn;
+  console.warn = function () {
+    warned.push(Array.prototype.slice.call(arguments).join(' '));
+  };
+  var ret;
+  try {
+    ret = UI.renderError({
+      slot: 'image_generates',
+      code: 'model_unavailable',
+      message: 'No image provider is configured.',
+    });
+  } finally {
+    console.warn = realWarn;
+  }
+
+  record('a pane with no error bar does not get reported as having taken it',
+    ret === false, 'ret=' + ret);
+  record('...so the failure falls through to the console rather than nowhere',
+    warned.length === 1
+      && /image_generates/.test(warned[0])
+      && /model_unavailable/.test(warned[0]),
+    JSON.stringify(warned));
+
+  pane._errorBar = realBar;
+  _unmountPane(pane);
+}
+
+// Four renderError sites fire before any request is made — a missing
+// required input, or a critique with neither rubric nor genre. The popover
+// gates required inputs, but the popover-less dispatch paths (pack
+// templates, slash commands) do not, so a dispatch can and does arrive
+// short an input. The round-trip cases below run on valid fixtures and
+// never reach any of them.
+async function testSynchronousPreflightFailuresNameTheirSlot() {
+  var host = _resetHost();
+  UI.destroy();
+  var pane = _mountPane();
+
+  function unreachableFetch() {
+    return Promise.reject(new Error(
+      'pre-flight refused too late — a request was made'));
+  }
+
+  var CASES = [
+    ['image_critique', 'capability-image-critique.js', 'OraCapabilityImageCritique',
+      { rubric: 'composition' }, 'no_specific_guidance', /requires an image input/i],
+    ['image_critique', 'capability-image-critique.js', 'OraCapabilityImageCritique',
+      { image: 'data:image/png;base64,AA' }, 'no_specific_guidance', /rubric or a genre/i],
+    ['image_styles', 'capability-image-styles.js', 'OraCapabilityImageStyles',
+      { source_image: 'data:image/png;base64,AA' }, 'references_incompatible', /style_reference/],
+    ['image_varies', 'capability-image-varies.js', 'OraCapabilityImageVaries',
+      {}, 'source_ambiguous', /non-empty source_image/],
+  ];
+
+  for (var i = 0; i < CASES.length; i++) {
+    var slot = CASES[i][0];
+    var file = CASES[i][1];
+    var globalName = CASES[i][2];
+    var inputs = CASES[i][3];
+    var code = CASES[i][4];
+    var msgRe = CASES[i][5];
+
+    require(path.resolve(__dirname, '..', file));
+    var mod = w[globalName];
+    mod.init({ hostEl: host, visualPanel: null, fetchImpl: unreachableFetch });
+
+    // The popover was opened and then auto-closed, as on every dispatch.
+    var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: slot });
+    ctl.destroy();
+
+    pane._errorBar.textContent = '';
+    pane._errorBar.hidden = true;
+
+    try {
+      await mod.handleDispatch({ slot: slot, inputs: inputs });
+    } catch (_e) { /* the guard rejects; the failure is reported on the pane */ }
+    await _flushFrames();
+
+    var text = _paneText(pane) || '';
+    record(slot + ' names its own slot for a pre-flight ' + code + ' failure',
+      text.indexOf(slot + ' failed [' + code + ']') === 0 && msgRe.test(text),
+      'pane=' + JSON.stringify(text));
+
+    if (typeof mod.destroy === 'function') {
+      try { mod.destroy(); } catch (_e) { /* ignore */ }
+    }
+  }
+
+  UI.destroy();
+  _unmountPane(pane);
+}
+
+// The slot tag on the payload is what lets the reporter tell "this
+// popover's failure" from "some other slot's failure". Asserting it at the
+// singleton proves the routing; only a real dispatch through each module
+// proves the modules actually send it. Every module here is driven through
+// a genuine failing round-trip, with the popover closed first — the state
+// every post-network failure actually arrives in.
+async function testEveryModuleNamesItsOwnSlotOnThePane() {
+  var host = _resetHost();
+  UI.destroy();
+  var pane = _mountPane();
+
+  function failingFetch() {
+    return Promise.resolve({
+      ok: false,
+      status: 503,
+      json: function () {
+        return Promise.resolve({
+          error: { code: 'model_unavailable', message: 'Provider is down.' },
+        });
+      },
+      text: function () { return Promise.resolve('Provider is down.'); },
+    });
+  }
+
+  // image_outpaints is attach-style with different inputs; it has its own
+  // case below.
+  var MODULES = [
+    ['image_generates', 'capability-image-generates.js', 'OraCapabilityImageGenerates',
+      { prompt: 'a serene mountain' }],
+    ['image_upscales', 'capability-image-upscales.js', 'OraCapabilityImageUpscales',
+      { image: 'img_1' }],
+    ['image_styles', 'capability-image-styles.js', 'OraCapabilityImageStyles',
+      { source_image: 'data:image/png;base64,AA', style_reference: 'data:image/png;base64,BB' }],
+    ['image_varies', 'capability-image-varies.js', 'OraCapabilityImageVaries',
+      { source_image: 'img_1' }],
+    ['image_to_prompt', 'capability-image-to-prompt.js', 'OraCapabilityImageToPrompt',
+      { image: 'img_1' }],
+    ['image_critique', 'capability-image-critique.js', 'OraCapabilityImageCritique',
+      { image: 'data:image/png;base64,AA', rubric: 'composition' }],
+    ['video_generates', 'capability-video-generates.js', 'OraCapabilityVideoGenerates',
+      { prompt: 'a cat' }],
+    ['style_trains', 'capability-style-trains.js', 'OraCapabilityStyleTrains',
+      { name: 'my-style', reference_images: ['a', 'b', 'c'] }],
+  ];
+
+  for (var i = 0; i < MODULES.length; i++) {
+    var slot = MODULES[i][0];
+    var file = MODULES[i][1];
+    var globalName = MODULES[i][2];
+    var inputs = MODULES[i][3];
+
+    require(path.resolve(__dirname, '..', file));
+    var mod = w[globalName];
+    mod.init({ hostEl: host, visualPanel: null, fetchImpl: failingFetch });
+
+    // The popover was opened and then auto-closed, as it is on every
+    // dispatch (v3-pack-toolbars.js, 250 ms).
+    var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: slot });
+    ctl.destroy();
+
+    pane._errorBar.textContent = '';
+    pane._errorBar.hidden = true;
+
+    try {
+      await mod.handleDispatch({ slot: slot, inputs: inputs });
+    } catch (_e) { /* the failure is reported, not thrown to the caller */ }
+    await _flushFrames();
+
+    var text = _paneText(pane) || '';
+    record(slot + ' names itself on the pane when it fails',
+      text.indexOf(slot + ' failed [') === 0,
+      'pane=' + JSON.stringify(text));
+
+    if (typeof mod.destroy === 'function') {
+      try { mod.destroy(); } catch (_e) { /* ignore */ }
+    }
+  }
+
+  UI.destroy();
+  _unmountPane(pane);
+}
+
+// image_outpaints never called renderError at all — it only emitted
+// `capability-error`, an event with zero production listeners, so every
+// outpaint failure was silent end to end.
+function _stubImageNode() {
+  return {
+    attrs: { naturalWidth: 200, naturalHeight: 100, image_id: 'pane-img-1' },
+    getAttrs: function () { return this.attrs; },
+    image: function (img) { if (img) this._img = img; return this._img; },
+    setAttrs: function (a) { Object.assign(this.attrs, a); },
+    getClientRect: function () { return { x: 0, y: 0, width: 200, height: 100 }; },
+    id: function () { return 'pane-img-1'; },
+    toDataURL: function () { return 'data:image/png;base64,SOURCE'; },
+    getLayer: function () { return { draw: function () {} }; },
+  };
+}
+
+async function testOutpaintsReportsInsteadOfSayingNothing() {
+  var host = _resetHost();
+  UI.destroy();                       // outpaints dispatches with no popover left
+  var pane = _mountPane();
+  var Outpaints = require(path.resolve(__dirname, '..', 'capability-image-outpaints.js'));
+
+  var events = [];
+  host.addEventListener('capability-error', function (e) { events.push(e.detail); });
+
+  // 1. A failure caught before the POST.
+  Outpaints.attach({ hostEl: host, panel: pane });
+  await Outpaints.handleDispatch({
+    slot: 'image_outpaints',
+    inputs: { prompt: 'extend the sky', directions: ['top'] },
+  });
+  record('outpaints surfaces a pre-request failure the user can read',
+    /image_outpaints failed \[handler_failed\]/.test(_paneText(pane) || '')
+      && /no image is currently mounted/i.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+
+  // 2. A failure that arrives from the server, long after dispatch.
+  pane._errorBar.textContent = '';
+  pane._errorBar.hidden = true;
+  pane._backgroundImageNode = _stubImageNode();
+  Outpaints.attach({
+    hostEl: host,
+    panel: pane,
+    fetch: function () {
+      return Promise.resolve({
+        status: 503,
+        json: function () {
+          return Promise.resolve({
+            error: { code: 'model_unavailable', message: 'Stability is unreachable.' },
+          });
+        },
+      });
+    },
+  });
+  await Outpaints.handleDispatch({
+    slot: 'image_outpaints',
+    inputs: { prompt: 'extend the sky', directions: ['top'] },
+  });
+  record('outpaints surfaces a post-request failure the user can read',
+    /image_outpaints failed \[model_unavailable\]/.test(_paneText(pane) || '')
+      && /Stability is unreachable/.test(_paneText(pane) || ''),
+    'pane=' + JSON.stringify(_paneText(pane)));
+  record('outpaints still emits capability-error for existing listeners',
+    events.length === 2
+      && events.every(function (d) { return d.slot === 'image_outpaints'; }),
+    'events=' + JSON.stringify(events.map(function (d) { return d.code; })));
+
+  Outpaints.detach();
+  _unmountPane(pane);
+}
+
 // ── Run ──────────────────────────────────────────────────────────────────────
 
 (async function main() {
@@ -754,6 +1356,17 @@ async function testDestroyCleansUp() {
     await testSetSlotSwitch();
     await testUnknownSlotThrows();
     await testDestroyCleansUp();
+    await testErrorRendersInLivePopoverForItsOwnSlot();
+    await testErrorRoutesToPaneWhenPopoverWasDestroyed();
+    await testLateFailureCannotContaminateAnotherSlotsPopover();
+    await testPopoverlessDispatchStillReachesTheUser();
+    await testNoPopoverAndNoPaneWarnsRatherThanSwallows();
+    await testPaneRetractionOnlyClearsThisLayersOwnMessage();
+    await testPopoverlessSuccessRetractsThePreviousFailure();
+    await testPaneWithNoErrorBarFallsThroughToTheConsole();
+    await testSynchronousPreflightFailuresNameTheirSlot();
+    await testEveryModuleNamesItsOwnSlotOnThePane();
+    await testOutpaintsReportsInsteadOfSayingNothing();
   } catch (e) {
     console.error('Unexpected test error: ' + (e && e.stack || e));
     process.exit(2);

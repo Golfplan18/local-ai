@@ -370,7 +370,7 @@
             : 'image_styles requires a style_reference input.'
         );
         if (state.ui && typeof state.ui.renderError === 'function') {
-          try { state.ui.renderError({ code: err.code, message: err.message }); } catch (_e) { /* swallow */ }
+          try { state.ui.renderError({ slot: 'image_styles', code: err.code, message: err.message }); } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
           slot:    'image_styles',
@@ -444,7 +444,7 @@
         var message = (err && err.message) || String(err);
         if (state.ui && typeof state.ui.renderError === 'function') {
           try {
-            state.ui.renderError({ code: code, message: message });
+            state.ui.renderError({ slot: 'image_styles', code: code, message: message });
           } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
