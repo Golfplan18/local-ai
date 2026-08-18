@@ -383,6 +383,65 @@ class FrameworkPairManifestAdversarialTests(TemporaryManifestCase):
             [], [f for f in findings if f.payload["finding_type"] == "unregistered_runtime_framework"]
         )
 
+    def test_a_closed_finding_can_be_detected_again(self):
+        """Closing a receipt must not blind the detector to a recurrence.
+
+        Receipts below the "## Closed entries" heading are history. They stay
+        authenticated, but they no longer suppress a fresh finding — otherwise
+        dispositioning an entry would permanently hide that drift.
+        """
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "missing_runtime")],
+        )
+        VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+        text = self.queue.read_text(encoding="utf-8")
+        self.assertEqual(1, text.count("dcp-framework-finding-receipt"))
+
+        # Re-running while the finding is open appends nothing.
+        self.assertEqual(
+            (0, 1),
+            VERIFY.enqueue_framework_pair_findings(
+                manifest_path=self.manifest,
+                vault_root=self.vault,
+                ora_root=self.ora,
+                queue_path=self.queue,
+            ),
+        )
+
+        # Move the entry into the historical region, as closing it does.
+        start = text.index("### E-")
+        entry = text[start:]
+        closed = text[:start] + "\n## Closed entries\n\n" + entry
+        self.queue.write_text(closed, encoding="utf-8")
+
+        # Still authenticates — closing is not tampering.
+        self.assertEqual(
+            1,
+            len(
+                VERIFY.verify_framework_finding_receipts(
+                    self.queue.read_text(encoding="utf-8")
+                )
+            ),
+        )
+        # And the still-present drift is queued again.
+        appended, current = VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+        self.assertEqual((1, 1), (appended, current))
+        self.assertEqual(
+            2, self.queue.read_text(encoding="utf-8").count("dcp-framework-finding-receipt")
+        )
+
     def test_queue_receipt_tampering_fails_closed(self):
         canonical = self.write_canonical("Framework — A.md")
         _write_manifest(

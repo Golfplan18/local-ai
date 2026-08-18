@@ -98,6 +98,11 @@ FRAMEWORK_RUNTIME_EXCLUDED_DIRS = ("frameworks/personal/",)
 FRAMEWORK_FINDING_EVIDENCE_FIELDS = frozenset(
     {"manifest_sha256", "canonical_body_sha256", "runtime_body_sha256"}
 )
+# Heading that begins the queue's historical region. Receipts below it record
+# findings the user has already dispositioned; they are still authenticated,
+# but they no longer suppress a fresh finding. Without this split, closing a
+# receipt would silently blind the detector to the same drift recurring.
+FRAMEWORK_QUEUE_CLOSED_HEADING = "\n## Closed entries\n"
 FRAMEWORK_RECEIPT_PATTERN = re.compile(
     r"<!-- dcp-framework-finding-receipt (\{.*?\}) -->"
 )
@@ -803,6 +808,12 @@ def verify_framework_finding_receipts(content: str) -> list[FrameworkPairFinding
     return findings
 
 
+def _open_queue_region(content: str) -> str:
+    """The portion of the queue holding findings that are still open."""
+    index = content.find(FRAMEWORK_QUEUE_CLOSED_HEADING)
+    return content if index == -1 else content[:index]
+
+
 def _render_framework_queue_entry(
     finding: FrameworkPairFinding,
     *,
@@ -868,9 +879,16 @@ def enqueue_framework_pair_findings(
             ora_root=ora_root,
         )
         content = read_file(queue)
+        # Authenticate every receipt in the file, closed ones included — a
+        # tampered historical receipt is still tampering. Deduplicate only
+        # against the open region, so a finding the user closed can be
+        # detected again if the drift recurs.
         existing = verify_framework_finding_receipts(content)
         existing_identities = {
-            _framework_finding_identity(finding.payload) for finding in existing
+            _framework_finding_identity(finding.payload)
+            for finding in verify_framework_finding_receipts(
+                _open_queue_region(content)
+            )
         }
         new_findings = [
             finding
