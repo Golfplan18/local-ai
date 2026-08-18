@@ -156,11 +156,57 @@ def _needs_derive(identities: list[dict]) -> bool:
     return False
 
 
-def _persist(state: dict, record: dict) -> None:
+def _identities_digest(identities: list[dict]) -> str:
+    """Deterministic digest of the exact event contract."""
+    canonical = json.dumps(identities, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _record_digest(record: dict) -> str | None:
+    """Contract digest of a persisted record, old shape or new.
+
+    Records written before 2026-08-17 carry the identity list inline and no
+    digest; their digest is derived from that list so a legacy claim can still
+    be drift-checked and resumed.
+    """
+    digest = record.get("identities_digest")
+    if digest:
+        return str(digest)
+    legacy = record.get("identities")
+    return _identities_digest(legacy) if legacy is not None else None
+
+
+def _compact(record: dict, digest: str) -> dict:
+    """Reduce a record to the referenced-contract shape.
+
+    The identity list is the event contract: immutable, and therefore worth
+    persisting exactly once rather than on every state transition. A batch
+    carries one entry per changed file, so re-emitting it at claim, resume,
+    each step boundary and completion multiplied a single event's write cost
+    by the number of transitions — and the state file, which is rewritten and
+    fsync'd in full on each of those, carried it too. The 2026-08-17 MSI-mirror
+    loop made the cost visible (17,731 paths per record, ~157 MB of fsync per
+    notification), but the shape was wrong for every large batch, not just that
+    one. After this, transitions carry the digest and the count; the list
+    itself lives in the append-only audit log, written once at claim.
+    """
+    out = dict(record)
+    if "path_count" not in out:
+        legacy = out.get("identities") or out.get("paths") or []
+        out["path_count"] = len(legacy)
+    out.pop("identities", None)
+    out.pop("paths", None)
+    out["identities_digest"] = digest
+    return out
+
+
+def _persist(state: dict, record: dict, *, contract: list[dict] | None = None) -> None:
     state["events"][record["event_id"]] = record
     _prune_terminal_events(state)
     _atomic_json(STATE_FILE, state)
-    _append(record)
+    # The contract is evidence and is written to the append-only log exactly
+    # once, on the claim that binds it. Later lines reference it by digest.
+    _append({**record, "identities": contract} if contract is not None else record)
 
 
 def _prune_terminal_events(state: dict) -> int:
@@ -214,6 +260,7 @@ def main(argv: list[str]) -> int:
     if not exact_paths:
         parser.error("at least one exact --path or --paths-file entry is required")
     identities = _event_contract(exact_paths)
+    digest = _identities_digest(identities)
     STATE_ROOT.mkdir(parents=True, exist_ok=True)
     with LOCK_FILE.open("a+", encoding="utf-8") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
@@ -233,14 +280,16 @@ def main(argv: list[str]) -> int:
         if record is None:
             record = {
                 "event_id": event_id,
-                "identities": identities,
-                "paths": [item["path"] for item in identities],
+                "identities_digest": digest,
+                "path_count": len(identities),
                 "status": "claimed",
                 "steps": [],
                 "started_at": datetime.now(timezone.utc).isoformat(),
             }
-            _persist(state, record)
-        elif record.get("identities") != identities:
+            _persist(state, record, contract=identities)
+        elif _record_digest(record) != digest:
+            # Digest comparison is exactly as strong as comparing the lists,
+            # and does not require the list to be resident in the state file.
             raise ValueError("event subject drifted after the persisted claim")
         elif record.get("status") == "completed":
             print(json.dumps(record, sort_keys=True))
@@ -260,6 +309,7 @@ def main(argv: list[str]) -> int:
         }
         record["steps"] = [completed[name] for name, _argv in required
                            if name in completed]
+        record = _compact(record, digest)
         record["status"] = "running"
         record["resumed_at"] = datetime.now(timezone.utc).isoformat()
         _persist(state, record)
