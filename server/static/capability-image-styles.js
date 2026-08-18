@@ -415,6 +415,7 @@
           .then(function () {
             var dataUrl = _base64ToDataUrl(extracted.base64, extracted.mimeType);
             var resultPayload = {
+              slot:         'image_styles',
               output:       canvasObject.id,
               imageDataUrl: dataUrl,
               canvasObject: canvasObject,

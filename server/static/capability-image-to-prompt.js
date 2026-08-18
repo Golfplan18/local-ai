@@ -21,7 +21,10 @@
  *      route added alongside this WP).
  *   3. Surface the returned prompt string to the invocation UI's
  *      `renderResult` (which already renders `output.type === 'text'`
- *      into a `<pre>`) and decorate the result panel with a Copy button.
+ *      into a `<pre>`), then write it — and a Copy button — into the
+ *      surface `ui.getResultHost('image_to_prompt')` names, which is the
+ *      popover's result panel when one is live and the docked browse
+ *      overlay when it is not.
  *   4. Emit a `capability-result` event so any external listener (e.g.
  *      analytics, the chat bridge) can pick up the text.
  *
@@ -152,28 +155,46 @@
     };
   }
 
-  // ── Copy-to-clipboard decoration ─────────────────────────────────────
+  // ── Prompt rendering + copy-to-clipboard ─────────────────────────────
 
   /**
-   * Locate the invocation UI's result panel and append a Copy button.
-   * The UI's renderResult already drops the prompt text into a
-   * `<pre class="ora-cap-result__text">`; we add a sibling button that
-   * copies that text via the Clipboard API (with a textarea fallback for
-   * environments without `navigator.clipboard`).
+   * Put the prompt where the user can read it, and hang a Copy button off
+   * it. `hostEl` comes from `ui.getResultHost('image_to_prompt')` and is
+   * itself the `.ora-cap-result` container — the live popover's own panel,
+   * or the per-slot box inside the browse overlay — so we accept either
+   * shape rather than only searching inside.
+   *
+   * This used to look for `.ora-cap-result` under the module's own host
+   * (in V3, `document.body`), find nothing because the popover had already
+   * been destroyed, and return. The prompt was dropped on the floor: the
+   * one thing this slot produces never reached the DOM at all. So the text
+   * is written here rather than assumed — `renderResult` writes the same
+   * `<pre>` when a popover is live, and this is idempotent against it, but
+   * when there is no popover nothing else will.
    */
-  function _decorateWithCopyButton(hostEl, promptText) {
+  function _renderPromptResult(hostEl, promptText) {
     if (!hostEl || typeof hostEl.querySelector !== 'function') return;
-    var resultEl = hostEl.querySelector('.ora-cap-result');
-    if (!resultEl) return;
+    var resultEl = (hostEl.classList && hostEl.classList.contains('ora-cap-result'))
+      ? hostEl
+      : hostEl.querySelector('.ora-cap-result');
+    if (!resultEl || typeof document === 'undefined') return;
+
+    // Reuse the panel's own text node when renderResult already wrote one,
+    // so the popover path shows the prompt once rather than twice — and a
+    // re-run replaces the previous prompt rather than stacking under it.
+    var pre = resultEl.querySelector('.ora-cap-result__text');
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.className = 'ora-cap-result__text';
+      resultEl.appendChild(pre);
+    }
+    pre.textContent = String(promptText == null ? '' : promptText);
 
     // Avoid duplicating the button across re-renders — clear any prior.
     var prior = resultEl.querySelector('.ora-cap-result__copy');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
-    var btn = (typeof document !== 'undefined')
-      ? document.createElement('button')
-      : null;
-    if (!btn) return;
+    var btn = document.createElement('button');
     btn.className = 'ora-cap-result__copy';
     btn.type = 'button';
     btn.textContent = 'Copy prompt';
@@ -263,11 +284,15 @@
             'Provider returned a response with no prompt text.');
         }
 
-        // Surface to the invocation UI: renderResult handles the
-        // text-output rendering (per capability-invocation-ui.js
-        // line ~915, output.type 'text' lands in a <pre>). We then
-        // decorate that panel with our Copy button.
+        // Surface to the invocation UI: renderResult paints the text into
+        // a live popover for this slot when there is one. Then write the
+        // prompt into whatever surface `getResultHost` names — the popover
+        // panel or the docked browse overlay — and hang the Copy button
+        // off it. The second call is not decoration: when the popover is
+        // gone, which is the normal case, it is the only thing that puts
+        // the prompt on screen.
         var resultPayload = {
+          slot:     'image_to_prompt',
           output:   extracted.prompt,
           provider: extracted.provider,
           metadata: extracted.metadata,
@@ -275,7 +300,12 @@
         if (state.ui && typeof state.ui.renderResult === 'function') {
           try { state.ui.renderResult(resultPayload); } catch (_e) { /* swallow */ }
         }
-        _decorateWithCopyButton(state.hostEl, extracted.prompt);
+        _renderPromptResult(
+          (state.ui && typeof state.ui.getResultHost === 'function')
+            ? state.ui.getResultHost('image_to_prompt')
+            : null,
+          extracted.prompt
+        );
 
         _emit(state.hostEl, 'capability-result', {
           slot:     'image_to_prompt',

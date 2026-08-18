@@ -1335,6 +1335,613 @@ async function testOutpaintsReportsInsteadOfSayingNothing() {
   _unmountPane(pane);
 }
 
+// ── Where a result goes when the popover is gone or belongs elsewhere ────────
+//
+// A result is in the same position a failure was, and three slots make it
+// worse: image_varies, image_critique and image_to_prompt return something
+// the user has to READ rather than something that lands on the canvas, and
+// all three painted into their own hostEl — `document.body` in V3. The shell
+// is `height: 100vh` with `html, body { overflow: hidden }`, so a node
+// appended under it cannot be scrolled to. The candidate grid and the
+// critique were built, attached, and unreachable; the prompt was never built
+// at all, because the decorator looked for a `.ora-cap-result` the destroyed
+// popover had taken with it and returned.
+//
+// The dock fixture is the real component: v3-browse-overlay.js is the docked,
+// non-modal surface the shell already ships and nothing else consumes. A spy
+// would prove the call was made; the real surface proves the node is attached,
+// inside an open dock, and not hidden.
+
+require(path.resolve(__dirname, '..', 'js', 'v3-browse-overlay.js'));
+var Overlays = w.OraBrowseOverlays;
+var RESULT_OVERLAY_ID = UI.RESULT_OVERLAY_ID;
+
+// 1×1 PNG — enough for a tile's src and for a data-URL image input.
+var TINY_PNG_B64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+var TINY_PNG_URL = 'data:image/png;base64,' + TINY_PNG_B64;
+
+function _mountDockGeometry() {
+  // _position reads .ora-shell and .input-pane. Without them the overlay
+  // warns once per open and keeps the stylesheet defaults — correct
+  // behaviour, but noise in this suite's output.
+  if (w.document.querySelector('.ora-shell')) return;
+  var shell = w.document.createElement('div');
+  shell.className = 'ora-shell';
+  var pane = w.document.createElement('div');
+  pane.className = 'input-pane';
+  shell.appendChild(pane);
+  w.document.body.appendChild(shell);
+}
+
+function _resultOverlayRoots() {
+  var all = w.document.querySelectorAll('[data-ora-browse-overlay]');
+  var mine = [];
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].getAttribute('data-ora-browse-overlay') === RESULT_OVERLAY_ID) mine.push(all[i]);
+  }
+  return mine;
+}
+
+// Attached to the document, inside the OPEN dock, and with nothing on the way
+// up hiding it. jsdom has no layout, so this is as far as "visible" can be
+// taken here; the browser pass covers what geometry can only be measured for
+// real.
+function _isShown(node) {
+  if (!node || node.isConnected !== true) return false;
+  for (var el = node; el; el = el.parentElement) {
+    if (el.hidden === true) return false;
+    if (el.style && el.style.display === 'none') return false;
+  }
+  return true;
+}
+
+function _dockRoot() {
+  var roots = _resultOverlayRoots();
+  return roots.length ? roots[0] : null;
+}
+
+function _inOpenDock(node) {
+  var roots = _resultOverlayRoots();
+  if (roots.length !== 1 || !roots[0].classList.contains('is-open')) return false;
+  return roots[0].contains(node);
+}
+
+// A dock that was never opened means "nothing landed anywhere" — the state
+// this whole change exists to end. It must read as a failed assertion, not
+// as an exception that abandons the rest of the run.
+function _inDock(selector) {
+  var dock = _dockRoot();
+  return dock ? dock.querySelectorAll(selector) : [];
+}
+
+function _closeDock() {
+  if (Overlays.isOpen(RESULT_OVERLAY_ID)) Overlays.close(RESULT_OVERLAY_ID);
+}
+
+function _okFetch(payload) {
+  return function () {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: function () { return Promise.resolve(payload); },
+    });
+  };
+}
+
+// The three slots whose output is something to read rather than something to
+// drop on the canvas — the ones this routing exists for.
+var READABLE_SLOTS = [
+  {
+    slot: 'image_varies',
+    file: 'capability-image-varies.js',
+    global: 'OraCapabilityImageVaries',
+    response: {
+      images: [
+        { data: TINY_PNG_B64, mime_type: 'image/png' },
+        { data: TINY_PNG_B64, mime_type: 'image/png' },
+        { data: TINY_PNG_B64, mime_type: 'image/png' },
+        { data: TINY_PNG_B64, mime_type: 'image/png' },
+      ],
+      provider: 'mock-image-varies',
+    },
+    inputs: { source_image: 'canvas-object-1', count: 4 },
+    what: 'the candidate grid',
+    find: function (scope) { return scope.querySelector('.ora-cap-image-varies-grid'); },
+    carries: function (node) {
+      return node.querySelectorAll('.ora-cap-image-varies-grid__tile').length === 4;
+    },
+  },
+  {
+    slot: 'image_critique',
+    file: 'capability-image-critique.js',
+    global: 'OraCapabilityImageCritique',
+    response: {
+      rubric_scores: { composition: { score: 8, comment: 'Strong.' } },
+      prose: 'A confident landscape.',
+      provider: 'mock',
+    },
+    inputs: { image: TINY_PNG_URL, rubric: 'composition' },
+    what: 'the critique',
+    find: function (scope) { return scope.querySelector('.ora-cap-result__prose'); },
+    carries: function (node) {
+      return /confident landscape/.test(node.textContent || '')
+        && !!node.parentElement.querySelector('.ora-cap-result__rubric');
+    },
+  },
+  {
+    slot: 'image_to_prompt',
+    file: 'capability-image-to-prompt.js',
+    global: 'OraCapabilityImageToPrompt',
+    response: { prompt: 'a windswept ridge at golden hour, 35mm', provider: 'mock' },
+    inputs: { image: TINY_PNG_URL, target_style: 'dalle' },
+    what: 'the prompt',
+    find: function (scope) { return scope.querySelector('.ora-cap-result__text'); },
+    carries: function (node) { return /windswept ridge/.test(node.textContent || ''); },
+  },
+];
+
+// v3-capability-async.js mounts every one of these on `document.body`, so
+// that is what the fixture hands them: the module's own host IS the
+// unreachable surface, exactly as in production.
+function _runReadableSlot(entry, ui) {
+  require(path.resolve(__dirname, '..', entry.file));
+  var mod = w[entry.global];
+  mod.init({
+    hostEl: w.document.body, visualPanel: null, fetchImpl: _okFetch(entry.response),
+    ui: ui || undefined,
+  });
+  return mod.handleDispatch({ slot: entry.slot, inputs: entry.inputs })
+    .then(function (r) { return { mod: mod, result: r, threw: null }; },
+          function (e) { return { mod: mod, result: null, threw: e }; });
+}
+
+// Watches what a module tells the UI while the REAL routing still runs
+// underneath — a plain stub would prove the call was made and nothing about
+// where the result went.
+function _spyUI() {
+  var spy = {
+    payloads: [], hostCalls: [],
+    renderResult: function (p) { spy.payloads.push(p); return UI.renderResult(p); },
+    renderError:  function (p) { return UI.renderError(p); },
+    getResultHost: function (slot) { spy.hostCalls.push(slot); return UI.getResultHost(slot); },
+  };
+  return spy;
+}
+
+async function testResultRendersInLivePopoverForItsOwnSlot() {
+  var host = _resetHost();
+  _mountDockGeometry();
+  _closeDock();
+  UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+
+  UI.renderResult({ slot: '_stub_test', output: 'the prompt this popover asked for' });
+
+  var resultEl = host.querySelector('.ora-cap-result');
+  record('live popover for the slot renders the result itself',
+    resultEl && resultEl.style.display !== 'none'
+      && /the prompt this popover asked for/.test(resultEl.textContent || ''),
+    resultEl ? ('text="' + (resultEl.textContent || '').slice(0, 50) + '"') : 'no result el');
+  record('nothing is docked when the popover took it',
+    !Overlays.isOpen(RESULT_OVERLAY_ID),
+    'dock open=' + Overlays.isOpen(RESULT_OVERLAY_ID));
+}
+
+// renderResult writes `state.resultEl.style.display`, which destroy() has
+// nulled — so a late result threw, into the same swallow-catch every module
+// wraps the call in. Silence, indistinguishable from success.
+async function testLateResultDoesNotThrowOnADestroyedPopover() {
+  var host = _resetHost();
+  _closeDock();
+  var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  ctl.destroy();   // exactly what v3-pack-toolbars.js does 250 ms after dispatch
+
+  var threw = null;
+  var ret;
+  try {
+    ret = UI.renderResult({ slot: '_stub_test', output: 'arrived after the close' });
+  } catch (e) { threw = e; }
+
+  record('a late result does not throw into the module swallow-catch',
+    !threw, threw ? String(threw.message) : '');
+  record('a destroyed popover takes no result',
+    ret === null, 'ret=' + ret);
+}
+
+// The exact cross-slot bug 688f679d removed for errors, still present for
+// results: reportResult cleared the pane message and then delegated blind.
+async function testLateResultCannotContaminateAnotherSlotsPopover() {
+  var host = _resetHost();
+  _closeDock();
+
+  // Slot A ran; its popover has since auto-closed.
+  var a = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  a.destroy();
+
+  // The user has opened slot B's popover and started a run there.
+  var hostB = w.document.createElement('div');
+  w.document.body.appendChild(hostB);
+  var b = UI.init({ hostEl: hostB, capabilities: capabilities, slotName: '_control_test' });
+  var nameInput = hostB.querySelector('input[name="name"], textarea[name="name"]');
+  nameInput.value = 'Premium';
+  nameInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  b.submit();
+  record('slot B is genuinely in flight before the sibling result arrives',
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+
+  // Slot A's request now succeeds, long after A's popover is gone.
+  UI.renderResult({ slot: '_stub_test', output: "slot A's answer" });
+
+  var bResult = hostB.querySelector('.ora-cap-result');
+  record("slot B's popover shows no result that was never slot B's",
+    bResult && bResult.style.display === 'none' && !(bResult.textContent || '').trim(),
+    bResult ? ('B result="' + (bResult.textContent || '').slice(0, 50) + '"') : 'no result el');
+  record("slot B's in-flight state survives its sibling's result",
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+  var bStatus = hostB.querySelector('.ora-cap-status');
+  record("slot B's spinner keeps running for slot B's own request",
+    bStatus && /Working/i.test(bStatus.textContent || ''),
+    bStatus ? ('status="' + bStatus.textContent + '"') : 'no status');
+  record("slot A's answer went to the dock instead",
+    _inOpenDock(UI.getResultHost('_stub_test')),
+    'dock open=' + Overlays.isOpen(RESULT_OVERLAY_ID));
+
+  b.destroy();
+  hostB.parentNode.removeChild(hostB);
+}
+
+async function testGetResultHostResolvesInOrder() {
+  var host = _resetHost();
+  _mountDockGeometry();
+  _closeDock();
+
+  var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: '_stub_test' });
+  var popoverPanel = host.querySelector('.ora-cap-result');
+
+  record('a live popover for the slot hands back its own result panel',
+    UI.getResultHost('_stub_test') === popoverPanel,
+    'same node=' + (UI.getResultHost('_stub_test') === popoverPanel));
+  record('...and the panel it hands back is not left hidden',
+    popoverPanel.style.display !== 'none',
+    'display=' + JSON.stringify(popoverPanel.style.display));
+  record('...and asking for it did not open the dock',
+    !Overlays.isOpen(RESULT_OVERLAY_ID),
+    'dock open=' + Overlays.isOpen(RESULT_OVERLAY_ID));
+
+  // A popover belonging to a different slot is not a host for this result.
+  var critiqueBox = UI.getResultHost('image_critique');
+  record('a popover for a DIFFERENT slot is passed over for the dock',
+    critiqueBox && critiqueBox !== popoverPanel && _inOpenDock(critiqueBox),
+    'in dock=' + _inOpenDock(critiqueBox));
+
+  ctl.destroy();
+  var stubBox = UI.getResultHost('_stub_test');
+  record('a destroyed popover falls back to the dock',
+    _isShown(stubBox) && _inOpenDock(stubBox),
+    'shown=' + _isShown(stubBox) + ' in dock=' + _inOpenDock(stubBox));
+  record('each slot gets its own box in the dock',
+    stubBox !== critiqueBox
+      && stubBox.getAttribute('data-ora-result-slot') === '_stub_test'
+      && critiqueBox.getAttribute('data-ora-result-slot') === 'image_critique',
+    'stub=' + stubBox.getAttribute('data-ora-result-slot')
+      + ' critique=' + critiqueBox.getAttribute('data-ora-result-slot'));
+  record('asking twice for the same slot reuses its box',
+    UI.getResultHost('_stub_test') === stubBox, 'reused');
+
+  // Neither surface exists: the modules run in hosts that may not have the
+  // browse overlay loaded at all.
+  _closeDock();
+  UI.destroy();
+  var realOverlays = w.OraBrowseOverlays;
+  w.OraBrowseOverlays = undefined;
+  var none, threw = null;
+  try { none = UI.getResultHost('_stub_test'); } catch (e) { threw = e; }
+  w.OraBrowseOverlays = realOverlays;
+  record('no popover and no dock resolves to null rather than throwing',
+    !threw && none === null, threw ? String(threw.message) : 'null=' + (none === null));
+}
+
+async function testEveryReadableSlotLandsItsResultInTheDock() {
+  _resetHost();   // tear down any popover left by the previous test
+  _mountDockGeometry();
+  _closeDock();
+  UI.destroy();   // the popover is gone by the time a result arrives
+
+  for (var i = 0; i < READABLE_SLOTS.length; i++) {
+    var entry = READABLE_SLOTS[i];
+    var run = await _runReadableSlot(entry);
+    await _flushFrames();
+
+    var node = _dockRoot() ? entry.find(_dockRoot()) : null;
+    var box = (node && node.closest) ? node.closest('[data-ora-result-slot]') : null;
+    record(entry.slot + ' puts ' + entry.what + ' in a node the user can reach',
+      !run.threw && node && _isShown(node) && _inOpenDock(node),
+      run.threw ? ('threw ' + run.threw.message)
+        : ('found=' + !!node + ' shown=' + _isShown(node) + ' docked=' + _inOpenDock(node)));
+    record(entry.slot + ' does not append ' + entry.what + ' to document.body',
+      !!node && node.parentElement !== w.document.body
+        && !_isDirectBodyChild(node),
+      node ? ('parent=.' + (node.parentElement.className || '(body)')) : 'no node');
+    record(entry.slot + ' delivers its whole result, not a stub',
+      !!node && entry.carries(node),
+      node ? 'ok' : 'no node');
+    // Asking for "whatever surface is going" rather than for this slot's is
+    // how one module ends up decorating another module's panel.
+    record(entry.slot + ' asked for its own slot\'s box, not a shared one',
+      !!box && box.getAttribute('data-ora-result-slot') === entry.slot,
+      box ? ('box=' + box.getAttribute('data-ora-result-slot')) : 'no box');
+
+    if (typeof run.mod.destroy === 'function') {
+      try { run.mod.destroy(); } catch (_e) { /* ignore */ }
+    }
+  }
+
+  // All three at once: the dock holds one box per slot rather than one
+  // module decorating another's panel.
+  var boxes = _inDock('[data-ora-result-slot]');
+  record('the dock holds one result box per slot, side by side',
+    boxes.length === 3, 'boxes=' + boxes.length);
+}
+
+function _isDirectBodyChild(node) {
+  for (var el = node; el; el = el.parentElement) {
+    if (el.parentElement === w.document.body) {
+      // The dock's own root is a body child; anything else appended there
+      // is the bug.
+      return el.getAttribute
+        && el.getAttribute('data-ora-browse-overlay') !== RESULT_OVERLAY_ID;
+    }
+  }
+  return false;
+}
+
+// The tag is the only thing that tells reportResult and getResultHost whose
+// result this is. Untagged, a late result renders into whatever popover is
+// open and clears ITS in-flight state (proved for a stub slot in
+// testLateResultCannotContaminateAnotherSlotsPopover); the modules have to
+// actually send it.
+async function testEveryReadableSlotTagsItsResultWithItsOwnSlot() {
+  _resetHost();
+  _mountDockGeometry();
+  _closeDock();
+  UI.destroy();
+
+  for (var i = 0; i < READABLE_SLOTS.length; i++) {
+    var entry = READABLE_SLOTS[i];
+    var spy = _spyUI();
+    var run = await _runReadableSlot(entry, spy);
+    await _flushFrames();
+    var payload = spy.payloads[0] || null;
+    record(entry.slot + ' tags the result it hands the UI with its own slot',
+      !run.threw && !!payload && payload.slot === entry.slot,
+      payload ? ('slot=' + JSON.stringify(payload.slot)) : 'renderResult not called');
+    record(entry.slot + ' asks for a render surface by name, not for whatever is going',
+      spy.hostCalls.length === 1 && spy.hostCalls[0] === entry.slot,
+      JSON.stringify(spy.hostCalls));
+    if (run.mod && typeof run.mod.destroy === 'function') run.mod.destroy();
+    _closeDock();
+  }
+}
+
+// image_varies is the one slot whose result is an interactive chooser rather
+// than text, and renderResult CLEARS the panel it paints into. Mount the grid
+// first and the UI wipes it — the popover keeps the "delivered" line and the
+// user loses every candidate, which is the entire point of the slot.
+async function testVariesGridSurvivesInsideALivePopover() {
+  var host = _resetHost();
+  _closeDock();
+  var ctl = UI.init({ hostEl: host, capabilities: capabilities, slotName: 'image_varies' });
+
+  var entry = READABLE_SLOTS[0];   // image_varies
+  var run = await _runReadableSlot(entry);
+  await _flushFrames();
+
+  var panel = ctl._state.resultEl;
+  var grid = panel && panel.querySelector('.ora-cap-image-varies-grid');
+  record('the chooser lands inside the live popover\'s own result panel',
+    !run.threw && !!grid, run.threw ? ('threw ' + run.threw.message) : ('grid=' + !!grid));
+  record('...with every candidate still on it',
+    !!grid && grid.querySelectorAll('.ora-cap-image-varies-grid__tile').length === 4,
+    grid ? ('tiles=' + grid.querySelectorAll('.ora-cap-image-varies-grid__tile').length) : 'no grid');
+  record('...and nothing was docked, because the popover took it',
+    !Overlays.isOpen(RESULT_OVERLAY_ID),
+    'dock open=' + Overlays.isOpen(RESULT_OVERLAY_ID));
+
+  // `output` is the batch id, a string. Counting its characters told the user
+  // a four-image set had 29 items in it.
+  var msg = panel && panel.querySelector('.ora-cap-result__msg');
+  record('the panel counts the images, not the characters of the batch id',
+    !!msg && /\(4 items\)/.test(msg.textContent || ''),
+    msg ? ('msg="' + msg.textContent + '"') : 'no message');
+
+  var mod = w[entry.global];
+  if (mod && typeof mod.destroy === 'function') mod.destroy();
+  UI.destroy();
+}
+
+// style_trains is the async one: its result arrives on an ora:job_status
+// frame minutes after dispatch, by which time the user is somewhere else
+// entirely. That is the case where an untagged result genuinely lands in a
+// stranger's popover.
+async function testALateStyleTrainsResultCannotTakeAnotherSlotsPopover() {
+  _resetHost();
+  _closeDock();
+  require(path.resolve(__dirname, '..', 'capability-style-trains.js'));
+  var trains = w.OraCapabilityStyleTrains;
+  trains.init({ hostEl: w.document.body, fetchImpl: _okFetch({}) });
+
+  // The user has moved on and opened another slot, and it is mid-request.
+  var hostB = w.document.createElement('div');
+  w.document.body.appendChild(hostB);
+  var b = UI.init({ hostEl: hostB, capabilities: capabilities, slotName: '_control_test' });
+  var nameInput = hostB.querySelector('input[name="name"], textarea[name="name"]');
+  nameInput.value = 'Premium';
+  nameInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await _flushFrames();
+  b.submit();
+  record('the other slot is genuinely in flight when training finishes',
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+
+  w.dispatchEvent(new w.CustomEvent('ora:job_status', {
+    detail: {
+      type: 'job_status',
+      job: { id: 'job-late', capability: 'style_trains', status: 'complete',
+             result_ref: 'flux-lora-latecomer-v1', completed_at: 1234567890 },
+    },
+  }));
+  await _flushFrames();
+
+  var bResult = hostB.querySelector('.ora-cap-result');
+  record('a finished training does not paint into another slot\'s popover',
+    bResult && bResult.style.display === 'none'
+      && !/adapter registered/i.test(bResult.textContent || ''),
+    bResult ? ('B result="' + (bResult.textContent || '').slice(0, 60) + '"') : 'no result el');
+  record('...and does not clear that slot\'s in-flight state',
+    b._state.inFlight === true, 'inFlight=' + b._state.inFlight);
+
+  if (typeof trains.destroy === 'function') trains.destroy();
+  b.destroy();
+  hostB.parentNode.removeChild(hostB);
+}
+
+// image_to_prompt is the sharpest case: the prompt string never reached the
+// DOM at all, because _decorateWithCopyButton queried for a `.ora-cap-result`
+// the destroyed popover had removed and returned early. The one thing the
+// slot produces was dropped on the floor.
+async function testImageToPromptPutsThePromptWhereItCanBeCopied() {
+  _resetHost();   // tear down any popover left by the previous test
+  _mountDockGeometry();
+  _closeDock();
+  UI.destroy();
+
+  var entry = READABLE_SLOTS[2];
+  var run = await _runReadableSlot(entry);
+  await _flushFrames();
+
+  var dock = _dockRoot();
+  var pre = dock ? dock.querySelector('.ora-cap-result__text') : null;
+  record('the prompt string reaches the DOM',
+    !run.threw && pre && pre.textContent === entry.response.prompt,
+    pre ? ('text="' + pre.textContent + '"') : 'nothing rendered');
+
+  var btn = dock ? dock.querySelector('.ora-cap-result__copy') : null;
+  record('the copy button is rendered beside it',
+    !!btn && _isShown(btn), btn ? 'ok' : 'no button');
+
+  // jsdom has no clipboard and no execCommand, so the module's textarea
+  // fallback is the path under test; giving execCommand a body lets the
+  // click be followed all the way to what would land on the clipboard.
+  var copied = null;
+  w.document.execCommand = function (cmd) {
+    if (cmd !== 'copy') return false;
+    var areas = w.document.body.querySelectorAll('textarea');
+    copied = areas.length ? areas[areas.length - 1].value : null;
+    return true;
+  };
+  if (btn) btn.dispatchEvent(new w.Event('click', { bubbles: true }));
+  await _flushFrames();
+  record('clicking it copies the prompt',
+    copied === entry.response.prompt, 'copied=' + JSON.stringify(copied));
+  record('...and the button says so',
+    !!btn && btn.textContent === 'Copied!', btn ? btn.textContent : 'no button');
+  delete w.document.execCommand;
+
+  // A second run replaces the prompt rather than stacking under it.
+  await _runReadableSlot({
+    slot: entry.slot, file: entry.file, global: entry.global, inputs: entry.inputs,
+    response: { prompt: 'a second prompt', provider: 'mock' },
+  });
+  await _flushFrames();
+  var texts = _inDock('.ora-cap-result__text');
+  record('a re-run replaces the prompt instead of stacking another copy',
+    texts.length === 1 && texts[0].textContent === 'a second prompt',
+    'count=' + texts.length + ' text="' + (texts[0] && texts[0].textContent) + '"');
+  var buttons = _inDock('.ora-cap-result__copy');
+  record('...and there is still exactly one copy button',
+    buttons.length === 1, 'buttons=' + buttons.length);
+
+  var mod = w[entry.global];
+  if (mod && typeof mod.destroy === 'function') mod.destroy();
+}
+
+async function testTheDockIsRegisteredOnceAndSurvivesAClose() {
+  _resetHost();   // tear down any popover left by the previous test
+  _mountDockGeometry();
+  _closeDock();
+  UI.destroy();
+
+  var entry = READABLE_SLOTS[1];   // image_critique
+  for (var run = 0; run < 3; run++) {
+    var out = await _runReadableSlot(entry);
+    await _flushFrames();
+    if (out.mod && typeof out.mod.destroy === 'function') out.mod.destroy();
+  }
+
+  var registered = Overlays.list().filter(function (e) { return e.id === RESULT_OVERLAY_ID; });
+  record('the dock is registered once, not once per dispatch',
+    registered.length === 1, 'registrations=' + registered.length);
+  record('...and exactly one dock element exists in the document',
+    _resultOverlayRoots().length === 1, 'roots=' + _resultOverlayRoots().length);
+
+  var beforeClose = _inDock('.ora-cap-result__prose')[0] || null;
+  record('three runs of one slot leave one panel, not three',
+    _inDock('.ora-cap-result__prose').length === 1 && !!beforeClose,
+    'prose blocks=' + _inDock('.ora-cap-result__prose').length);
+
+  // The user closes the dock. Nothing is persisted — that is the design —
+  // but the next run must bring it back rather than land nowhere.
+  Overlays.close(RESULT_OVERLAY_ID);
+  // `is-open` is what the stylesheet keys `display` off, so the closed dock
+  // is off-screen for the user; jsdom loads no CSS, so what can be asserted
+  // here is that the result is no longer inside an open dock. The browser
+  // pass is where the pixels are checked.
+  record('closing the dock takes the result down with it',
+    !Overlays.isOpen(RESULT_OVERLAY_ID) && !_inOpenDock(beforeClose),
+    'open=' + Overlays.isOpen(RESULT_OVERLAY_ID)
+      + ' still docked=' + _inOpenDock(beforeClose));
+
+  var after = await _runReadableSlot(entry);
+  await _flushFrames();
+  var reopened = _inDock('.ora-cap-result__prose')[0] || null;
+  record('a run after a close reopens the dock and lands in it',
+    !after.threw && _isShown(reopened) && _inOpenDock(reopened),
+    after.threw ? ('threw ' + after.threw.message) : ('shown=' + _isShown(reopened)));
+  record('...and the reopened dock holds one box, not a leftover pile',
+    _inDock('[data-ora-result-slot]').length === 1,
+    'boxes=' + _inDock('[data-ora-result-slot]').length);
+
+  if (after.mod && typeof after.mod.destroy === 'function') after.mod.destroy();
+}
+
+// Neither surface exists — a host page that never loaded the browse overlay,
+// with no popover open. getResultHost returns null and every caller has to
+// survive it: a result that cannot be shown must still not throw, and must
+// still not fall back to the unreachable body.
+async function testEveryCallerSurvivesNoSurfaceAtAll() {
+  _resetHost();   // tear down any popover left by the previous test
+  _closeDock();
+  UI.destroy();
+  var realOverlays = w.OraBrowseOverlays;
+  w.OraBrowseOverlays = undefined;
+
+  var bodyBefore = w.document.body.children.length;
+  for (var i = 0; i < READABLE_SLOTS.length; i++) {
+    var entry = READABLE_SLOTS[i];
+    var run = await _runReadableSlot(entry);
+    await _flushFrames();
+    record(entry.slot + ' completes with no surface to paint into',
+      !run.threw && !!run.result,
+      run.threw ? ('threw ' + run.threw.message) : 'ok');
+    if (run.mod && typeof run.mod.destroy === 'function') run.mod.destroy();
+  }
+  record('...and none of them fell back to appending onto document.body',
+    w.document.body.children.length === bodyBefore,
+    'before=' + bodyBefore + ' after=' + w.document.body.children.length);
+
+  w.OraBrowseOverlays = realOverlays;
+}
+
 // ── Run ──────────────────────────────────────────────────────────────────────
 
 (async function main() {
@@ -1367,6 +1974,17 @@ async function testOutpaintsReportsInsteadOfSayingNothing() {
     await testSynchronousPreflightFailuresNameTheirSlot();
     await testEveryModuleNamesItsOwnSlotOnThePane();
     await testOutpaintsReportsInsteadOfSayingNothing();
+    await testResultRendersInLivePopoverForItsOwnSlot();
+    await testLateResultDoesNotThrowOnADestroyedPopover();
+    await testLateResultCannotContaminateAnotherSlotsPopover();
+    await testGetResultHostResolvesInOrder();
+    await testEveryReadableSlotLandsItsResultInTheDock();
+    await testEveryReadableSlotTagsItsResultWithItsOwnSlot();
+    await testVariesGridSurvivesInsideALivePopover();
+    await testALateStyleTrainsResultCannotTakeAnotherSlotsPopover();
+    await testImageToPromptPutsThePromptWhereItCanBeCopied();
+    await testTheDockIsRegisteredOnceAndSurvivesAClose();
+    await testEveryCallerSurvivesNoSurfaceAtAll();
   } catch (e) {
     console.error('Unexpected test error: ' + (e && e.stack || e));
     process.exit(2);
