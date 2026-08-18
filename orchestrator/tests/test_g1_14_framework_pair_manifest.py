@@ -486,6 +486,45 @@ class FrameworkPairManifestAdversarialTests(TemporaryManifestCase):
 
         self.assertEqual(before, self.queue.read_bytes())
 
+    def test_abandoned_queue_lock_is_reclaimed_loudly(self):
+        """A crashed run must not wedge every later run forever.
+
+        Held by a human at a terminal, a refused lock is a visible error. On
+        the commit-trigger path it would block every subsequent enqueue
+        silently and permanently — worse than the race the lock guards.
+        """
+        import os
+        import time as _time
+
+        canonical = self.write_canonical("Framework — A.md")
+        _write_manifest(
+            self.manifest,
+            [_entry(canonical, "frameworks/book/a.md", "missing_runtime")],
+        )
+        lock = self.queue.with_name(self.queue.name + ".lock")
+        lock.write_text("", encoding="utf-8")
+
+        # A fresh lock is still honoured — a concurrent run is not abandoned.
+        with self.assertRaises(VERIFY.FrameworkManifestError):
+            VERIFY.enqueue_framework_pair_findings(
+                manifest_path=self.manifest,
+                vault_root=self.vault,
+                ora_root=self.ora,
+                queue_path=self.queue,
+            )
+
+        # Age it past the threshold; now it is abandoned and reclaimable.
+        old = _time.time() - (VERIFY.FRAMEWORK_QUEUE_LOCK_STALE_SECONDS + 60)
+        os.utime(lock, (old, old))
+        appended, current = VERIFY.enqueue_framework_pair_findings(
+            manifest_path=self.manifest,
+            vault_root=self.vault,
+            ora_root=self.ora,
+            queue_path=self.queue,
+        )
+        self.assertEqual((1, 1), (appended, current))
+        self.assertFalse(lock.exists(), "lock not released after reclaim")
+
     def test_symlinked_queue_is_rejected_without_touching_target(self):
         canonical = self.write_canonical("Framework — A.md")
         _write_manifest(
