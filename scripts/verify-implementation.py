@@ -85,6 +85,19 @@ FRAMEWORK_MANIFEST_END = "<!-- END DCP FRAMEWORK PAIR MANIFEST JSON -->"
 FRAMEWORK_MANIFEST_ID = "ora/vault-runtime-framework-pairs@1"
 FRAMEWORK_PAIR_DISPOSITIONS = {"paired", "missing_runtime", "no_runtime_twin"}
 FRAMEWORK_RUNTIME_EXCLUSIONS = {"frameworks/README.md"}
+# Directory prefixes whose contents are never runtime frameworks. `personal/`
+# is gitignored (.gitignore: "frameworks/personal/"), so it exists only in a
+# working tree; without this a working-tree run reports an unregistered-runtime
+# finding that a run against pinned branches cannot see.
+FRAMEWORK_RUNTIME_EXCLUDED_DIRS = ("frameworks/personal/",)
+# Fields carried in a finding receipt as evidence but excluded from its
+# identity. `manifest_sha256` digests the whole manifest document, so a
+# cosmetic manifest edit would otherwise mint a new identity for an unchanged
+# finding; the body digests describe the current state of a drift, not which
+# drift it is. Identity is the problem; these are the evidence about it.
+FRAMEWORK_FINDING_EVIDENCE_FIELDS = frozenset(
+    {"manifest_sha256", "canonical_body_sha256", "runtime_body_sha256"}
+)
 FRAMEWORK_RECEIPT_PATTERN = re.compile(
     r"<!-- dcp-framework-finding-receipt (\{.*?\}) -->"
 )
@@ -532,6 +545,23 @@ def _framework_finding(
     )
 
 
+def _framework_finding_identity(payload: dict[str, Any]) -> str:
+    """Stable identity of a finding, independent of its evidence fields.
+
+    `finding_digest` remains the tamper seal over the entire payload and is
+    what authenticates a receipt. Deduplication uses this instead, so an
+    unchanged problem is recognised across manifest revisions and across
+    edits to the bodies it reports on. Legacy receipts need no migration:
+    their identity is derived from the payload they already carry.
+    """
+    identity = {
+        key: value
+        for key, value in payload.items()
+        if key not in FRAMEWORK_FINDING_EVIDENCE_FIELDS
+    }
+    return _sha256_text(_canonical_json(identity))
+
+
 def evaluate_framework_pair_manifest(
     *,
     manifest_path: Optional[Path] = None,
@@ -651,6 +681,9 @@ def evaluate_framework_pair_manifest(
         path.relative_to(ora).as_posix()
         for path in (ora / "frameworks").rglob("*.md")
         if path.relative_to(ora).as_posix() not in FRAMEWORK_RUNTIME_EXCLUSIONS
+        and not path.relative_to(ora).as_posix().startswith(
+            FRAMEWORK_RUNTIME_EXCLUDED_DIRS
+        )
     }
     for runtime_path in sorted(actual_runtime_paths - registered_runtime_paths):
         runtime = _bounded_repo_path(ora, runtime_path)
@@ -836,11 +869,13 @@ def enqueue_framework_pair_findings(
         )
         content = read_file(queue)
         existing = verify_framework_finding_receipts(content)
-        existing_digests = {finding.finding_digest for finding in existing}
+        existing_identities = {
+            _framework_finding_identity(finding.payload) for finding in existing
+        }
         new_findings = [
             finding
             for finding in evaluation.findings
-            if finding.finding_digest not in existing_digests
+            if _framework_finding_identity(finding.payload) not in existing_identities
         ]
         if not new_findings:
             return 0, len(evaluation.findings)
