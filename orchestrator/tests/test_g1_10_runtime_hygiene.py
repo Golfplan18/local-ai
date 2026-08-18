@@ -936,3 +936,149 @@ class MirrorExclusionTests(unittest.TestCase):
         self.assertEqual(result["paths"], [])
         self.assertIsNone(result["operational_hook"],
                           "a mirror refresh must not run the sync pipeline")
+
+
+class EventRecordFormatTests(unittest.TestCase):
+    """The event contract is written once, not on every state transition.
+
+    A batch carries one identity per changed file. Re-emitting that list at
+    claim, resume, each step boundary and completion multiplied one event's
+    write cost by its transition count — and the state file, rewritten and
+    fsync'd in full each time, carried it too. Measured at the 17,731-path
+    batch that drove the 2026-08-17 mirror loop: audit 23.3 MB -> 3.1 MB,
+    state 5.45 MB -> ~0.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.vault = self.root / "vault"
+        (self.vault / "Notes").mkdir(parents=True)
+        env = mock.patch.dict("os.environ", {
+            "ORA_VAULT": str(self.vault), "ORA_HOME": str(self.root / "ora")})
+        env.start()
+        self.addCleanup(env.stop)
+        self.module = self._load_hook()
+        # The real step scripts hardcode the live vault and reach the network;
+        # this suite is about record shape, so they are stubbed.
+        self.module._run = lambda name, argv: {
+            "name": name, "argv": argv, "exit_status": 0,
+            "stdout_tail": "", "stderr_tail": ""}
+        self.hygiene = self.root / "ora" / "data" / "runtime-hygiene"
+
+    def _load_hook(self):
+        import importlib.util, sys
+        hook = (Path(__file__).resolve().parents[2] / "operations" /
+                "g1-10-current" / "macos" / "vault-event-pipeline.py")
+        previous = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            alias = f"_vep_fmt_{id(self)}"
+            spec = importlib.util.spec_from_file_location(alias, hook)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[alias] = module
+            self.addCleanup(lambda: sys.modules.pop(alias, None))
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = previous
+        return module
+
+    def _write_batch(self, count):
+        paths = []
+        for n in range(count):
+            f = self.vault / "Notes" / f"n{n:05d}.md"
+            f.write_text("# x\n", encoding="utf-8")
+            paths.append(str(f))
+        return paths
+
+    def _run_event(self, paths):
+        import io, contextlib
+        pf = self.root / "batch.json"
+        pf.write_text(json.dumps(paths), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = self.module.main(["--paths-file", str(pf)])
+        return rc
+
+    def _audit(self):
+        text = (self.hygiene / "mac-vault-events.jsonl").read_text(encoding="utf-8")
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+    def _state_records(self):
+        raw = (self.hygiene / "mac-vault-event-state.json").read_text(encoding="utf-8")
+        return json.loads(raw)["events"]
+
+    def test_contract_is_written_exactly_once(self):
+        paths = self._write_batch(30)
+        self.assertEqual(self._run_event(paths), 0)
+        lines = self._audit()
+        self.assertGreater(len(lines), 1, "expected several transitions")
+        carrying = [r for r in lines if "identities" in r]
+        self.assertEqual(len(carrying), 1)
+        self.assertEqual(carrying[0]["status"], "claimed")
+        self.assertEqual(len(carrying[0]["identities"]), len(paths))
+        for r in lines:
+            if r is carrying[0]:
+                continue
+            self.assertNotIn("identities", r)
+            self.assertNotIn("paths", r)
+            self.assertIn("identities_digest", r)
+
+    def test_state_never_holds_the_identity_list(self):
+        self.assertEqual(self._run_event(self._write_batch(30)), 0)
+        record = next(iter(self._state_records().values()))
+        self.assertNotIn("identities", record)
+        self.assertNotIn("paths", record)
+        self.assertEqual(record["path_count"], 30)
+        self.assertRegex(record["identities_digest"], r"^[0-9a-f]{64}$")
+
+    def test_state_size_does_not_scale_with_batch_size(self):
+        """The state file is rewritten and fsync'd on every transition."""
+        self.assertEqual(self._run_event(self._write_batch(2000)), 0)
+        size = (self.hygiene / "mac-vault-event-state.json").stat().st_size
+        self.assertLess(size, 8 * 1024, f"state grew to {size} bytes for 2000 paths")
+
+    def test_drift_after_claim_is_still_refused(self):
+        """Digest comparison must be no weaker than comparing the lists."""
+        paths = self._write_batch(5)
+        self.assertEqual(self._run_event(paths), 0)
+        event_id = next(iter(self._state_records()))
+        # Same paths, changed bytes -> a different contract for the same id.
+        Path(paths[0]).write_text("# mutated\n", encoding="utf-8")
+        pf = self.root / "retry.json"
+        pf.write_text(json.dumps(paths), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "drifted"):
+            self.module.main(["--event-id", event_id, "--paths-file", str(pf)])
+
+    def test_legacy_inline_record_is_accepted_and_normalised(self):
+        """A record claimed before this change must still resume."""
+        paths = self._write_batch(4)
+        identities = self.module._event_contract(paths)
+        digest = self.module._identities_digest(identities)
+        event_id = self.module._issue_event_id(identities)
+        legacy = {
+            "event_id": event_id,
+            "identities": identities,                       # old shape
+            "paths": [i["path"] for i in identities],       # old shape
+            "status": "running",
+            "steps": [],
+            "started_at": "2026-08-01T00:00:00+00:00",
+        }
+        self.hygiene.mkdir(parents=True, exist_ok=True)
+        (self.hygiene / "mac-vault-event-state.json").write_text(
+            json.dumps({"schema_version": 1, "events": {event_id: legacy}}),
+            encoding="utf-8")
+
+        self.assertEqual(self.module._record_digest(legacy), digest)
+        pf = self.root / "resume.json"
+        pf.write_text(json.dumps(paths), encoding="utf-8")
+        import io, contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = self.module.main(["--event-id", event_id, "--paths-file", str(pf)])
+        self.assertEqual(rc, 0)
+        resumed = self._state_records()[event_id]
+        self.assertEqual(resumed["status"], "completed")
+        self.assertNotIn("identities", resumed)
+        self.assertNotIn("paths", resumed)
+        self.assertEqual(resumed["identities_digest"], digest)
+        self.assertEqual(resumed["path_count"], 4)
