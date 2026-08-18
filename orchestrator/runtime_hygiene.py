@@ -53,6 +53,13 @@ def _audit_rotate_mb() -> float:
 
 
 AUDIT_ROTATE_MB = _audit_rotate_mb()
+# Terminal ledger records retained in the live state map. Provisional. The
+# state file is rewritten and fsync'd in full on every claim and transition, so
+# its size is a per-event write cost, not just disk: 4,311 finished records had
+# grown it to 3.21 MB by 2026-08-17. Records carrying `autonomous_judgment` are
+# NEVER counted or pruned — see EventLedger._prune_terminal.
+LEDGER_TERMINAL_RETENTION = int(os.environ.get("ORA_LEDGER_STATE_RETENTION") or 500)
+
 # Rotated siblings kept per sink. Provisional. Bounding one file while letting
 # its archives accumulate forever would just relocate the unbounded growth, and
 # there is no clock left to prune them: the retention sweeper's interval was
@@ -199,6 +206,12 @@ def mutation_path_locks(paths: Iterable[str | Path]):
         yield exact
 
 
+def subject_digest(subject: dict | None) -> str:
+    """Deterministic digest of an event's immutable subject."""
+    canonical = json.dumps(subject or {}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 class EventLedger:
     """Append-only evidence plus restart-safe current event state."""
 
@@ -250,9 +263,43 @@ class EventLedger:
                 "claimed_at": _now(),
             }
             state["events"][event_id] = record
+            self._prune_terminal(state)
             _atomic_json(self.state_file, state)
+            # The claim line carries the whole contract — event type and
+            # subject — exactly once. Later lines reference it by digest.
             self._append({"kind": "event_claimed", **record})
             return dict(record), True
+
+    def _prune_terminal(self, state: dict) -> int:
+        """Bound the finished records held in the live state map.
+
+        Every claim and transition rewrites this file in full and fsyncs it, so
+        history that nothing reads is paid for on each event.
+
+        Records carrying ``autonomous_judgment`` are never pruned, at any age:
+        ``completed_mutation_causing`` scans them to recognise Ora's own
+        rollback-protected writes when the OS reports them back. Dropping one
+        would let a bounded autonomous judgment recurse into another and expand
+        its authority beyond the originating write, which is the exact failure
+        that join exists to prevent. Non-terminal records are likewise retained
+        regardless of age. Everything pruned here remains permanently in the
+        append-only audit log.
+        """
+        events = state.get("events") or {}
+        prunable = [
+            (record.get("completed_at") or record.get("updated_at")
+             or record.get("claimed_at") or "", key)
+            for key, record in events.items()
+            if record.get("status") in ("completed", "failed")
+            and not record.get("autonomous_judgment")
+        ]
+        if len(prunable) <= LEDGER_TERMINAL_RETENTION:
+            return 0
+        prunable.sort()
+        excess = len(prunable) - LEDGER_TERMINAL_RETENTION
+        for _stamp, key in prunable[:excess]:
+            events.pop(key, None)
+        return excess
 
     def transition(self, event_id: str, expected: set[str], status: str, **fields) -> dict:
         with _PROCESS_LOCK, _exclusive(self.lock_file):
@@ -267,7 +314,19 @@ class EventLedger:
             updated = {**current, **fields, "status": status, "updated_at": _now()}
             state["events"][event_id] = updated
             _atomic_json(self.state_file, state)
-            self._append({"kind": f"event_{status}", **updated})
+            # Only what this transition contributes. Re-emitting the whole
+            # accumulated record repeated the immutable subject, the event
+            # type, and every field an earlier transition had already
+            # recorded — once per remaining transition. The digest keeps each
+            # line joined to its contract without carrying the subject again.
+            self._append({
+                "kind": f"event_{status}",
+                "event_id": event_id,
+                "status": status,
+                "updated_at": updated["updated_at"],
+                "subject_digest": subject_digest(current.get("subject")),
+                **fields,
+            })
             return dict(updated)
 
     def get(self, event_id: str) -> dict | None:
