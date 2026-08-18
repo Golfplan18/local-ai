@@ -553,7 +553,11 @@ class TestSearchFilesWithoutGrep(unittest.TestCase):
     def test_python_fallback_preserves_withholding(self):
         import search_files
         import json
-        root = tempfile.mkdtemp(dir=os.path.expanduser("~/ora"))
+        # Inside the ACTIVE workspace, not a hard-coded ~/ora: from a
+        # worktree the literal wrote scratch into the live install and
+        # then failed because those files were outside its own base.
+        import dispatcher as _d
+        root = tempfile.mkdtemp(dir=str(_d.WORKSPACE))
         try:
             os.makedirs(os.path.join(root, "sub"))
             with open(os.path.join(root, "normal.txt"), "w") as _f:
@@ -785,18 +789,23 @@ class TestValidatePathContainment(unittest.TestCase):
 
     def test_dispatcher_blocks_posix_sibling_write(self):
         import dispatcher
-        home = os.path.expanduser("~")
-        ok, _ = dispatcher.validate_path(os.path.join(home, "ora", "config", "models.json"), "write")
+        ws = Path(dispatcher.WORKSPACE).resolve()
+        ok, _ = dispatcher.validate_path(str(ws / "config" / "models.json"), "write")
         self.assertTrue(ok)
-        ok, reason = dispatcher.validate_path(os.path.join(home, "ora-worktrees", "evil.txt"), "write")
+        # A sibling whose name EXTENDS the workspace name is the collision a
+        # naive prefix check would wrongly allow ("~/ora" prefixes
+        # "~/ora-worktrees"). Built from the real root so it holds anywhere.
+        sibling = ws.parent / (ws.name + "-worktrees") / "evil.txt"
+        ok, reason = dispatcher.validate_path(str(sibling), "write")
         self.assertFalse(ok, reason)   # sibling of WORKSPACE must NOT be writable
 
     def test_fileops_blocks_posix_sibling_write(self):
         import file_ops
-        home = os.path.expanduser("~")
-        ok, _ = file_ops._validate_path(os.path.join(home, "ora", "notes.md"))
+        ws = Path(file_ops._rp.ORA_HOME).resolve()
+        ok, _ = file_ops._validate_path(str(ws / "notes.md"))
         self.assertTrue(ok)
-        ok, reason = file_ops._validate_path(os.path.join(home, "ora-project", "evil.md"))
+        sibling = ws.parent / (ws.name + "-project") / "evil.md"
+        ok, reason = file_ops._validate_path(str(sibling))
         self.assertFalse(ok, reason)
 
     def test_deny_list_matches_backslash_paths(self):
@@ -814,9 +823,9 @@ class TestValidatePathContainment(unittest.TestCase):
 
     def test_path_with_spaces_within_base_allowed(self):
         import dispatcher
-        home = os.path.expanduser("~")
+        ws = Path(dispatcher.WORKSPACE).resolve()
         ok, reason = dispatcher.validate_path(
-            os.path.join(home, "ora", "my notes", "a file.md"), "write")
+            str(ws / "my notes" / "a file.md"), "write")
         self.assertTrue(ok, reason)
 
 

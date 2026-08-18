@@ -571,6 +571,20 @@ class MindSpecPersistence(unittest.TestCase):
             "mindspec-interview", "MSI-Agent", "x"), "")
 
 
+def _tilde_ora_home(ora_home: Path) -> str | None:
+    """`~/...` spelling of ORA_HOME, or None when it is outside $HOME.
+
+    These cases prove tilde expansion happens before the read boundary is
+    applied. Hard-coding `~/ora` only tested that in the default install: from
+    a worktree it named a different tree entirely, so the assertion failed for
+    a reason unrelated to the property being protected.
+    """
+    try:
+        return "~/" + str(ora_home.resolve().relative_to(Path.home().resolve()))
+    except ValueError:
+        return None
+
+
 class SelfSpecReadBoundary(unittest.TestCase):
     def test_exact_archive_is_not_model_readable_or_searchable(self):
         try:
@@ -596,11 +610,13 @@ class SelfSpecReadBoundary(unittest.TestCase):
         import dispatcher
         import file_ops
         path = Path(file_ops._rp.ORA_HOME) / "mindspec" / "self-spec.md"
-        commands = (
+        tilde = _tilde_ora_home(Path(file_ops._rp.ORA_HOME))
+        commands = [
             f"cat {path}",
             "cat mindspec/self-spec.md",
-            "cat ~/ora/mindspec/self-spec.md",
-        )
+        ]
+        if tilde:
+            commands.append(f"cat {tilde}/mindspec/self-spec.md")
         for command in commands:
             with self.subTest(command=command):
                 _, classification, _ = dispatcher._resolve_call_axes(
@@ -624,12 +640,16 @@ class SelfSpecReadBoundary(unittest.TestCase):
             f"grep -R portrait {ora_home}",
             f"rg portrait {ora_home}",
             f"find {ora_home} -name '*.md'",
-            "cat ~/ora/mindspec/*.md",
             "cat mindspec/self-spe[cd].md",
-            "grep -R portrait ~/ora",
-            "rg portrait ~/ora",
-            "find ~/ora -name '*.md'",
         )
+        tilde = _tilde_ora_home(ora_home)
+        if tilde:
+            commands = commands + (
+                f"cat {tilde}/mindspec/*.md",
+                f"grep -R portrait {tilde}",
+                f"rg portrait {tilde}",
+                f"find {tilde} -name '*.md'",
+            )
         for command in commands:
             with self.subTest(command=command):
                 _, classification, _ = dispatcher._resolve_call_axes(
