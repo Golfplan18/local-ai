@@ -430,6 +430,7 @@ class OversightDaemon:
             print("[oversight_daemon] retention intent recovery failed: "
                   f"{recovery['failed']}")
         self._ensure_daily_note_deadline()
+        self._ensure_log_retention_deadline()
         self._event_thread = threading.Thread(
             target=self._event_loop, daemon=True, name="oversight-file-events")
         self._deadline_thread = threading.Thread(
@@ -472,6 +473,7 @@ class OversightDaemon:
             "daily_note": self._handle_daily_note_deadline,
             "project_revisit": self._handle_project_revisit_deadline,
             "trace_retention": self._handle_trace_retention_deadline,
+            "log_retention": self._handle_log_retention_deadline,
         }
         try:
             self._deadline_queue.run(handlers, self._stop_event)
@@ -525,6 +527,52 @@ class OversightDaemon:
             # without silently binding evidence to the wrong calendar date.
             next_day = date.fromisoformat(completed_date) + timedelta(days=1)
             self._ensure_daily_note_deadline(
+                next_day.isoformat(), timezone_name=timezone_name,
+            )
+
+    def _ensure_log_retention_deadline(self, completed_date: str | None = None,
+                                       timezone_name: str | None = None):
+        """Arm one exact deadline for age- and size-caused log retention.
+
+        G1.10 removed this sweeper's 6-hour interval and moved trace expiry to
+        per-trace deadlines, but nothing was left to drive log ageing or
+        archive expiry — they stopped on 2026-07-21. Age is the cause here and
+        no event can announce it, so the sanctioned primitive is an exact
+        persisted deadline that arms its successor, not a rediscovery scan.
+        """
+        timezone_name = timezone_name or _local_timezone_name()
+        zone = ZoneInfo(timezone_name)
+        day = (datetime.fromisoformat(completed_date).date()
+               if completed_date else datetime.now(zone).date())
+        due = _calendar_midnight_after(day.isoformat(), timezone_name)
+        timezone_key = hashlib.sha256(timezone_name.encode("utf-8")).hexdigest()[:12]
+        return self._deadline_queue.put(
+            f"log-retention:{day.isoformat()}:{timezone_key}",
+            due.isoformat(), "log_retention",
+            {"completed_date": day.isoformat(), "timezone": timezone_name},
+        )
+
+    def _handle_log_retention_deadline(self, payload: dict):
+        from datetime import date, timedelta
+        import retention_sweeper
+        completed_date = str(payload["completed_date"])
+        timezone_name = str(payload.get("timezone") or _local_timezone_name())
+        date.fromisoformat(completed_date)
+        ZoneInfo(timezone_name)
+        try:
+            summary = retention_sweeper.sweep_log_retention()
+            return {
+                "status": "completed", "completed_date": completed_date,
+                "logs_archived": summary.get("logs_archived", 0),
+                "archives_deleted": summary.get("archives_deleted", 0),
+                "bytes_freed": summary.get("bytes_freed", 0),
+                "errors": summary.get("errors", []),
+            }
+        finally:
+            # Advance from the persisted contract, not wall-clock "today", so a
+            # restart catches up each missed day exactly once.
+            next_day = date.fromisoformat(completed_date) + timedelta(days=1)
+            self._ensure_log_retention_deadline(
                 next_day.isoformat(), timezone_name=timezone_name,
             )
 

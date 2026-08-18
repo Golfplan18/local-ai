@@ -484,3 +484,77 @@ class SweepInfrastructureTests(RetentionSweeperBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LogRetentionDeadlineTests(unittest.TestCase):
+    """Age-caused retention has a trigger again, and it is not a corpus scan.
+
+    G1.10 removed this sweeper's 6-hour interval and moved trace expiry to
+    per-trace deadlines, leaving log ageing and archive expiry with nothing
+    driving them at all from 2026-07-21.
+    """
+
+    def test_log_sweep_excludes_the_corpus_scans(self):
+        """Traces and sessions are deadline-managed; re-scanning them here
+        would restore exactly what G1.10 removed."""
+        import retention_sweeper as rs
+        calls = []
+        with (
+            mock.patch.object(rs, "_sweep_traces",
+                              side_effect=lambda *a, **k: calls.append("traces")),
+            mock.patch.object(rs, "_sweep_sessions",
+                              side_effect=lambda *a, **k: calls.append("sessions")),
+            mock.patch.object(rs, "_sweep_logs",
+                              side_effect=lambda *a, **k: calls.append("logs")),
+            mock.patch.object(rs, "_sweep_server_log",
+                              side_effect=lambda *a, **k: calls.append("server_log")),
+            mock.patch.object(rs, "_sweep_launchd_server_logs",
+                              side_effect=lambda *a, **k: calls.append("launchd")),
+            mock.patch.object(rs, "_sweep_jsonl",
+                              side_effect=lambda *a, **k: calls.append("jsonl")),
+        ):
+            rs.sweep_log_retention(dry_run=True)
+        self.assertIn("logs", calls)
+        self.assertIn("jsonl", calls)
+        self.assertNotIn("traces", calls)
+        self.assertNotIn("sessions", calls)
+
+    def test_dry_run_reports_without_mutating(self):
+        import retention_sweeper as rs
+        summary = rs.sweep_log_retention(dry_run=True)
+        self.assertTrue(summary["dry_run"])
+        for key in ("logs_archived", "archives_deleted", "bytes_freed"):
+            self.assertIn(key, summary)
+
+    def test_handler_arms_exactly_one_successor(self):
+        """A self-arming chain, not a recurring timer."""
+        import oversight_daemon as od
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        with (
+            mock.patch.dict("sys.modules", {"retention_sweeper": mock.MagicMock(
+                sweep_log_retention=mock.Mock(return_value={
+                    "logs_archived": 2, "archives_deleted": 1,
+                    "bytes_freed": 99, "errors": []}))}),
+        ):
+            result = daemon._handle_log_retention_deadline(
+                {"completed_date": "2026-08-17", "timezone": "America/Los_Angeles"})
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["logs_archived"], 2)
+        put_keys = [c.args[0] for c in daemon._deadline_queue.put.call_args_list]
+        self.assertEqual(len(put_keys), 1, put_keys)
+        self.assertTrue(put_keys[0].startswith("log-retention:2026-08-18:"))
+
+    def test_successor_is_armed_even_when_the_sweep_raises(self):
+        """A failed run must not break the chain."""
+        import oversight_daemon as od
+        daemon = od.OversightDaemon()
+        daemon._deadline_queue = mock.MagicMock()
+        boom = mock.MagicMock(sweep_log_retention=mock.Mock(side_effect=OSError("disk")))
+        with mock.patch.dict("sys.modules", {"retention_sweeper": boom}):
+            with self.assertRaises(OSError):
+                daemon._handle_log_retention_deadline(
+                    {"completed_date": "2026-08-17", "timezone": "UTC"})
+        put_keys = [c.args[0] for c in daemon._deadline_queue.put.call_args_list]
+        self.assertEqual(len(put_keys), 1)
+        self.assertTrue(put_keys[0].startswith("log-retention:2026-08-18:"))
