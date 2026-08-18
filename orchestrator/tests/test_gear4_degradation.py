@@ -130,9 +130,18 @@ class TestBothAnalystsDegradedFallsBackToGear3(unittest.TestCase):
                 )
                 return "[gear3-fallback-sentinel]"
 
+            # The recovery-fallback endpoint is resolved through the active
+            # model configuration, which lives in untracked machine-local
+            # state (data/active-configuration.json). Without pinning it this
+            # test asserts an exact physical-call count that depends on
+            # whichever configuration the developer happens to have selected:
+            # it passed on the live checkout and failed in every fresh
+            # worktree, where that file does not exist.
             with mock.patch.object(
                 boot, "resolve_gear4_endpoints",
                 return_value=(depth_ep, breadth_ep, True),
+            ), mock.patch.object(
+                boot, "_resolve_fallback_endpoint", return_value=depth_ep,
             ), mock.patch.object(
                 boot, "_assemble_step_prompt", return_value="fake system prompt",
             ), mock.patch.object(
