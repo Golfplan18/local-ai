@@ -84,6 +84,13 @@
  * For the 4-up grid, the wiring builds *one* canvas object per tile at
  * insert time (not eagerly), so users can preview the grid without
  * polluting the canvas with rejected variants.
+ *
+ * The grid itself goes wherever `ui.getResultHost('image_varies')` says —
+ * the live popover's result panel, else the docked browse overlay. This
+ * module used to append it to its own `hostEl`, which in V3 is
+ * `document.body`; the shell is `height: 100vh` with `overflow: hidden`,
+ * so the grid was built, attached, and unreachable. See "Where a result
+ * goes" in capability-invocation-ui.js.
  */
 (function (root) {
   'use strict';
@@ -653,11 +660,37 @@
           metadata: response.metadata || null,
         };
 
+        // Surface to the invocation UI so the spinner clears. This runs
+        // BEFORE the grid is mounted: renderResult clears the result panel
+        // it paints into, so a grid mounted first would be wiped by it.
+        // The output id is the synthetic batch id, not a single canvas
+        // object — insertion happens lazily.
+        var batchId = _genId('img_var_batch_');
+        var resultPayload = {
+          slot:      'image_varies',
+          output:    batchId,
+          images:    images.map(function (im) {
+            return { dataUrl: _base64ToDataUrl(im.base64, im.mimeType) };
+          }),
+          gridEl:    null,
+          provider:  response.provider || null,
+          metadata:  response.metadata || null,
+        };
+        if (state.ui && typeof state.ui.renderResult === 'function') {
+          try { state.ui.renderResult(resultPayload); } catch (_e) { /* swallow */ }
+        }
+
         // Replace any prior grid (re-running varies on a new source
-        // shouldn't accumulate panels).
+        // shouldn't accumulate panels). The chooser is the point of this
+        // slot — its whole reason for existing is to keep rejected
+        // variants off the canvas — so it goes where the user can reach
+        // it, which is the invocation UI's business, not ours. A null
+        // host means there is no surface at all; renderGrid builds the
+        // panel and simply mounts it nowhere.
         _clearLastGrid();
-        var gridHost = (state.ui && state.ui.getResultHost && state.ui.getResultHost())
-          || state.hostEl;
+        var gridHost = (state.ui && typeof state.ui.getResultHost === 'function')
+          ? state.ui.getResultHost('image_varies')
+          : null;
         state._lastGrid = renderGrid({
           images: images,
           hostEl: gridHost,
@@ -665,24 +698,7 @@
           onInsertAll: function () { _insertAll(); },
           onClose: function () { _clearLastGrid(); },
         });
-
-        // Surface to the invocation UI so the spinner clears. We pass
-        // the grid element so hosts that want to relocate the panel
-        // can do so. The output id is the synthetic batch id, not a
-        // single canvas object — insertion happens lazily.
-        var batchId = _genId('img_var_batch_');
-        var resultPayload = {
-          output:    batchId,
-          images:    images.map(function (im) {
-            return { dataUrl: _base64ToDataUrl(im.base64, im.mimeType) };
-          }),
-          gridEl:    state._lastGrid && state._lastGrid.el || null,
-          provider:  response.provider || null,
-          metadata:  response.metadata || null,
-        };
-        if (state.ui && typeof state.ui.renderResult === 'function') {
-          try { state.ui.renderResult(resultPayload); } catch (_e) { /* swallow */ }
-        }
+        resultPayload.gridEl = state._lastGrid && state._lastGrid.el || null;
         _emit(state.hostEl, 'capability-result', {
           slot:    'image_varies',
           output:  batchId,

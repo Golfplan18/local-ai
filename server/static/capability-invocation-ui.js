@@ -90,6 +90,55 @@
  * `submit()` and would otherwise leave a dead failure pinned over the
  * image the next successful run just produced.
  *
+ * ── Where a result goes ───────────────────────────────────────────────
+ * A result is in exactly the same position as a failure, and for the same
+ * reason: it arrives after the popover that asked for it is gone. Three
+ * slots return something the user has to READ rather than something that
+ * lands on the canvas — `image_varies` (a chooser of candidates),
+ * `image_critique` (a rubric plus prose), `image_to_prompt` (a prompt
+ * string) — and each of them was painting into `document.body`. The shell
+ * is `height: 100vh` with `html, body { overflow: hidden }`, so a node
+ * appended below it cannot be scrolled to. It existed and no one could
+ * ever see it.
+ *
+ * So `renderResult` routes the same way `renderError` does, and
+ * `getResultHost(slot)` names the element a module should paint into:
+ *
+ *   1. the live popover's `.ora-cap-result` — but only when the popover
+ *      belongs to the slot the result came from. Without the slot test a
+ *      late result painted into whatever popover was open since, clearing
+ *      that popover's in-flight state while its own request was still
+ *      running (the same contamination `renderError` was given a guard
+ *      for, still present here);
+ *   2. otherwise the docked browse overlay (v3-browse-overlay.js),
+ *      registered once on first use and opened on demand. One
+ *      `.ora-cap-result` per slot inside it, so two slots' results sit side
+ *      by side rather than one appending into the other's panel;
+ *   3. otherwise `null` — every caller must survive that without throwing,
+ *      and `getResultHost` warns on the way out, because a null host means
+ *      the result is dropped. There is no third surface: a result is
+ *      content, not a one-line verdict, so it does not fit the pane's
+ *      error bar.
+ *
+ * What the dock costs, stated plainly. It is non-modal in the sense that
+ * matters for the canvas — no backdrop, no focus trap, the drawing surface
+ * and the rest of the shell stay live — but it is not free:
+ *
+ *   - the dock holds ONE surface. `OraBrowseOverlays.open()` calls
+ *     `_closeOthers`, so a result arriving after the user opened the
+ *     Library closes the Library out from under them, with no warning and
+ *     nothing put back when the result is dismissed;
+ *   - its geometry is the input pane's rect inset by 8 px (see `_position`
+ *     in v3-browse-overlay.js), so while it is open it covers the input
+ *     pane the user types into.
+ *
+ * Both are the shared dock's behaviour, not this module's, and are left
+ * alone deliberately: a second dock or a per-surface geometry would be a
+ * new surface to own. The point here is that "non-modal" is true of the
+ * canvas and false of the Library and the input pane.
+ *
+ * Nothing is persisted. A result lives until the overlay is closed.
+ *
  * Public API: window.OraCapabilityInvocationUI
  *
  *   .init(opts)  → mount and prime against a host element
@@ -113,7 +162,14 @@
  *                        the popover only when the live popover belongs to
  *                        that slot, and to the Exhibits pane error bar
  *                        otherwise (see "Where a failure goes" above).
- *   .renderResult(payload)          — surface a result from outside
+ *   .renderResult(payload)          — surface a result from outside.
+ *                        Tag the payload with `slot` for the same reason
+ *                        `renderError` wants one (see "Where a result
+ *                        goes" above).
+ *   .getResultHost(slot)            — the element a module should paint a
+ *                        result into: the live popover's result panel for
+ *                        that slot, else the docked browse overlay's body,
+ *                        else null.
  *   .destroy()                      — tear down DOM + listeners
  *   .getInputs()                    — current input dict (for tests)
  *
@@ -1067,8 +1123,13 @@
           state.resultEl.appendChild(_el('p', 'ora-cap-result__msg', 'Image delivered to canvas.'));
         }
       } else if (outType === 'images-list') {
+        // `output` is the batch id, a string — image_varies hands the images
+        // themselves in `payload.images`. Reading `.length` off the id
+        // counted its characters: "Image set delivered (29 items)" for four.
+        var batch = Array.isArray(payload.images) ? payload.images
+          : (Array.isArray(payload.output) ? payload.output : []);
         state.resultEl.appendChild(_el('p', 'ora-cap-result__msg',
-          'Image set delivered (' + ((payload.output && payload.output.length) || 0) + ' items).'));
+          'Image set delivered (' + batch.length + ' items).'));
       } else if (outType === 'video-bytes') {
         state.resultEl.appendChild(_el('p', 'ora-cap-result__msg',
           'Video will arrive in the chat output stream.'));
@@ -1192,11 +1253,11 @@
     var ctl = _activeController;
     if (!ctl) return null;
     var st = ctl._state;
-    // `errorEl` is the element renderError() writes into, so its presence
-    // is the whole precondition: a controller without one cannot show the
-    // user anything. destroy() nulls it, so this covers a torn-down
-    // popover too — testing `st.destroyed` as well would add no state
-    // this rejects that the element test does not.
+    // A controller with no elements cannot show the user anything, and
+    // both the error and the result element are created together in
+    // _render() and nulled together in destroy() — there is no state where
+    // one exists and the other does not, so this one test covers a
+    // torn-down popover for either caller.
     if (!st || !st.errorEl) return null;
     // An untagged payload can't be attributed to a slot, so it may only
     // render into the popover it was almost certainly meant for.
@@ -1293,8 +1354,142 @@
    * the paths `submit()` cannot see.
    */
   function reportResult(payload) {
+    payload = payload || {};
+    // Retraction is deliberately not slot-scoped. The bar holds one
+    // message, this layer wrote it, and any run that succeeds has ended
+    // the episode it described — which is the whole point of the
+    // end-of-run half, since the popover-less paths never call submit().
     _clearPaneError();
-    return _delegate('renderResult')(payload);
+    // The delegation IS slot-scoped, for the reason renderError is: a
+    // destroyed controller throws on `state.resultEl.style`, and a live
+    // controller for a DIFFERENT slot takes a result that was never its
+    // own — clearing its in-flight state and its spinner mid-request.
+    var ctl = _liveControllerFor(payload.slot || null);
+    if (!ctl) return null;
+    return ctl.renderResult(payload);
+  }
+
+  // ── Result routing (see "Where a result goes" at the top of the file) ──
+
+  // The docked browse surface a result falls back to. Registered on first
+  // use and never again: `register` rejects a duplicate id outright, and
+  // re-registering per dispatch would strand a record and an unregister
+  // handle for every run.
+  var RESULT_OVERLAY_ID = 'capability-results';
+  var RESULT_OVERLAY_LABEL = 'Capability results';
+  var _resultOverlayRegistered = false;
+  // Only ever set from inside the overlay's own render callback: the
+  // overlay repaints its body from scratch on every open, so a handle
+  // taken anywhere else can be one the surface has already discarded.
+  var _resultOverlayBody = null;
+
+  function _browseOverlays() {
+    var overlays = root && root.OraBrowseOverlays;
+    if (!overlays || typeof overlays.register !== 'function'
+        || typeof overlays.open !== 'function') return null;
+    return overlays;
+  }
+
+  function _ensureResultOverlay() {
+    var overlays = _browseOverlays();
+    if (!overlays) return null;
+    if (_resultOverlayRegistered) return overlays;
+    if (typeof overlays.has === 'function' && overlays.has(RESULT_OVERLAY_ID)) {
+      _resultOverlayRegistered = true;
+      return overlays;
+    }
+    try {
+      overlays.register({
+        id: RESULT_OVERLAY_ID,
+        label: RESULT_OVERLAY_LABEL,
+        render: function (body) { _resultOverlayBody = body; },
+        onClose: function () { _resultOverlayBody = null; },
+      });
+    } catch (_e) {
+      return null;
+    }
+    // register() warns and hands back a no-op unregister rather than
+    // throwing, so "did it take" is only answerable by asking.
+    if (typeof overlays.has === 'function' && !overlays.has(RESULT_OVERLAY_ID)) return null;
+    _resultOverlayRegistered = true;
+    return overlays;
+  }
+
+  // One `.ora-cap-result` per slot inside the dock. Without it, a critique
+  // and a prompt would share a container and the second module's
+  // `querySelector('.ora-cap-result')` would decorate the first one's
+  // panel; with it, a re-run of the same slot repaints its own box.
+  function _slotResultBox(body, slot) {
+    var key = slot || 'capability';
+    var kids = body.children || [];
+    for (var i = 0; i < kids.length; i++) {
+      var kid = kids[i];
+      if (kid && typeof kid.getAttribute === 'function'
+          && kid.getAttribute('data-ora-result-slot') === key) return kid;
+    }
+    if (typeof document === 'undefined') return null;
+    var box = _el('div', 'ora-cap-result ora-cap-result--overlay ora-cap-result--visible');
+    // An attribute value, never a selector: a slot name is config-supplied
+    // and must stay inert.
+    box.setAttribute('data-ora-result-slot', key);
+    var head = _el('div', 'ora-cap-result__head');
+    head.appendChild(_el('strong', null, 'Result'));
+    head.appendChild(_el('span', 'ora-cap-result__type', key));
+    box.appendChild(head);
+    body.appendChild(box);
+    return box;
+  }
+
+  function _overlayResultHost(slot) {
+    var overlays = _ensureResultOverlay();
+    if (!overlays) return null;
+    var alreadyOpen = (typeof overlays.isOpen === 'function')
+      && overlays.isOpen(RESULT_OVERLAY_ID);
+    if (!alreadyOpen) {
+      _resultOverlayBody = null;
+      // Synchronous: open() paints, which runs the render callback above.
+      overlays.open(RESULT_OVERLAY_ID);
+    }
+    var body = _resultOverlayBody;
+    if (!body || typeof body.appendChild !== 'function') return null;
+    return _slotResultBox(body, slot);
+  }
+
+  /**
+   * The element a module should paint a result into.
+   *
+   * @param {string} slot — the slot the result belongs to. Omitting it
+   *   means "whatever popover is live", which is only right for a caller
+   *   that cannot be wrong about it.
+   * @returns {Element|null} null when there is no popover for this slot
+   *   and no browse overlay to fall back on. Callers must handle it.
+   */
+  function getResultHost(slot) {
+    var ctl = _liveControllerFor(slot || null);
+    var st = ctl && ctl._state;
+    if (st && st.resultEl) {
+      // A hidden result panel is the same as no panel at all. renderResult
+      // reveals it, but a module is entitled to ask for the host first, so
+      // handing back a `display: none` element would recreate the exact
+      // failure this function exists to end.
+      st.resultEl.style.display = '';
+      st.resultEl.classList.add('ora-cap-result--visible');
+      return st.resultEl;
+    }
+    var host = _overlayResultHost(slot);
+    if (!host && typeof console !== 'undefined' && console
+        && typeof console.warn === 'function') {
+      // Returning null is a dropped result — the module has nowhere to
+      // paint and its whole output goes nowhere. Legitimate when the host
+      // page never loaded the browse overlay; a symptom when it did, e.g.
+      // something else already registered `capability-results` so our
+      // render callback was never installed and the body handle stays
+      // null. Either way it says so rather than failing closed or quietly.
+      console.warn('[capability-invocation-ui] ' + (slot || 'unknown slot')
+        + ' produced a result with nowhere to show it — no live popover for'
+        + ' the slot and no browse-overlay dock. The result is dropped.');
+    }
+    return host;
   }
 
   var api = {
@@ -1305,6 +1500,7 @@
     submit: _delegate('submit'),
     renderError: reportError,
     renderResult: reportResult,
+    getResultHost: getResultHost,
     destroy: function () {
       if (_activeController) _activeController.destroy();
       _activeController = null;
@@ -1313,6 +1509,7 @@
     _getActive: function () { return _activeController; },
     // Test introspection
     _readFileAsBase64: _readFileAsBase64,
+    RESULT_OVERLAY_ID: RESULT_OVERLAY_ID,
     FIX_PATH_CONFIGURE_PREFIX: FIX_PATH_CONFIGURE_PREFIX,
     FIX_PATH_MASK_PREFIX: FIX_PATH_MASK_PREFIX,
     FIX_PATH_RETRY: FIX_PATH_RETRY,

@@ -96,6 +96,28 @@ function _resetHost() {
   return host;
 }
 
+// The module no longer decides where a critique is painted — it asks the
+// invocation UI, which routes to the live popover for this slot or to the
+// docked browse overlay. In V3 the module's own hostEl is `document.body`,
+// which sits under a `height: 100vh; overflow: hidden` shell, so anything
+// appended there is unreachable. A UI without `getResultHost` therefore
+// gets no critique rendered, by design: the tests that assert rendering
+// must hand the module a real surface, exactly as production does.
+function _uiStub(host) {
+  var ui = {
+    _result: null,
+    _error: null,
+    _hostCalls: [],
+    renderResult: function (p) { ui._result = p; },
+    renderError: function (p) { ui._error = p; },
+    getResultHost: function (slot) {
+      ui._hostCalls.push(slot);
+      return host.querySelector('.ora-cap-result');
+    },
+  };
+  return ui;
+}
+
 // 1×1 red PNG, base64 — stand-in for "the painting under critique".
 var RED_SQUARE_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -145,11 +167,7 @@ async function testHappyPath() {
     provider: 'mock',
     metadata: { depth: 'standard' },
   });
-  var ui = {
-    _result: null, _error: null,
-    renderResult: function (p) { ui._result = p; },
-    renderError: function (p) { ui._error = p; },
-  };
+  var ui = _uiStub(host);
 
   var resultEvent = null;
   host.addEventListener('capability-result', function (e) { resultEvent = e.detail; });
@@ -219,9 +237,53 @@ async function testHappyPath() {
   record('UI.renderResult was invoked with prose',
     ui._result && ui._result.output && ui._result.output.indexOf('confident') >= 0,
     ui._result ? 'ok' : 'not invoked');
+  // The routing in capability-invocation-ui.js can only keep one slot's
+  // result out of another slot's popover if the result says whose it is.
+  record('the result is tagged with its own slot',
+    ui._result && ui._result.slot === 'image_critique',
+    ui._result ? 'slot=' + ui._result.slot : 'not invoked');
+  record('the render surface was asked for by slot, not assumed',
+    ui._hostCalls.length === 1 && ui._hostCalls[0] === 'image_critique',
+    JSON.stringify(ui._hostCalls));
   record('UI.renderError was NOT invoked on happy path',
     ui._error === null,
     ui._error ? 'invoked: ' + ui._error.code : 'ok');
+}
+
+// In V3 the module's own hostEl IS document.body, and the shell above it
+// is `height: 100vh` with `overflow: hidden` — anything appended there is
+// attached and unreachable, which is exactly how a critique used to be
+// lost. So when the UI has no surface to offer, the module must paint
+// nowhere rather than fall back to its own host.
+async function testNullResultHostPaintsNowhereAndDoesNotThrow() {
+  var host = _resetHost();
+  var fetchImpl = _mockFetchOk({
+    rubric_scores: { mood: { score: 4, comment: 'Flat.' } },
+    prose: 'Nowhere to put this.',
+  });
+  var ui = _uiStub(host);
+  ui.getResultHost = function () { return null; };
+
+  var ctl = WIRING.init({ hostEl: host, fetchImpl: fetchImpl, ui: ui });
+
+  var threw = null;
+  var out = null;
+  try {
+    out = await ctl.handleDispatch({
+      slot:   'image_critique',
+      inputs: { image: RED_SQUARE_DATA_URL, rubric: 'mood' },
+    });
+  } catch (e) { threw = e; }
+
+  record('a null result host does not throw',
+    !threw, threw ? String(threw && threw.message) : 'ok');
+  record('...and nothing is painted into the module\'s own host',
+    !host.querySelector('.ora-cap-result__prose')
+      && !host.querySelector('.ora-cap-result__rubric'),
+    'prose=' + !!host.querySelector('.ora-cap-result__prose'));
+  record('...while the critique still reaches the caller',
+    out && out.prose === 'Nowhere to put this.',
+    out ? 'ok' : 'no result');
 }
 
 async function testMissingImage() {
@@ -404,7 +466,7 @@ async function testProseOnlyAccepted() {
   // Server returns 200 with prose but no scores — accepted as a valid result.
   var host = _resetHost();
   var fetchImpl = _mockFetchOk({ prose: 'A short impression.' });
-  var ctl = WIRING.init({ hostEl: host, fetchImpl: fetchImpl });
+  var ctl = WIRING.init({ hostEl: host, fetchImpl: fetchImpl, ui: _uiStub(host) });
 
   var resultEvent = null;
   host.addEventListener('capability-result', function (e) { resultEvent = e.detail; });
@@ -453,7 +515,7 @@ async function testNumericScoreShorthand() {
     rubric_scores: { composition: 7, color: 8 },
     prose: 'shorthand test',
   });
-  var ctl = WIRING.init({ hostEl: host, fetchImpl: fetchImpl });
+  var ctl = WIRING.init({ hostEl: host, fetchImpl: fetchImpl, ui: _uiStub(host) });
 
   await ctl.handleDispatch({
     slot:   'image_critique',
@@ -520,6 +582,8 @@ async function testNormalizeImageRef() {
   console.log('-------------------------------------------');
 
   try { await testHappyPath(); }                catch (e) { record('happy path threw', false, e.message); }
+  try { await testNullResultHostPaintsNowhereAndDoesNotThrow(); }
+  catch (e) { record('null result host threw', false, e.message); }
   try { await testMissingImage(); }             catch (e) { record('missing image threw', false, e.message); }
   try { await testMissingRubricAndGenre(); }    catch (e) { record('missing rubric+genre threw', false, e.message); }
   try { await testGenreOnlyAllowed(); }         catch (e) { record('genre-only threw', false, e.message); }

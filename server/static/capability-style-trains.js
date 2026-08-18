@@ -631,6 +631,7 @@
       delete state._pending[job.id];
 
       var resultPayload = {
+        slot: SLOT_NAME,
         output: adapterId,
         adapterId: adapterId,
         record: record,

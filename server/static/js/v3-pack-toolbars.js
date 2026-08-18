@@ -503,11 +503,26 @@
     return host;
   }
 
+  // The popover is `position: fixed`, and it GROWS after it is positioned: a
+  // result panel lands in it long after this ran, and nothing outside can
+  // scroll a fixed panel back into view — `elementFromPoint` returns null
+  // over whatever hangs past the bottom edge and `scrollIntoView` moves
+  // nothing. The stylesheet's `max-height: calc(100vh - 16px)` only holds
+  // for a popover pinned to the top of the screen, so tighten it to the room
+  // actually below the top edge we just chose. Measured at 1280 x 720 with a
+  // 5-criterion critique, anchored so `top` lands at 116: without this the
+  // popover runs to y 1270 and not one rubric row is hit-testable; with it
+  // every row and the prose is.
+  function _capPopoverToViewport(host, topPx) {
+    host.style.maxHeight = Math.max(120, window.innerHeight - topPx - 8) + 'px';
+  }
+
   function _positionPopover(host, anchorEl) {
     if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') {
       host.style.left = '50%';
       host.style.top  = '20%';
       host.style.transform = 'translateX(-50%)';
+      _capPopoverToViewport(host, window.innerHeight * 0.2);
       return;
     }
     var r = anchorEl.getBoundingClientRect();
@@ -521,6 +536,7 @@
     host.style.left = left + 'px';
     host.style.top  = top + 'px';
     host.style.transform = '';
+    _capPopoverToViewport(host, top);
   }
 
   function _buildCapabilityContextProvider(slotName, panel) {

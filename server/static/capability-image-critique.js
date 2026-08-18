@@ -284,10 +284,17 @@
    * If the invocation UI has not mounted yet (no `.ora-cap-result`
    * present), we synthesise a host container so the critique is still
    * visible to the user — albeit without the UI's chrome.
+   *
+   * `hostEl` may BE the result container: `ui.getResultHost()` hands back
+   * the popover's own `.ora-cap-result`, or the per-slot box inside the
+   * browse overlay. Searching inside one of those for another would nest a
+   * second container and leave the outer one empty.
    */
   function _renderCritique(hostEl, extracted) {
     if (!hostEl || typeof hostEl.querySelector !== 'function') return;
-    var resultEl = hostEl.querySelector('.ora-cap-result');
+    var resultEl = (hostEl.classList && hostEl.classList.contains('ora-cap-result'))
+      ? hostEl
+      : hostEl.querySelector('.ora-cap-result');
     if (!resultEl && typeof document !== 'undefined') {
       resultEl = document.createElement('div');
       resultEl.className = 'ora-cap-result';
@@ -393,13 +400,24 @@
         if (state.ui && typeof state.ui.renderResult === 'function') {
           try {
             state.ui.renderResult({
+              slot:     'image_critique',
               output:   extracted.prose,
               provider: extracted.provider,
               metadata: extracted.metadata,
             });
           } catch (_e) { /* swallow */ }
         }
-        _renderCritique(state.hostEl, extracted);
+        // Not `state.hostEl`: in V3 that is `document.body`, and the shell
+        // is `height: 100vh` with `overflow: hidden`, so a critique
+        // appended there was attached and unreachable. A null host means
+        // there is no surface to paint into; the critique is still carried
+        // by the capability-result event below.
+        _renderCritique(
+          (state.ui && typeof state.ui.getResultHost === 'function')
+            ? state.ui.getResultHost('image_critique')
+            : null,
+          extracted
+        );
 
         _emit(state.hostEl, 'capability-result', {
           slot:          'image_critique',

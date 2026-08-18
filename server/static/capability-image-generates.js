@@ -442,6 +442,7 @@
             // Surface result to the invocation UI so the spinner clears.
             var dataUrl = _base64ToDataUrl(extracted.base64, extracted.mimeType);
             var resultPayload = {
+              slot:         'image_generates',
               output:       canvasObject.id,
               imageDataUrl: dataUrl,
               canvasObject: canvasObject,

@@ -12,6 +12,17 @@
   width: min(520px, calc(100vw - 32px));
   min-width: min(340px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
+  /* Nothing scrolls a `position: fixed` panel from outside, so whatever it
+   * grows past the viewport edge is gone for good — and this panel grows
+   * after it has been positioned, because a result lands in it later.
+   * Measured at 1280 x 720: the image_critique form is 555 px on its own,
+   * and a 5-criterion critique takes the popover to 1174 px. So it carries
+   * its own scroller. `max-height` also bounds the `offsetHeight` that
+   * v3-pack-toolbars.js reads when it decides whether to flip the popover
+   * above its anchor; that module tightens this cap to the room actually
+   * below the top edge it picked. */
+  max-height: calc(100vh - 16px);
+  overflow: auto;
   padding: 12px;
   background: var(--background-secondary, #282a36);
   color: var(--text-normal, #f8f8f2);
@@ -125,7 +136,11 @@
 .ora-cap-btn,
 .ora-cap-runbtn,
 .ora-cap-image-ref__pick,
-.ora-cap-mask__refresh {
+.ora-cap-mask__refresh,
+.ora-cap-result__copy,
+.ora-cap-image-varies-grid__insert,
+.ora-cap-image-varies-grid__insert-all,
+.ora-cap-image-varies-grid__close {
   min-height: 30px;
   padding: 5px 10px;
   border-radius: 6px;
@@ -139,7 +154,11 @@
 .ora-cap-btn:hover,
 .ora-cap-runbtn:hover,
 .ora-cap-image-ref__pick:hover,
-.ora-cap-mask__refresh:hover {
+.ora-cap-mask__refresh:hover,
+.ora-cap-result__copy:hover,
+.ora-cap-image-varies-grid__insert:hover,
+.ora-cap-image-varies-grid__insert-all:hover,
+.ora-cap-image-varies-grid__close:hover {
   background: var(--interactive-hover, #3c4052);
 }
 
@@ -173,4 +192,185 @@
 
 .ora-cap-error {
   color: var(--text-error, #ff6b6b);
+}
+
+/* ── Capability results ─────────────────────────────────────────────────
+ * `.ora-cap-result*` and `.ora-cap-image-varies-grid*` had no rules
+ * anywhere. They now render in two places: this popover, and the docked
+ * browse overlay a result falls back to once the popover has closed. The
+ * dock mirrors the input pane's footprint — about 1180 × 121 px at
+ * 1280 × 720 — which leaves roughly 73 px of `.conversation-browser-rows`
+ * body under the header. Everything below is sized to be readable in the
+ * popover and usable in that dock, and the overlay body scrolls for the
+ * rest. The dock's geometry is shared with the conversation Library and
+ * is deliberately not touched.
+ *
+ * `display` is never set on `.ora-cap-result`: capability-invocation-ui.js
+ * hides it with an inline `display: none` and reveals it with
+ * `style.display = ''`, which would resolve straight back to a stylesheet
+ * `none`. */
+
+.ora-cap-result {
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--font-ui-smaller, 12px);
+  color: var(--text-normal, #f8f8f2);
+}
+
+/* The whole result panel is capped inside the popover, not just the prose
+ * blocks inside it. A rubric is a table, and a 5-criterion rubric at
+ * `deep` depth — three sentences per criterion, which is what the slot's
+ * own contract invites — is several hundred pixels of rows that no
+ * `__text` / `__prose` cap touches. The popover is `position: fixed` with
+ * nothing to scroll it, so anything it grows past the viewport edge is
+ * gone: `elementFromPoint` returns null at those rows' centres and
+ * `scrollIntoView` moves nothing. In the dock the body is already the
+ * scroller (see the `--overlay` rules below), so the cap is popover-only.
+ *
+ * No `display` here, for the reason given above. */
+.ora-cap-result:not(.ora-cap-result--overlay) {
+  max-height: 40vh;
+  overflow: auto;
+}
+
+/* The per-slot box inside the dock is a card in its own right — in the
+ * popover the surrounding chrome already provides one. It lays its label
+ * beside its content rather than above it: stacked, the label alone costs
+ * ~19 px of a 71 px body, which is the difference between four variation
+ * tiles sitting in the dock and four tiles the user has to scroll to. */
+.ora-cap-result--overlay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 10px;
+  padding: 5px 8px;
+  border: 1px solid var(--background-modifier-border, #44475a);
+  border-radius: 6px;
+  background: var(--background-primary, #1f2129);
+}
+
+.ora-cap-result--overlay > * {
+  min-width: 0;
+}
+
+.ora-cap-result--overlay > .ora-cap-result__head {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+
+/* Content sits beside the label while there is room for it and wraps to
+ * its own line when there is not. */
+.ora-cap-result--overlay > * + * {
+  flex: 1 1 320px;
+}
+
+.ora-cap-result__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--text-muted, #c8ccd8);
+}
+
+.ora-cap-result__type {
+  opacity: 0.75;
+}
+
+.ora-cap-result__text,
+.ora-cap-result__prose {
+  margin: 0 0 6px;
+  /* Long prose must not push the popover off the bottom of the viewport;
+   * a fixed-position panel has nothing to scroll it back into view. */
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+/* In the dock the body is already the scroller, so an inner one would
+ * make two for the same content. */
+.ora-cap-result--overlay .ora-cap-result__text,
+.ora-cap-result--overlay .ora-cap-result__prose {
+  max-height: none;
+  overflow: visible;
+}
+
+.ora-cap-result__rubric {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6px;
+}
+
+.ora-cap-result__rubric th,
+.ora-cap-result__rubric td {
+  text-align: left;
+  vertical-align: top;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--background-modifier-border, #44475a);
+}
+
+.ora-cap-result__rubric th {
+  color: var(--text-muted, #c8ccd8);
+  font-weight: 600;
+}
+
+/* The variation chooser. One row — count, tiles, "insert all" — so four
+ * 1024² candidates stay inside the dock's ~73 px body instead of forcing
+ * it to scroll before the user can pick one. `flex-basis` on the tiles
+ * lets the whole row reflow in the narrower popover. */
+.ora-cap-image-varies-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.ora-cap-image-varies-grid__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: var(--text-muted, #c8ccd8);
+}
+
+.ora-cap-image-varies-grid__tiles {
+  flex: 1 1 260px;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.ora-cap-image-varies-grid__tile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--background-modifier-border, #44475a);
+  border-radius: 6px;
+  background: var(--background-secondary, #282a36);
+}
+
+.ora-cap-image-varies-grid__img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.ora-cap-image-varies-grid__insert,
+.ora-cap-image-varies-grid__close {
+  min-height: 24px;
+  padding: 3px 8px;
+}
+
+.ora-cap-image-varies-grid__foot {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
