@@ -673,7 +673,7 @@
       var code = (err && err.code) || 'training_failed';
       var message = (err && err.message) || String(err);
       if (state.ui && typeof state.ui.renderError === 'function') {
-        try { state.ui.renderError({ code: code, message: message }); }
+        try { state.ui.renderError({ slot: SLOT_NAME, code: code, message: message }); }
         catch (_e) { /* swallow */ }
       }
       _emit(state.hostEl, 'capability-error', {

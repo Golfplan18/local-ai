@@ -600,7 +600,7 @@
         var err = _synthError('source_ambiguous',
           'image_varies requires a non-empty source_image.');
         if (state.ui && typeof state.ui.renderError === 'function') {
-          try { state.ui.renderError({ code: err.code, message: err.message }); }
+          try { state.ui.renderError({ slot: 'image_varies', code: err.code, message: err.message }); }
           catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
@@ -696,7 +696,7 @@
         var code = (err && err.code) || 'model_unavailable';
         var message = (err && err.message) || String(err);
         if (state.ui && typeof state.ui.renderError === 'function') {
-          try { state.ui.renderError({ code: code, message: message }); }
+          try { state.ui.renderError({ slot: 'image_varies', code: code, message: message }); }
           catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {

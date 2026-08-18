@@ -23,7 +23,9 @@
  *
  * ── Public API ──────────────────────────────────────────────────────
  *
- *   window.OraImageOutpaints.attach({ hostEl, panel, endpointUrl, fetch })
+ *   window.OraImageOutpaints.attach({ hostEl, panel, ui, endpointUrl, fetch })
+ *       `ui` is an OraCapabilityInvocationUI-shaped error reporter; it
+ *       defaults to the module-level singleton, so production passes none.
  *   window.OraImageOutpaints.detach()
  *   window.OraImageOutpaints.handleDispatch(detail)   — for tests
  *   window.OraImageOutpaints.readSourceImage(panel)   — for tests
@@ -45,6 +47,41 @@
 
   function _doc() {
     return (typeof document !== 'undefined') ? document : null;
+  }
+
+  /**
+   * Report a failure the same way every other capability module does:
+   * through the invocation UI's error reporter first, then as the
+   * `capability-error` event.
+   *
+   * Until this existed, `image_outpaints` was the only slot reporting
+   * nothing at all — the event has no production listener, so a failed
+   * outpaint (no image on the canvas, no direction ticked, a server
+   * error, a network error, an undecodable result) was silent. The
+   * reporter routes to the invocation popover when the live one is this
+   * slot's, and to the Exhibits pane error bar otherwise; the `slot` tag
+   * is what lets it tell those two apart.
+   *
+   * The two surfaces are independent: a reporter that is missing or
+   * throws must never swallow the event.
+   *
+   * (`_state` is declared further down; it is a hoisted `var` assigned
+   * during module init, so it is always populated by the time any caller
+   * reaches this — the same arrangement tools/image-edits.js uses.)
+   */
+  function _fail(targetEl, code, message) {
+    var ui = _state.ui
+      || ((typeof root !== 'undefined' && root) ? root.OraCapabilityInvocationUI : null);
+    if (ui && typeof ui.renderError === 'function') {
+      try {
+        ui.renderError({ slot: 'image_outpaints', code: code, message: message });
+      } catch (_e) { /* swallow */ }
+    }
+    _emit(targetEl, 'capability-error', {
+      slot: 'image_outpaints',
+      code: code,
+      message: message
+    });
   }
 
   // ── Source-image extraction (mirrors image-edits.js readSourceImageFromPanel) ──
@@ -176,11 +213,8 @@
             { source: 'image_outpaints' });
     };
     newImg.onerror = function () {
-      _emit(panel.el, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'handler_failed',
-        message: 'Result image failed to decode in browser.'
-      });
+      _fail(panel.el, 'handler_failed',
+            'Result image failed to decode in browser.');
     };
     try { newImg.src = dataUrl; } catch (e) { /* swallow */ }
     return true;
@@ -191,6 +225,7 @@
   var _state = {
     hostEl: null,
     panel: null,
+    ui: null,          // invocation UI reporter; falls back to the singleton
     endpointUrl: ENDPOINT_DEFAULT,
     fetchFn: null,
     listeners: []
@@ -224,27 +259,18 @@
     var sourceMeta = readSourceImage(_state.panel);
 
     if (!sourceMeta) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'handler_failed',
-        message: 'No image is currently mounted on the canvas.'
-      });
+      _fail(_state.hostEl, 'handler_failed',
+            'No image is currently mounted on the canvas.');
       return Promise.resolve(null);
     }
     if (!prompt) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'handler_failed',
-        message: 'A non-empty prompt is required.'
-      });
+      _fail(_state.hostEl, 'handler_failed',
+            'A non-empty prompt is required.');
       return Promise.resolve(null);
     }
     if (!directions) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'direction_invalid',
-        message: 'Select at least one direction (top / bottom / left / right).'
-      });
+      _fail(_state.hostEl, 'direction_invalid',
+            'Select at least one direction (top / bottom / left / right).');
       return Promise.resolve(null);
     }
 
@@ -260,11 +286,8 @@
 
     var fetchFn = _state.fetchFn || (typeof fetch === 'function' ? fetch : null);
     if (!fetchFn) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'handler_failed',
-        message: 'fetch unavailable in this environment.'
-      });
+      _fail(_state.hostEl, 'handler_failed',
+            'fetch unavailable in this environment.');
       return Promise.resolve(null);
     }
 
@@ -280,11 +303,9 @@
       return jsonP.then(function (payload) {
         if (status < 200 || status >= 300 || !payload || !payload.image_b64) {
           var err = (payload && payload.error) || {};
-          _emit(_state.hostEl, 'capability-error', {
-            slot: 'image_outpaints',
-            code: err.code || 'handler_failed',
-            message: err.message || ('Server returned HTTP ' + status + '.')
-          });
+          _fail(_state.hostEl,
+                err.code || 'handler_failed',
+                err.message || ('Server returned HTTP ' + status + '.'));
           return null;
         }
         var ok = insertResult(_state.panel, sourceMeta, payload.image_b64);
@@ -299,11 +320,8 @@
         return payload;
       });
     }).catch(function (err) {
-      _emit(_state.hostEl, 'capability-error', {
-        slot: 'image_outpaints',
-        code: 'handler_failed',
-        message: 'Network error: ' + (err && err.message ? err.message : String(err))
-      });
+      _fail(_state.hostEl, 'handler_failed',
+            'Network error: ' + (err && err.message ? err.message : String(err)));
       return null;
     });
   }
@@ -321,6 +339,7 @@
 
     _state.hostEl      = opts.hostEl || null;
     _state.panel       = opts.panel || null;
+    _state.ui          = opts.ui || null;
     _state.endpointUrl = opts.endpointUrl || ENDPOINT_DEFAULT;
     _state.fetchFn     = opts.fetch || null;
 
@@ -334,6 +353,7 @@
     _removeAllListeners();
     _state.hostEl = null;
     _state.panel = null;
+    _state.ui = null;
   }
 
   // ── Public API ──────────────────────────────────────────────────────

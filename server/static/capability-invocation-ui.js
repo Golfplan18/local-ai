@@ -58,6 +58,38 @@
  *   - "Retry"                → re-submits the same input dict
  * Anything else renders as a passive label.
  *
+ * ── Where a failure goes ──────────────────────────────────────────────
+ * Capability modules report failures through the module-level singleton
+ * (`state.ui.renderError`), not through a controller handle of their own.
+ * By the time most failures arrive there is no popover left to render
+ * into: v3-pack-toolbars.js closes the popover 250 ms after dispatch and
+ * that close calls `controller.destroy()`, which nulls `state.errorEl`.
+ * And `image_generates` is dispatched from three places with no popover
+ * at all (index-v3.html, js/slash-command-client.js,
+ * prompt-template-runtime.js).
+ *
+ * So the singleton's `renderError` is not a plain delegate. It routes:
+ *
+ *   1. the live popover — but only when it is genuinely live (not
+ *      destroyed, error element still attached) AND it belongs to the
+ *      slot the failure came from. Without the slot test, a late failure
+ *      from slot A painted into whatever popover slot B had opened since,
+ *      wearing B's fix-path button, and cleared B's in-flight state while
+ *      B's own request was still running;
+ *   2. otherwise the Exhibits pane error bar via
+ *      `OraPanels.visual._getActive()._showErrorBar()` — the surface that
+ *      outlives the popover, and the same strip tools/image-edits.js
+ *      writes to. Both writers clear only their own text, so neither
+ *      retracts the other's message;
+ *   3. otherwise `console.warn`. Never wholly silent.
+ *
+ * A pane message is retracted from two places, because no single one sees
+ * every run: `submit()` clears at the start of a popover-driven run, and
+ * the singleton's `renderResult` clears when any run succeeds — including
+ * the three popover-less `image_generates` dispatches, which never call
+ * `submit()` and would otherwise leave a dead failure pinned over the
+ * image the next successful run just produced.
+ *
  * Public API: window.OraCapabilityInvocationUI
  *
  *   .init(opts)  → mount and prime against a host element
@@ -75,7 +107,12 @@
  *   .setContextProvider(fn)        — swap the context provider
  *   .refreshEnabledState()         — re-evaluate the Run button
  *   .submit()                       — programmatic submit (used in tests)
- *   .renderError(payload)           — surface an error from outside
+ *   .renderError(payload)           — surface an error from outside.
+ *                        Tag the payload with `slot` when calling through
+ *                        the singleton: the singleton routes a failure to
+ *                        the popover only when the live popover belongs to
+ *                        that slot, and to the Exhibits pane error bar
+ *                        otherwise (see "Where a failure goes" above).
  *   .renderResult(payload)          — surface a result from outside
  *   .destroy()                      — tear down DOM + listeners
  *   .getInputs()                    — current input dict (for tests)
@@ -803,6 +840,15 @@
       state.inFlight = true;
       _refreshEnabled();
       _clearError();
+      // A previous run's verdict on the Exhibits pane must not outlive the
+      // run it described. Only this layer's own message is retracted.
+      // This is the start-of-run half; the singleton's `renderResult`
+      // retracts at end-of-run for the dispatch paths that never call
+      // submit(). Both are needed: image_outpaints reports failures but
+      // never calls renderResult, so submit() is its only retraction, and
+      // clearing here also stops a stale verdict sitting over a run that
+      // is still in flight.
+      _clearPaneError();
       _clearResult();
       if (contract.execution_pattern === 'async') {
         _renderAsyncBadge();
@@ -1135,14 +1181,130 @@
     };
   }
 
+  // ── Error routing (see "Where a failure goes" at the top of the file) ──
+
+  // The exact text this layer last wrote to the Exhibits pane error bar.
+  // Only that text may be retracted — the bar is shared with the compiler,
+  // the image-upload path, and tools/image-edits.js.
+  var _paneErrorText = null;
+
+  function _liveControllerFor(slot) {
+    var ctl = _activeController;
+    if (!ctl) return null;
+    var st = ctl._state;
+    // `errorEl` is the element renderError() writes into, so its presence
+    // is the whole precondition: a controller without one cannot show the
+    // user anything. destroy() nulls it, so this covers a torn-down
+    // popover too — testing `st.destroyed` as well would add no state
+    // this rejects that the element test does not.
+    if (!st || !st.errorEl) return null;
+    // An untagged payload can't be attributed to a slot, so it may only
+    // render into the popover it was almost certainly meant for.
+    if (slot && st.slotName !== slot) return null;
+    return ctl;
+  }
+
+  function _activePanel() {
+    var visual = root && root.OraPanels && root.OraPanels.visual;
+    if (!visual || typeof visual._getActive !== 'function') return null;
+    try {
+      return visual._getActive() || null;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function _showPaneError(slot, payload) {
+    var panel = _activePanel();
+    // `_showErrorBar` opens `if (!this._errorBar) return;` — a silent
+    // no-op. Returning true off "it didn't throw" would report a message
+    // the user cannot read and skip the console.warn arm below, which is
+    // the last surface there is. Check the bar itself, not just the method.
+    if (!panel || !panel._errorBar || typeof panel._showErrorBar !== 'function') return false;
+    var text = (slot || 'Capability') + ' failed ['
+      + ((payload && payload.code) || 'unknown') + '] — '
+      + ((payload && payload.message) || 'No further detail was returned.');
+    try {
+      panel._showErrorBar(text);
+      _paneErrorText = text;
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Retract this layer's own pane message at the start of a new run.
+   * Clears only when the bar still carries the exact text we wrote, so a
+   * compile error or an upload warning that has since replaced it — or a
+   * message tools/image-edits.js owns — survives untouched.
+   */
+  function _clearPaneError() {
+    if (_paneErrorText == null) return;
+    var panel = _activePanel();
+    var bar = panel && panel._errorBar;
+    if (bar) {
+      try {
+        if (bar.textContent === _paneErrorText) {
+          bar.textContent = '';
+          bar.hidden = true;
+        }
+      } catch (_e) { /* swallow — a bar we can't touch is not a failure */ }
+    }
+    _paneErrorText = null;
+  }
+
+  /**
+   * Singleton-level error reporting. Takes the same payload the controller
+   * takes, plus an optional `slot`.
+   *
+   * @returns {boolean|undefined} whatever the popover render returned when
+   *   it took the error; true when the pane bar took it; false when only
+   *   the console did.
+   */
+  function reportError(payload) {
+    payload = payload || {};
+    var slot = payload.slot || null;
+
+    var ctl = _liveControllerFor(slot);
+    if (ctl) return ctl.renderError(payload);
+
+    if (_showPaneError(slot, payload)) return true;
+
+    // No popover and no pane. Fail open, loudly — a swallowed failure is
+    // what this whole path exists to stop.
+    if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
+      console.warn('[capability-invocation-ui] ' + (slot || 'unknown slot')
+        + ' failed [' + (payload.code || 'unknown') + '] — '
+        + (payload.message || 'no message')
+        + ' (no invocation popover and no Exhibits pane to show it in)');
+    }
+    return false;
+  }
+
+  /**
+   * Singleton-level result reporting. A success is the other half of the
+   * retraction: `submit()` clears at the start of a run, but the three
+   * popover-less dispatch paths (index-v3.html, js/slash-command-client.js,
+   * prompt-template-runtime.js) never call `submit()`, so without this a
+   * failed run's pane verdict outlived the next SUCCESSFUL run and sat
+   * pinned over the fresh image. Every module that can reach the pane on
+   * failure also calls `renderResult` on success, so clearing here covers
+   * the paths `submit()` cannot see.
+   */
+  function reportResult(payload) {
+    _clearPaneError();
+    return _delegate('renderResult')(payload);
+  }
+
   var api = {
     init: init,
     setSlot: _delegate('setSlot'),
     setContextProvider: _delegate('setContextProvider'),
     refreshEnabledState: _delegate('refreshEnabledState'),
     submit: _delegate('submit'),
-    renderError: _delegate('renderError'),
-    renderResult: _delegate('renderResult'),
+    renderError: reportError,
+    renderResult: reportResult,
     destroy: function () {
       if (_activeController) _activeController.destroy();
       _activeController = null;

@@ -476,7 +476,7 @@
         // contract's fix-path button shows up.
         if (state.ui && typeof state.ui.renderError === 'function') {
           try {
-            state.ui.renderError({ code: code, message: message });
+            state.ui.renderError({ slot: 'image_generates', code: code, message: message });
           } catch (_e) { /* swallow */ }
         }
         _emit(state.hostEl, 'capability-error', {
