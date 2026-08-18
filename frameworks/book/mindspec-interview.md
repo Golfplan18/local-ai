@@ -1,4 +1,4 @@
-# MindSpec Interview v0.2.3
+# Framework — MindSpec Interview
 
 ## Display Name
 MindSpec Interview
