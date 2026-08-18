@@ -123,7 +123,11 @@ orchestrator/chroma_db/
 .venv/
 
 # Node test dependencies (reinstall from package-lock.json with `npm ci`).
-**/node_modules/
+# No trailing slash: with one this matches directories only, and a SYMLINK
+# named node_modules slips past it. That happened in 688f679d — a worktree's
+# jsdom symlink was committed, pointed at its own path once merged, and broke
+# every JS suite from a clean checkout (fixed in e256a7cd).
+**/node_modules
 
 # Server-side data caches (regenerable from canonical sources).
 cache/
