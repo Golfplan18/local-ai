@@ -38,6 +38,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -103,6 +104,11 @@ FRAMEWORK_FINDING_EVIDENCE_FIELDS = frozenset(
 # but they no longer suppress a fresh finding. Without this split, closing a
 # receipt would silently blind the detector to the same drift recurring.
 FRAMEWORK_QUEUE_CLOSED_HEADING = "\n## Closed entries\n"
+# A crashed run leaves its lock behind. Held by a human at a terminal that is
+# a visible error; on an unattended path it wedges every later run silently and
+# permanently, which is worse than the race the lock guards against. After this
+# age the lock is treated as abandoned, removed loudly, and the run proceeds.
+FRAMEWORK_QUEUE_LOCK_STALE_SECONDS = 900
 FRAMEWORK_RECEIPT_PATTERN = re.compile(
     r"<!-- dcp-framework-finding-receipt (\{.*?\}) -->"
 )
@@ -808,6 +814,14 @@ def verify_framework_finding_receipts(content: str) -> list[FrameworkPairFinding
     return findings
 
 
+def _queue_lock_age_seconds(lock: Path) -> Optional[float]:
+    """Seconds since the lock was created, or None if it cannot be read."""
+    try:
+        return max(0.0, time.time() - lock.stat().st_mtime)
+    except OSError:
+        return None
+
+
 def _open_queue_region(content: str) -> str:
     """The portion of the queue holding findings that are still open."""
     index = content.find(FRAMEWORK_QUEUE_CLOSED_HEADING)
@@ -867,9 +881,25 @@ def enqueue_framework_pair_findings(
     try:
         lock_fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError as exc:
-        raise FrameworkManifestError(
-            f"escalation queue lock already exists: {lock}"
-        ) from exc
+        age = _queue_lock_age_seconds(lock)
+        if age is None or age < FRAMEWORK_QUEUE_LOCK_STALE_SECONDS:
+            raise FrameworkManifestError(
+                f"escalation queue lock already exists: {lock}"
+            ) from exc
+        print(
+            f"WARNING: removing abandoned escalation queue lock {lock} "
+            f"(age {int(age)}s > {FRAMEWORK_QUEUE_LOCK_STALE_SECONDS}s). "
+            "A previous run did not release it.",
+            file=sys.stderr,
+        )
+        try:
+            os.unlink(lock)
+            lock_fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except OSError as retry_exc:
+            # Another run won the race and took the lock legitimately.
+            raise FrameworkManifestError(
+                f"escalation queue lock already exists: {lock}"
+            ) from retry_exc
     os.close(lock_fd)
     temp: Optional[Path] = None
     try:
