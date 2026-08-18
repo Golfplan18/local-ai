@@ -428,6 +428,38 @@ def _sweep_sessions(cutoff_days: int, now: float, dry_run: bool, summary: dict):
             summary["errors"].append(f"session retention {name}: {exc}")
 
 
+def sweep_log_retention(dry_run: bool = False, now: float | None = None) -> dict:
+    """Age- and size-caused retention only — no corpus scan.
+
+    G1.10 moved trace expiry to one persisted deadline per trace and left
+    ``sweep()`` with no automatic trigger at all, so log ageing and archive
+    expiry simply stopped happening on 2026-07-21. This is the subset whose
+    cause is genuinely time or size: `logs/*.log` past the age limit,
+    archives past their expiry, the two server logs past the size limit, and
+    the JSONL changelogs. It deliberately omits ``_sweep_traces`` and
+    ``_sweep_sessions`` — those are the corpus scans the per-trace deadlines
+    replaced, and re-running them here would restore what G1.10 removed.
+    """
+    now = time.time() if now is None else now
+    summary: dict = {
+        "logs_archived": 0,
+        "archives_deleted": 0,
+        "server_log_rotated": False,
+        "launchd_logs_rotated": [],
+        "jsonl_rotated": [],
+        "bytes_freed": 0,
+        "dry_run": dry_run,
+        "errors": [],
+    }
+    server_log_limit = _env_int("ORA_RETENTION_SERVERLOG_MB", 50)
+    _sweep_logs(_env_int("ORA_RETENTION_LOGS_DAYS", 30),
+                _env_int("ORA_RETENTION_ARCHIVE_DAYS", 180), now, dry_run, summary)
+    _sweep_server_log(server_log_limit, dry_run, summary)
+    _sweep_launchd_server_logs(server_log_limit, dry_run, summary)
+    _sweep_jsonl(_env_int("ORA_RETENTION_JSONL_MB", 10), dry_run, summary)
+    return summary
+
+
 def sweep(dry_run: bool = False, now: float | None = None) -> dict:
     """Run every retention target once. Returns a summary dict."""
     now = time.time() if now is None else now
