@@ -31,11 +31,21 @@ Coverage by entry point:
 Per-test isolation and inspection remain the job of
 ``oversight_sandbox.redirect_oversight_logs`` — an explicit path monkeypatch
 always wins over this quarantine.
+
+The guard also PROVISIONS the machine-local config the suite needs rather than
+inheriting the developer's (``arm_local_config``). ``config/models.json`` is
+gitignored and generated per machine by setup.sh, so a fresh worktree has none
+and ~84 tests failed at ``local model inventory is unavailable``; a developer
+checkout has one, so the same tests passed there for reasons that had nothing
+to do with the code. Both now read one inventory derived from the tracked
+``config/routing-config.json``.
 """
 from __future__ import annotations
 
 import atexit
+import json
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -141,6 +151,154 @@ def arm_conversations() -> str:
     return box
 
 
+# The local-model inventory is the fourth machine-local root, and the one that
+# decided ~84 test results by its mere presence. Unlike the three above it is
+# not a place tests WRITE — it is state tests READ, and reading the developer's
+# copy is what made a fresh worktree fail 98 tests on its first run while the
+# same commit passed in ~/ora. runtime_paths.models_json_path() resolves it at
+# call time and honors this variable, so pointing it at a provisioned inventory
+# is enough to give every checkout the same answer.
+MODELS_JSON_ENV_VAR = "ORA_MODELS_JSON_PATH"
+
+# Provisioning the inventory is not enough on its own, because the suite
+# REGENERATES it mid-run: GET /models, GET /api/model-registry and
+# GET /api/configurations all call server.app._refresh_local_model_inventory(),
+# which rescans the local weights directory and rewrites the inventory in
+# place. That is how a fresh worktree used to fail ~99 tests on its first run
+# and ~2 on the second — the first run wrote config/models.json into the
+# checkout as a side effect of a GET, and the second run inherited it. Scanning
+# also made every test after that first GET depend on which models the
+# developer happens to have downloaded.
+#
+# Pointing discovery at a directory that does not exist takes the documented
+# safe branch: scan_models_dir raises LocalModelDiscoveryError, refresh()
+# propagates it BEFORE any write, and the provisioned inventory survives
+# untouched. A directory that exists but is empty would NOT be safe — refresh
+# writes an empty local_models array for a successfully-read empty dir.
+LOCAL_MODELS_DIR_ENV_VAR = "ORA_LOCAL_MODELS_DIR"
+
+# Repo root without importing runtime_paths: this module is loaded before
+# anything else in a `unittest discover` run and must stay dependency-free so
+# it can arm the environment before the path layer resolves against it.
+_REPO_ROOT = pathlib.Path(
+    os.environ.get("ORA_HOME") or pathlib.Path(__file__).resolve().parents[2]
+)
+
+
+def _synthesize_models_json(models_dir: pathlib.Path) -> dict:
+    """Build a local-model inventory out of tracked repo content only.
+
+    ``config/routing-config.json`` already carries every local endpoint with
+    the two fields the inventory is consulted for — ``ram_resident_gb`` and
+    ``vision_capable`` — and the tracked configurations under
+    ``config/configurations/`` reference those same six ids. Deriving from it
+    means the fixture cannot drift from the configs the tests exercise, and a
+    machine that has downloaded no models at all still gets the inventory the
+    suite expects.
+
+    ``commercial_models`` comes from ``config/models.json.template``, the
+    tracked documentation of this file's schema; those ids are not routing
+    endpoints, so there is nothing to derive them from.
+
+    Each entry's ``path`` points at a stub directory this function creates, so
+    the reachability probe in ``model_profiles`` (``Path(path).exists()``)
+    answers the same on a machine with the real weights and one without.
+    """
+    routing_path = _REPO_ROOT / "config" / "routing-config.json"
+    with open(routing_path, encoding="utf-8") as handle:
+        routing = json.load(handle)
+
+    local_models = []
+    for endpoint in routing.get("endpoints") or []:
+        if not isinstance(endpoint, dict) or endpoint.get("type") != "local":
+            continue
+        model_id = endpoint.get("id")
+        if not isinstance(model_id, str) or not model_id:
+            continue
+        stub = models_dir / model_id
+        stub.mkdir(parents=True, exist_ok=True)
+        record = {
+            "id": model_id,
+            "display_name": endpoint.get("display_name") or model_id,
+            "path": str(stub),
+            "ram_gb": endpoint.get("ram_resident_gb", 0),
+            "recommended_roles": [],
+        }
+        # Copied through, never invented: the schema assertions in
+        # test_visual_routing check that these fields are actually declared,
+        # and a default here would answer them with the fixture's own guess.
+        for field in ("vision_capable", "context_window", "engine",
+                      "provider", "training_family", "tier"):
+            if field in endpoint:
+                record[field] = endpoint[field]
+        local_models.append(record)
+
+    template_path = _REPO_ROOT / "config" / "models.json.template"
+    commercial_models = []
+    overhead_gb = 8
+    try:
+        with open(template_path, encoding="utf-8") as handle:
+            template = json.load(handle)
+        commercial_models = template.get("commercial_models") or []
+        overhead_gb = template.get("overhead_reservation_gb", overhead_gb)
+    except (OSError, ValueError) as exc:
+        sys.stderr.write(
+            f"[live_guard] {template_path} unreadable ({exc}); provisioning the "
+            "inventory without commercial models\n")
+
+    return {
+        "_provenance": (
+            "Provisioned by orchestrator/tests/live_guard.py for this test run. "
+            "Derived from config/routing-config.json + config/models.json.template. "
+            "Not the machine's inventory."
+        ),
+        "overhead_reservation_gb": overhead_gb,
+        "local_model_directory": str(models_dir) + os.sep,
+        "local_models": local_models,
+        "commercial_models": commercial_models,
+    }
+
+
+def arm_local_config() -> str:
+    """Point ORA_MODELS_JSON_PATH at a provisioned inventory unless already set.
+
+    Same contract as ``arm``: a pre-set ABSOLUTE path is honored (so a test can
+    aim at a fixture inventory), a relative one is replaced loudly, and the
+    directory this creates is removed at exit.
+    """
+    existing = os.environ.get(MODELS_JSON_ENV_VAR)
+    if existing and not os.path.isabs(existing):
+        sys.stderr.write(
+            f"[live_guard] ignoring non-absolute {MODELS_JSON_ENV_VAR}="
+            f"{existing!r}; a relative inventory path would resolve against the "
+            "cwd — provisioning a fresh one instead\n")
+        existing = None
+    box = pathlib.Path(tempfile.mkdtemp(prefix="ora-local-config-sandbox-"))
+    atexit.register(shutil.rmtree, box, ignore_errors=True)
+    # Armed even when the inventory itself was supplied by the caller: a
+    # rescan would overwrite THEIR inventory just as readily as ours.
+    os.environ.setdefault(
+        LOCAL_MODELS_DIR_ENV_VAR, str(box / "no-installed-models"))
+    if existing:
+        return existing
+
+    models_json = box / "models.json"
+    try:
+        inventory = _synthesize_models_json(box / "models")
+    except (OSError, ValueError) as exc:
+        # Fail OPEN and loud: an unreadable routing-config must not stop the
+        # suite from running, it must tell you why the inventory is empty.
+        sys.stderr.write(
+            f"[live_guard] could not derive a local-model inventory ({exc}); "
+            "provisioning an empty one\n")
+        inventory = {"local_models": [], "commercial_models": [],
+                     "overhead_reservation_gb": 8}
+    models_json.write_text(json.dumps(inventory, indent=2), encoding="utf-8")
+    os.environ[MODELS_JSON_ENV_VAR] = str(models_json)
+    return str(models_json)
+
+
 SANDBOX_DIR = arm()
 CHROMADB_SANDBOX_DIR = arm_chromadb()
 CONVERSATIONS_SANDBOX_DIR = arm_conversations()
+MODELS_JSON_PATH = arm_local_config()

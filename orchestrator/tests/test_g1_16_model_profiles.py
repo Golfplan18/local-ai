@@ -99,7 +99,7 @@ class ModelProfileHealthTests(unittest.TestCase):
                 ),
                 mock.patch.object(mp.rp, "routing_config_path", return_value=routing),
                 mock.patch.object(mp.rp, "model_catalog_path", return_value=catalog),
-                mock.patch.object(mp.rp, "overlay_path", return_value=models),
+                mock.patch.object(mp.rp, "models_json_path", return_value=models),
                 mock.patch.object(
                     codex_subscription, "is_configured", return_value=True,
                 ),

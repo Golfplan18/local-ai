@@ -3,5 +3,3 @@
 # A change is judged on what enters or leaves this set, never on
 # the raw count — the suite is order-dependent and a refactor can
 # shuffle which failures surface without breaking anything.
-FAILED orchestrator/tests/test_g1_23_execution_review_readiness.py::test_g1_23_records_preserve_submission_and_deferral_boundaries
-FAILED orchestrator/tests/test_portability.py::TestCentralPathLayer::test_conversation_purge_roots_agree_with_writers

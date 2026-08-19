@@ -239,7 +239,7 @@ def load_model_inventory() -> dict:
         # ordinary registry/routing/local health evaluation.
         pass
 
-    models_json = read_json(rp.overlay_path("config", "models.json"))
+    models_json = read_json(rp.models_json_path())
     for key in ("local_models", "commercial_models"):
         for record in models_json.get(key, []) or []:
             if not isinstance(record, dict):
