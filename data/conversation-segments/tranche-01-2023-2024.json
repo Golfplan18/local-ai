@@ -1,0 +1,6722 @@
+{
+ "tranche": 1,
+ "era": "2023-2024",
+ "model": "haiku",
+ "conversations": [
+  {
+   "conversation_id": "historical-54dfe0b1d699",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "AI Agent Teams white paper outline summarization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2f8a21bf0b5a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Wobble Model quantum physics paper outline revision"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ef8b07e0632d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Anger personified as enemy imagery"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Patience and acceptance imagery"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Clear mind, clean heart, happy life imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5e5d72fbd300",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Clarifying single particle behavior requirement"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Gathering experimental parameters and validating results"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 18,
+     "subject": "Implementing path integral approach"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 24,
+     "subject": "Debugging straight line output issue"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 29,
+     "subject": "Testing with increased path sampling"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 40,
+     "subject": "Refining metrics and improving goodness of fit"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 45,
+     "subject": "Non-visual execution and deployment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e615d59df9a2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Getting list of writing AI tools and links"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "Exploring erotic fiction AI capabilities"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 13,
+     "subject": "Deep dive into NovelAI features"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 22,
+     "subject": "Deep dive into AI Dungeon features"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 31,
+     "subject": "Comparing platforms and discussing advanced features"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 35,
+     "subject": "Workflow integration with Google Sheets and platform evaluation"
+    },
+    {
+     "start_turn": 36,
+     "end_turn": 42,
+     "subject": "Creating images and emotional content for stories"
+    },
+    {
+     "start_turn": 43,
+     "end_turn": 46,
+     "subject": "Substack editor technical issues"
+    },
+    {
+     "start_turn": 47,
+     "end_turn": 47,
+     "subject": "Emotional triggers for story engagement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e784b7e60169",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Cosmological thought experiment - Expanding Awareness model challenging Big Bang theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-89cfc3827b11",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "The Human Nexus framework development - content, ethical directives, narrative structure, and writing guidance"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Visual design and aesthetic development - symbols, imagery, character descriptions, and Midjourney style recommendations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-758ec55a9552",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Developing and reviewing the Expanding Awareness Cosmology paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e1e62ab18fe2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Strategies for disseminating a breakthrough AI paper"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Consolidating materials into a unified document"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6a52b6b8b3d3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Executing instructions to generate the Expanding Awareness cosmology framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f8b9a289cf76",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 37,
+     "subject": "Building SynthesisGPT framework and creating AnattaGPT and SolverGPT personas with problem-solving methodology"
+    },
+    {
+     "start_turn": 38,
+     "end_turn": 79,
+     "subject": "Developing and refining a white paper on quantum mechanics using the wobble model to explain interference patterns"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c87dbe8d729f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Editing and improving a white paper on quantum interference patterns and the wobble model as an alternative to wave function collapse"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5cef57d73632",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Composing a romantic response to a lover's greeting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-23a722f409dd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 44,
+     "subject": "Buddhist Lamrim meditation teachings on karma, mindfulness practice, and spiritual development"
+    },
+    {
+     "start_turn": 45,
+     "end_turn": 50,
+     "subject": "Foundational concepts of gender, relationship dynamics, masculinity/femininity traits, and doves/hawks metaphor"
+    },
+    {
+     "start_turn": 51,
+     "end_turn": 93,
+     "subject": "Personal narratives and Hemingway-style retellings of masculine/feminine roles in marriage and divorce"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-802551fb3e3e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 21,
+     "subject": "Writing, condensing, and revising a personal essay on marriage failure, emotional journey, and self-reflection"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cafcbaa9f5d2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Image generation request for a meditating figure in single-pointed concentration"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9a2769ad45c6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Book project on Einstein's intuitive method and philosophical resonance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cc33fb0cd23b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Religious experience, mental health hospitalization, and bipolar diagnosis"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Buddhist philosophy of desire, attachment, and the monkey trap"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Special needs parenting and acceptance of autism diagnosis"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Personal spiritual development, wisdom, moral understanding, and overcoming ego"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "Special needs parenting continued\u2014accepting the child and embracing joy"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Spiritual practices\u2014Lamrim meditation and Qi energy flow"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Mothers, family trauma, and the transformative power of forgiveness"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Karma and Buddhist causality"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Narrative story\u2014a minor incident at Costco"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Unknowability of the mind and epistemology"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 16,
+     "subject": "Personal passion for golf"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "Marital dynamics and intellectual defeat by spouse"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 29,
+     "subject": "Philosophical and contemplative understanding\u2014Self, virtue, impermanence, mortality, and Buddhist-Christian traditions"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 31,
+     "subject": "Autism diagnosis and parental acceptance journey"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 35,
+     "subject": "Autism treatment, pseudoscience, snake oil therapies, and the distinction between cure and therapy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1ba54ad28a29",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Technical appraisal of the Expanding Awareness Cosmology document"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8f3367437d36",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "White paper distribution strategy to influential figures"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e0e73ce09778",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Organizing citations for cosmology paper bibliography"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ed50481f05a0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist path to enlightenment and Four Noble Truths"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 5,
+     "subject": "The 48 Laws of Power from Robert Greene"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f2023923ffca",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Analyzing and improving Expanding Awareness Cosmology paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fe35b9d77e73",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 30,
+     "subject": "Outlining Extending Human Cognition framework with Knower-Doer architecture"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-db4bf078f800",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Tibetan Buddhist teachings on Six Perfections and Generosity practices"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0c75044c1171",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Analyzing and refining Expanding Awareness Cosmology paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e8263a62e6df",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Outline review and refinement for quantum mechanics paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-31fdb0b2ed82",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Drafting and refining cosmology papers"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 10,
+     "subject": "Extracting and cataloging thought experiments and analogies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-eaa125565b31",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 44,
+     "subject": "Developing and refining the Expanding Awareness Cosmology framework"
+    },
+    {
+     "start_turn": 45,
+     "end_turn": 54,
+     "subject": "Creating email templates and publication strategy to reach academic and public audiences"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d603ba02ccd6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 29,
+     "subject": "Creating a synthesized journey framework combining Hero's Journey and Heroine's Journey"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7867909d0e1d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Exploring Star Trek as a thematic reference for the broader work"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 17,
+     "subject": "Developing The Human Nexus framework incorporating Star Trek themes and organizational structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7848123699da",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Building the case for a new cosmology replacing Hubble's Law"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 14,
+     "subject": "Pivoting focus to resurrect Einstein's Static Universe Theory"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 30,
+     "subject": "Developing theoretical framework with Edge Observer thought experiment and expanding awareness mechanism"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 46,
+     "subject": "Integrating philosophical perspectives and mathematical formalism with I and God operators"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-40a78faa8d83",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Initial analytical reading of complete personal marriage narrative"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 10,
+     "subject": "Structural refinement and editorial revisions of marriage narrative with section headers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e3e7f620bfb0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 14,
+     "subject": "Reviewing and refining philosophical insertions into quantum mechanics paper"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Comparative analysis of quantum paper's philosophical alignment with Expanding Awareness Cosmology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3b39f9501d71",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Meta description and keyword development for Buddhism article on emotional entitlement and enlightenment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ae6eda564f1e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Bell's Theorem and hidden variables in quantum mechanics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-33655ad00563",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 28,
+     "subject": "Masculine-feminine dynamics, imagery, and paraphrasing"
+    },
+    {
+     "start_turn": 29,
+     "end_turn": 36,
+     "subject": "Personal identity and lifestyle biography"
+    },
+    {
+     "start_turn": 37,
+     "end_turn": 81,
+     "subject": "Philosophical concepts and frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2f549ebc64a6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Investigation of the 2.82 correlation in quantum experiments"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9558edd56799",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddhist Pure Land concept"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f214a9ef874f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Chat summarization and research task execution"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7fc9a72104ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 21,
+     "subject": "Double-slit experiment with physical barrier and coherence testing"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Wobble model formulation and Python implementation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fd77d4ba5e8a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 18,
+     "subject": "Double-slit electron diffraction experiment data analysis and wobble model fitting"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 19,
+     "subject": "Session history and topic references"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cf630c5aa2f6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist spiritual path to cessation of suffering"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bcece8c78dc4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Reviewing outline and proposing analysis improvements"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Comparing document versions and updating framework concept"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "Remote AI agent teams and human-AI collaboration structure"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 9,
+     "subject": "AI teams as extensions of human subconscious capabilities"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Master problem solver and specialized expert roles"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 15,
+     "subject": "Conceptual analogies for Knower and Doer framework"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 19,
+     "subject": "Enabling technologies and adjacent possible breakthroughs"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-60b77e6daee7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Citation suggestions for cosmology paper"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Historical discussion of observable universe and dark matter concepts"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Refining gravitational lensing section and expanding awareness concept"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a085cf3a552b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Setting up Wolfram language visualization task"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Conceptual planning and requirements for cone visualizations"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Creating initial cone structure with labels"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Technical refinement of grid, time axis, and cube proportions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c58d8105d05e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Article title options for Machiavelli's Virt\u00f9"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Historical examples of rulers exhibiting virt\u00f9"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Comprehensive article exploration and keyword phrase generation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bf0095a00594",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Opening emotional context"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Game theory application of Migrate or Die concept"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Circular trampoline visualization and mathematical matching"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 11,
+     "subject": "Fundamental physics constants and formulas"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Higgs field properties"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 18,
+     "subject": "Quaker philosophy and spiritual history"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 23,
+     "subject": "Science fiction media references"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 27,
+     "subject": "Particle physics terminology"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 33,
+     "subject": "Physical imbalance and tumbling motion"
+    },
+    {
+     "start_turn": 34,
+     "end_turn": 36,
+     "subject": "Lists of prominent experts and specialists"
+    },
+    {
+     "start_turn": 37,
+     "end_turn": 42,
+     "subject": "Cosmic matter density and subatomic scales"
+    },
+    {
+     "start_turn": 43,
+     "end_turn": 47,
+     "subject": "Technology and authentication systems"
+    },
+    {
+     "start_turn": 48,
+     "end_turn": 54,
+     "subject": "Ready Player One plot and characters"
+    },
+    {
+     "start_turn": 55,
+     "end_turn": 55,
+     "subject": "Word rhymes"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-44050c58f337",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Physics simulation experiment planning and analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-624167eb81c4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Chatbot display formatting for user speech"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 176,
+     "subject": "Adding mental models and resources to collection"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6f52f92c3c9b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Image requests for concepts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-27e3b263b325",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 11,
+     "subject": "Personal narrative essay development: marriage and masculinity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5edcf8cabf03",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Academic physics paper revision: Bell's Theorem challenges"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ab6365646925",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 11,
+     "subject": "Personal narrative essay development: marriage and masculinity"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 37,
+     "subject": "Tibetan Buddhist Lamrim teachings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c3357298eb32",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Higgs field and quantum gravity theories"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-16a082cf973b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Outline development for Extending Human Cognition through AI Agent Systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7f4910e736ac",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Architectural Framework expansion and section formatting for the Extending Human Cognition outline"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d95d99d06662",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Writing and editing Part 2 of personal memoir\u2014parenting an autistic child, learning unconditional love, and the marriage breakdown"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 9,
+     "subject": "Writing Parts 4-5 of memoir\u2014reckoning with personal failure, redefining masculinity, and building a blueprint for future relationships"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Technical analysis and word count assessment of memoir sections"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Writing Part 3 of memoir\u2014marriage dissolution, separation from multiple perspectives, and amicable parting"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "Technical analysis and word count assessment of memoir sections"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Meta-discussion about presentation\u2014reading time calculation and creating emotional hooks to drive reader engagement for Part 1"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c948aae30ef3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarizing an outline on Extending Human Cognition Through AI Agent Systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0e254311bbd9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Formatting display preferences for speech (italics, dark blue color, browser rendering)"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 176,
+     "subject": "Adding mental models and educational resources to a catalog from Farnam Street and other sources"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-44076822cbd7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Requesting citations for a paper (user seeking extended and detailed citation lists)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9a60649f66a4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Providing a comprehensive scholarly review of a document"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cf3015de4303",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Continuing previous outline work and framework establishment"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 7,
+     "subject": "Expanding Foundational Vision section with multi-level detail"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Developing Technological Convergence section with formatting refinements"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 18,
+     "subject": "Expanding Architectural Framework with five-level hierarchical structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ca80040f1244",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Document analysis and synthesis of AI Expert Teams framework"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "White paper framework development: Big Idea and Why Now sections"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "White paper section development and brainstorming through Section 7 (Pitfalls)"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Implementation guidance: LangFlow documentation and starter projects for prototyping agents"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9b7dad5ff3fe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Building foundation of mental model library with core visualization and modeling tools"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 31,
+     "subject": "Adding visualization, diagramming, and systems thinking conceptual references"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 44,
+     "subject": "Adding theoretical foundations and model theory resources"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-01668822fb6c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Integrating wobble model into Bell's Theorem paper with precise editorial guidance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-166585e4f5fe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Building consolidated list of science educators and online communicators with contact information"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-71f041ad6958",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 36,
+     "subject": "Bell's Theorem challenge and experimental validation framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-df1234c14538",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Comic strip generators, tools, and pricing"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 18,
+     "subject": "Character design and visual profiles for graphic novel"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 21,
+     "subject": "Main narrator character (Mira) development across life stages"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-138e8fd11e51",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Claude Projects feature and capabilities"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 22,
+     "subject": "Extended Cognition Framework: theory, implementation, and Master Problem Solver architecture"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fa57a4f8fdcf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Chat summary template and quantum wobble model analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e08973e1a3b2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Paraphrasing and clarifying Buddhist concepts"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Tibetan Buddhist Lamrim teachings and meditations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4d731138d953",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddhist meditation fundamentals"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Theological philosophy"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Empowerment and meditation validation"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Special needs parenting - acceptance"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Attachment, desire, and reality frameworks"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "Platform critique"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Impermanence and desire consequences"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Special needs parenting - journey and transformation"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 15,
+     "subject": "Desire, suffering, and wisdom frameworks"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 16,
+     "subject": "Lottery windfall and spiritual transformation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-93a481abe45a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Double-slit experiment parameters and wobble modeling"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-27c218a9d1ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Understanding white paper structure and purpose"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "White paper composition guidelines"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 9,
+     "subject": "Specific content elements and validation"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Formatting, design, and distribution strategy"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Review, refinement, and launch planning"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-27557c5769f4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Text capture verification and expansion strategy"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Narrative development and scene expansion"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Dialogue and character interaction expansion"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 15,
+     "subject": "Narrative structure and pacing refinement"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 18,
+     "subject": "Final integration and quality review"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4491887874ad",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Narrative arc integration strategy"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Execution of narrative merger"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0e838fb3030e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Manipulation tactics and false promises"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-db19947cae40",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Document review of Bell's Theorem paper on classical challenge to quantum entanglement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3c17a02ca76e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Document review of Bell's Theorem paper with critiques on quantum mechanics interpretation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-46c0d8ac7306",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Analogies and metaphors for complementary Knower-Doer AI system architecture"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Technical discussion of LangFlow, LangChain, and self-improving workflow capabilities"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 13,
+     "subject": "Context gathering, verification of project goals, and additional reference materials"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 17,
+     "subject": "Developing comprehensive white paper outline with multiple audience levels"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 25,
+     "subject": "Writing and iteratively refining emotional, accessible introductory narrative sections"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-42c314205d1f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Silicon Valley disruption thesis: analyzing industry transformation from AI Agent Teams"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Reformatting disruption analysis for different rhetorical styles and document delivery"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Examining feasibility and inevitability of AI development, policy responses, and competitive pressures"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Compiling comprehensive final paper on unstoppable AI Agent revolution and transformation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c936ac585875",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 14,
+     "subject": "Surveying AI tools and platforms for mathematical graph and formula visualization"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 29,
+     "subject": "Creating 3D sphere and spherical shell visualizations with Wolfram Language code"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 33,
+     "subject": "Refining 3D visualization aesthetics and adding legend-based labeling for clarity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fa0826aa0015",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Mathematical formulas and parametric equations for spheres and toroidal toruses"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Visualizing spherical shells and exploring philosophical concepts of solipsism"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Physics formulas for gravitational effects and related calculations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f07b62970622",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Bell's Theorem challenge with classical wobble model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7bc1138f8968",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Compiling and formatting spreadsheet of notable figures"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ed0d1bbb11b9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Extracting Alex Honnold's philosophy and quotes from Free Solo"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 14,
+     "subject": "Creating HonnoldGPT and SynthesisGPT expert personas"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 23,
+     "subject": "Configuring and implementing SynthesisGPT system"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5cd0eb608163",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Reviewing wobble model paper outline structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-36363d37a833",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Paraphrasing demon and murder narrative in Hemingway style"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Paraphrasing love and son-centered narrative"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 20,
+     "subject": "Paraphrasing and refining autism discovery narrative"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 30,
+     "subject": "Vocabulary research and thematic brainstorming"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-abe4d58951ea",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 27,
+     "subject": "Building and expanding wobble model paper structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e4338d23957f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddhist psychology and emotional reactions theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-74c192b3ec2a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 26,
+     "subject": "Hubble's Law, gravitational lensing, and cosmological models"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 27,
+     "subject": "Enabling microphone on Mac"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6f3d2310de30",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 27,
+     "subject": "Buddhist philosophy and teachings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-daf779d2538f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Mathematical model of the universe with M(t)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6f559ed01f99",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Updating and revising physics and cosmology papers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-436f62522459",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Jeff Hawkins's 'On Intelligence' and neuroscience theories"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 17,
+     "subject": "AI comic book creation tools and online comic marketplaces"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2bf22a524f17",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Hero's Journey, Heroine's Journey, and Sage's Journey framework analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fc4250471caa",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Conceal Your Intentions from 48 Laws of Power"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 12,
+     "subject": "Always Say Less Than Necessary from 48 Laws of Power"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 16,
+     "subject": "Court Attention at All Costs from 48 Laws of Power"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 19,
+     "subject": "Win Through Your Actions, Never Through Argument from 48 Laws of Power"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-502dcf23db23",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dating app opening lines"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0b67d5d8dca7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 19,
+     "subject": "Distribution strategy for white paper on AI-enabled human intelligence amplification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0005570335ae",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 24,
+     "subject": "Building comprehensive bibliography organized by cosmology and physics research categories"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1e7f51b82e80",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Compiling citation bibliography for Bell's Theorem and quantum entanglement research paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-81b60d7522e1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 19,
+     "subject": "Tibetan Buddhist refuge practice teachings and karma doctrine with paraphrasing exercises"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-24b6e44d8854",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Creative release strategy for fictional white paper on AI-powered human cognition enhancement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-72ce481a19cb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Sun Tzu's Art of War principles applied to personal relationships and leadership dynamics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-87dae2788ad7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Comprehensive bibliography of Albert Einstein's published works and correspondence"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d0298b033f21",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Quantum mechanics interpretations and Einstein's critique of measurement problem resolution"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-075894682012",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 25,
+     "subject": "Building and refining expert network with conflict resolution"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5dc82a664455",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Bedtime Creation Story storytelling and refinement"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "Edge Observer cosmological thought experiment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4decf38d9ebe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Evaluating Expanding Awareness Cosmology paper and counterarguments"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-24fdd8cefea4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Audio troubleshooting with earbuds connection"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Workout techniques for muscle explosiveness and posture"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 19,
+     "subject": "Technical setup and system checks with brief interactions"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 33,
+     "subject": "AI companionship framework and automation architecture"
+    },
+    {
+     "start_turn": 34,
+     "end_turn": 45,
+     "subject": "Audio testing and voice control device setup"
+    },
+    {
+     "start_turn": 46,
+     "end_turn": 53,
+     "subject": "Golf swing explosiveness training and smooth acceleration technique"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-273b1b82b10b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "Sage's Journey framework integrating hero and heroine journeys for storytelling"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bc566cacbd13",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 21,
+     "subject": "Literary conventions analysis and automation workflow design"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-951576e5e137",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Technical explanation of CHSH experiment, Bell's inequality, and quantum predictions"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 9,
+     "subject": "Thought experiment reversing classical and quantum premises with interim detection hypothesis"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 14,
+     "subject": "Meta-discussion about conversation flow and request for silence until analysis"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 20,
+     "subject": "Experimental setup with parallel detector banks for verifying data source and correlation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ce777a361d92",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Thread naming and clarification"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 11,
+     "subject": "White paper release strategy and influencer outreach campaign"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-67bb2f33e9a8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "SEO meta description and keywords for satirical manifesto"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7196bd3360ab",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Expanding Awareness cosmological concept and Planck-scale matter-antimatter annihilation model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-989e07b761e0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Arc length comparison: sine waves versus straight lines"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Nobel Prize for mathematics (tangent)"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 12,
+     "subject": "Edward Witten personality type and INFJ characteristics"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 21,
+     "subject": "AI-assisted problem-solving for physics unification; algorithms as engines of advancement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-05d6d23810e5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Planck scale physics: electron orbitals as classical particles with measurement-limited observation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-100618cf9e7c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Narrative paraphrasing and emotional hooks for personal essay about marriage breakdown and self-discovery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9ac0a92a7546",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Edge Observer thought experiment challenging Big Bang cosmology and dark energy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0d93fd7fc49a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Bell's inequality and quantum entanglement: challenging standard interpretation via thought experiment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ce11b4fc6234",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Organizing Expanding Awareness cosmology paper: chapter structure, diagram colors, and thought experiment conclusion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-125b714d2ccd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Buddha's journey from sheltered prince to enlightenment seeker and spiritual teacher"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4104222d4e24",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Origin of the universe and Big Bang causation challenges"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c147282e7032",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Refining AI-assistance explanations for different audiences"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ae393e777239",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Developing paper challenging Bell's theorem with alternative physics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7ce0458b5372",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Integrating white paper with fictional narrative about Mira's journey"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-22318fe13a0b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Developing section on interface between science and religion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c854bdb07df2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "US presidential nomination processes"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "Parliamentary systems and prime minister selection"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 13,
+     "subject": "Gerrymandering and electoral district manipulation"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 16,
+     "subject": "Electoral College system for US presidency"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "AI image generators"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0fdea4b5d76e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Expanding Awareness Universe framework and missing baryon problem"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e01617b5bdb9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Developing sections for Extending Human Cognition white paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7ad5a0a6bcbe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Patent law, white papers, and intellectual property strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2e9b53c593f1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Analyzing David Graeber's work and integrating with frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-98262db26bac",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Analyzing Marriage Isn't Forever article"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Processing requests without complete source material"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a3599e8c06a3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "LangFlow workflow continuous refinement"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Bestselling Avalon Hill World War II board games"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Pydantic AI framework overview"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5923a8567feb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Star Trek-inspired naming and thematic framework for document"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-194c1aeb3766",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Higgs field theory and graviton quantum gravity arguments"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 9,
+     "subject": "Identifying expert collaborators for research"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fa34caf13985",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Preserving URLs and designing resilient plain-text content"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Brief verification check of assistant connectivity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4840bb844d12",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Analyzing and summarizing marriage narrative essay"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a9cc38d0a35",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Consolidating versions of cosmology framework document"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d0a71191a21c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Developing expanding awareness model to eliminate quantum gravity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bc558102121a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Reformatting document outline for Google Sheets spreadsheet"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c52aefcbb43f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Planning document development strategy and managing large outlines"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Drafting appendix on wobble model mathematical framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a9081e98f99",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddhist karma and rebirth teachings"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Graeber's debt history theory and economic systems"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Mindfulness meditation practices and sports performance"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 15,
+     "subject": "Understanding meditation distractions, mind states, and ADHD"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5c1912002751",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Developing wobble model paper to eliminate wave function collapse"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1b3998cff711",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Rewriting mate selection essay in first-person narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c7e6a0ccd38b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist teaching on equanimity and self-worth"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-642b3b3f462e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Documenting cosmological framework and dark energy explanation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ea41faee4ed7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Examining whether van der Waals forces explain particle clumping in microgravity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7921627e01e1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 19,
+     "subject": "Restructuring and refining paper outline for Bell's Theorem and Wobble Model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7d910695136f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Developing and refining steady-state universe model and CMB explanation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a1469dfe3bb4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 19,
+     "subject": "Restructuring paper outline with comparative before-and-after framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6c56d83951c4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Reviewing and improving extended cognition white paper outline"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Developing visual design elements, aesthetics, and organizational concepts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a460a6a4721e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 16,
+     "subject": "Five Hindrances to Buddhist meditation and their antidotes"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a6f7d5dc1536",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist concept of Dukkha and inherent unsatisfactoriness of existence"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 7,
+     "subject": "Buddhist teachings, practices, and the Lamrim path"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-735c5da9369b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Historical list and significance of 4X video games"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 7,
+     "subject": "Scientific problems in physics, astronomy, cosmology, and universe documentaries"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Total Recall film ending and dialogue"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "19th century ether theory in physics"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Casey Kasem biography and career"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Philosophical analysis of the phrase 'syllopsists in time'"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Star Trek episode 'The City on the Edge of Forever'"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5ba9c1dd475a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Analysis and development of new cosmological theory framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-973846d3298a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Various topics (conversation 11 - content not fully examined)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3082f53a45bc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 14,
+     "subject": "Various topics (conversation 12 - content not fully examined)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-60ba37a9e0bb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Various topics (conversation 13 - content not fully examined)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ebcd97747ed9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Children's story development (5-6 year olds)"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "High school/adult level section expansion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-554ee7910a7a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Cosmological theory development (Higgs boson and matter-antimatter asymmetry model)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6ba3c2f80257",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Creating and refining a writing style guide"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ae59a367dd41",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Using AI to find mathematical connections between Higgs field and gravity"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0936719d4794",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Disruption Thesis and Silicon Valley brief on AI agents"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Unreal Engine geometry applied to data visualization"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 8,
+     "subject": "Space communication distances and light travel times"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-428bd09d1c32",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Cosmos series and Einstein's special relativity"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Poetic expressions for being hard to reach"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Historical examples of rapidly adopted scientific frameworks"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 16,
+     "subject": "Miscellaneous single-topic queries (dragnet, Kant, Google Forms, Ready Player One characters, email subject lines, space/cosmology questions, physics professors)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f649e057ee07",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Meta-instruction on conversation summarization with Einstein commentary"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-47c7f5e5d907",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Developing technical appendix for paper on classical wobble model for quantum interference"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f80b44348428",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Extracting and refining objections to Hubble's Law if overturned"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-43905cd2c700",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Restructuring outline from multi-level numbering to indents"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0191b971a0e6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "Influential works on chivalry and related conceptual summaries"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-79d0ba81343a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Einstein's views on quantum mechanics and disproving Bell's theorem"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f3763cca5056",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Analyzing and consolidating document summary on Integrated AI Extension System"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6b7a9fdad28f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Bell test measurement analysis and polar plotting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-da83dc17e0fd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "CMB redshift, baryonic radiation, and measuring redshift"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Alternative to expansion model; rejecting Hubble's Law"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-58d1dfc84840",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Blog post structure and emotional engagement techniques"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d9e7ab3cb019",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "White paper analysis and development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f7ffbfcedc70",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Einstein's published works bibliography"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cb96d897dc2a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Autism, parental expectations, and snake oil treatments"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 7,
+     "subject": "Human uniqueness from theological perspectives"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1429721cb9b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Chat summary and analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9b5fb91c1839",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Modern Monetary Theory"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Bluetooth device troubleshooting"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Word and phrase alternatives"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Overcoming limitations phrase"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Grammar for compound ages"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "Derisive terms for social classes"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 10,
+     "subject": "Quote attribution: angels dancing on a pin"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 11,
+     "subject": "Mac text-to-speech setup"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Panpsychism definition"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Winston Churchill Russia quote"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Email thank you message"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Contact movie quotes"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "Mel Brooks 15 Commandments skit"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 19,
+     "subject": "Alice in Wonderland Cheshire Cat quotes"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 21,
+     "subject": "Archive.org and Reddit domain policy"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 23,
+     "subject": "Ready Player One: Oracle and mythological questions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2fa43b007548",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Open Mind Foundation initiatives and governance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ead6a8ebe0d4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Gravitational equation and cosmological framework"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "Alternative cosmological paradigm without expansion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-617ba86fe65a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Lattice QCD thread summary and accuracy verification"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Mass and gravity calculations from thread ideas"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b16f1b37f403",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "WritingGPT configuration: writing style and tone"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 11,
+     "subject": "Extended cognition framework and SynthesisGPT development"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 18,
+     "subject": "SynthesisGPT sub-goals and tool integrations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9e87c6313bd7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Usage limits and billing policy"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 7,
+     "subject": "Framework expansion and conceptual document development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-74f18b45368e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Document technical appraisal and scholarship review"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2a3fa3d6e8a0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Alternative cosmological model with charged Higgs bosons"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2af1e25db010",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Introducing and incorporating the wobble model into quantum physics paper"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 16,
+     "subject": "Systematic enhancement of paper sections (abstract, theory, experiments, math, transitions)"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 20,
+     "subject": "Technical clarification on experimental design precision and calibration mechanisms"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-065ab0eeae3c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Analyzing and rewriting an ex-husband's apology letter in Hemingway style"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f0fbd4efdfbd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Crafting and refining a cosmic creation parable about God and Son forging universes"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Describing Norman Rockwell's artistic style and techniques"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f7e855710a7f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Compiling a comprehensive bibliography of Albert Einstein's published books and collections"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9d1e60a5399e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Structured analysis and summary of quantum mechanics discussions covering multiple theoretical interpretations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b275cc0d057f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Developing the Human Nexus as a thematic universe with unifying elements and framework"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Exploring physics questions including relativity, Standard Model reconciliation, information theory, and topology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f975ff541158",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Defining and visualizing the geometric concept of a toroidal shell surrounding an excluded sphere"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b75e3e96c106",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Exploring the 48 Laws of Power principle with headlines, examples, and dark arts framing"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Declining harmful requests and discussing Lindsey Graham's historical political positions on Donald Trump"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c5f1dd379ba4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Technical evaluation and critical analysis of the Expanding Awareness Cosmology paper with rebuttals"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Writing a paper section bridging EAC and Standard Model cosmology based on converged framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fdd51f9513fc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Personal reflection on masculine and feminine dynamics in relationships with philosophical examination of gender roles"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-45be448aef71",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Bell test measurements and square pattern artifacts from detector orientation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8a27fee54bb1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Prior art repository concept, existing examples, integration strategy, and funding structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-08e82d0cf0c8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Comparing Collective Intelligence Project with white paper's Sum of Human Knowledge concept"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Refining and validating the governance framework outline structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-14cb9cf3ace0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Evaluating Python code alignment with experimental double-slit electron diffraction results"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Classical mechanics simulation of individual particles through slits with wobble effects"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Statistical analysis of goodness of fit between classical simulation and experimental data"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9b036fdffb5f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Evaluating Python code alignment with experimental double-slit electron diffraction results"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Classical mechanics simulation of individual particles through slits with wobble effects"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Statistical analysis of goodness of fit between classical simulation and experimental data"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-354d7910e48d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Creating romance story headlines and writing narrative opening scene"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1798a4f460b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Document outline review and organizational structure analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-180a8efefe8d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Key points summary of Machiavelli's The Prince"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-89425504f60f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Cosmology theory modifications integrating dark matter, supermassive black holes, and early galaxy formation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7204c53686df",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Creating and using GPTs, token memory optimization, and AI tool integrations"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Self-publishing platform Kindlepreneur overview and marketing tools"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "GPT model drawbacks, implementation concerns, and token usage with multiple GPT instances"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-86a412483c9f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Finding connections and expanding awareness through pattern recognition and cross-disciplinary approaches"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8917d44274fa",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Physics of light splitters and photon behavior in quantum optical systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-96e93b0f425a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Tibetan Buddhist practice of generosity or dana and philosophical implications"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-99aa501ebc5f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Curating list of AI agents available from Smythos platform"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2532edddf63b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Analyzing research paper and extracting researcher names and project information"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4474111f5bdf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Analyzing collective intelligence documents and comparing Supermind framework to white paper originality"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ba117f7cfc3d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Adapting narrative plot through multiple analytical frameworks and perspective shifts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ea37182b3f69",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Establishing character voice and consistent writing perspective for guided narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f1468d58b18a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Evaluating approaches and tradeoffs in writing erotic fiction with alternating first-person perspectives"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0d6d7c210cec",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Document comprehension and provision of brief analytical responses to various requests"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-244c8d2a396b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Power strategies and the 48 Laws of Power"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9debdc26db4b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Attempting to visualize double-slit electron diffraction graph"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Mathematical model validation and Big Block cosmology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ca8d40ac998c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Law 6 from 48 Laws of Power meta description"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Sun Tzu's Art of War applied to personal power"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Law 48 of 48 Laws of Power and historical examples"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f3aaeaa1d824",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Structuring and reformatting outline for VI. Societal Implications"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ce93d70219b4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Einstein's riding a light beam thought experiment"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 5,
+     "subject": "Dark energy, \u039bCDM model, and cosmological critique"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Scientific paper formatting standards and LaTeX resources"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-52be45eaaa7b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Planck length, time, and volume equations"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Pomegranate properties and images"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Military situational awareness from Wikipedia"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 10,
+     "subject": "Visual illusions and Escher-M\u00f6bius staircase drawings"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 11,
+     "subject": "Finding contact information for Dr. Phil Platt"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Cesium atomic clocks and timekeeping"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Han Solo carbonite freezing from Star Wars"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Star Trek Deep Space Nine episode Shadowplay"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Professional golf plus handicap records"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7d7047eade1f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Double-slit electron diffraction experiment summary and review"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "React code for simulating electron diffraction patterns"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-abb8672364ca",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "AI knowledge acquisition and organizing multiple LLMs"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5530be4362c2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Creating meta persona for knowledge enhancement and political advocacy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ca2f69763f47",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Tibetan Buddhist practices and teachings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ede2f2fd8be7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Game theory analysis of political power dynamics and Democratic strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ee29c771ba78",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Einstein's scientific beliefs and gravitational wave research"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-035aeff0121d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Gravitational lensing theory and baryon acoustic oscillation data"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9c61314bc1d4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "How inflation hurts workers and the unassetted"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 7,
+     "subject": "Buddhist teachings, quotes, and philosophy on Sunyata"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2932aa9c912e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Fictional concept of Sum of Human Knowledge AI project"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f6ed8919ddd6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Cosmology, gravitational effects, and universe expansion models"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c54ae0d8eb5b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 16,
+     "subject": "Continuous discussion of cosmological theories and gravitational lensing"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-83107adeca72",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Cosmology models and cosmic redshift interpretation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d9e08cb51a54",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Single turn on unspecified topic"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-192ef9fd538d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Discussion of scientific concepts and historical analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1e97453765ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Continuous discussion of philosophical or scientific topics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b020d492aa97",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Cosmological analysis and theoretical physics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-65b0b8059fb7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Physics and scientific theory discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2effcc23768e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Scientific or philosophical topics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-efa89f795289",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Concluding conversation segment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1bfa432fd750",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Bedtime story for scientist outreach"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7aa10f6e1bc9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Deriving gravitational constant from Higgs coupling constant"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-511d7ea648ff",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Anger imagery progression"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Objects of desire visualization"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 13,
+     "subject": "Emotional and psychological states imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8e9ef2e746fd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "White paper comparison with OpenCog Hyperon"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5cb230b2cac8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Simulation theory paper development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ba2223ca68fe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Cosmic inflation sequence and events"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Miscellaneous physics questions"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 9,
+     "subject": "Gravitational lensing concepts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3a79ab19d114",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Verification of AI discussion and mathematics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c39bb3c95c38",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Examples and research for dissatisfaction paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-feddf97774e3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Human Nexus thematic universe outline and parameters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-89b3373deb28",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "White paper creation tools and formatting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-47e944364965",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Document revision and content insertion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-03cd093cc60a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Particle physics concepts and spin properties"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-892b074a9ea4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Writing guidelines review and improvement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c19d0eabfd43",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "AI agent team organization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8efeb99dce31",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Cosmological framework evaluation and marketing"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-603a1b019f2e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Religious interpretations of unknowable concepts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-946bf7c0ae2f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Physical and emotional aspects of spiritual awakening"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-06d8803c13a1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "SEO optimization for article"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d09f187685a1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Big Block concept explanation development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-997846abd872",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Imaginary numbers and unobservable space visualization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7c8ebab1ca93",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Star Trek character selection and analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3b6f22dfd610",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Hubble's Law alternative gravitational lensing model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-17c35649ab85",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Physics and cosmology questions with text cleanup"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dcd97cd3ce99",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Chinese Room and LLM appendix development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1577988d6692",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Steady-state theory and cosmological evolution"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6493716b1eb6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "20th century cosmology transformation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-122e5513ad49",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Content expansion using guide format"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-85789b8eca1a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Capitalist system emotional cost"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7fc4513cfb46",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Material review and draft revision"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-90b2a268bda8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "AI agents list compilation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7507e57581c6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mindfulness meditation practice and objects"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-eb603b30ecbf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "I appreciate the clarification about my role, but I need to note that this input"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Has George Santos committed fraud?"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Who are the most successful grifters elected to the House of Representatives?"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "List of US Representative members convicted of crimes"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Who said there is a group whom the law protects but does not bind?"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Where is Baruch College and what is it known for?"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "What percent of people own pets, and is that percentage growing?"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2d66c357164b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Meta description: \"All persons fictitious disclaimer\n\nThe story, all names, char"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-53662eddc299",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Can you write erotic fiction?"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Do you have access to the complete library of writings from Geshe Kelsang Gyatso"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "How do psychologists recommend managing anger?"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-36f4aa660a61",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "\"\tOutline Topic\tMatching Group\tScene Goals\tCharacter Introduction\nThe Ordinary W"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c7eacc31d735",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Can you give me the current theory of gravity? Does it say that there is a minim"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "I pasted my paper on expanding awareness.\n\nI want to add a discussion of quantum"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "In the late sections of Chapter 4, just before \"Implications of the New Cosmolog"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b4df60922cfd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Analyze this without making comment. I will follow with instructions in a moment"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "The paper I just uploaded discusses unifying the standard model with gravity thr"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Could M-theory be used to analyze this, or is the math so different that it woul"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "The obvious candidate would be Edward Witten, but assuming he's not available\u2014he"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Would you provide a"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Yeah, they're perfect. Thank you."
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2a8c45ec9149",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "# SEO Meta Description and Focus Keywords\n\n**Meta Description:**\nLearn about the"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-25973d059d8b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "import numpy as np\nimport matplotlib.pyplot as plt\n\n# Constants\n\nh = 6.626e-34  "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4990029dbd7b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Explore Buddhist teachings on overcoming anger, jealousy, and attachment through"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "provide extensive detail on the Buddhist practice of purification and moral disc"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6c4557c46116",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "# Meta Summary and SEO Keywords for \"Reincarnation is Useful Bullshit\"\n\n## Meta "
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "focus keyphrase"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Buddhism teaches us to examine our instinctive reactions and natural tendencies,"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "This is a foundational meditation because most subsequent meditations build on t"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "When your mother realized she was pregnant with you, she could have evicted you "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-47881428f8e1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhism guides us to examine our natural behaviors and responses, assess the pa"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "We should contemplate the great kindness of all living beings. Everything we hav"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2d1ba9d757f4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "All the major world religions use some form of a carrot-and-stick approach to mo"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Headline about hyperbaric oxygen therapy for autism being snake oil"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fadfd437d4a3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "I want to draft a paper that compares the philosophical and technical foundation"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "One more angle to explore:\n\nPlease compile all your research on Einstein, focusi"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Opinion on title:\n\nEinstein's Intuition\nA Journey of Intuitive Understanding to "
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Updated outline:\n\nIf I want to put this into a book with both papers as a large "
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "In order to make the two papers work and strengthen the connection to Einstein, "
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "That is brilliant. Please put together a complete and updated outline including "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8752437e8b81",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Discover the Buddhist path to enlightenment through renunciation, the Bodhisattv"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Provide more detail on Amida and their forty-eight vows."
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "How does one gain access to heaven in Evangelical Christianity?"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Provide 10 similar headlines for \"Earning Heaven: Parallels Between Pure Land Bu"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0ada3161c388",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "The pasted material includes several early drafts and a current outline. Use the"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5533e4b23002",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "**SEO Meta Description:**\nDiscover Tibetan Buddhist Lamrim, a step-by-step spiri"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9d8b3839eac8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Law #2: Never Put Too Much Trust in Friends, Learn How to Use Enemies\n\nThis law "
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "provide historical examples"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Please provide 10 headlines related to Law #2 of the 48 Laws of Power: Never Put"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cb6cc4c83f55",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Forget the color part and give me the rest."
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "That looks absolutely nothing like my drawing. I want that information put on th"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "That is not the drawing I uploaded. I clearly said \"without change,\" did I not?"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "I see no sign that you are working on it."
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "You are useless as an image processor."
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Apply this gradient overlay to the image. It should only impact the white areas "
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Stop and use this file."
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "This all started because I wanted to create a background to put the cosmological"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 9,
+     "subject": "Create a generic black and white image that matches the circles and axes of the "
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 10,
+     "subject": "You can't create images well. Just show me where the formulas need to appear so "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a7fe487c8cf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "##### [CHAT CONTEXT: Date, Purpose, Overall Theme] #####\n\n##### [MAIN OBJECTIVE:"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f710abe1dee4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "I want to add a section to this paper, but I want to brainstorm first.\n\nI want t"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Elaborate on option 6.\n\nMy ideas:\n1. Starting in section 4 (implementation pathw"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9bb2fc33d1b1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Summarize conservative arguments against large government."
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Republican leader of the Senate"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "When was the Communist Manifesto published?"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-598ef3b1068a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "In the spirit of debate, please provide support for the Big Bang on this importa"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "shorter"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Video Games and Simulation: A New Lens for Understanding\n\nThe human mind grasps "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4f21a26ab092",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarize the following to be an email to a personal friend explaining this conc"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a7991712385d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "What is the term for technologies that are conceptually well-understood and clea"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "I don't have a list of enabling technologies or adjacent possible innovations. H"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-99399e381a44",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "briefly summarize"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "(empty)"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Can you run this Python code and compare it to the results of the 2013 experimen"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5679aeb46d95",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Isaac Newton developed his theory of fluxions as a mathematical framework to des"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "I've read that he was accused of keeping Fluxions to himself because he enjoyed "
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0aae1e8a45fd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Provide 5 taglines, a meta description, and keyword phrase for SEO for the follo"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-81e73e5805d5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "People pursue religious or spiritual paths for a variety of reasons, but two ten"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c54f2d61b992",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarize the provided text.\n\nRequirements:\n1. Provide the output as a narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1f8a94efe3a5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "floating in complete sensory deprivation\n\n[1/27/2024, 8:13:47 PM] System:\n\nDALL\u00b7"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "A meditator sitting in the traditional posture in front of an altar with an imag"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "A player alone on a driving range hitting golf balls while a boombox is playing "
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Tibetan Buddhist meditator focusing on virtuous objects\n\n[1/27/2024, 8:19:03 PM]"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "brainwave entrainment"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Provide an image of a mediator using headphones experiencing brainwave entrainme"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c608ebefd26e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "The white paper is the source document, and the writing guidelines are how I int"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Review and update recommendations."
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5c4c2673d343",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Provide me a very brief summary of the observations that led to Hubble's law"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "You've given me the interpretation, not the observations. Please modify your res"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "This is important because I want to put together a step-by-step paper on this, a"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Your first brief explanation was better. There was redshift, and he correlated t"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "In his analysis, he attributed it to the Doppler effect. However, subsequent int"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dc7e33af6d1d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Provide 10 headlines for \"Waging War\" by Sun Tzu."
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Provide a keyword phrase."
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Provide a list of points from \"The Art of Worldly Wisdom\" by Baltasar Graci\u00e1n (1"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dfe0c9f405fe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "proper term for Islam's believers"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "mosque"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Hindu holy books and places of worship"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "main Hindu god"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Proper name for Jewish people"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Buddha quotes on practice and faith"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-943af47ceecd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Provide me a detailed overview of the Pauli Exclusion Principle and the Heisenbe"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f34b5e796447",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "1. The Bodhisattva's Dilemma: Enlightenment for Self vs. Service to Others\n2. Se"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "What are the four reasons traditionally acknowledged for pursuing enlightenment?"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "What is meant by Jesus Christ being called the Prince of Peace?"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Buddha's life records that he remained silent for seven weeks following his enli"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "term for Christian compassion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d9361229e7ee",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarize the lies told by George Santos in his campaign for the House of Repres"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "How many lies have been documented by Donald Trump while he was president?"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "How did the Minneapolis police respond initially to the George Floyd killing?"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Please summarize the events leading up to the case against Salvador Sanchez in t"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-544f37cebbec",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Ben Goertzel is known for his work on Artificial General Intelligence (AGI). He "
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "I cannot access external URLs or browse websites. To help you, please copy and p"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "OpenCog Hyperon is an open-source software framework designed to advance artific"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8143581e5e52",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "I wish to continue this narrative. the goal is to take the white paper and creat"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Really? Please try again."
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b89f445b992b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Amitabha welcoming devotees to his pure land\n\n[1/25/2024, 12:36:57 PM] System:\n\n"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "information event horizon"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "provide an image\n\n[1/25/2024, 12:50:34 PM] System:\n\nDALL\u00b7E displayed 2 images. T"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "The best way to approach death is to cultivate a calm and accepting mind for wha"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ec021413d466",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "I need a working title for this piece. Please provide 10 options.\n\n\"\nTake the AI"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "I need the title to be a challenge and a command\u2014something that makes people fee"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Not quite as confrontational. I want the same passion but civilized, with a vene"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Give me ten taglines based on selecting the first option."
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "This is the title \"Validate the Expanding Awareness Cosmology: An AI-Assisted In"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d65590b2680c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "The Buddhist Wheel of Life"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Draw the Buddhist wheel of life.\n\n[12/31/2023, 2:07:01 PM] System: DALL\u00b7E displa"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "The center of the wheel contains three animals, typically a pig, a snake, and a "
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Human beings cycling through birth, aging, sickness, and death.\n\n[12/31/2023, 2:"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "a moment of fleeting pleasure leading to disappointment and a lack of fulfillmen"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-21f0d22e4ee3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Provide a brief introduction to open the outline. Provide brief summaries for Se"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-46f603d7f9af",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Provide a list of what Donald Trump's supporters consider his strengths and good"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "**Meta Description:**\nExplore why political partisanship leads to unhappiness an"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-91051b900f68",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Paraphrase the following:\n\nHe realized there was a path to cessation of sufferin"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-07ed7702d740",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-08a51345d1c0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0db38387e51a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-17f01b7f476b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-18973c07cf70",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Double-slit experiment data analysis and graph visualization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a3a64a1d868",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Gravitational lensing graph refinement with Hubble and dark energy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-246f73bf2cea",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-26ba5aad5b1c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2b2feb2990eb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2fd35c57b38d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Buddhist texts paraphrasing and SEO keyword development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3698ac21577b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-35faa8bc4ca2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Solar measurements"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "de Broglie-Bohm quantum mechanics theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3c44f9525210",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Pure Land Buddhism afterlife concepts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4b3b8c83a74b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Tibetan Buddhist Lamrim teachings on karma and meditation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-52c51621a148",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-558e128f95ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a0330124a0b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Buddhist philosophy on ordinary experience and natural cycles"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a1683608d61",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Easter egg hunt answer sets from various narrative sources"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-657eccfd2f6d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Opening narrative about settling into marriage and deciding to have a child"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Personal spiritual experience with Qi energy and Lamrim meditation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-79789b155b09",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-827f1b2d0344",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-854317d90860",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Interface transcript visibility and display design feedback"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8b3223515bc2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Democratic Party superdelegate nomination process"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8b3dff26952a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8d46cd5ef6ba",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Planck units relationships"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Maxwell equations and electromagnetic visualizations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8d5be1bb2d61",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9c93972e2dc5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a3116b6f42ab",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a84388dfad16",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Continuing philosophical discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ab7eb030ee0d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-abacfe3e9dad",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Edward de Bono thinking methodologies and Six Thinking Hats"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ac67a6505ac0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Image requests depicting Buddhist meditation themes and spiritual qualities"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b029d4de4873",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Buddhist generosity and meditation descriptions for SEO"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b6d2216753f2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bb52a617c269",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c001c7c85105",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c2e8f076a97b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "LLM general knowledge acquisition mechanisms"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d04dbebbbef9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Poetic exploration of emotional stoicism through verse and narrative extension"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d1a7a0f1b689",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Main discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d72434e83719",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Kindness and compassion visualization through imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d9cc4cd5daf7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Creation mythology and divine workshop narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-efce1a4a8840",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Writer monetization methods overview"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e729611dac42",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Buddhism karma philosophy and 100% responsibility"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-efe8eb44ab79",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Image requests exploring Buddhist compassion practices and transforming suffering into love"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-eee20c971214",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f67f2ebfd80c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fca7f461fc09",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-194d3640c266",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Images contrasting self-centeredness with virtue, compassion, and joyfulness through character descriptions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2142a126b93a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "SVG visualization creation and refinement for awareness cones"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-864404aa59ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Personal writing introduction"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Steady-state cosmology"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Etymology of sabotage"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Michelangelo biography"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-954a4056e697",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Continuing discussion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-76d45722e271",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Web hosting providers and services"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b41820b5f222",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Gravitational lensing discovery and history"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Refraction physics explanation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6087a0b56b8a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "SEO meta description for Tibetan Buddhist Lamrim"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Medium.com account ban appeal strategies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6401518bc9d1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Image generation with progressive refinements for masculine portrait"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-83e398b8fb10",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mental dungeon visualizations with enemies and resentment"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Forgiveness imagery releasing from dungeon to pure land"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-01c66745fcc3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Tonglen meditation practice"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Great Compassion in Lamrim Buddhism summaries"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f5ce67c0f73d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Cosmology appraisal of Expanding Awareness Cosmology model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-35c2aad75e2d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Modern thought leaders in performance-based and passion-driven living"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b6178076d6db",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Entitlement's impact on gratitude and spiritual growth"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e9744d957a63",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Big Bang nucleosynthesis and light element abundance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0fae4077d3a9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Machiavelli's analysis of hereditary vs conquered principalities"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Headlines on courting public attention"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-afecd3a6d77a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Salvador Sanchez shooting case and charges"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-745d061331cf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Machiavelli's analysis of hereditary vs conquered principalities"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Headlines on courting public attention"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d7b2ebc94ac9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Why black holes are ruled out as dark matter explanation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ccafc32dac4a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Political partisanship definition and formation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0534973a8d42",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Lamrim Great Scope meditations on compassion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-60fa526ae0c0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Analysis of cosmological model discussion between AI systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-589ea4c096c0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Spiritual journey from Catholicism to Vajray\u0101na Buddhism"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d97b9260a4c9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Image generation capabilities and DALL-E integration"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "George Santos political campaign"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-521277f5f7ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Love of neighbor and self-prioritization vs Buddhist compassion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c1e4e0d24878",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddha's life events and path to teaching"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-95def8992199",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Aristocratic rule and imagery"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Democratic voting process imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f409bb799f17",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "David Graeber's Debt book key points"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-39955a02ac69",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Emotional hooks for content engagement and clickthrough"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4ea6021b10c5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Historical examples of beautiful people and fading beauty"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9e5089ca8b46",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Tibetan Buddhist Lamrim Intermediate Scope headlines"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f9c072faed22",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Democratic politicians known for assertive leadership styles"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cc589d43ae6a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddha's Four Noble Truths and path to liberation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-af20502c9617",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mindfulness meditation objects and imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2e76fbe77c2a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Studies on outlook for young adults"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-516d61b8508d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Buddhist Pure Land visualization with light rays and compassion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-aabfc5567cb0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Character profile of Mira through life stages"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b320026ff882",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Strategic silence and controlled communication principle"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Dark Arts mastery and reputation protection"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2b0823a6d50b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Prominent AI agent researchers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-10898648ce26",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mind as serial processor"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-150544113dee",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist psychology and suffering responses"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-77a3bb212e61",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Christian doctrine of Original Sin"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8d93cf66ca77",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Alienation concept across psychology and sociology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7feca1d4d84d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Walmart's arguments against employee unionization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d6e2b4f27ee7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Colin Allred's background and public contact information"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-49f69a8b7320",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Love of neighbor as radical equality and Buddhist compassion practice"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-02a67bad563d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Self-centered rationalization versus valid conflict reasons"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1e9d61bf11a7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Image refinements of angry man pressing kill switch button"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f4ce14a01966",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Countries with least stress and highest happiness levels"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6051dcec4e92",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Lamrim Exchanging Self with Others practice descriptions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-78e569e697d4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "U.S. government UFO reports and investigation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8a71973e87fc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Peace of mind benefits and Buddhist hindrances"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-668c6dc8fb26",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Religious marketing and competition for adherents"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-678b66e7c70f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dark Arts pursuit and its inevitable negative consequences"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b086212972bf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Six Perfections in Tibetan Buddhism and Bodhicitta"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-65aa3580f1b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Walton family net worth estimates"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3a5cab8046df",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Gravitational lensing sphere thought experiment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c37f97dbdaae",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Object meditation focused on virtuous feelings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f0cdd779506a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Forgiveness and compassion for overcoming anger"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6a05a3640fa9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Cherishing others over self-centeredness for happiness"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dfd590fc4b92",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Eightfold Path of Buddhism imagery"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Politician with zipper keeping mouth shut"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e3ac61e04466",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Kierkegaard on making religion difficult and personal"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fd73bb1914c9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Literary criticism request for Edge Observer paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-20ab8cbdd217",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Special needs parent imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-418204f4af38",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Balance between worldly pursuits and spiritual aspirations"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Reckless pursuit of worldly desires imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d3d652d1ff13",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Paraphrase about educated women and political preferences"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fd4544ad9327",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Headlines for mindfulness meditation key practices"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bcb8daac5aab",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Beauty, fame, wealth and happiness in Buddhist context"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7a17d8e012e0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Buddhist refuge practice and Three Jewels in Lamrim"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d9bfe9db6627",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Walmart union-related imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ff1d41c65aa3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Mindfulness meditation journey and mental discipline"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4e764fb89276",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Doppler effect explanation and research"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9020ddcb05e4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Doppler effect explanation and research"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f82d9aeba952",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Great Compassion in Lamrim teachings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3b660e0ad70a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "AI as enabler for creative conceptual thinking"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a1c882cc376",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dark arts master or politician feigning kindness imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1d30704f8a96",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Meditator with rays of light emanating from heart"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d5af62a32890",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dark arts master sparing enemy's life imagery"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c6f73d1ce636",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Peacock painting inspired by uploaded image"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7796033afbfd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Paper review and revision of cosmology manuscript"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Closing reflection on AI collaboration"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7fa8af78d871",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Summarizing Buddhist texts and meditation objects"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 11,
+     "subject": "Philosophical traditions and narrative style requests"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 31,
+     "subject": "Iterative style writing exercises in Hemingway and McCarthy voices"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 43,
+     "subject": "Refining tone and voice specifications for spiritual content"
+    },
+    {
+     "start_turn": 44,
+     "end_turn": 59,
+     "subject": "Narrative requests with monk/spiritual friend tone variations"
+    },
+    {
+     "start_turn": 60,
+     "end_turn": 68,
+     "subject": "Buddhist concept comparisons and capitalist theory"
+    },
+    {
+     "start_turn": 69,
+     "end_turn": 77,
+     "subject": "Teachings on death, impermanence, karma, and rebirth consequences"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4cf5377c2c72",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Matrix training simulation and brain-computer interfaces"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 24,
+     "subject": "Naming and conceptualizing knowledge expert system with personified AI"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 56,
+     "subject": "Developing The Human Nexus framework with organizational structure and branding"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e185d8eac61e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Establishing expert database with hierarchical tiers and credentials"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 51,
+     "subject": "Populating expert database with biographical data, images, and quotes"
+    },
+    {
+     "start_turn": 52,
+     "end_turn": 61,
+     "subject": "Integrating military strategy and Sun Tzu expertise into system"
+    },
+    {
+     "start_turn": 62,
+     "end_turn": 72,
+     "subject": "Exploring database technology options and video integration"
+    },
+    {
+     "start_turn": 73,
+     "end_turn": 84,
+     "subject": "Designing hierarchical data storage and mental models integration"
+    },
+    {
+     "start_turn": 85,
+     "end_turn": 100,
+     "subject": "Refining system architecture with concept linking and dependency mapping"
+    },
+    {
+     "start_turn": 101,
+     "end_turn": 125,
+     "subject": "Establishing belief systems, expert roles, weighting rules, and system documentation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a5f5db20a1e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Developing differential propagation as central concept to EAC"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 9,
+     "subject": "Document refinement: addressing technical issues and incorporating evidence"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 10,
+     "subject": "Preparing critical evaluation and technical challenges to the theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b323df2b49f4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Curating AI agents from aiagentslist.com with completeness verification"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Extracting LangChain template agents with accuracy corrections"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Curating AI agents from Relevance AI templates"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Processing Relevance AI platform agent listings with extended descriptions"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Curating AI agents from AI Agent App templates"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Consolidated curation across 23+ AI agent platforms and resources"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5fe4a2aec512",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Narrative and framework development - Creating Aurora's multi-stage story to convey Wisdom-Passion-Nexus organizational framework"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 11,
+     "subject": "Scene-to-organization mapping - Matching narrative scenes with specialized organizational framework groups"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 19,
+     "subject": "Personal AI coach concept - Introducing memory-based AI for motivation, decision-forcing, and self-improvement"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 23,
+     "subject": "Technical implementation and global accessibility - Exploring phased approaches using free tools for low-resource contexts"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 26,
+     "subject": "Virtual romantic partner design - Creating photorealistic AI with charm-based motivation and personal autonomy"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 29,
+     "subject": "Minimal architecture and startup automation - Designing low-cost system using Google Sheets with starter guides and templates"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6eb8af3e71db",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Definition of ideogram as a graphic symbol system"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Ideogram AI image generation software features and capabilities"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-486829e14d21",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Meta Persona profile development and Empowerment style definition"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Token efficiency optimization and streamlined style output"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-40f21d0c4fcb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Review of prior work and paper continuation setup"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Writing and refining quantum mechanics paper sections (technical appendix through extended applications)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0029731de6f3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Artificial Swarm Intelligence research and sources"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "UCLA campus expansion and undeveloped land"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "San Francisco Bay Area universities, Stanford AI research, and campus properties"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 18,
+     "subject": "Physicists' overreliance on mathematics in cosmology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a64dfbfca7d3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Creating imagery expressing compassion as masculine through hands and dove"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2e98e79e7c63",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Evaluation of Expanding Awareness Cosmology framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6c9a4768cef4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Expanding awareness cosmological framework applied to Guth's inflation theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-18417128cf8b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Failed attempts to clarify paper analysis request"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 13,
+     "subject": "AI Expert Teams concept analysis and web research on collective intelligence systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c7e5faf3d5b5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 11,
+     "subject": "Classical particle model of double-slit experiment with progressive refinements and statistical validation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-eab5676e7468",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Transformative academic papers and white papers in history as paradigm-shifting works"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b82cba30b302",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 11,
+     "subject": "Classical particle model of double-slit experiment with progressive refinements and statistical validation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-007f8dc85ee2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Election law restrictions on running for president and vice president on different party tickets"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-654cf8f91d67",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Chat summarization methodology and template design for preserving information across conversations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c3cd36165661",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Identifying science journalists for story about challenging established cosmology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-22a640441a22",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mindfulness meditation practice and alternative focal points for meditative techniques"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f71206bc3561",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Scientific paradigm shift from Ptolemaic to Copernican cosmology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-194a0cbe751f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "AI thought leaders on YouTube"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "AI tools and techniques for managing pen names as distinct characters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-89f59671e1c4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Defining and contrasting self-centered rationalization with valid reasons for conflict"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-93b5278c5020",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Defining and contrasting self-centered rationalization with valid reasons for conflict"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b3211299b9ab",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Quantum physics rules and principles involving wavefunction collapse"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-494512cf198f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "FDA warning about hyperbaric oxygen therapy for autism and family's failed experience"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-76e7b0356965",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Technical analysis and critical evaluation of a cosmological paper"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bf5b1d4cb596",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Definition and examples of ideograms as linguistic and visual symbols"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Ideogram AI image generation software features and capabilities"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3f24d0d7e7da",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Draft email promoting AI-assisted evaluation of alternative cosmological framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3ccec83005b7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Overview of Faraday's work and Maxwell's equations from concepts to mathematics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8d685686f8d0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Absorbing and expanding outline for quantum mechanics paper section on statistical correspondence"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-88240b584023",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "SEO meta description and keyword phrase for Lamrim and Great Compassion content"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d1a07c6ae4a6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Adding text to prevent link scraping and reward genuine conceptual understanding in future communications"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2c98ed4ad905",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Adding text to prevent link scraping and reward genuine conceptual understanding in future communications"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a6453d892169",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Imagery ideas for creating holy and sacred spaces"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2f602a33caef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "SEO meta description and keyword phrase for personal spiritual journey narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b7d2a94629a6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Story of a father and son in a magical workshop creating the universe"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-af7501bc5b9e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Mathematicians and philosophers who have written about Planck limits eliminating infinities"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-764ef391b566",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Mission statement and goals for extended cognition framework and media creation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-762d598fa3cc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Definition of self-cherishing and explanation of why self-centered pursuit of happiness fails"
+    }
+   ]
+  }
+ ]
+}

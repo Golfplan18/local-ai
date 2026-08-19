@@ -1,0 +1,3769 @@
+{
+ "ai_writing_method": {
+  "nexus": "ai_writing_method",
+  "name": "AI Assisted Writing",
+  "aliases": [
+   "AI Assisted Writing"
+  ],
+  "matrix": "Project Matrix AI Writing Method.md",
+  "resolution": "A versioned AI-Assisted Writing Method exists in one documented guide, has been applied end-to-end to at least one fiction project, and records its inputs, decision points, human-authority boundaries, and repeatable outputs.",
+  "core_essence": "To provide a systematic approach to fiction creation using AI tools as collaborative partners, with character choice architecture as the foundational organizing principle.",
+  "emotional_drivers": [
+   "I want to pioneer a new way of writing that harmonizes human creativity with AI capability.",
+   "I must document this method to refine it, share it, and use it as a basis for my own work."
+  ],
+  "objectives": [
+   "To formalize and document the AI-Assisted Writing Method."
+  ],
+  "milestones": [
+   "M1 \u2014 Versioned guide accepted: One identified guide version contains the complete method from fiction-project intake through final prose review. Resolution coverage: documented guide and version identity. Evidence: guide path, content digest, version, and a section checklist covering every declared method stage.",
+   "M2 \u2014 End-to-end fiction trial completed: One named fiction project has completed every documented method stage with its inputs, intermediate decisions, and outputs retained. Resolution coverage: application to at least one fiction project and recorded inputs/outputs. Evidence: project identity plus a stage-by-stage trial record linking each input, decision record, and output artifact.",
+   "M3 \u2014 Authority and repeatability audit passed: The guide identifies every human-authority boundary and a second operator can reproduce the declared output sequence from the recorded instructions and test inputs. Resolution coverage: decision points, human-authority boundaries, and repeatable outputs. Evidence: signed authority-boundary checklist and independent reproduction record linked to the guide version.",
+   "M4 \u2014 Resolution accepted: The guide, completed trial, and authority/repeatability audit jointly satisfy every clause of the AI-Assisted Writing Method Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 artifacts with no unresolved exception."
+  ],
+  "excluded": [
+   "A prompt collection without an end-to-end method \u2014 useful fragments exist, but a writer cannot follow them from concept through finished prose."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "AI Assisted Writing"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To provide a systematic approach to fiction creation using AI tools as collaborative partners, with character choice architecture as the foundational organizing principle. A versioned AI-Assisted Writing Method exists in one documented guide, has been applied end-to-end to at least one fiction project, and records its inputs, decision points, human-authority boundaries, and repeatable outputs."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To formalize and document the AI-Assisted Writing Method."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to pioneer a new way of writing that harmonizes human creativity with AI capability. I must document this method to refine it, share it, and use it as a basis for my own work."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Versioned guide accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "End-to-end fiction trial completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Authority and repeatability audit passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Assisted Writing Method, Assisted Writing Method Resolution, Authority, Versioned"
+   }
+  ],
+  "distinctive_entities": [
+   "Assisted Writing Method",
+   "Assisted Writing Method Resolution",
+   "Authority",
+   "Versioned"
+  ]
+ },
+ "american_jesus": {
+  "nexus": "american_jesus",
+  "name": "American Jesus",
+  "aliases": [
+   "American Jesus"
+  ],
+  "matrix": "Project Matrix American Jesus.md",
+  "resolution": "The three-book American Jesus narrative is complete in publication-ready manuscripts whose 105-chapter Recognition\u2013Ministry\u2013Sacrifice arc carries Hayzeus L. Salvador\u2019s moral-choice journey through the Lincoln Memorial martyrdom and preserves the reconciled character, setting, and continuity canon.",
+  "core_essence": "To complete a modern Christ allegory that tests selfless service against institutional oppression through the choices of Hayzeus, his community, and their antagonists.",
+  "emotional_drivers": [
+   "I want to make the moral choice between compassion and selfishness emotionally unavoidable rather than merely argumentative.",
+   "I want to expose the distance between professed spiritual values and the institutional choices made in their name."
+  ],
+  "objectives": [
+   "To reconcile the master story foundation, trilogy report, character canon, and 105 chapter outlines into one authoritative narrative sequence.",
+   "To complete the three manuscripts while preserving each character\u2019s choice architecture and the Recognition\u2013Ministry\u2013Sacrifice progression.",
+   "To prepare a continuity-checked, publication-ready package for the American Jesus trilogy."
+  ],
+  "milestones": [
+   "M1 \u2014 Trilogy canon reconciled: One accepted canon map accounts for all 105 chapters across Recognition, Ministry, and Sacrifice and identifies the governing character, setting, timeline, and Lincoln Memorial continuity facts. Resolution coverage: 105-chapter three-book arc and reconciled canon. Evidence: versioned canon map with 105 chapter identifiers and zero unresolved contradiction records.",
+   "M2 \u2014 Three manuscripts completed: Recognition, Ministry, and Sacrifice each exist as complete manuscript artifacts corresponding to the accepted chapter map. Resolution coverage: complete three-book narrative. Evidence: three exact manuscript identities, chapter-count crosswalk, and completeness report showing every accepted chapter represented once.",
+   "M3 \u2014 Narrative acceptance review passed: The manuscripts pass the documented moral-choice, cross-book continuity, thematic progression, and Lincoln Memorial resolution checks. Resolution coverage: Hayzeus\u2019s moral-choice journey, martyrdom resolution, and continuity. Evidence: final review record listing each check, reviewer disposition, and zero unresolved blocking findings.",
+   "M4 \u2014 Resolution accepted: The three reviewed manuscripts and their publication package satisfy every clause of the American Jesus Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact packaged manuscript identities."
+  ],
+  "excluded": [
+   "A comprehensive worldbuilding and outline corpus without completed manuscripts \u2014 the story is specified but not delivered."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "American Jesus"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To complete a modern Christ allegory that tests selfless service against institutional oppression through the choices of Hayzeus, his community, and their antagonists. The three-book American Jesus narrative is complete in publication-ready manuscripts whose 105-chapter Recognition\u2013Ministry\u2013Sacrifice arc carries Hayzeus L. Salvador\u2019s moral-choice journey through the Lincoln Memorial martyrdom and preserves the reconciled character, setting, and continuity canon."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To reconcile the master story foundation, trilogy report, character canon, and 105 chapter outlines into one authoritative narrative sequence."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To complete the three manuscripts while preserving each character\u2019s choice architecture and the Recognition\u2013Ministry\u2013Sacrifice progression."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To prepare a continuity-checked, publication-ready package for the American Jesus trilogy."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to make the moral choice between compassion and selfishness emotionally unavoidable rather than merely argumentative. I want to expose the distance between professed spiritual values and the institutional choices made in their name."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Trilogy canon reconciled"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Three manuscripts completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Narrative acceptance review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Ministry, Recognition, Sacrifice, Hayzeus, Lincoln Memorial, American Jesus, American Jesus Resolution Statement, Christ, Narrative, Salvador, Three, Trilogy"
+   }
+  ],
+  "distinctive_entities": [
+   "Ministry",
+   "Recognition",
+   "Sacrifice",
+   "Hayzeus",
+   "Lincoln Memorial",
+   "American Jesus",
+   "American Jesus Resolution Statement",
+   "Christ",
+   "Narrative",
+   "Salvador",
+   "Three",
+   "Trilogy"
+  ]
+ },
+ "american_judas": {
+  "nexus": "american_judas",
+  "name": "American Judas",
+  "aliases": [
+   "American Judas"
+  ],
+  "matrix": "Project Matrix American Judas.md",
+  "resolution": "The three-book American Judas mirror narrative is complete in publication-ready manuscripts that cover the American Jesus timeline from antagonist perspectives, tracing Origins, Coalition, and Consequences without duplicating the protagonist narrative or contradicting shared events.",
+  "core_essence": "To reveal how religious, political, economic, and media institutions coordinate betrayal by retelling the American Jesus moral event through the people who choose status, comfort, and control.",
+  "emotional_drivers": [
+   "I want readers to see evil as a sequence of comprehensible choices and institutional compromises rather than as an abstract force.",
+   "I want the antagonist lens to expose how professed Christianity can be inverted into protection for power."
+  ],
+  "objectives": [
+   "To build an exact mirror map between American Jesus events and their antagonist-side causes, interpretations, and consequences.",
+   "To complete the Origins, Coalition, and Consequences manuscripts with distinct antagonist viewpoints and coherent moral arcs.",
+   "To preserve shared-world continuity while ensuring American Judas delivers information and perspective unavailable in American Jesus."
+  ],
+  "milestones": [
+   "M1 \u2014 Mirror-event canon reconciled: One accepted cross-trilogy map binds the American Jesus timeline to the antagonist-side Origins, Coalition, and Consequences sequence. Resolution coverage: shared timeline and three-book mirror structure. Evidence: versioned event map with shared-event identifiers, antagonist-viewpoint assignments, and zero unresolved timeline conflicts.",
+   "M2 \u2014 Three mirror manuscripts completed: Origins, Coalition, and Consequences each exist as complete manuscript artifacts whose scenes correspond to the accepted mirror-event map. Resolution coverage: complete three-book antagonist narrative. Evidence: three exact manuscript identities and a completeness crosswalk covering every accepted mirror event.",
+   "M3 \u2014 Distinctness and continuity review passed: The manuscripts add antagonist-side cause or perspective at every shared event, avoid scene-for-scene protagonist duplication, and contain no unresolved contradiction with American Jesus. Resolution coverage: antagonist perspective, nonduplication, and shared-event continuity. Evidence: final comparison report with event-level distinctness and contradiction results.",
+   "M4 \u2014 Resolution accepted: The three reviewed manuscripts and their publication package satisfy every clause of the American Judas Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact packaged manuscript identities."
+  ],
+  "excluded": [
+   "A scene-for-scene recap of American Jesus with different narrators \u2014 the mirror adds no causal or moral knowledge."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "American Judas"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To reveal how religious, political, economic, and media institutions coordinate betrayal by retelling the American Jesus moral event through the people who choose status, comfort, and control. The three-book American Judas mirror narrative is complete in publication-ready manuscripts that cover the American Jesus timeline from antagonist perspectives, tracing Origins, Coalition, and Consequences without duplicating the protagonist narrative or contradicting shared events."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To build an exact mirror map between American Jesus events and their antagonist-side causes, interpretations, and consequences."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To complete the Origins, Coalition, and Consequences manuscripts with distinct antagonist viewpoints and coherent moral arcs."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To preserve shared-world continuity while ensuring American Judas delivers information and perspective unavailable in American Jesus."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want readers to see evil as a sequence of comprehensible choices and institutional compromises rather than as an abstract force. I want the antagonist lens to expose how professed Christianity can be inverted into protection for power."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Mirror-event canon reconciled"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Three mirror manuscripts completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Distinctness and continuity review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "American Jesus, Coalition, Consequences, Origins, American Judas, American Judas Resolution Statement, Distinctness, Mirror, Three"
+   }
+  ],
+  "distinctive_entities": [
+   "American Jesus",
+   "Coalition",
+   "Consequences",
+   "Origins",
+   "American Judas",
+   "American Judas Resolution Statement",
+   "Distinctness",
+   "Mirror",
+   "Three"
+  ]
+ },
+ "american_king": {
+  "nexus": "american_king",
+  "name": "American King",
+  "aliases": [
+   "American King"
+  ],
+  "matrix": "Project Matrix American King.md",
+  "resolution": "The three-book American King narrative is complete in publication-ready manuscripts covering July 2026 through late 2030: Malcolm Little King\u2019s failed congressional run, successful presidential campaign, and governing test resolve whether Hayzeus\u2019s prophetic truth can survive translation into institutional power.",
+  "core_essence": "To test whether a sacrificial moral movement can become durable public policy without losing the truth that gave it authority.",
+  "emotional_drivers": [
+   "I want to explore the hard work of carrying moral witness into institutions rather than ending the story at martyrdom.",
+   "I want political effectiveness and spiritual integrity to confront each other through consequential governing choices."
+  ],
+  "objectives": [
+   "To complete the Congressional Run, Presidential Campaign, and Governing manuscripts across the established 2026\u20132030 timeline.",
+   "To preserve continuity with Hayzeus\u2019s death and the surviving movement while giving Malcolm direct internal moral and strategic conflict.",
+   "To resolve the central question through concrete electoral, legislative, bureaucratic, and crisis decisions rather than speeches alone."
+  ],
+  "milestones": [
+   "M1 \u2014 Post-martyrdom canon reconciled: One accepted timeline maps July 2026 through late 2030 across the congressional run, presidential campaign, and governing period and reconciles all dependencies on American Jesus. Resolution coverage: exact period, three-stage political arc, and inherited canon. Evidence: versioned timeline/event map with zero unresolved date or shared-world conflicts.",
+   "M2 \u2014 Three political manuscripts completed: Congressional Run, Presidential Campaign, and Governing each exist as complete manuscript artifacts corresponding to the accepted timeline. Resolution coverage: failed congressional run, successful presidential campaign, and governing test. Evidence: three exact manuscript identities and a timeline-to-chapter completeness crosswalk.",
+   "M3 \u2014 Governing-question review passed: The manuscripts resolve the survival-of-prophetic-truth question through identified electoral, legislative, bureaucratic, and crisis choices in Malcolm\u2019s arc. Resolution coverage: Malcolm\u2019s moral test and translation of Hayzeus\u2019s truth into institutional power. Evidence: final thematic review mapping the governing question to the decisive scenes with zero unresolved blocking findings.",
+   "M4 \u2014 Resolution accepted: The three reviewed manuscripts and their publication package satisfy every clause of the American King Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact packaged manuscript identities."
+  ],
+  "excluded": [
+   "A campaign chronicle that ends with electoral victory \u2014 institutional implementation and governing consequences remain untested."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "American King"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To test whether a sacrificial moral movement can become durable public policy without losing the truth that gave it authority. The three-book American King narrative is complete in publication-ready manuscripts covering July 2026 through late 2030: Malcolm Little King\u2019s failed congressional run, successful presidential campaign, and governing test resolve whether Hayzeus\u2019s prophetic truth can survive translation into institutional power."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To complete the Congressional Run, Presidential Campaign, and Governing manuscripts across the established 2026\u20132030 timeline."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To preserve continuity with Hayzeus\u2019s death and the surviving movement while giving Malcolm direct internal moral and strategic conflict."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To resolve the central question through concrete electoral, legislative, bureaucratic, and crisis decisions rather than speeches alone."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to explore the hard work of carrying moral witness into institutions rather than ending the story at martyrdom. I want political effectiveness and spiritual integrity to confront each other through consequential governing choices."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Post-martyrdom canon reconciled"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Three political manuscripts completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Governing-question review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Governing, Hayzeus, Malcolm, Congressional Run, July, Presidential Campaign, American Jesus, American King, American King Resolution Statement, Malcolm Little King, Post, Three"
+   }
+  ],
+  "distinctive_entities": [
+   "Governing",
+   "Hayzeus",
+   "Malcolm",
+   "Congressional Run",
+   "July",
+   "Presidential Campaign",
+   "American Jesus",
+   "American King",
+   "American King Resolution Statement",
+   "Malcolm Little King",
+   "Post",
+   "Three"
+  ]
+ },
+ "audio_diaries_1990s": {
+  "nexus": "audio_diaries_1990s",
+  "name": "Audio Diaries 1990s",
+  "aliases": [
+   "Audio Diaries 1990s"
+  ],
+  "matrix": "Project Matrix Audio Diaries 1990s.md",
+  "resolution": "All surviving 1990s audio diaries are inventoried, digitized or made accessible, reviewed, and represented in a written creative assessment that identifies specific fiction concepts and explicit no-use dispositions.",
+  "core_essence": "To explore the potential for creating fictional works based on digitized audio diaries from the 1990s.",
+  "emotional_drivers": [
+   "I am curious to see what creative potential lies dormant in these personal recordings from my past.",
+   "I want to explore the intersection of memory, self-talk, and fiction."
+  ],
+  "objectives": [
+   "To assess the creative potential of the 1990s audio diaries for new fictional works."
+  ],
+  "milestones": [
+   "M1 \u2014 Surviving-recording inventory accepted: One bounded inventory identifies every located 1990s audio diary and records the search locations and explicit exclusions used to define the surviving set. Resolution coverage: all surviving diaries inventoried. Evidence: dated inventory with stable recording identifiers, source locations, and an inclusion/exclusion log.",
+   "M2 \u2014 Access and review completed: Every recording in the accepted inventory is digitized or otherwise accessible and has a completed review record. Resolution coverage: diaries made accessible and reviewed. Evidence: one access identity and one review receipt for every inventory identifier, with zero unreviewed entries.",
+   "M3 \u2014 Creative assessment completed: One written assessment assigns each reviewed diary to at least one specific fiction concept or an explicit no-use disposition. Resolution coverage: written assessment, fiction concepts, and no-use dispositions. Evidence: assessment matrix covering every inventory identifier exactly once or through an explicitly recorded multi-item grouping.",
+   "M4 \u2014 Resolution accepted: The inventory, access/review records, and creative assessment satisfy every clause of the Audio Diaries Resolution Statement. Resolution coverage: all. Evidence: dated completion review reconciling the three artifact sets with zero missing or duplicate diary identifiers."
+  ],
+  "excluded": [
+   "An organized audio folder without completed listening and assessment \u2014 preservation occurs, but the creative question remains unanswered."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Audio Diaries 1990s"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To explore the potential for creating fictional works based on digitized audio diaries from the 1990s. All surviving 1990s audio diaries are inventoried, digitized or made accessible, reviewed, and represented in a written creative assessment that identifies specific fiction concepts and explicit no-use dispositions."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To assess the creative potential of the 1990s audio diaries for new fictional works."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I am curious to see what creative potential lies dormant in these personal recordings from my past. I want to explore the intersection of memory, self-talk, and fiction."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Surviving-recording inventory accepted"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Creative assessment completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Access, Audio Diaries Resolution Statement, Creative, Surviving"
+   }
+  ],
+  "distinctive_entities": [
+   "Access",
+   "Audio Diaries Resolution Statement",
+   "Creative",
+   "Surviving"
+  ]
+ },
+ "autism_acceptance": {
+  "nexus": "autism_acceptance",
+  "name": "Autism Acceptance",
+  "aliases": [
+   "Autism Acceptance"
+  ],
+  "matrix": "Project Matrix Autism Acceptance.md",
+  "resolution": "A publication-ready Autism Acceptance book is completed from the reviewed existing outlines and posts, with a source map and a final accuracy, audience, and unsupported-claim review.",
+  "core_essence": "To produce books based on existing outlines and posts related to Autism Acceptance.",
+  "emotional_drivers": [
+   "I want to give a voice to and provide insight on the topic of autism acceptance.",
+   "I feel compelled to complete the work I have already started in this important area."
+  ],
+  "objectives": [
+   "To transform existing outlines and posts into one or more published books."
+  ],
+  "milestones": [
+   "M1 \u2014 Source corpus reconciled: One source map identifies every retained outline and post used or excluded from the book and records the disposition of each. Resolution coverage: reviewed existing outlines and posts plus source map. Evidence: dated source map with stable artifact identities and no undisposed retained source.",
+   "M2 \u2014 Complete manuscript produced: One manuscript contains every accepted chapter and passes the documented structural-completeness checklist. Resolution coverage: completed Autism Acceptance book. Evidence: exact manuscript identity, chapter manifest, and completed structural checklist.",
+   "M3 \u2014 Final claim and audience review passed: The manuscript has no unresolved accuracy, intended-audience, or unsupported medical/clinical claim finding. Resolution coverage: final accuracy, audience, and unsupported-claim review. Evidence: signed review report listing findings, resolutions, sources, and final pass disposition.",
+   "M4 \u2014 Resolution accepted: The reviewed manuscript and source package satisfy every clause of the Autism Acceptance Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact final manuscript identity."
+  ],
+  "excluded": [
+   "A cleaned archive of prior posts without a book manuscript \u2014 source material is preserved but the deliverable is absent."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Autism Acceptance"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To produce books based on existing outlines and posts related to Autism Acceptance. A publication-ready Autism Acceptance book is completed from the reviewed existing outlines and posts, with a source map and a final accuracy, audience, and unsupported-claim review."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To transform existing outlines and posts into one or more published books."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to give a voice to and provide insight on the topic of autism acceptance. I feel compelled to complete the work I have already started in this important area."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Source corpus reconciled"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Complete manuscript produced"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Final claim and audience review passed"
+   }
+  ],
+  "distinctive_entities": [
+   "Autism Acceptance",
+   "Autism Acceptance Resolution Statement"
+  ]
+ },
+ "diklis_chump": {
+  "nexus": "diklis_chump",
+  "name": "Diklis Chump",
+  "aliases": [
+   "Diklis Chump"
+  ],
+  "matrix": "Project Matrix Diklis Chump.md",
+  "resolution": "A versioned Diklis Chump production package exists with reconciled persona profiles, content and visual rules, a documented Engram-to-post/chapter workflow, and at least one completed output that passes those rules.",
+  "core_essence": "To establish a clear production workflow for the Diklis Chump persona, including content generation, persona reboot, and visual style.",
+  "emotional_drivers": [
+   "I want to systematize the creative process for this persona to ensure consistent output.",
+   "I feel this persona has significant potential that can be unlocked with a more structured approach."
+  ],
+  "objectives": [
+   "To define and implement a full content strategy for the Diklis Chump project."
+  ],
+  "milestones": [
+   "M1 \u2014 Versioned production rules accepted: One package version contains reconciled profiles for every retained persona plus explicit content and visual rules. Resolution coverage: versioned package, persona profiles, and content/visual rules. Evidence: package digest, persona inventory, rule checklist, and zero unresolved profile contradiction records.",
+   "M2 \u2014 Production workflow verified: The Engram-to-post/chapter workflow is documented from source selection through review and release-ready output. Resolution coverage: documented Engram-to-post/chapter workflow. Evidence: versioned workflow plus a step checklist with named inputs, outputs, authority points, and failure exits.",
+   "M3 \u2014 Conforming output completed: At least one exact post or chapter artifact has completed the workflow and passes every applicable persona, content, and visual rule. Resolution coverage: completed output that passes the rules. Evidence: output identity, workflow run record, and completed conformance checklist.",
+   "M4 \u2014 Resolution accepted: The versioned rules, verified workflow, and conforming output satisfy every clause of the Diklis Chump Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "A large idea and Engram collection without a production workflow \u2014 abundant material exists, but repeatable creation remains undefined."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Diklis Chump"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To establish a clear production workflow for the Diklis Chump persona, including content generation, persona reboot, and visual style. A versioned Diklis Chump production package exists with reconciled persona profiles, content and visual rules, a documented Engram-to-post/chapter workflow, and at least one completed output that passes those rules."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To define and implement a full content strategy for the Diklis Chump project."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to systematize the creative process for this persona to ensure consistent output. I feel this persona has significant potential that can be unlocked with a more structured approach."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Versioned production rules accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Production workflow verified"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Conforming output completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Diklis Chump, Engram, Conforming, Diklis Chump Resolution Statement, Production, The Engram, Versioned"
+   }
+  ],
+  "distinctive_entities": [
+   "Diklis Chump",
+   "Engram",
+   "Conforming",
+   "Diklis Chump Resolution Statement",
+   "Production",
+   "The Engram",
+   "Versioned"
+  ]
+ },
+ "divorce": {
+  "nexus": "divorce",
+  "name": "Divorce",
+  "aliases": [
+   "Divorce"
+  ],
+  "matrix": "Project Matrix Divorce.md",
+  "resolution": "One indexed archive links the final Divorce book, every retained source file, note, and external reference, records exclusions and missing items, and passes a completeness review before the matrix is marked archived.",
+  "core_essence": "To consolidate all files, notes, and links that contributed to the _Forging a New Life After Divorce_ book into a single, documented archive.",
+  "emotional_drivers": [
+   "I want to preserve the history and process of this deeply personal project for future reference.",
+   "I feel it is important to create a complete and organized record of this significant life event and creative work."
+  ],
+  "objectives": [
+   "To create a comprehensive, well-documented archive of the entire _Divorce_ book project."
+  ],
+  "milestones": [
+   "M1 \u2014 Archive inventory accepted: One bounded inventory identifies the final Divorce book and every retained source file, note, and external reference, including search locations and exclusions. Resolution coverage: final book and complete retained-source set. Evidence: dated inventory with stable identities, inclusion/exclusion log, and explicit missing-item records.",
+   "M2 \u2014 Indexed archive completed: One archive index links every accepted inventory item to its retained location and records every exclusion and unresolved missing item. Resolution coverage: one indexed archive, links, exclusions, and missing items. Evidence: machine-readable or tabular reconciliation showing every inventory identifier has exactly one archive disposition.",
+   "M3 \u2014 Completeness review passed: An independent comparison of the source inventory and archive index has zero undisposed items and an explicit disposition for every known gap. Resolution coverage: completeness review before archival status. Evidence: signed comparison report with counts, exceptions, and pass disposition.",
+   "M4 \u2014 Resolution accepted: The indexed archive satisfies every clause of the Divorce Resolution Statement and the matrix may be marked archived only after this acceptance record exists. Resolution coverage: all. Evidence: dated archive-gate receipt binding M1\u2013M3 identities and the resulting matrix disposition."
+  ],
+  "excluded": [
+   "Moving files into one folder without an index or source map \u2014 storage changes, but the project cannot be reconstructed."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Divorce"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To consolidate all files, notes, and links that contributed to the _Forging a New Life After Divorce_ book into a single, documented archive. One indexed archive links the final Divorce book, every retained source file, note, and external reference, records exclusions and missing items, and passes a completeness review before the matrix is marked archived."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To create a comprehensive, well-documented archive of the entire _Divorce_ book project."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to preserve the history and process of this deeply personal project for future reference. I feel it is important to create a complete and organized record of this significant life event and creative work."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Archive inventory accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Indexed archive completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Completeness review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Divorce, Archive, Completeness, Divorce Resolution Statement, Indexed, Moving, New Life After"
+   }
+  ],
+  "distinctive_entities": [
+   "Divorce",
+   "Archive",
+   "Completeness",
+   "Divorce Resolution Statement",
+   "Indexed",
+   "Moving",
+   "New Life After"
+  ]
+ },
+ "einstein_resonance": {
+  "nexus": "einstein_resonance",
+  "name": "Einstein Resonance",
+  "aliases": [
+   "Einstein Resonance"
+  ],
+  "matrix": "Project Matrix Einstein Resonance.md",
+  "resolution": "A publication-ready combined volume integrates the completed cosmology and quantum-mechanics works with a reconciled outline, new bridging sections, and a sourced commentary on Einstein, intuition, evidence, and the limits of the proposed synthesis.",
+  "core_essence": "To synthesize two major scientific works into a single volume that vindicates Einstein's earlier intuitions, framed with a commentary on the importance of intuition in science.",
+  "emotional_drivers": [
+   "I feel a deep resonance with Einstein's intuitive approach to physics and want to champion it.",
+   "I believe my work in cosmology and quantum mechanics forms a coherent whole that honors his legacy."
+  ],
+  "objectives": [
+   "To combine the completed Cosmology and Quantum Mechanics books into a single, cohesive work with new bridging material."
+  ],
+  "milestones": [
+   "M1 \u2014 Source works and synthesis plan accepted: Exact cosmology and quantum-mechanics work identities are bound to one reconciled outline that assigns every retained section and required bridge. Resolution coverage: both source works and reconciled outline. Evidence: source digest manifest and section-level crosswalk with zero unassigned retained sections.",
+   "M2 \u2014 Integrated manuscript completed: One combined manuscript contains both source works, every accepted bridging section, and the full Einstein/intuition/evidence/limits commentary. Resolution coverage: combined volume, new bridging sections, and sourced commentary. Evidence: exact manuscript identity plus a crosswalk from every outline and commentary requirement to manuscript locations and sources.",
+   "M3 \u2014 Source and synthesis review passed: The manuscript distinguishes sourced history, established science, author hypothesis, and interpretation and has zero unresolved continuity or attribution findings. Resolution coverage: evidence boundaries and coherent integration. Evidence: completed source-category and integration review with finding dispositions.",
+   "M4 \u2014 Resolution accepted: The reviewed combined manuscript and publication package satisfy every clause of the Einstein Resonance Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact packaged manuscript identity."
+  ],
+  "excluded": [
+   "Binding two existing books without bridging or reconciliation \u2014 one volume exists physically, but no intellectual synthesis has occurred."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Einstein Resonance"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To synthesize two major scientific works into a single volume that vindicates Einstein's earlier intuitions, framed with a commentary on the importance of intuition in science. A publication-ready combined volume integrates the completed cosmology and quantum-mechanics works with a reconciled outline, new bridging sections, and a sourced commentary on Einstein, intuition, evidence, and the limits of the proposed synthesis."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To combine the completed Cosmology and Quantum Mechanics books into a single, cohesive work with new bridging material."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I feel a deep resonance with Einstein's intuitive approach to physics and want to champion it. I believe my work in cosmology and quantum mechanics forms a coherent whole that honors his legacy."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Source works and synthesis plan accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Integrated manuscript completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Source and synthesis review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Einstein, Binding, Cosmology, Einstein Resonance Resolution Statement, Einstein's, Integrated, Quantum Mechanics"
+   }
+  ],
+  "distinctive_entities": [
+   "Einstein",
+   "Binding",
+   "Cosmology",
+   "Einstein Resonance Resolution Statement",
+   "Einstein's",
+   "Integrated",
+   "Quantum Mechanics"
+  ]
+ },
+ "executor_instructions": {
+  "nexus": "executor_instructions",
+  "name": "Executor Instructions",
+  "aliases": [
+   "Executor Instructions"
+  ],
+  "matrix": "Project Matrix Executor Instructions.md",
+  "resolution": "The private executor instruction package is complete, internally reviewed, indexed to every required supporting record, records all remaining actions, and has an authorized delivery and retention arrangement.",
+  "core_essence": "To produce a complete, reviewable private instruction package for the appointed executor without exposing its contents beyond authorized use.",
+  "emotional_drivers": [
+   "I want the people carrying out my instructions to have a clear and orderly record.",
+   "I want private planning material handled with care and disclosed only where necessary."
+  ],
+  "objectives": [
+   "To consolidate the reviewed instructions and supporting records into one private project record.",
+   "To make incompleteness and required follow-up visible without expanding the audience for sensitive material."
+  ],
+  "milestones": [
+   "M1 \u2014 Private package and record index completed: Every required instruction and supporting-record category has one private indexed disposition without exposing its contents in the matrix. Resolution coverage: complete private package indexed to required supporting records. Evidence: access-controlled package identity and redacted completeness counts signed by the authorized reviewer.",
+   "M2 \u2014 Consistency and remaining-action review passed: Every instruction conflict is resolved and every unfinished action has one accountable disposition. Resolution coverage: internal review and all remaining actions recorded. Evidence: private review receipt with conflict/action counts and zero unresolved unassigned item.",
+   "M3 \u2014 Delivery and retention arrangement authorized: The intended recipient/holder, authorized delivery path, retention location, recovery path, and revocation rule are accepted. Resolution coverage: authorized delivery and retention arrangement. Evidence: private authorization receipt binding the package version without reproducing sensitive identities in the matrix.",
+   "M4 \u2014 Resolution accepted: The indexed package, passed review, and authorized arrangement satisfy every clause of the Executor Instructions Resolution Statement. Resolution coverage: all. Evidence: dated private completion record mapping each Resolution clause to M1\u2013M3."
+  ],
+  "excluded": [
+   "A private task list without the supporting instruction package \u2014 needs are named, but an executor cannot act from it."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Executor Instructions"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To produce a complete, reviewable private instruction package for the appointed executor without exposing its contents beyond authorized use. The private executor instruction package is complete, internally reviewed, indexed to every required supporting record, records all remaining actions, and has an authorized delivery and retention arrangement."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To consolidate the reviewed instructions and supporting records into one private project record."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To make incompleteness and required follow-up visible without expanding the audience for sensitive material."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want the people carrying out my instructions to have a clear and orderly record. I want private planning material handled with care and disclosed only where necessary."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Private package and record index completed"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Consistency and remaining-action review passed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Delivery and retention arrangement authorized"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Consistency, Delivery, Executor Instructions Resolution Statement, Private"
+   }
+  ],
+  "distinctive_entities": [
+   "Consistency",
+   "Delivery",
+   "Executor Instructions Resolution Statement",
+   "Private"
+  ]
+ },
+ "expanding_awareness": {
+  "nexus": "expanding_awareness",
+  "name": "Expanding Awareness",
+  "aliases": [
+   "Expanding Awareness"
+  ],
+  "matrix": "Project Matrix Expanding Awareness.md",
+  "resolution": "The current cosmology edition is published with updated graphics, every retained draft/chapter/outline is linked from a central project map, and blog adaptation plus scientific-outreach decisions are explicitly completed or declined.",
+  "core_essence": "To challenge the conventional understanding of cosmic redshift and present an alternative to the prevailing theories of Hubble and Lema\u00eetre.",
+  "emotional_drivers": [
+   "I believe the established scientific consensus is flawed, and I feel a responsibility to present a logical counter-argument.",
+   "I want to explore the largest scales of the universe and share my unique perspective with the scientific community."
+  ],
+  "objectives": [
+   "To refine, publish, and promote a written cosmology that offers an alternative explanation for cosmic redshift.",
+   "To engage with the scientific community to present and discuss these alternative ideas."
+  ],
+  "milestones": [
+   "M1 \u2014 Current published edition authenticated: The exact published cosmology edition and its updated graphic set are identified and bound to the publication receipt. Resolution coverage: current edition published with updated graphics. Evidence: manuscript and graphic digests, edition identifier, and publisher receipt.",
+   "M2 \u2014 Central project map completed: Every retained draft, chapter, and outline has one linked disposition in the central project map. Resolution coverage: complete central map of retained drafts/chapters/outlines. Evidence: inventory-to-map reconciliation with zero unlinked retained artifacts.",
+   "M3 \u2014 Blog-adaptation dispositions completed: Every identified blog or lower-reading-level adaptation candidate has an explicit accepted, completed, or declined decision. Resolution coverage: blog-adaptation decisions. Evidence: bounded candidate inventory with one dated disposition and rationale per candidate.",
+   "M4 \u2014 Scientific-outreach disposition completed: The defined outreach candidate set, contact-medium choice, and execute-or-decline decision are recorded. Resolution coverage: scientific-outreach decision. Evidence: dated outreach decision record binding the candidate inventory and selected or declined path.",
+   "M5 \u2014 Resolution accepted: The published edition, project map, and two disposition records satisfy every clause of the Expanding Awareness Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M4 with no unresolved item."
+  ],
+  "excluded": [
+   "An updated Amazon upload without a reconstructable project map \u2014 the book is sold, but its evidence and development history remain scattered."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Expanding Awareness"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To challenge the conventional understanding of cosmic redshift and present an alternative to the prevailing theories of Hubble and Lema\u00eetre. The current cosmology edition is published with updated graphics, every retained draft/chapter/outline is linked from a central project map, and blog adaptation plus scientific-outreach decisions are explicitly completed or declined."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To refine, publish, and promote a written cosmology that offers an alternative explanation for cosmic redshift."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To engage with the scientific community to present and discuss these alternative ideas."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I believe the established scientific consensus is flawed, and I feel a responsibility to present a logical counter-argument. I want to explore the largest scales of the universe and share my unique perspective with the scientific community."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Current published edition authenticated"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Central project map completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Blog-adaptation dispositions completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Amazon, Blog, Central, Current, Expanding Awareness Resolution Statement, Hubble, Scientific"
+   }
+  ],
+  "distinctive_entities": [
+   "Amazon",
+   "Blog",
+   "Central",
+   "Current",
+   "Expanding Awareness Resolution Statement",
+   "Hubble",
+   "Scientific"
+  ]
+ },
+ "golf": {
+  "nexus": "golf",
+  "name": "Golf",
+  "aliases": [
+   "Golf"
+  ],
+  "matrix": "Passion Matrix Golf.md",
+  "resolution": "",
+  "core_essence": "To explore the intersection of golf as a physical practice and a path for spiritual insight.",
+  "emotional_drivers": [
+   "My passion for golf is a driving force, and I want to connect it to my deeper passion for insight.",
+   "I feel that the focus and discipline of golf offer a unique lens through which to understand the mind."
+  ],
+  "objectives": [
+   "To capture and develop ideas related to golf course design and the spiritual practice of playing golf."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward a richer, source-linked body of design knowledge."
+  ],
+  "practices": [
+   "Play or observe golf attentively and capture design, decision, and mind-state observations."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Golf"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To explore the intersection of golf as a physical practice and a path for spiritual insight."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To capture and develop ideas related to golf course design and the spiritual practice of playing golf."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "My passion for golf is a driving force, and I want to connect it to my deeper passion for insight. I feel that the focus and discipline of golf offer a unique lens through which to understand the mind."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Play or observe golf attentively and capture design, decision, and mind-state observations."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward a richer, source-linked body of design knowledge."
+   }
+  ],
+  "distinctive_entities": [
+   "Play"
+  ]
+ },
+ "golf_course_design": {
+  "nexus": "golf_course_design",
+  "name": "Golf Course Design",
+  "aliases": [
+   "Golf Course Design"
+  ],
+  "matrix": "Project Matrix Golf Course Design.md",
+  "resolution": "Decades of golf-course-design material and golf-as-spiritual-practice notes are inventoried and synthesized into an approved publication plan plus at least one complete, publication-ready manuscript selected from that plan.",
+  "core_essence": "To consolidate and develop decades of notes and ideas on golf course design and the spiritual practice of golf into written works.",
+  "emotional_drivers": [
+   "I want to give form to the many undocumented ideas I've had on these subjects over the years.",
+   "My long history with golf course design is a source of expertise I feel compelled to capture."
+  ],
+  "objectives": [
+   "To organize and synthesize all existing material on golf course design.",
+   "To begin capturing and structuring new ideas on golf as a spiritual practice."
+  ],
+  "milestones": [
+   "M1 \u2014 Design and spiritual-practice corpus inventoried: One bounded inventory identifies every retained golf-course-design and golf-as-spiritual-practice source and records exclusions. Resolution coverage: decades of design material and spiritual-practice notes inventoried. Evidence: dated source manifest with stable identities, search locations, and inclusion/exclusion dispositions.",
+   "M2 \u2014 Synthesis and publication plan accepted: One synthesis maps the inventoried themes into a finite publication plan and identifies the exact manuscript selected for completion. Resolution coverage: corpus synthesis and approved publication plan. Evidence: accepted plan version, source-to-theme crosswalk, selected manuscript identity, and approval receipt.",
+   "M3 \u2014 Selected manuscript completed: The selected manuscript contains every accepted section and passes the documented source, structure, and final-review checklist. Resolution coverage: at least one complete publication-ready manuscript. Evidence: exact manuscript identity, section manifest, source crosswalk, and completed final-review checklist.",
+   "M4 \u2014 Resolution accepted: The inventory, approved plan, and reviewed manuscript satisfy every clause of the Golf Course Design Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "A consolidated note archive without a selected written deliverable \u2014 knowledge is preserved, but the Project has no finished work."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Golf Course Design"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To consolidate and develop decades of notes and ideas on golf course design and the spiritual practice of golf into written works. Decades of golf-course-design material and golf-as-spiritual-practice notes are inventoried and synthesized into an approved publication plan plus at least one complete, publication-ready manuscript selected from that plan."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To organize and synthesize all existing material on golf course design."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To begin capturing and structuring new ideas on golf as a spiritual practice."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to give form to the many undocumented ideas I've had on these subjects over the years. My long history with golf course design is a source of expertise I feel compelled to capture."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Design and spiritual-practice corpus inventoried"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Synthesis and publication plan accepted"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Selected manuscript completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Decades, Design, Golf Course Design Resolution, Synthesis"
+   }
+  ],
+  "distinctive_entities": [
+   "Decades",
+   "Design",
+   "Golf Course Design Resolution",
+   "Synthesis"
+  ]
+ },
+ "human_nexus": {
+  "nexus": "human_nexus",
+  "name": "Human Nexus",
+  "aliases": [
+   "Human Nexus"
+  ],
+  "matrix": "Project Matrix Human Knexus.md",
+  "resolution": "A publication-ready written work on AI agents exists with a complete source map, reconciled map of content, approved focus and format, updated outline, and final manuscript.",
+  "core_essence": "To consolidate and refine existing research and outlines into a written work about AI Agents and their applications.",
+  "emotional_drivers": [
+   "I want to structure my thoughts and research on the important topic of AI Agents.",
+   "I feel the need to transform my scattered notes on this subject into a coherent and complete project."
+  ],
+  "objectives": [
+   "To consolidate and refine all existing work on AI Agents into a finished written piece."
+  ],
+  "milestones": [
+   "M1 \u2014 AI-agent source map completed: Every retained source has a stable identity, linked location, and use/exclusion disposition. Resolution coverage: complete source map. Evidence: dated source manifest with zero undisposed retained sources.",
+   "M2 \u2014 Content map and scope accepted: One reconciled map of content binds the approved focus, audience, format, and section structure. Resolution coverage: reconciled MOC plus approved focus and format. Evidence: versioned MOC, scope decision receipt, and conflict log with no unresolved structural conflict.",
+   "M3 \u2014 Outline and manuscript completed: The updated outline is fully represented in one final manuscript that passes the documented completeness and source-attribution checks. Resolution coverage: updated outline and final manuscript. Evidence: exact outline/manuscript identities, section crosswalk, and completed review checklist.",
+   "M4 \u2014 Resolution accepted: The source map, accepted scope/MOC, and reviewed manuscript satisfy every clause of the Human Nexus Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 and the exact final manuscript identity."
+  ],
+  "excluded": [
+   "An organized research folder without an approved argument or manuscript \u2014 retrieval improves, but the deliverable remains undefined."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Human Nexus"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To consolidate and refine existing research and outlines into a written work about AI Agents and their applications. A publication-ready written work on AI agents exists with a complete source map, reconciled map of content, approved focus and format, updated outline, and final manuscript."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To consolidate and refine all existing work on AI Agents into a finished written piece."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to structure my thoughts and research on the important topic of AI Agents. I feel the need to transform my scattered notes on this subject into a coherent and complete project."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "AI-agent source map completed"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Content map and scope accepted"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Outline and manuscript completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "AI Agents, Content, Human Nexus Resolution Statement, Outline"
+   }
+  ],
+  "distinctive_entities": [
+   "AI Agents",
+   "Content",
+   "Human Nexus Resolution Statement",
+   "Outline"
+  ]
+ },
+ "image_generation": {
+  "nexus": "image_generation",
+  "name": "Image Generation",
+  "aliases": [
+   "Image Generation"
+  ],
+  "matrix": "Project Matrix Image Generation.md",
+  "resolution": "A documented image-generation practice package contains tested core commands, reusable prompting guidance, project-specific style specifications, and a reproducible set of accepted visuals for at least one named written work.",
+  "core_essence": "To master the craft of AI image generation to create custom, stylistically consistent visuals for written works.",
+  "emotional_drivers": [
+   "I want to have full creative control over the visual elements that accompany my writing.",
+   "I am excited by the potential of AI tools to bring my creative visions to life visually."
+  ],
+  "objectives": [
+   "To develop proficiency in AI image generation tools and prompting techniques.",
+   "To establish unique visual styles for specific literary projects."
+  ],
+  "milestones": [
+   "M1 \u2014 Core-command test catalog completed: A finite catalog records each retained image-generation command or feature, its tested input, actual output, environment/version, and pass/fail disposition. Resolution coverage: tested core commands. Evidence: versioned test catalog with linked output identities and no untested retained entry.",
+   "M2 \u2014 Prompt and style specifications accepted: One reusable prompting guide and one project-specific style specification exist for a named written work. Resolution coverage: reusable prompting guidance and project-specific style specification. Evidence: exact guide/specification identities plus an approval record naming the written work and accepted constraints.",
+   "M3 \u2014 Accepted visual set reproduced: Every visual in one bounded accepted set has been regenerated from its recorded inputs and matches the specification\u2019s declared acceptance checks. Resolution coverage: reproducible set of accepted visuals. Evidence: set manifest, input/setting records, first and reproduction output identities, and per-item comparison results.",
+   "M4 \u2014 Resolution accepted: The tested catalog, prompting/style package, and reproduced visual set satisfy every clause of the Image Generation Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "A gallery of attractive one-off images without prompts, settings, or style identity \u2014 results exist but cannot be reproduced."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Image Generation"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To master the craft of AI image generation to create custom, stylistically consistent visuals for written works. A documented image-generation practice package contains tested core commands, reusable prompting guidance, project-specific style specifications, and a reproducible set of accepted visuals for at least one named written work."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To develop proficiency in AI image generation tools and prompting techniques."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To establish unique visual styles for specific literary projects."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to have full creative control over the visual elements that accompany my writing. I am excited by the potential of AI tools to bring my creative visions to life visually."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Core-command test catalog completed"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Prompt and style specifications accepted"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Accepted visual set reproduced"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Core, Image Generation Resolution Statement, Prompt"
+   }
+  ],
+  "distinctive_entities": [
+   "Core",
+   "Image Generation Resolution Statement",
+   "Prompt"
+  ]
+ },
+ "inception_and_incubation": {
+  "nexus": "inception_and_incubation",
+  "name": "Incubator",
+  "aliases": [
+   "Incubator"
+  ],
+  "matrix": "Project Matrix Incubator.md",
+  "resolution": "",
+  "core_essence": "Keep the garden of the user's mind tended without silently substituting automated judgment for human recognition.",
+  "emotional_drivers": [
+   "I want to keep my idea pool alive without drowning in it.",
+   "I want to know which recognitions are predictable and which are mine alone."
+  ],
+  "objectives": [
+   "To generate value-aligned candidates from MindSpec and the vault matrix index for explicit human review.",
+   "To surface dormant, newly relevant, decaying, and adjacency-active candidates without automatically promoting them.",
+   "To respond to user inspiration by presenting adjacent candidate material in the current conversation.",
+   "To preserve recognition decisions and their provenance in an append-only Spark Recognition Corpus."
+  ],
+  "milestones": [
+   "Generation-mode candidates are produced and reviewed under the Recognition Lock, with decisions captured.",
+   "Review-mode candidates are surfaced and dispositioned without automatic promotion or relabeling.",
+   "Inspiration events surface relevant adjacencies and preserve the user's resulting decisions.",
+   "The Spark Recognition Corpus contains authenticated candidate and recognition evidence sufficient to evaluate the residue claim.",
+   "Milestone A1: Generation-mode candidates are reviewed and decisions are captured under the Recognition Lock.",
+   "Verification criterion: candidate identities and explicit user decisions are appended to the Spark Recognition Corpus.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 requires an activated IIF apparatus and configured MindSpec reference.",
+   "Status: active",
+   "Milestone A2: Review-mode candidates are dispositioned without automatic promotion or relabeling.",
+   "Verification criterion: every surfaced candidate retains its source identity and receives an explicit user disposition.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 requires an activated review apparatus.",
+   "Status: active",
+   "Milestone A3: Inspiration events surface relevant adjacencies in the current conversation.",
+   "Verification criterion: surfaced sources and the user's resulting decision are persisted.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 requires the event-driven IIF path.",
+   "Status: active",
+   "Maturity Gate B1: Twelve generation cycles complete without a cadence miss and with a usable recognition rate.",
+   "Gate condition: Performance Log records twelve consecutive successful cycles with explicit recognition decisions.",
+   "Maturity Gate B2: The Spark Recognition Corpus contains enough authenticated residue evidence to evaluate IIF's human-recognition claim.",
+   "Gate condition: a separately approved evidence threshold is met without retroactive or synthetic records."
+  ],
+  "excluded": [
+   "Cadence met but quality degraded \u2014 a digest is produced, but candidates are under-specified or pre-filtering makes recognition meaningless.",
+   "Corpus consumed but unchanged \u2014 a cycle runs without preserving its candidate and recognition evidence.",
+   "Rendered output produced but not consumed \u2014 a digest exists, but the user does not review it.",
+   "Recognition silently substituted \u2014 an automated score is treated as the user's recognition decision."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Incubator"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "Keep the garden of the user's mind tended without silently substituting automated judgment for human recognition."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To generate value-aligned candidates from MindSpec and the vault matrix index for explicit human review."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To surface dormant, newly relevant, decaying, and adjacency-active candidates without automatically promoting them."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To respond to user inspiration by presenting adjacent candidate material in the current conversation."
+   },
+   {
+    "id": "objective-4",
+    "kind": "objective",
+    "text": "To preserve recognition decisions and their provenance in an append-only Spark Recognition Corpus."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to keep my idea pool alive without drowning in it. I want to know which recognitions are predictable and which are mine alone."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Generation-mode candidates are produced and reviewed under the Recognition Lock, with decisions captured."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Review-mode candidates are surfaced and dispositioned without automatic promotion or relabeling."
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Inspiration events surface relevant adjacencies and preserve the user's resulting decisions."
+   },
+   {
+    "id": "milestone-4",
+    "kind": "milestone",
+    "text": "The Spark Recognition Corpus contains authenticated candidate and recognition evidence sufficient to evaluate the residue claim."
+   },
+   {
+    "id": "milestone-17",
+    "kind": "milestone",
+    "text": "Maturity Gate B1"
+   },
+   {
+    "id": "milestone-19",
+    "kind": "milestone",
+    "text": "Maturity Gate B2"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Feasibility Verdict, Reachable, Verification, Gate, Generation, Inspiration, MindSpec, Recognition Lock, Spark Recognition Corpus, The Spark Recognition Corpus, Cadence, Corpus, IIF's, Keep"
+   }
+  ],
+  "distinctive_entities": [
+   "Feasibility Verdict",
+   "Reachable",
+   "Verification",
+   "Gate",
+   "Generation",
+   "Inspiration",
+   "MindSpec",
+   "Recognition Lock",
+   "Spark Recognition Corpus",
+   "The Spark Recognition Corpus",
+   "Cadence",
+   "Corpus",
+   "IIF's",
+   "Keep"
+  ]
+ },
+ "insight": {
+  "nexus": "insight",
+  "name": "Insight",
+  "aliases": [
+   "Insight"
+  ],
+  "matrix": "Passion Matrix Insight.md",
+  "resolution": "",
+  "core_essence": "To share personal insights that help people find happiness and freedom from self-inflicted suffering.",
+  "emotional_drivers": [
+   "I want to understand my own inner world as the starting point for all other efforts.",
+   "I feel a responsibility to share my understandings in a way that can help alleviate the suffering of others."
+  ],
+  "objectives": [
+   "To continuously deepen my personal understanding of consciousness and the nature of suffering.",
+   "To systematically capture, refine, and publish personal insights as accessible written works."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward deeper and more internally coherent understanding."
+  ],
+  "practices": [
+   "Maintain a regular meditation practice and record salient observations."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Insight"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To share personal insights that help people find happiness and freedom from self-inflicted suffering."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To continuously deepen my personal understanding of consciousness and the nature of suffering."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To systematically capture, refine, and publish personal insights as accessible written works."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to understand my own inner world as the starting point for all other efforts. I feel a responsibility to share my understandings in a way that can help alleviate the suffering of others."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Maintain a regular meditation practice and record salient observations."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward deeper and more internally coherent understanding."
+   }
+  ],
+  "distinctive_entities": [
+   "Maintain"
+  ]
+ },
+ "main-street-independent": {
+  "nexus": "main-street-independent",
+  "name": "Main Street Independent",
+  "aliases": [
+   "MSI",
+   "Main Street Independent"
+  ],
+  "matrix": "Project Matrix Main Street Independent.md",
+  "resolution": "",
+  "core_essence": "Operate an independent AI-assisted publication that applies distributional honesty, journalistic discipline, disclosed perspective, and distinctive editorial craft without pretending unfinished infrastructure is live.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To complete and operate the source-selection, consensus-news, pen-name, image, correction, and publishing paths as one verifiable system."
+  ],
+  "milestones": [
+   "Milestone A1 \u2014 Bootstrap increment closes honestly. Each MSI build increment updates the authoritative tracker and distinguishes drafted, deployed, verified, blocked, and not-started state.",
+   "Delivering framework(s): MSI implementation tracker plus the applicable build or editorial framework",
+   "Verification criterion: Claimed state is supported by exact vault, site, server, or runtime evidence; absent evidence remains pending.",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active \u2014 editorial foundations, voice/framework work, Astro skeleton, and core VPS/Cloudflare security are substantially advanced; the headless harness, build/backup/monitoring path, spend caps, and dynamic services remain incomplete in the authoritative tracker.",
+   "Milestone A2 \u2014 Publication cycle closes with disposition. Each activated cycle produces accepted news/analysis/visual artifacts or records why an output was withheld or failed.",
+   "Delivering framework(s): MSI source, editorial, voice, image, and publication processes",
+   "Verification criterion: Authenticated input provenance, editorial review, exact output identity, deploy/build state, and correction state are recorded.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 the end-to-end publication apparatus must be completed and activated.",
+   "Status: active \u2014 the 2026-05-11 publisher-machine cycle satisfied A2 for its paired news/article outputs by recording sources, routing, exact artifacts, schema validation, build disposition, and publisher-machine repository commit `61eaa80`. A2 recurs for every later activated cycle; this one successful content/build trial does not certify a sustained cadence or the broader deployment apparatus.",
+   "Milestone A3 \u2014 Infrastructure remains bounded. Each deployed change preserves origin security, input isolation, backups, monitoring, spend limits, and recoverable publication state.",
+   "Delivering framework(s): Remote infrastructure and deployment procedures",
+   "Verification criterion: Security/configuration checks, successful backup/restore evidence, monitoring health, and bounded cost state.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 several controls remain not started in the tracker.",
+   "Status: active during bootstrap",
+   "Maturity Gate B1 \u2014 First end-to-end issue publishes. One real source cluster traverses selection, consensus news, routed analysis, image, review, build, deploy, and public verification.",
+   "Gate condition: Every artifact and decision is reconstructable and the publisher accepts the public result.",
+   "Verification source: Performance Log plus exact publication/deployment evidence",
+   "Current disposition: open \u2014 the 2026-05-11 run authenticates source selection, consensus news, routed analysis, schema validation, a clean 31-page build, and repository publication at commit `61eaa80`; it does not authenticate the required image path, remote deployment, or public verification. B1 remains open until those missing legs are evidenced for an exact issue.",
+   "Maturity Gate B2 \u2014 Stable daily cadence. The intended daily edition runs for a publisher-approved observation window without bypassing quality, correction, infrastructure, or cost controls.",
+   "Gate condition: Repeated Performance Log cycles meet both deliverable and excluded-outcome checks.",
+   "Verification source: Performance Log, incident/correction records, monitoring, and cost evidence",
+   "Maturity Gate B3 \u2014 Public service maturity. Dynamic tools and correspondence paths operate safely under real usage with monitored quality and bounded abuse/cost exposure.",
+   "Gate condition: Required controls are deployed; public trials pass; incidents remain within accepted thresholds.",
+   "Verification source: Runtime/service evidence, monitoring, Incident Log, and publisher review"
+  ],
+  "excluded": [
+   "Draft volume mistaken for publication readiness \u2014 frameworks, voices, or site pages exist, but the complete source-to-publication path cannot run and be verified."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "MSI / Main Street Independent"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "Operate an independent AI-assisted publication that applies distributional honesty, journalistic discipline, disclosed perspective, and distinctive editorial craft without pretending unfinished infrastructure is live."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To complete and operate the source-selection, consensus-news, pen-name, image, correction, and publishing paths as one verifiable system."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Milestone A1 \u2014 Bootstrap increment closes honestly. Each MSI build increment updates the authoritative tracker and distinguishes drafted, deployed, verified, blocked, and not-started state."
+   },
+   {
+    "id": "milestone-6",
+    "kind": "milestone",
+    "text": "Milestone A2 \u2014 Publication cycle closes with disposition. Each activated cycle produces accepted news/analysis/visual artifacts or records why an output was withheld or failed."
+   },
+   {
+    "id": "milestone-11",
+    "kind": "milestone",
+    "text": "Milestone A3 \u2014 Infrastructure remains bounded. Each deployed change preserves origin security, input isolation, backups, monitoring, spend limits, and recoverable publication state."
+   },
+   {
+    "id": "milestone-16",
+    "kind": "milestone",
+    "text": "Maturity Gate B1 \u2014 First end-to-end issue publishes. One real source cluster traverses selection, consensus news, routed analysis, image, review, build, deploy, and public verification."
+   },
+   {
+    "id": "milestone-20",
+    "kind": "milestone",
+    "text": "Maturity Gate B2 \u2014 Stable daily cadence. The intended daily edition runs for a publisher-approved observation window without bypassing quality, correction, infrastructure, or cost controls."
+   },
+   {
+    "id": "milestone-23",
+    "kind": "milestone",
+    "text": "Maturity Gate B3 \u2014 Public service maturity. Dynamic tools and correspondence paths operate safely under real usage with monitored quality and bounded abuse/cost exposure."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Verification, Delivering, Feasibility Verdict, Gate, Performance Log, Reachable, Astro, Authenticated, Bootstrap, Claimed, Cloudflare, Current, Draft, Dynamic"
+   }
+  ],
+  "distinctive_entities": [
+   "Verification",
+   "Delivering",
+   "Feasibility Verdict",
+   "Gate",
+   "Performance Log",
+   "Reachable",
+   "Astro",
+   "Authenticated",
+   "Bootstrap",
+   "Claimed",
+   "Cloudflare",
+   "Current",
+   "Draft",
+   "Dynamic"
+  ]
+ },
+ "marketing": {
+  "nexus": "marketing",
+  "name": "Marketing",
+  "aliases": [
+   "Marketing"
+  ],
+  "matrix": "Project Matrix Marketing.md",
+  "resolution": "A reusable marketing-plan package is approved with a branding decision, audience and channel template, launch checklist, measurement rules, and production-ready business-card source files.",
+  "core_essence": "To develop and document a reusable marketing strategy for all published works.",
+  "emotional_drivers": [
+   "I want to ensure my work reaches the people it is intended for.",
+   "I must create a systematic approach to marketing to avoid reinventing the wheel for each project."
+  ],
+  "objectives": [
+   "To create a master marketing template and strategy."
+  ],
+  "milestones": [
+   "M1 \u2014 Branding decision accepted: One branding option is selected and its permitted marks, files, and usage constraints are recorded. Resolution coverage: approved branding decision. Evidence: dated decision receipt bound to the exact approved source assets.",
+   "M2 \u2014 Audience, channel, and launch package completed: One reusable template identifies target-audience fields, channel-selection rules, and a finite launch checklist. Resolution coverage: audience/channel template and launch checklist. Evidence: versioned package plus a completeness review against every required field and checklist item.",
+   "M3 \u2014 Measurement and business-card package completed: Measurement rules define each named measure and collection point, and production source files render successfully to the approved business-card specification. Resolution coverage: measurement rules and production-ready business-card sources. Evidence: metric dictionary, source-file identities, render outputs, dimensional/preflight report, and approval receipt.",
+   "M4 \u2014 Resolution accepted: The branding, launch, measurement, and business-card artifacts satisfy every clause of the Marketing Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "Opening social accounts or buying promotion without an approved reusable plan \u2014 activity occurs, but the Project deliverable is absent."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Marketing"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To develop and document a reusable marketing strategy for all published works. A reusable marketing-plan package is approved with a branding decision, audience and channel template, launch checklist, measurement rules, and production-ready business-card source files."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To create a master marketing template and strategy."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to ensure my work reaches the people it is intended for. I must create a systematic approach to marketing to avoid reinventing the wheel for each project."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Audience, channel, and launch package completed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Measurement and business-card package completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Measurement, Audience, Branding, Marketing Resolution Statement, Opening"
+   }
+  ],
+  "distinctive_entities": [
+   "Measurement",
+   "Audience",
+   "Branding",
+   "Marketing Resolution Statement",
+   "Opening"
+  ]
+ },
+ "obsidian": {
+  "nexus": "obsidian",
+  "name": "Obsidian",
+  "aliases": [
+   "Obsidian"
+  ],
+  "matrix": "Project Matrix Obsidian.md",
+  "resolution": "",
+  "core_essence": "To engineer the Obsidian vault as a tool to sustain the mind, move thought forward, and create compelling products.",
+  "emotional_drivers": [
+   "I want my second brain to be a powerful, seamless extension of my own mind.",
+   "I feel a deep need for a system that can not only store information but help me create from it."
+  ],
+  "objectives": [
+   "To ensure all files in the vault are property-compliant and integrated into the project matrix system.",
+   "To develop an efficient framework for summarizing and indexing raw chats for AI retrieval."
+  ],
+  "milestones": [
+   "Properties on all files are updated.",
+   "All missing project matrices are created.",
+   "A chat summary framework is developed and implemented.",
+   "The Linking Your Thinking Flight School Vault is utilized for new ideas.",
+   "Milestone A1: Each authorized vault increment is schema-valid and preserves exact nexus resolution.",
+   "Verification criterion: changed-file schema and identity checks pass.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Maturity Gate B1: Historical metadata debt is retired without introducing duplicate strategic authority.",
+   "Gate condition: explicit campaign evidence shows all approved target files compliant and no unresolved identity collisions."
+  ],
+  "excluded": [
+   "Metadata edited without validation \u2014 files change, but schema compliance, nexus resolution, or navigability is not verified."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Obsidian"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To engineer the Obsidian vault as a tool to sustain the mind, move thought forward, and create compelling products."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To ensure all files in the vault are property-compliant and integrated into the project matrix system."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To develop an efficient framework for summarizing and indexing raw chats for AI retrieval."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want my second brain to be a powerful, seamless extension of my own mind. I feel a deep need for a system that can not only store information but help me create from it."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Properties on all files are updated."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "All missing project matrices are created."
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "A chat summary framework is developed and implemented."
+   },
+   {
+    "id": "milestone-4",
+    "kind": "milestone",
+    "text": "The Linking Your Thinking Flight School Vault is utilized for new ideas."
+   },
+   {
+    "id": "milestone-9",
+    "kind": "milestone",
+    "text": "Maturity Gate B1"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Feasibility Verdict, Flight School Vault, Gate, Historical, Maturity Gate B1, Metadata, Milestone A1, Obsidian, Properties, Reachable, The Linking Your Thinking, Verification"
+   }
+  ],
+  "distinctive_entities": [
+   "Feasibility Verdict",
+   "Flight School Vault",
+   "Gate",
+   "Historical",
+   "Maturity Gate B1",
+   "Metadata",
+   "Milestone A1",
+   "Obsidian",
+   "Properties",
+   "Reachable",
+   "The Linking Your Thinking",
+   "Verification"
+  ]
+ },
+ "ora-ai-app": {
+  "nexus": "ora-ai-app",
+  "name": "Ora AI App",
+  "aliases": [
+   "Ora AI App",
+   "ora-ai-app"
+  ],
+  "matrix": "Project Matrix ora-ai-app.md",
+  "resolution": "",
+  "core_essence": "",
+  "emotional_drivers": [],
+  "objectives": [
+   "Core Platform & Performance",
+   "Natural Language UX & Contextual Memory",
+   "Security & Privacy Architecture",
+   "Cross-Device Synchronization"
+  ],
+  "milestones": [
+   "Complete all Gate 1 milestones and implement the soft launch.",
+   "Complete all Gate 2 milestones in Ora Setup and Refinement",
+   "Complete Gate 3 milestones.",
+   "Complete first draft of the ora-ai.app website."
+  ],
+  "excluded": [],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Ora AI App / ora-ai-app"
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "Core Platform & Performance"
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "Natural Language UX & Contextual Memory"
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "Security & Privacy Architecture"
+   },
+   {
+    "id": "objective-4",
+    "kind": "objective",
+    "text": "Cross-Device Synchronization"
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Complete all Gate 1 milestones and implement the soft launch."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Complete all Gate 2 milestones in Ora Setup and Refinement"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Complete Gate 3 milestones."
+   },
+   {
+    "id": "milestone-4",
+    "kind": "milestone",
+    "text": "Complete first draft of the ora-ai.app website."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Gate, Contextual Memory Security, Core Platform, Device Synchronization Complete, Ora Setup, Performance Natural Language UX, Privacy Architecture Cross, Refinement Complete Gate"
+   }
+  ],
+  "distinctive_entities": [
+   "Gate",
+   "Contextual Memory Security",
+   "Core Platform",
+   "Device Synchronization Complete",
+   "Ora Setup",
+   "Performance Natural Language UX",
+   "Privacy Architecture Cross",
+   "Refinement Complete Gate"
+  ]
+ },
+ "ora-ai-org": {
+  "nexus": "ora-ai-org",
+  "name": "Ora AI Org",
+  "aliases": [
+   "Ora AI Org",
+   "ora-ai-org"
+  ],
+  "matrix": null,
+  "resolution": "The ora-ai.org static site is built and deployed from the Golfplan18/ora-ai-org Astro repository, sharing chassis, palette and typography with Main Street Independent and ora-ai.app, with all work released under CC0.",
+  "core_essence": "To publish and maintain ora-ai.org, the public website of the Ora Knowledge Foundation, presenting its governance, statement of intent, philosophy, and framework library as public-domain work.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To build and deploy the ora-ai.org static site with Astro and a server-pull deployment to the Hetzner origin behind Cloudflare.",
+   "To write and publish the foundation's public pages: mission, governance, statement of intent, philosophy, launch essay, donate, sources, and public-domain defense.",
+   "To present the framework library and knowledge library as browsable public-domain programs on the website."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Ora AI Org / ora-ai-org"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To publish and maintain ora-ai.org, the public website of the Ora Knowledge Foundation, presenting its governance, statement of intent, philosophy, and framework library as public-domain work. The ora-ai.org static site is built and deployed from the Golfplan18/ora-ai-org Astro repository, sharing chassis, palette and typography with Main Street Independent and ora-ai.app, with all work released under CC0."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To build and deploy the ora-ai.org static site with Astro and a server-pull deployment to the Hetzner origin behind Cloudflare."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To write and publish the foundation's public pages: mission, governance, statement of intent, philosophy, launch essay, donate, sources, and public-domain defense."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To present the framework library and knowledge library as browsable public-domain programs on the website."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "ora-ai.org, Ora Knowledge Foundation, Astro, CC0, public domain, Cloudflare, statement of intent, governance, launch essay, neurodivergent service, software displacement, Golfplan18, Hetzner, Main Street Independent"
+   }
+  ],
+  "_entity_seed": [
+   "ora-ai.org",
+   "Ora Knowledge Foundation",
+   "Astro",
+   "CC0",
+   "public domain",
+   "Cloudflare",
+   "statement of intent",
+   "governance",
+   "launch essay",
+   "neurodivergent service",
+   "software displacement"
+  ],
+  "distinctive_entities": [
+   "ora-ai.org",
+   "Ora Knowledge Foundation",
+   "Astro",
+   "CC0",
+   "public domain",
+   "Cloudflare",
+   "statement of intent",
+   "governance",
+   "launch essay",
+   "neurodivergent service",
+   "software displacement",
+   "Golfplan18",
+   "Hetzner",
+   "Main Street Independent"
+  ]
+ },
+ "ora": {
+  "nexus": "ora",
+  "name": "Ora",
+  "aliases": [
+   "Ora"
+  ],
+  "matrix": "Project Matrix Ora.md",
+  "resolution": "",
+  "core_essence": "Maintain Ora as a reliable Assisted Human Intelligence system that teaches users to think better while automating governed cognitive processes.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To advance the authorized Gate program without bypassing acceptance, authority, or phase boundaries."
+  ],
+  "milestones": [
+   "Milestone A1 \u2014 Governed increment closes. Each authorized increment is implemented within scope, verified, committed, pushed, synchronized, and independently judged before dependent work proceeds.",
+   "Delivering framework(s): Governed Process kernel plus the gate-specific Process Definition or execution plan",
+   "Verification criterion: Exact scope, test, drift, integrity, synchronization, and gate-result evidence are present.",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active \u2014 G1.5 is the current increment; G1.4 is accepted.",
+   "Milestone A2 \u2014 Sources remain coherent. Each behavior or architecture change updates the correct canonical, mirror, registry, installer, and user-facing records without creating unnecessary mirrors.",
+   "Delivering framework(s): Documentation-Code Parity and the applicable source-specific reconciliation contract",
+   "Verification criterion: Required parity or direct-source checks pass and contradictory current claims are absent.",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active",
+   "Milestone A3 \u2014 Evidence remains reproducible. Every acceptance claim carries exact commands, results, artifact identities, and repository state sufficient for independent rerun.",
+   "Delivering framework(s): Gate-specific verification and closeout evidence",
+   "Verification criterion: An independent run reproduces the claimed result from the accepted checkout.",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active",
+   "Maturity Gate B1 \u2014 Gate-1 release candidate is frozen. All planned general Gate-1 runtime changes are accepted and no further general runtime work is planned before Windows testing.",
+   "Gate condition: G1.4\u2013G1.6 and G1.8\u2013G1.22 are complete through their technical dependencies; G1.23 Mac/general readiness and static Windows analysis pass; repositories and documentation are clean and synchronized.",
+   "Verification source: [[Projects/Ora/Working \u2014 Ora Setup and Refinement#Gate 1 \u2014 Soft Open readiness]]",
+   "Maturity Gate B2 \u2014 Soft Open support boundary passes. Mac/general readiness, clean Windows installation, Windows refuse-path review, and fresh-vault verification all pass on the preserved release candidate.",
+   "Gate condition: Deferred G1.3 and immediately following G1.7 pass, followed by final G1.23 disposition and Gate-1 acceptance.",
+   "Verification source: Gate tracker, installer evidence, Execution Review evidence, and fresh-environment records",
+   "Maturity Gate B3 \u2014 Hard Launch readiness. The commissioned beta round, outreach/public surfaces, MSI presentation, and publication-quality documentation satisfy Gate 2.",
+   "Gate condition: All Gate-2 acceptance criteria pass.",
+   "Verification source: Gate tracker and Gate-2 evidence"
+  ],
+  "excluded": [
+   "Feature present without governed acceptance \u2014 code or documentation exists, but the required gate evidence or independent judgment is absent."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Ora"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "Maintain Ora as a reliable Assisted Human Intelligence system that teaches users to think better while automating governed cognitive processes."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To advance the authorized Gate program without bypassing acceptance, authority, or phase boundaries."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Milestone A1 \u2014 Governed increment closes. Each authorized increment is implemented within scope, verified, committed, pushed, synchronized, and independently judged before dependent work proceeds."
+   },
+   {
+    "id": "milestone-6",
+    "kind": "milestone",
+    "text": "Milestone A2 \u2014 Sources remain coherent. Each behavior or architecture change updates the correct canonical, mirror, registry, installer, and user-facing records without creating unnecessary mirrors."
+   },
+   {
+    "id": "milestone-11",
+    "kind": "milestone",
+    "text": "Milestone A3 \u2014 Evidence remains reproducible. Every acceptance claim carries exact commands, results, artifact identities, and repository state sufficient for independent rerun."
+   },
+   {
+    "id": "milestone-16",
+    "kind": "milestone",
+    "text": "Maturity Gate B1 \u2014 Gate-1 release candidate is frozen. All planned general Gate-1 runtime changes are accepted and no further general runtime work is planned before Windows testing."
+   },
+   {
+    "id": "milestone-19",
+    "kind": "milestone",
+    "text": "Maturity Gate B2 \u2014 Soft Open support boundary passes. Mac/general readiness, clean Windows installation, Windows refuse-path review, and fresh-vault verification all pass on the preserved release candidate."
+   },
+   {
+    "id": "milestone-22",
+    "kind": "milestone",
+    "text": "Maturity Gate B3 \u2014 Hard Launch readiness. The commissioned beta round, outreach/public surfaces, MSI presentation, and publication-quality documentation satisfy Gate 2."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Gate, Verification, Windows, Delivering, Feasibility Verdict, Reachable Status, Soft Open, All Gate, Assisted Human Intelligence, Code Parity, Deferred G1, Documentation, Execution Review, Feature"
+   }
+  ],
+  "distinctive_entities": [
+   "Gate",
+   "Verification",
+   "Windows",
+   "Delivering",
+   "Feasibility Verdict",
+   "Reachable Status",
+   "Soft Open",
+   "All Gate",
+   "Assisted Human Intelligence",
+   "Code Parity",
+   "Deferred G1",
+   "Documentation",
+   "Execution Review",
+   "Feature"
+  ]
+ },
+ "ora_chokepoint_response": {
+  "nexus": "ora_chokepoint_response",
+  "name": "Chokepoint Response",
+  "aliases": [
+   "Chokepoint Response"
+  ],
+  "matrix": "Matrix Chokepoint Response.md",
+  "resolution": "",
+  "core_essence": "The Chokepoint Response Operation builds free public-domain alternatives where enclosure and extractive monopoly behavior has captured cognitive tools, while leaving competitive markets and fair-value vendors alone. The work is principled and bounded \u2014 the forbearance default protects against unbounded software-cloning expansionism.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To evaluate commercial software candidates against principled Stage 1/2/3 criteria \u2014 routing Stage 1 to the Framework Library Operation, pursuing Stage 2 only when all five criteria are met, and preserving Stage 3 forbearance as the default for most candidates."
+  ],
+  "milestones": [
+   "Milestone A1 \u2014 Per candidate evaluation cycle (event-driven). Each evaluated candidate assessed against the Stage 1/2/3 decision criteria; disposition (Stage 1 routed / Stage 2 pursued / Stage 3 forbearance) recorded with rationale tied to specific Methodology criteria.",
+   "Bootstrap status: active (founder evaluates).",
+   "Delivering framework: Operation cycle execution per the Methodology.",
+   "Verification criterion: Disposition recorded; rationale cites specific Methodology criteria.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A2 \u2014 Per Stage 2 specification publication cycle (event-driven). For each candidate passing all five Stage 2 criteria, a specification authored and published.",
+   "Bootstrap status: active (founder authors when candidates emerge).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Specification published.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A3 \u2014 Per Stage 2 contribution review cycle (event-driven). Each Stage 2 contribution reviewed against the published specification AND the Section C legal discipline; accepted or rejected with rationale.",
+   "Bootstrap status: latent (active in spec; no contributor community yet).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Disposition recorded; Section C checklist verified.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 depends on contributor community emerging.",
+   "Status: active",
+   "Milestone A4 \u2014 Periodic Methodology review cycle. Methodology reviewed against accumulated practice; revisions published if warranted. *Cadence: periodic, TBD by need and resources.*",
+   "Bootstrap status: active (founder).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Review completed; revisions released if warranted.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A5 \u2014 Periodic defensive documentation audit cycle. Defensive docs across all Stage 2 candidates audited for completeness and currency; gaps logged; remediation tracked. *Cadence: periodic, TBD by need and resources.*",
+   "Bootstrap status: latent (no Stage 2 work exists yet).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Audit report published; gaps logged.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Maturity Gate B1 \u2014 Candidate registry populated. Founder's systematic review of industries and software produces a candidate list with Stage 1/2/3 dispositions and priorities; published as Foundation roadmap and external-contributor guide.",
+   "Gate condition: Candidate registry published; entries dated and dispositioned.",
+   "Verification source: Candidate registry publication.",
+   "Maturity Gate B2 \u2014 First Stage 2 candidate selected. From the registry, a specific candidate passes all five Stage 2 criteria; enters Stage 2 work.",
+   "Gate condition: Decision Log entry recording Stage 2 entry with rationale tied to all five criteria.",
+   "Verification source: Decision Log + candidate registry.",
+   "Maturity Gate B3 \u2014 Spec-for-specs (meta-Specification) authored. A meta-Specification for what a Stage 2 specification must contain authored and published.",
+   "Gate condition: Meta-Specification published with version.",
+   "Verification source: Meta-Specification publication.",
+   "Maturity Gate B4 \u2014 First Stage 2 specification published. First specification authored under the meta-Specification and released.",
+   "Gate condition: Specification published; verified to meet meta-Specification.",
+   "Verification source: Specification publication + meta-Specification compliance check.",
+   "Maturity Gate B5 \u2014 First contributor community formed around a Stage 2 candidate. Active contributors (not just founder plus one) engaged with a Stage 2 specification.",
+   "Gate condition: Performance Log shows multiple contributors with accepted contributions on a single specification.",
+   "Verification source: Performance Log + contributor registry.",
+   "Maturity Gate B6 \u2014 First Stage 2 alternative ships. First clean-room alternative completed by community contribution and released per the Methodology's contribution flow.",
+   "Gate condition: Released alternative present in public domain; Section C compliance verified across the work.",
+   "Verification source: Public release record + defensive documentation audit.",
+   "Maturity Gate B7 \u2014 First successful post-shipping community handoff. First shipped Stage 2 alternative picked up by independent maintainers; community-driven post-shipping maintenance verified working.",
+   "Gate condition: Independent maintainers identified; ongoing maintenance activity documented for an extended period (TBD).",
+   "Verification source: External maintainer activity log.",
+   "Maturity Gate B8 \u2014 Methodology stable. No structural changes to the Methodology for an extended periodic review window (cadence TBD by need and resources); \"stable\" status awarded.",
+   "Gate condition: Methodology review history shows extended period without structural changes.",
+   "Verification source: Methodology version history + Decision Log."
+  ],
+  "excluded": [
+   "Cadence met but quality degraded \u2014 cycle ran (candidate evaluated, spec published, contribution accepted) without actual Section C discipline enforcement."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Chokepoint Response"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "The Chokepoint Response Operation builds free public-domain alternatives where enclosure and extractive monopoly behavior has captured cognitive tools, while leaving competitive markets and fair-value vendors alone. The work is principled and bounded \u2014 the forbearance default protects against unbounded software-cloning expansionism."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To evaluate commercial software candidates against principled Stage 1/2/3 criteria \u2014 routing Stage 1 to the Framework Library Operation, pursuing Stage 2 only when all five criteria are met, and preserving Stage 3 forbearance as the default for most candidates."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Milestone A1 \u2014 Per candidate evaluation cycle (event-driven). Each evaluated candidate assessed against the Stage 1/2/3 decision criteria; disposition (Stage 1 routed / Stage 2 pursued / Stage 3 forbearance) recorded with rationale tied to specific Methodology criteria."
+   },
+   {
+    "id": "milestone-7",
+    "kind": "milestone",
+    "text": "Milestone A2 \u2014 Per Stage 2 specification publication cycle (event-driven). For each candidate passing all five Stage 2 criteria, a specification authored and published."
+   },
+   {
+    "id": "milestone-13",
+    "kind": "milestone",
+    "text": "Milestone A3 \u2014 Per Stage 2 contribution review cycle (event-driven). Each Stage 2 contribution reviewed against the published specification AND the Section C legal discipline; accepted or rejected with rationale."
+   },
+   {
+    "id": "milestone-19",
+    "kind": "milestone",
+    "text": "Milestone A4 \u2014 Periodic Methodology review cycle. Methodology reviewed against accumulated practice; revisions published if warranted. *Cadence"
+   },
+   {
+    "id": "milestone-25",
+    "kind": "milestone",
+    "text": "Milestone A5 \u2014 Periodic defensive documentation audit cycle. Defensive docs across all Stage 2 candidates audited for completeness and currency; gaps logged; remediation tracked. *Cadence"
+   },
+   {
+    "id": "milestone-31",
+    "kind": "milestone",
+    "text": "Maturity Gate B1 \u2014 Candidate registry populated. Founder's systematic review of industries and software produces a candidate list with Stage 1/2/3 dispositions and priorities; published as Foundation roadmap and external-contributor guide."
+   },
+   {
+    "id": "milestone-34",
+    "kind": "milestone",
+    "text": "Maturity Gate B2 \u2014 First Stage 2 candidate selected. From the registry, a specific candidate passes all five Stage 2 criteria; enters Stage 2 work."
+   },
+   {
+    "id": "milestone-37",
+    "kind": "milestone",
+    "text": "Maturity Gate B3 \u2014 Spec-for-specs (meta-Specification) authored. A meta-Specification for what a Stage 2 specification must contain authored and published."
+   },
+   {
+    "id": "milestone-40",
+    "kind": "milestone",
+    "text": "Maturity Gate B4 \u2014 First Stage 2 specification published. First specification authored under the meta-Specification and released."
+   },
+   {
+    "id": "milestone-43",
+    "kind": "milestone",
+    "text": "Maturity Gate B5 \u2014 First contributor community formed around a Stage 2 candidate. Active contributors (not just founder plus one) engaged with a Stage 2 specification."
+   },
+   {
+    "id": "milestone-46",
+    "kind": "milestone",
+    "text": "Maturity Gate B6 \u2014 First Stage 2 alternative ships. First clean-room alternative completed by community contribution and released per the Methodology's contribution flow."
+   },
+   {
+    "id": "milestone-49",
+    "kind": "milestone",
+    "text": "Maturity Gate B7 \u2014 First successful post-shipping community handoff. First shipped Stage 2 alternative picked up by independent maintainers; community-driven post-shipping maintenance verified working."
+   },
+   {
+    "id": "milestone-52",
+    "kind": "milestone",
+    "text": "Maturity Gate B8 \u2014 Methodology stable. No structural changes to the Methodology for an extended periodic review window (cadence TBD by need and resources); \"stable\" status awarded."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Stage, Verification, Specification, Gate, Methodology, Bootstrap, Delivering, Feasibility Verdict, First, Operation, Reachable, Section, Cadence, Candidate"
+   }
+  ],
+  "distinctive_entities": [
+   "Stage",
+   "Verification",
+   "Specification",
+   "Gate",
+   "Methodology",
+   "Bootstrap",
+   "Delivering",
+   "Feasibility Verdict",
+   "First",
+   "Operation",
+   "Reachable",
+   "Section",
+   "Cadence",
+   "Candidate"
+  ]
+ },
+ "ora_foundation": {
+  "nexus": "ora_foundation",
+  "name": "Ora Foundation",
+  "aliases": [
+   "Ora Foundation"
+  ],
+  "matrix": "Matrix Ora Foundation.md",
+  "resolution": "",
+  "core_essence": "The Ora Knowledge Foundation exists to sustain unfettered and free access to cognitive infrastructure \u2014 sustained as a commons rather than enclosed as a chokepoint and restricted \u2014 oriented around assisted human intelligence so that human flourishing across all populations is supported.",
+  "emotional_drivers": [
+   "*I want the cognitive revolution not to leave behind the people I love most \u2014 including my son and other neurodivergent people \u2014 by ensuring the tools that will define this era are oriented around assistance rather than replacement.*",
+   "*I want to do work that descends from my parents' lives as teachers and from my own contemplative orientation: pedagogical at the core, holding civilizational stakes without losing sight of the human being doing the thinking.*",
+   "*I want this to be the work I am most proud of when I look back \u2014 because it remains free, remains in the commons, and continues operating long after I am gone.*"
+  ],
+  "objectives": [
+   "To establish and sustain a public-domain commons of cognitive infrastructure that any actor can use."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward AHI as operating frame, away from AGI consolidation. Every artifact, framework, paper, and methodology reinforces the AHI ontological correction. No output undermines it."
+  ],
+  "practices": [
+   "Mission Integrity. Combined defense and internal integrity. Defense against external capture (NDAs, regulatory capture, hostile influence, fundraising-driven mission drift). Integrity against internal drift (scope creep, mission narrowing, revenue temptations, founder-driven divergence over time). NDA refusal is one mechanism among several; the broader commitment is to staying on mission against every vector that would pull the Foundation away from it."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Ora Foundation"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "The Ora Knowledge Foundation exists to sustain unfettered and free access to cognitive infrastructure \u2014 sustained as a commons rather than enclosed as a chokepoint and restricted \u2014 oriented around assisted human intelligence so that human flourishing across all populations is supported."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To establish and sustain a public-domain commons of cognitive infrastructure that any actor can use."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "*I want the cognitive revolution not to leave behind the people I love most \u2014 including my son and other neurodivergent people \u2014 by ensuring the tools that will define this era are oriented around assistance rather than replacement.* *I want to do work that descends from my parents' lives as teachers and from my own contemplative orientation: pedagogical at the core, holding civilizational stakes without losing sight of the human being doing the thinking.* *I want this to be the work I am most proud of when I look back \u2014 because it remains free, remains in the commons, and continues operating long after I am gone.*"
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Mission Integrity. Combined defense and internal integrity. Defense against external capture (NDAs, regulatory capture, hostile influence, fundraising-driven mission drift). Integrity against internal drift (scope creep, mission narrowing, revenue temptations, founder-driven divergence over time). NDA refusal is one mechanism among several; the broader commitment is to staying on mission against e"
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward AHI as operating frame, away from AGI consolidation. Every artifact, framework, paper, and methodology reinforces the AHI ontological correction. No output undermines it."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Combined, Defense, Foundation, Integrity, Mission Integrity, NDAs, The Ora Knowledge Foundation, Toward AHI"
+   }
+  ],
+  "distinctive_entities": [
+   "Combined",
+   "Defense",
+   "Foundation",
+   "Integrity",
+   "Mission Integrity",
+   "NDAs",
+   "The Ora Knowledge Foundation",
+   "Toward AHI"
+  ]
+ },
+ "ora_framework_library": {
+  "nexus": "ora_framework_library",
+  "name": "Framework Library",
+  "aliases": [
+   "Framework Library"
+  ],
+  "matrix": "Matrix Framework Library.md",
+  "resolution": "",
+  "core_essence": "Frameworks are the operational interface between cognitive automation and applied use; this Operation maintains them as a public-domain commons rather than as a proprietary chokepoint.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To establish and maintain the Framework Library as the Foundation's curated node of the public-domain framework commons."
+  ],
+  "milestones": [
+   "Milestone A1 \u2014 Submission review cycle. Each submitted framework reviewed against the Framework Specification within the target review window (starting target: 4 weeks, subject to operations revision), with merge or rejection decision recorded.",
+   "Delivering framework: Operation cycle execution per the Framework Specification",
+   "Verification criterion: Cycle Close Verification \u2014 submission disposition recorded; rationale tied to specific Specification compliance criteria",
+   "P-Feasibility Verdict: Reachable \u2014 current solo-author apparatus is operational; review work happens already.",
+   "Status: active",
+   "Milestone A2 \u2014 Merge cycle. Each accepted framework merged into the library with registry entry, cross-references, contributor attribution per the published framework standards, and release via the Foundation Release Algorithm.",
+   "Delivering framework: Operation cycle execution + Foundation Release Algorithm",
+   "Verification criterion: Registry entry present; Tier 1 distribution complete; content hash published; supersession metadata if applicable",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 depends on Foundation Release Algorithm Tier 1 setup, which is in progress per pre-Foundation execution by the founder.",
+   "Status: active",
+   "Milestone A3 \u2014 Deprecation cycle. Each deprecated framework marked with supersession metadata and deprecation notice released per Release Algorithm correction protocol.",
+   "Delivering framework: Operation cycle execution + Foundation Release Algorithm",
+   "Verification criterion: Supersession metadata present; deprecation notice released; superseded version remains accessible",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active",
+   "Milestone A4 \u2014 Periodic review cycle (cadence TBD by need and resources). Library health check performed and report published; Best Practices consolidation with new entries published.",
+   "Delivering framework: Operation cycle execution",
+   "Verification criterion: Health report published; Best Practices update released",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active",
+   "Milestone A5 \u2014 Periodic review cycle (cadence TBD by need and resources). Framework Specification reviewed and changes published if warranted; Templates reviewed for consistency; Framework Need Register refreshed.",
+   "Delivering framework: Operation cycle execution",
+   "Verification criterion: Periodic review completed; any changes released; \"stable\" status awarded to Specification if no structural changes for an extended period (feeds Maturity Gate B4)",
+   "P-Feasibility Verdict: Reachable",
+   "Status: active",
+   "Maturity Gate B1 \u2014 Launch list complete. A Foundation Framework Library Launch List has been determined via dedicated Project work, and at least one framework merged in each category on that list.",
+   "Gate condition: Launch list published; Performance Log shows at least one merged framework in each listed category.",
+   "Verification source: Spawned Activity Registry (Launch List Determination Project) + Library state.",
+   "Maturity Gate B2 \u2014 First external contributor formalization trigger. First non-founder submission received; apparatus formalization (submission channel, review process, compliance test, merge protocol) initiated.",
+   "Gate condition: Performance Log shows first external-contributor submission; Decision Log records formalization initiation.",
+   "Verification source: Performance Log + Decision Log.",
+   "Maturity Gate B3 \u2014 First non-Foundation node operational. At least one independent curator publishing a verified alternative or supplementary collection of public-domain frameworks.",
+   "Gate condition: Mirror list (per Release Algorithm Mirror Operator Charter) shows at least one verified independent node.",
+   "Verification source: Mirror list publication.",
+   "Maturity Gate B4 \u2014 Framework Specification stable. No structural changes for an extended periodic review window (cadence TBD by need and resources) \u2192 \"stable\" status awarded.",
+   "Gate condition: Performance Log shows an extended period without structural changes to the Specification.",
+   "Verification source: Performance Log.",
+   "Maturity Gate B5 \u2014 Domain-expert maintainer threshold. N domain experts actively maintaining framework families (N to be set by operations once external contributors emerge).",
+   "Gate condition: Performance Log shows N domain-expert maintainers active; threshold set in Decision Log.",
+   "Verification source: Performance Log + contributor registry.",
+   "Maturity Gate B6 \u2014 Library scale threshold. N frameworks meeting Specification in the library (N to be set by operations once launch list is complete).",
+   "Gate condition: Library state shows N frameworks meeting Specification; threshold set in Decision Log.",
+   "Verification source: Library state + Specification compliance reports."
+  ],
+  "excluded": [
+   "Cadence met but quality degraded \u2014 submission reviewed and merged within target cycle time, but actual Framework Specification compliance not enforced; the framework \"passed\" because the queue moved, not because it met the bar."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Framework Library"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "Frameworks are the operational interface between cognitive automation and applied use; this Operation maintains them as a public-domain commons rather than as a proprietary chokepoint."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To establish and maintain the Framework Library as the Foundation's curated node of the public-domain framework commons."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Milestone A1 \u2014 Submission review cycle. Each submitted framework reviewed against the Framework Specification within the target review window (starting target"
+   },
+   {
+    "id": "milestone-6",
+    "kind": "milestone",
+    "text": "Milestone A2 \u2014 Merge cycle. Each accepted framework merged into the library with registry entry, cross-references, contributor attribution per the published framework standards, and release via the Foundation Release Algorithm."
+   },
+   {
+    "id": "milestone-11",
+    "kind": "milestone",
+    "text": "Milestone A3 \u2014 Deprecation cycle. Each deprecated framework marked with supersession metadata and deprecation notice released per Release Algorithm correction protocol."
+   },
+   {
+    "id": "milestone-16",
+    "kind": "milestone",
+    "text": "Milestone A4 \u2014 Periodic review cycle (cadence TBD by need and resources). Library health check performed and report published; Best Practices consolidation with new entries published."
+   },
+   {
+    "id": "milestone-21",
+    "kind": "milestone",
+    "text": "Milestone A5 \u2014 Periodic review cycle (cadence TBD by need and resources). Framework Specification reviewed and changes published if warranted; Templates reviewed for consistency; Framework Need Register refreshed."
+   },
+   {
+    "id": "milestone-26",
+    "kind": "milestone",
+    "text": "Maturity Gate B1 \u2014 Launch list complete. A Foundation Framework Library Launch List has been determined via dedicated Project work, and at least one framework merged in each category on that list."
+   },
+   {
+    "id": "milestone-29",
+    "kind": "milestone",
+    "text": "Maturity Gate B2 \u2014 First external contributor formalization trigger. First non-founder submission received; apparatus formalization (submission channel, review process, compliance test, merge protocol) initiated."
+   },
+   {
+    "id": "milestone-32",
+    "kind": "milestone",
+    "text": "Maturity Gate B3 \u2014 First non-Foundation node operational. At least one independent curator publishing a verified alternative or supplementary collection of public-domain frameworks."
+   },
+   {
+    "id": "milestone-35",
+    "kind": "milestone",
+    "text": "Maturity Gate B4 \u2014 Framework Specification stable. No structural changes for an extended periodic review window (cadence TBD by need and resources) \u2192 \"stable\" status awarded."
+   },
+   {
+    "id": "milestone-38",
+    "kind": "milestone",
+    "text": "Maturity Gate B5 \u2014 Domain-expert maintainer threshold. N domain experts actively maintaining framework families (N to be set by operations once external contributors emerge)."
+   },
+   {
+    "id": "milestone-41",
+    "kind": "milestone",
+    "text": "Maturity Gate B6 \u2014 Library scale threshold. N frameworks meeting Specification in the library (N to be set by operations once launch list is complete)."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Verification, Performance Log, Gate, Operation, Specification, Delivering, Feasibility Verdict, Library, Decision Log, Framework Specification, First, Periodic, Reachable Status, Best Practices"
+   }
+  ],
+  "distinctive_entities": [
+   "Verification",
+   "Performance Log",
+   "Gate",
+   "Operation",
+   "Specification",
+   "Delivering",
+   "Feasibility Verdict",
+   "Library",
+   "Decision Log",
+   "Framework Specification",
+   "First",
+   "Periodic",
+   "Reachable Status",
+   "Best Practices"
+  ]
+ },
+ "ora_knowledge_library": {
+  "nexus": "ora_knowledge_library",
+  "name": "Knowledge Library",
+  "aliases": [
+   "Knowledge Library"
+  ],
+  "matrix": "Matrix Knowledge Library.md",
+  "resolution": "",
+  "core_essence": "The knowledge library is the public-domain provenance-verified substrate that grounds AHI at civilizational scale \u2014 vetted knowledge freely available rather than enclosed behind paywalls or proprietary systems.",
+  "emotional_drivers": [],
+  "objectives": [
+   "To establish and operate the universal processing pipeline (source \u2192 provenance \u2192 atomization \u2192 cross-referencing \u2192 indexing \u2192 publication) as the apparatus for all knowledge domains."
+  ],
+  "milestones": [
+   "Milestone A1 \u2014 Per source ingestion cycle (event-driven per domain). Each source qualified per the relevant domain knowledge processing standard processed through the universal pipeline; atomized knowledge units published with provenance signing per the published hierarchy standard via the Foundation Release Algorithm.",
+   "Bootstrap status: active (founder operates personal-scale pipeline; Foundation-scale publication waits on Release Algorithm Tier 1 setup).",
+   "Delivering framework: Operation cycle execution per the relevant Specification.",
+   "Verification criterion: Cycle Close Verification per Specification + provenance audit.",
+   "P-Feasibility Verdict: Reachable with conditions \u2014 depends on Release Algorithm Tier 1 setup and on personal-scale pipeline extension to public publication.",
+   "Status: active",
+   "Milestone A2 \u2014 Per Specification authoring/update cycle (event-driven). Each domain knowledge processing standard, the meta-Specification, and the provenance hierarchy standard authored, published, and revised through the Specification authority process. Bootstrap: founder authors all; post-staffing: relevant committee.",
+   "Bootstrap status: active.",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Specification published with version; revision rationale recorded.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A3 \u2014 Per edge case review cycle (event-driven on flag). Each flagged edge case reviewed by judicial authority; ruling published; precedent corpus updated. Bootstrap: founder serves as judiciary; post-staffing: dedicated body.",
+   "Bootstrap status: active (founder).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Ruling published; precedent corpus entry created.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A4 \u2014  Periodic (cadence TBD) library health audit cycle. Cross-reference completeness, provenance audit, node sync status, edge case backlog status; report published; issues logged.",
+   "Bootstrap status: active (founder).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Health report published.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Milestone A5 \u2014 Periodic Specification review cycle. Each Specification (provenance hierarchy, meta-Specification, domain Specifications) reviewed; changes published if warranted; stability status updated.",
+   "Bootstrap status: active (founder for all).",
+   "Delivering framework: Operation cycle execution.",
+   "Verification criterion: Periodic review completed; changes released; \"stable\" status awarded after consecutive cycles without structural change.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Maturity Gate B1 \u2014 Phase 1 domains launched. Encyclopedia, Source Library, and Dictionary/lexicon each have a published knowledge processing standard, an operating pipeline, and at least N initial knowledge units published (N TBD per domain by operations).",
+   "Gate condition: Three Phase 1 Specifications published; Performance Log shows at least N units in each.",
+   "Verification source: Performance Log + library state.",
+   "Maturity Gate B2 \u2014 Foundation Release Algorithm operational at library scale. Tier 1 channels live for library publication; cryptographic signing infrastructure for all levels of the published provenance hierarchy operational.",
+   "Gate condition: Tier 1 publication confirmed live; signing infrastructure verified for all hierarchy levels.",
+   "Verification source: Release Algorithm verification; signing-infrastructure audit.",
+   "Maturity Gate B3 \u2014 Phase 2 News pipeline launched. Continuous news ingestion operational; US national scope; News knowledge processing standard published.",
+   "Gate condition: News Specification published; continuous ingestion cycle running; Performance Log shows continuous-cadence cycles.",
+   "Verification source: Performance Log + News Specification publication.",
+   "Maturity Gate B4 \u2014 First domain committee staffed. First non-founder domain committee staffed with at least N qualified members; committee assumes Specification authority for that domain.",
+   "Gate condition: Committee membership recorded; Specification authority transferred via Decision Log entry.",
+   "Verification source: Decision Log + committee registry.",
+   "Maturity Gate B5 \u2014 Judicial review function staffed. Dedicated judiciary distinct from committees; first non-founder judicial ruling published.",
+   "Gate condition: Judiciary membership recorded; first non-founder ruling in precedent corpus.",
+   "Verification source: Decision Log + precedent corpus.",
+   "Maturity Gate B6 \u2014 Phase 3+ progression. Textbooks, Courses, and Government data domains each launched per Phase 1 pattern.",
+   "Gate condition: Three Phase 3 Specifications published; pipelines operational; Performance Log shows units in each.",
+   "Verification source: Performance Log + library state.",
+   "Maturity Gate B7 \u2014 First non-Foundation node operational. At least one independent node verified per Release Algorithm Mirror Operator Charter, hosting library content with provenance verification.",
+   "Gate condition: Mirror list shows at least one verified independent node.",
+   "Verification source: Mirror list publication.",
+   "Maturity Gate B8 \u2014 First deferred domain unlocked. Legal, Medical, Museum, Patent, or Literature/Film domain launched; appropriate Specification authored; appropriate committee staffed.",
+   "Gate condition: Deferred-domain Specification published; pipeline operational; committee staffed.",
+   "Verification source: Performance Log + Decision Log.",
+   "Maturity Gate B9 \u2014 Decentralized hosting at scale. Library content hosted across N independent nodes (N TBD by operations); content-addressed retrieval verified from multiple nodes.",
+   "Gate condition: Mirror list shows \u2265 N independent verified nodes; cross-node retrieval test passes.",
+   "Verification source: Mirror list + cross-node retrieval test results."
+  ],
+  "excluded": [
+   "Cadence met but quality degraded \u2014 cycle ran on schedule; Specification compliance not enforced."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Knowledge Library"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "The knowledge library is the public-domain provenance-verified substrate that grounds AHI at civilizational scale \u2014 vetted knowledge freely available rather than enclosed behind paywalls or proprietary systems."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To establish and operate the universal processing pipeline (source \u2192 provenance \u2192 atomization \u2192 cross-referencing \u2192 indexing \u2192 publication) as the apparatus for all knowledge domains."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Milestone A1 \u2014 Per source ingestion cycle (event-driven per domain). Each source qualified per the relevant domain knowledge processing standard processed through the universal pipeline; atomized knowledge units published with provenance signing per the published hierarchy standard via the Foundatio"
+   },
+   {
+    "id": "milestone-7",
+    "kind": "milestone",
+    "text": "Milestone A2 \u2014 Per Specification authoring/update cycle (event-driven). Each domain knowledge processing standard, the meta-Specification, and the provenance hierarchy standard authored, published, and revised through the Specification authority process. Bootstrap"
+   },
+   {
+    "id": "milestone-13",
+    "kind": "milestone",
+    "text": "Milestone A3 \u2014 Per edge case review cycle (event-driven on flag). Each flagged edge case reviewed by judicial authority; ruling published; precedent corpus updated. Bootstrap"
+   },
+   {
+    "id": "milestone-19",
+    "kind": "milestone",
+    "text": "Milestone A4 \u2014 Periodic (cadence TBD) library health audit cycle. Cross-reference completeness, provenance audit, node sync status, edge case backlog status; report published; issues logged."
+   },
+   {
+    "id": "milestone-25",
+    "kind": "milestone",
+    "text": "Milestone A5 \u2014 Periodic Specification review cycle. Each Specification (provenance hierarchy, meta-Specification, domain Specifications) reviewed; changes published if warranted; stability status updated."
+   },
+   {
+    "id": "milestone-31",
+    "kind": "milestone",
+    "text": "Maturity Gate B1 \u2014 Phase 1 domains launched. Encyclopedia, Source Library, and Dictionary/lexicon each have a published knowledge processing standard, an operating pipeline, and at least N initial knowledge units published (N TBD per domain by operations)."
+   },
+   {
+    "id": "milestone-34",
+    "kind": "milestone",
+    "text": "Maturity Gate B2 \u2014 Foundation Release Algorithm operational at library scale. Tier 1 channels live for library publication; cryptographic signing infrastructure for all levels of the published provenance hierarchy operational."
+   },
+   {
+    "id": "milestone-37",
+    "kind": "milestone",
+    "text": "Maturity Gate B3 \u2014 Phase 2 News pipeline launched. Continuous news ingestion operational; US national scope; News knowledge processing standard published."
+   },
+   {
+    "id": "milestone-40",
+    "kind": "milestone",
+    "text": "Maturity Gate B4 \u2014 First domain committee staffed. First non-founder domain committee staffed with at least N qualified members; committee assumes Specification authority for that domain."
+   },
+   {
+    "id": "milestone-43",
+    "kind": "milestone",
+    "text": "Maturity Gate B5 \u2014 Judicial review function staffed. Dedicated judiciary distinct from committees; first non-founder judicial ruling published."
+   },
+   {
+    "id": "milestone-46",
+    "kind": "milestone",
+    "text": "Maturity Gate B6 \u2014 Phase 3+ progression. Textbooks, Courses, and Government data domains each launched per Phase 1 pattern."
+   },
+   {
+    "id": "milestone-49",
+    "kind": "milestone",
+    "text": "Maturity Gate B7 \u2014 First non-Foundation node operational. At least one independent node verified per Release Algorithm Mirror Operator Charter, hosting library content with provenance verification."
+   },
+   {
+    "id": "milestone-52",
+    "kind": "milestone",
+    "text": "Maturity Gate B8 \u2014 First deferred domain unlocked. Legal, Medical, Museum, Patent, or Literature/Film domain launched; appropriate Specification authored; appropriate committee staffed."
+   },
+   {
+    "id": "milestone-55",
+    "kind": "milestone",
+    "text": "Maturity Gate B9 \u2014 Decentralized hosting at scale. Library content hosted across N independent nodes (N TBD by operations); content-addressed retrieval verified from multiple nodes."
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Verification, Specification, Gate, Bootstrap, Performance Log, Delivering, Feasibility Verdict, Operation, Reachable, Decision Log, First, Mirror, Phase, Specifications"
+   }
+  ],
+  "distinctive_entities": [
+   "Verification",
+   "Specification",
+   "Gate",
+   "Bootstrap",
+   "Performance Log",
+   "Delivering",
+   "Feasibility Verdict",
+   "Operation",
+   "Reachable",
+   "Decision Log",
+   "First",
+   "Mirror",
+   "Phase",
+   "Specifications"
+  ]
+ },
+ "pen_names": {
+  "nexus": "pen_names",
+  "name": "Pen Names",
+  "aliases": [
+   "Pen Names"
+  ],
+  "matrix": "Project Matrix Pen Names.md",
+  "resolution": "At least one pen name has an approved backstory, consistent public biography, Medium and professional-network profiles, a dedicated web presence or publisher page, and a completed anonymity/privacy review.",
+  "core_essence": "To produce distinct \"character\" authors that readers can identify with, thereby building audience connection while preserving personal anonymity.",
+  "emotional_drivers": [
+   "I want to create engaging personas that enhance the reader's experience.",
+   "I must maintain my anonymity to have the freedom to write across different genres and topics."
+  ],
+  "objectives": [
+   "To build out the complete public-facing infrastructure for at least one pen name."
+  ],
+  "milestones": [
+   "M1 \u2014 One persona identity package accepted: One named pen name has an approved backstory and one canonical public biography used as the consistency authority. Resolution coverage: at least one pen name, approved backstory, and public biography. Evidence: exact identity-package artifact and dated approval receipt.",
+   "M2 \u2014 Required public surfaces verified: The selected pen name has reachable Medium and professional-network profiles plus a dedicated website or publisher page, and every surface matches the canonical biography fields. Resolution coverage: Medium, professional-network, and dedicated web presence. Evidence: bounded URL inventory, authenticated capture of each surface, and field-by-field consistency report.",
+   "M3 \u2014 Anonymity review passed: The reviewed public surfaces, files, metadata, account links, and recovery arrangements contain no unresolved private-identity disclosure. Resolution coverage: completed anonymity/privacy review. Evidence: signed privacy checklist with finding dispositions and no credentials or private identifiers reproduced in the matrix.",
+   "M4 \u2014 Resolution accepted: The approved identity package, verified public surfaces, and passed privacy review satisfy every clause of the Pen Names Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "A fictional biography stored only in the vault \u2014 the persona exists conceptually but has no public infrastructure."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Pen Names"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To produce distinct \"character\" authors that readers can identify with, thereby building audience connection while preserving personal anonymity. At least one pen name has an approved backstory, consistent public biography, Medium and professional-network profiles, a dedicated web presence or publisher page, and a completed anonymity/privacy review."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To build out the complete public-facing infrastructure for at least one pen name."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to create engaging personas that enhance the reader's experience. I must maintain my anonymity to have the freedom to write across different genres and topics."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Required public surfaces verified"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Anonymity review passed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Medium, Anonymity, Pen Names Resolution Statement, Required"
+   }
+  ],
+  "distinctive_entities": [
+   "Medium",
+   "Anonymity",
+   "Pen Names Resolution Statement",
+   "Required"
+  ]
+ },
+ "photo_books": {
+  "nexus": "photo_books",
+  "name": "Photo Books James",
+  "aliases": [
+   "Photo Books James"
+  ],
+  "matrix": "Project Matrix Photo Books James.md",
+  "resolution": "The selected private family photographs are organized, the intended photo-book layouts are approved, finished books are produced and delivered to the intended recipient, and the source-to-output index is retained privately.",
+  "core_essence": "To complete a private family-photo book package from the reviewed source images and approved presentation choices.",
+  "emotional_drivers": [
+   "I want important family photographs preserved in a form that can be shared with their intended recipient.",
+   "I want the finished books to reflect deliberate selection rather than an unreviewed image dump."
+  ],
+  "objectives": [
+   "To organize the reviewed source photographs into a coherent private collection.",
+   "To complete the book design, production, and delivery decisions without exposing family material outside the intended audience."
+  ],
+  "milestones": [
+   "M1 \u2014 Private photograph selection accepted: One private inventory identifies every selected source photograph and records the excluded-source disposition. Resolution coverage: selected photographs organized. Evidence: access-controlled source manifest with stable identifiers and selection approval receipt.",
+   "M2 \u2014 Photo-book layouts approved: Every intended book has an exact layout artifact whose page count, image placements, captions, and production dimensions are approved. Resolution coverage: intended layouts approved. Evidence: layout identities, completed preflight reports, and approval receipts.",
+   "M3 \u2014 Finished books produced and delivered: Every approved layout has a corresponding produced copy and an authorized delivery receipt. Resolution coverage: finished books produced and delivered to the intended recipient. Evidence: production-order identities and private delivery acknowledgments bound to the layout identifiers.",
+   "M4 \u2014 Private source-to-output index completed: Every selected source identifier maps to its final book and page while preserving the private access boundary. Resolution coverage: retained private source-to-output index. Evidence: access-controlled reconciliation with zero selected source or printed placement unmapped.",
+   "M5 \u2014 Resolution accepted: The selection, layouts, produced/delivered books, and private index satisfy every clause of the Photo Books Resolution Statement. Resolution coverage: all. Evidence: dated private completion record mapping each Resolution clause to M1\u2013M4."
+  ],
+  "excluded": [
+   "An organized photo directory without designed books \u2014 preservation improves, but the finite deliverable is absent."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Photo Books James"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To complete a private family-photo book package from the reviewed source images and approved presentation choices. The selected private family photographs are organized, the intended photo-book layouts are approved, finished books are produced and delivered to the intended recipient, and the source-to-output index is retained privately."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To organize the reviewed source photographs into a coherent private collection."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To complete the book design, production, and delivery decisions without exposing family material outside the intended audience."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want important family photographs preserved in a form that can be shared with their intended recipient. I want the finished books to reflect deliberate selection rather than an unreviewed image dump."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Private photograph selection accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Photo-book layouts approved"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Finished books produced and delivered"
+   },
+   {
+    "id": "milestone-4",
+    "kind": "milestone",
+    "text": "Private source-to-output index completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Private, Finished, Photo, Photo Books Resolution Statement"
+   }
+  ],
+  "distinctive_entities": [
+   "Private",
+   "Finished",
+   "Photo",
+   "Photo Books Resolution Statement"
+  ]
+ },
+ "politics": {
+  "nexus": "politics",
+  "name": "Politics",
+  "aliases": [
+   "Politics"
+  ],
+  "matrix": "Passion Matrix Politics.md",
+  "resolution": "",
+  "core_essence": "To champion altruistic principles in politics by providing a clear, moral, and unyielding voice.",
+  "emotional_drivers": [
+   "I feel I must provide a potent outlet for my political outrage and channel it into constructive arguments.",
+   "I want to inspire a moral framework for political action that can have a positive impact on the largest number of people."
+  ],
+  "objectives": [
+   "To establish and promote an altruistic moral framework for political action.",
+   "To build a lasting movement by inspiring and instructing future creatives."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward a clearer and more durable altruistic political framework."
+  ],
+  "practices": [
+   "Track political events and claims through source-backed notes."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Politics"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To champion altruistic principles in politics by providing a clear, moral, and unyielding voice."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To establish and promote an altruistic moral framework for political action."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To build a lasting movement by inspiring and instructing future creatives."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I feel I must provide a potent outlet for my political outrage and channel it into constructive arguments. I want to inspire a moral framework for political action that can have a positive impact on the largest number of people."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Track political events and claims through source-backed notes."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward a clearer and more durable altruistic political framework."
+   }
+  ],
+  "distinctive_entities": [
+   "Track"
+  ]
+ },
+ "project_workshop": {
+  "nexus": "project_workshop",
+  "name": "Project Workshop",
+  "aliases": [
+   "Project Workshop"
+  ],
+  "matrix": "Project Matrix Workshop.md",
+  "resolution": "",
+  "core_essence": "To strategically define and scope new production projects that align with core passions and available knowledge assets.",
+  "emotional_drivers": [
+   "I want a clear and reliable process for moving from a vague idea to a concrete, actionable plan.",
+   "I must ensure my creative energy is directed toward viable, meaningful projects that honor my core mission."
+  ],
+  "objectives": [
+   "To evaluate potential project ideas for synergy, viability, and alignment with my core passions, using assets from the `wisdom_nexus`.",
+   "To translate approved ideas into fully-defined production projects, each with its own clear Mission, Objectives, and Milestones.",
+   "To maintain a clear, strategic overview of the entire project pipeline, from incubated ideas to active productions."
+  ],
+  "milestones": [
+   "A new production project (e.g., a book or system) is fully defined using this workshop process.",
+   "An idea is formally archived in a Workshop Report, documenting the valuable insights learned even though the project was not pursued.",
+   "The entire project pipeline is visualized in a master dashboard, showing the status of all ideas (Incubator, Workshop, and Active Production).",
+   "Milestone A1: Each workshop event ends in one explicit, evidence-backed disposition.",
+   "Verification criterion: the result is persisted in the correct matrix or Workshop Report and its nexus is unambiguous.",
+   "P-Feasibility Verdict: Reachable.",
+   "Status: active",
+   "Maturity Gate B1: The portfolio can be reviewed without orphaned ideas or duplicate strategic identities.",
+   "Gate condition: an explicit portfolio campaign resolves every reviewed item to one current lifecycle record."
+  ],
+  "excluded": [
+   "Idea forced into Project form \u2014 the workshop produces a finite plan even though the evidence supports an Operation, Passion, or Incubator."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Project Workshop"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To strategically define and scope new production projects that align with core passions and available knowledge assets."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To evaluate potential project ideas for synergy, viability, and alignment with my core passions, using assets from the `wisdom_nexus`."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To translate approved ideas into fully-defined production projects, each with its own clear Mission, Objectives, and Milestones."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To maintain a clear, strategic overview of the entire project pipeline, from incubated ideas to active productions."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want a clear and reliable process for moving from a vague idea to a concrete, actionable plan. I must ensure my creative energy is directed toward viable, meaningful projects that honor my core mission."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "A new production project (e.g., a book or system) is fully defined using this workshop process."
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "An idea is formally archived in a Workshop Report, documenting the valuable insights learned even though the project was not pursued."
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "The entire project pipeline is visualized in a master dashboard, showing the status of all ideas (Incubator, Workshop, and Active Production)."
+   },
+   {
+    "id": "milestone-8",
+    "kind": "milestone",
+    "text": "Maturity Gate B1"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Incubator, Workshop Report, Active Production, Feasibility Verdict, Gate, Idea, Maturity Gate B1, Milestone A1, Mission, Operation, Reachable, Verification, Workshop"
+   }
+  ],
+  "distinctive_entities": [
+   "Incubator",
+   "Workshop Report",
+   "Active Production",
+   "Feasibility Verdict",
+   "Gate",
+   "Idea",
+   "Maturity Gate B1",
+   "Milestone A1",
+   "Mission",
+   "Operation",
+   "Reachable",
+   "Verification",
+   "Workshop"
+  ]
+ },
+ "prompt_engineering": {
+  "nexus": "prompt_engineering",
+  "name": "Prompt Engineering",
+  "aliases": [
+   "Prompt Engineering"
+  ],
+  "matrix": "Project Matrix Prompt Engineering.md",
+  "resolution": "",
+  "core_essence": "To master the art of communicating with AIs to create efficient and effective workflows for creative and analytical tasks.",
+  "emotional_drivers": [
+   "I want to be at the forefront of using AI as a collaborative partner.",
+   "I feel that developing systematic procedures for AI communication is a critical skill for the future of my work."
+  ],
+  "objectives": [
+   "To develop and document systematic procedures for collaborating with various AI platforms."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward more reliable and inspectable AI collaboration."
+  ],
+  "practices": [
+   "Test prompts on concrete creative and analytical tasks with recorded inputs and outcomes."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Prompt Engineering"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To master the art of communicating with AIs to create efficient and effective workflows for creative and analytical tasks."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To develop and document systematic procedures for collaborating with various AI platforms."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to be at the forefront of using AI as a collaborative partner. I feel that developing systematic procedures for AI communication is a critical skill for the future of my work."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Test prompts on concrete creative and analytical tasks with recorded inputs and outcomes."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward more reliable and inspectable AI collaboration."
+   }
+  ],
+  "distinctive_entities": [
+   "Test"
+  ]
+ },
+ "property": {
+  "nexus": "property",
+  "name": "Property",
+  "aliases": [
+   "Property"
+  ],
+  "matrix": "Passion Matrix Property.md",
+  "resolution": "",
+  "core_essence": "To leverage extensive career expertise to create valuable resources on real estate and land development.",
+  "emotional_drivers": [
+   "I want to share the hard-won lessons from my 30-year career to help others navigate a complex industry.",
+   "I feel a need to codify my knowledge so that my expertise is preserved and accessible."
+  ],
+  "objectives": [
+   "To transform three decades of professional experience and existing materials into a series of practical, published guides on real estate."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward a complete, searchable archive of career knowledge."
+  ],
+  "practices": [
+   "Capture and source career lessons, cases, and recurring decision patterns."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Property"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To leverage extensive career expertise to create valuable resources on real estate and land development."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To transform three decades of professional experience and existing materials into a series of practical, published guides on real estate."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to share the hard-won lessons from my 30-year career to help others navigate a complex industry. I feel a need to codify my knowledge so that my expertise is preserved and accessible."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Capture and source career lessons, cases, and recurring decision patterns."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward a complete, searchable archive of career knowledge."
+   }
+  ],
+  "distinctive_entities": [
+   "Capture"
+  ]
+ },
+ "publishing": {
+  "nexus": "publishing",
+  "name": "Publishing",
+  "aliases": [
+   "Publishing"
+  ],
+  "matrix": "Passion Matrix Publishing.md",
+  "resolution": "",
+  "core_essence": "To provide content for public betterment and enjoyment.",
+  "emotional_drivers": [
+   "I want to express my deeply felt truths and reach people in a meaningful way.",
+   "I feel that the message is more important than the money, which should remain a secondary motivation."
+  ],
+  "objectives": [
+   "To operate a sustainable and coordinated publishing business with a clear production pipeline and strategic financial management.",
+   "To build an efficient, delegable, and multi-format publishing infrastructure designed to maximize reader reach."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward a coherent portfolio whose works serve public betterment and enjoyment."
+  ],
+  "practices": [
+   "Review the publication portfolio and decide which bounded works merit development."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Publishing"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To provide content for public betterment and enjoyment."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To operate a sustainable and coordinated publishing business with a clear production pipeline and strategic financial management."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To build an efficient, delegable, and multi-format publishing infrastructure designed to maximize reader reach."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to express my deeply felt truths and reach people in a meaningful way. I feel that the message is more important than the money, which should remain a secondary motivation."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Review the publication portfolio and decide which bounded works merit development."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward a coherent portfolio whose works serve public betterment and enjoyment."
+   }
+  ],
+  "distinctive_entities": []
+ },
+ "publishing_website": {
+  "nexus": "publishing_website",
+  "name": "Old Cypress Publishing",
+  "aliases": [
+   "Old Cypress Publishing"
+  ],
+  "matrix": "Project Matrix Old Cypress Publishing.md",
+  "resolution": "An owned Old Cypress Publishing website is publicly deployed with approved author biographies, book sales pages, press-release capability, publisher backstory, working navigation and links, and a verified handoff for maintenance.",
+  "core_essence": "To create a legitimate and professional-looking publisher website to serve as a central hub for press releases, book sales pages, and author bios.",
+  "emotional_drivers": [
+   "I want a professional platform that lends credibility to my publishing efforts.",
+   "I must have a central, owned platform for my work that is independent of third-party sellers."
+  ],
+  "objectives": [
+   "To design, create content for, and launch a professional publisher website."
+  ],
+  "milestones": [
+   "M1 \u2014 Required content package accepted: Approved author biographies, book-sales copy/assets, publisher backstory, and press-release content capability requirements are complete and versioned. Resolution coverage: all required content and press-release capability. Evidence: content manifest with exact identities, approval receipts, and zero missing required category.",
+   "M2 \u2014 Owned public deployment verified: The website is reachable at the owned production locator, contains every accepted content item, and passes the declared navigation, internal/external link, and press-release publishing checks. Resolution coverage: publicly deployed owned site with working navigation, links, sales pages, and press-release capability. Evidence: deployment identity, ownership record, route inventory, link-check report, and press-release-path trial receipt.",
+   "M3 \u2014 Maintenance handoff verified: The maintenance package identifies the deployed source, account-recovery locations without exposing credentials, update procedure, rollback procedure, and a successful independent update/restore trial. Resolution coverage: verified maintenance handoff. Evidence: handoff receipt plus update and rollback trial records bound to the production deployment.",
+   "M4 \u2014 Resolution accepted: The content package, verified deployment, and maintenance handoff satisfy every clause of the Publishing Website Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "A visual mockup or contractor prototype that is not deployed on the owned domain \u2014 design exists, but the publishing hub does not."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Old Cypress Publishing"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To create a legitimate and professional-looking publisher website to serve as a central hub for press releases, book sales pages, and author bios. An owned Old Cypress Publishing website is publicly deployed with approved author biographies, book sales pages, press-release capability, publisher backstory, working navigation and links, and a verified handoff for maintenance."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To design, create content for, and launch a professional publisher website."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want a professional platform that lends credibility to my publishing efforts. I must have a central, owned platform for my work that is independent of third-party sellers."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Required content package accepted"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Owned public deployment verified"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Maintenance handoff verified"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Maintenance, Old Cypress Publishing, Owned, Publishing Website Resolution Statement, Required"
+   }
+  ],
+  "distinctive_entities": [
+   "Maintenance",
+   "Old Cypress Publishing",
+   "Owned",
+   "Publishing Website Resolution Statement",
+   "Required"
+  ]
+ },
+ "quantum_mechanics": {
+  "nexus": "quantum_mechanics",
+  "name": "Quantum Mechanics",
+  "aliases": [
+   "Quantum Mechanics"
+  ],
+  "matrix": "Project Matrix Quantum Mechanics.md",
+  "resolution": "The Wobble Model is implemented in reproducible Python simulation code, tested against the defined double-slit criteria and countercases, and reported in a publication-ready manuscript that accepts, revises, or rejects the model based on the results.",
+  "core_essence": "To challenge conventional interpretations of quantum mechanics by developing a verifiable simulation and a coherent written work.",
+  "emotional_drivers": [
+   "I believe my \"Wobble Model\" is a more intuitive explanation for quantum phenomena, and I must test it rigorously.",
+   "I feel a deep need to engage with the most fundamental and perplexing questions in physics."
+  ],
+  "objectives": [
+   "To validate or invalidate the \"Wobble Model\" by creating a Python simulation of the double-slit experiment.",
+   "To consolidate research and draft a paper or book presenting these ideas."
+  ],
+  "milestones": [
+   "M1 \u2014 Reproducible Wobble Model implementation completed: The model specification, Python source, environment lock, inputs, and deterministic run command produce the recorded simulation outputs. Resolution coverage: reproducible Python simulation code. Evidence: source/environment digests, exact command, exit status, and output hashes from a clean rerun.",
+   "M2 \u2014 Double-slit criteria and countercases adjudicated: Every predefined acceptance criterion and countercase has an executed result and an explicit pass/fail disposition. Resolution coverage: testing against defined double-slit criteria and countercases. Evidence: versioned test specification, execution log, result artifacts, and complete criterion-to-result matrix.",
+   "M3 \u2014 Findings manuscript completed: One manuscript reports the model, methods, all test results, counterevidence, and an explicit accept, revise, or reject conclusion. Resolution coverage: publication-ready manuscript and evidence-based model disposition. Evidence: exact manuscript identity, result-to-claim crosswalk, source review, and completed publication checklist.",
+   "M4 \u2014 Resolution accepted: The reproducible implementation, complete test record, and reviewed findings manuscript satisfy every clause of the Quantum Mechanics Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M3 with no unresolved exception."
+  ],
+  "excluded": [
+   "Simulation code that runs without validation criteria or reproducible results \u2014 computation occurs, but the model is not tested."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Quantum Mechanics"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To challenge conventional interpretations of quantum mechanics by developing a verifiable simulation and a coherent written work. The Wobble Model is implemented in reproducible Python simulation code, tested against the defined double-slit criteria and countercases, and reported in a publication-ready manuscript that accepts, revises, or rejects the model based on the results."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To validate or invalidate the \"Wobble Model\" by creating a Python simulation of the double-slit experiment."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To consolidate research and draft a paper or book presenting these ideas."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I believe my \"Wobble Model\" is a more intuitive explanation for quantum phenomena, and I must test it rigorously. I feel a deep need to engage with the most fundamental and perplexing questions in physics."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Reproducible Wobble Model implementation completed"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Double-slit criteria and countercases adjudicated"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Findings manuscript completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Python, Double, Findings, Quantum Mechanics Resolution Statement, Reproducible Wobble Model, Simulation, The Wobble Model, Wobble Model"
+   }
+  ],
+  "distinctive_entities": [
+   "Python",
+   "Double",
+   "Findings",
+   "Quantum Mechanics Resolution Statement",
+   "Reproducible Wobble Model",
+   "Simulation",
+   "The Wobble Model",
+   "Wobble Model"
+  ]
+ },
+ "real_estate_book": {
+  "nexus": "real_estate_book",
+  "name": "Real Estate Book",
+  "aliases": [
+   "Real Estate Book"
+  ],
+  "matrix": "Project Matrix Real Estate Book.md",
+  "resolution": "A publication-ready practical home-purchase guide is complete with reviewed AI-assisted draft provenance, expert revisions, approved illustrations, consolidated supporting writings, and a companion set of key-concept Engrams.",
+  "core_essence": "To produce a simple, practical home purchase guide by leveraging AI tools and existing expertise.",
+  "emotional_drivers": [
+   "I want to create a genuinely helpful resource without unnecessary filler or fluff.",
+   "I am driven to find an efficient process for book creation that combines my knowledge with AI capabilities."
+  ],
+  "objectives": [
+   "To develop and execute an efficient workflow for drafting a book using AI prompts and existing content."
+  ],
+  "milestones": [
+   "M1 \u2014 Draft provenance and source corpus reconciled: Every retained AI-assisted draft and supporting writing has a stable identity and a use/exclusion disposition. Resolution coverage: reviewed AI-assisted draft provenance and consolidated supporting writings. Evidence: dated source/provenance map with zero undisposed retained artifact.",
+   "M2 \u2014 Expert-revised manuscript completed: One complete manuscript incorporates the accepted source material and every recorded expert revision. Resolution coverage: complete practical guide and expert revisions. Evidence: exact manuscript identity, revision log with reviewer/source attribution, and chapter-completeness report.",
+   "M3 \u2014 Illustration package accepted: Every retained illustration is approved, linked to a manuscript location, and present in the final production source at the required dimensions. Resolution coverage: approved illustrations. Evidence: illustration manifest, approval receipts, manuscript placement crosswalk, and production preflight report.",
+   "M4 \u2014 Key-concept Engram set completed: A bounded concept inventory derived from the final manuscript maps every selected key concept to one companion Engram. Resolution coverage: companion set of key-concept Engrams. Evidence: concept-to-Engram matrix with exact artifact identities and zero unmapped selected concept.",
+   "M5 \u2014 Resolution accepted: The provenance package, reviewed manuscript, illustrations, and Engram set satisfy every clause of the Real Estate Book Resolution Statement. Resolution coverage: all. Evidence: dated completion review mapping each Resolution clause to M1\u2013M4 and the exact final production identity."
+  ],
+  "excluded": [
+   "An unreviewed AI-generated draft \u2014 text volume exists, but expertise, accuracy, and coherence have not been supplied."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Real Estate Book"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To produce a simple, practical home purchase guide by leveraging AI tools and existing expertise. A publication-ready practical home-purchase guide is complete with reviewed AI-assisted draft provenance, expert revisions, approved illustrations, consolidated supporting writings, and a companion set of key-concept Engrams."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To develop and execute an efficient workflow for drafting a book using AI prompts and existing content."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to create a genuinely helpful resource without unnecessary filler or fluff. I am driven to find an efficient process for book creation that combines my knowledge with AI capabilities."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Draft provenance and source corpus reconciled"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Expert-revised manuscript completed"
+   },
+   {
+    "id": "milestone-4",
+    "kind": "milestone",
+    "text": "Key-concept Engram set completed"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "Engram, Engrams, Draft, Expert, Illustration, Real Estate Book Resolution"
+   }
+  ],
+  "distinctive_entities": [
+   "Engram",
+   "Engrams",
+   "Draft",
+   "Expert",
+   "Illustration",
+   "Real Estate Book Resolution"
+  ]
+ },
+ "relationships": {
+  "nexus": "relationships",
+  "name": "Relationships",
+  "aliases": [
+   "Relationships"
+  ],
+  "matrix": "Passion Matrix Relationships.md",
+  "resolution": "",
+  "core_essence": "To cultivate compassionate and meaningful relationships through the practice of shared understanding and interconnectedness.",
+  "emotional_drivers": [
+   "I want to apply my internal insights to the world of relationships to reduce suffering for myself and others.",
+   "I am driven to understand and share the principles that allow people to connect on a deeper, more authentic level."
+  ],
+  "objectives": [
+   "To continuously develop the personal skills required for empathetic and compassionate interaction.",
+   "To articulate and share a practical framework for building relationships based on altruistic principles."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward more skillful and compassionate interaction."
+  ],
+  "practices": [
+   "Practice attentive, empathetic, and compassionate interaction in ordinary relationships."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Relationships"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To cultivate compassionate and meaningful relationships through the practice of shared understanding and interconnectedness."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To continuously develop the personal skills required for empathetic and compassionate interaction."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To articulate and share a practical framework for building relationships based on altruistic principles."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to apply my internal insights to the world of relationships to reduce suffering for myself and others. I am driven to understand and share the principles that allow people to connect on a deeper, more authentic level."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Practice attentive, empathetic, and compassionate interaction in ordinary relationships."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward more skillful and compassionate interaction."
+   }
+  ],
+  "distinctive_entities": [
+   "Practice"
+  ]
+ },
+ "science": {
+  "nexus": "science",
+  "name": "Science",
+  "aliases": [
+   "Science"
+  ],
+  "matrix": "Passion Matrix Science.md",
+  "resolution": "",
+  "core_essence": "To provide a dedicated space for the exploration of scientific concepts driven by personal passion and intuition.",
+  "emotional_drivers": [
+   "I have a deep passion for understanding the fundamental workings of the universe.",
+   "I want to pursue lines of scientific inquiry that I find compelling, regardless of mainstream consensus."
+  ],
+  "objectives": [
+   "To explore fundamental questions in physics and cosmology through sustained reading, modeling, and critical comparison.",
+   "To turn selected intuitions into explicit, testable hypotheses or bounded writing Projects.",
+   "To improve the mathematical, evidentiary, and explanatory quality of scientific work over time."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward more testable and mathematically explicit models."
+  ],
+  "practices": [
+   "Read and annotate scientific sources, including serious challenges to preferred ideas."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Science"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To provide a dedicated space for the exploration of scientific concepts driven by personal passion and intuition."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To explore fundamental questions in physics and cosmology through sustained reading, modeling, and critical comparison."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To turn selected intuitions into explicit, testable hypotheses or bounded writing Projects."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To improve the mathematical, evidentiary, and explanatory quality of scientific work over time."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I have a deep passion for understanding the fundamental workings of the universe. I want to pursue lines of scientific inquiry that I find compelling, regardless of mainstream consensus."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Read and annotate scientific sources, including serious challenges to preferred ideas."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward more testable and mathematically explicit models."
+   }
+  ],
+  "distinctive_entities": [
+   "Read"
+  ]
+ },
+ "technology": {
+  "nexus": "technology",
+  "name": "Technology",
+  "aliases": [
+   "Technology"
+  ],
+  "matrix": "Passion Matrix Technology.md",
+  "resolution": "",
+  "core_essence": "To explore, document, and organize insights on technologies that enhance and improve daily life.",
+  "emotional_drivers": [
+   "I want to understand how technology can be a leveraged tool for personal and creative improvement.",
+   "I feel a need to structure my research and thoughts on technology so they can be refined into a coherent written work."
+  ],
+  "objectives": [
+   "To continually evaluate technologies that can improve thinking, creative work, accessibility, and daily life.",
+   "To develop transferable understanding rather than accumulating disconnected tool notes.",
+   "To spawn bounded Projects or Operations only when a concrete deliverable or recurring service emerges."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward more discerning and evidence-backed tool choices."
+  ],
+  "practices": [
+   "Test selected tools against real personal or creative tasks."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Technology"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To explore, document, and organize insights on technologies that enhance and improve daily life."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To continually evaluate technologies that can improve thinking, creative work, accessibility, and daily life."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To develop transferable understanding rather than accumulating disconnected tool notes."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To spawn bounded Projects or Operations only when a concrete deliverable or recurring service emerges."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to understand how technology can be a leveraged tool for personal and creative improvement. I feel a need to structure my research and thoughts on technology so they can be refined into a coherent written work."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Test selected tools against real personal or creative tasks."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward more discerning and evidence-backed tool choices."
+   }
+  ],
+  "distinctive_entities": [
+   "Operations",
+   "Test"
+  ]
+ },
+ "wetoo": {
+  "nexus": "wetoo",
+  "name": "We Too",
+  "aliases": [
+   "We Too"
+  ],
+  "matrix": "Project Matrix We Too.md",
+  "resolution": "The completed WeToo book and its working corpus form one reconstructable project package: source ownership is explicit, the corpus is consolidated under `Projects/We Too/`, and shared-substrate links to adjacent projects preserve We Too as the authoritative owner.",
+  "core_essence": "To turn moral clarity about economic injustice into an accessible political framework that helps ordinary people recognize elite extraction and act together.",
+  "emotional_drivers": [
+   "I want people harmed by concentrated wealth to see that their struggles are connected rather than private failures.",
+   "I want progressive politics to become direct, emotionally legible, and strategically effective.",
+   "I feel responsible for turning outrage into a usable framework instead of letting it dissipate as analysis."
+  ],
+  "objectives": [
+   "To establish the We Too corpus as the political and moral foundation for economic-justice writing.",
+   "To expose conservative coalition contradictions in language that can reach working-class and culturally conservative audiences.",
+   "To develop narrative, propaganda, and publishing strategies that move readers from recognition to collective action.",
+   "To provide reusable source material for adjacent political-fiction and MSI voice projects without losing We Too's project ownership."
+  ],
+  "milestones": [
+   "M1 \u2014 Completed book identity authenticated: The final WeToo book artifact, completion record, and authoritative project ownership are identified in the package index. Resolution coverage: completed WeToo book and explicit source ownership. Evidence: exact book identity, existing completion record, and ownership entry.",
+   "M2 \u2014 Working corpus consolidated and indexed: Every retained WeToo working artifact has one stable location under `Projects/We Too/` and one indexed disposition. Resolution coverage: corpus consolidated under the approved path and reconstructable package. Evidence: before/after inventory reconciliation with zero retained item outside the approved corpus or without a disposition.",
+   "M3 \u2014 Shared-substrate authority links verified: Every approved adjacent-project use points back to WeToo as authoritative owner without transferring or duplicating source authority. Resolution coverage: shared-substrate links and WeToo ownership preservation. Evidence: bounded adjacent-project link inventory and authority-direction check with zero ambiguous owner.",
+   "M4 \u2014 Resolution accepted: The authenticated book, consolidated corpus, and verified authority links satisfy every clause of the WeToo Resolution Statement. Resolution coverage: all. Evidence: dated reconstructability trial and completion review mapping each Resolution clause to M1\u2013M3."
+  ],
+  "excluded": [
+   "Treating the completed book alone as closure while its working corpus remains scattered \u2014 publication exists, but the project package is not reconstructable."
+  ],
+  "directions": [],
+  "practices": [],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "We Too"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To turn moral clarity about economic injustice into an accessible political framework that helps ordinary people recognize elite extraction and act together. The completed WeToo book and its working corpus form one reconstructable project package: source ownership is explicit, the corpus is consolidated under `Projects/We Too/`, and shared-substrate links to adjacent projects preserve We Too as the authoritative owner."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To establish the We Too corpus as the political and moral foundation for economic-justice writing."
+   },
+   {
+    "id": "objective-2",
+    "kind": "objective",
+    "text": "To expose conservative coalition contradictions in language that can reach working-class and culturally conservative audiences."
+   },
+   {
+    "id": "objective-3",
+    "kind": "objective",
+    "text": "To develop narrative, propaganda, and publishing strategies that move readers from recognition to collective action."
+   },
+   {
+    "id": "objective-4",
+    "kind": "objective",
+    "text": "To provide reusable source material for adjacent political-fiction and MSI voice projects without losing We Too's project ownership."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want people harmed by concentrated wealth to see that their struggles are connected rather than private failures. I want progressive politics to become direct, emotionally legible, and strategically effective. I feel responsible for turning outrage into a usable framework instead of letting it dissipate as analysis."
+   },
+   {
+    "id": "milestone-1",
+    "kind": "milestone",
+    "text": "Completed book identity authenticated"
+   },
+   {
+    "id": "milestone-2",
+    "kind": "milestone",
+    "text": "Working corpus consolidated and indexed"
+   },
+   {
+    "id": "milestone-3",
+    "kind": "milestone",
+    "text": "Shared-substrate authority links verified"
+   },
+   {
+    "id": "entities",
+    "kind": "entities",
+    "text": "WeToo, We Too, Shared, Treating, We Too's, WeToo Resolution Statement, Working"
+   }
+  ],
+  "distinctive_entities": [
+   "WeToo",
+   "We Too",
+   "Shared",
+   "Treating",
+   "We Too's",
+   "WeToo Resolution Statement",
+   "Working"
+  ]
+ },
+ "writing": {
+  "nexus": "writing",
+  "name": "Writing",
+  "aliases": [
+   "Writing"
+  ],
+  "matrix": "Passion Matrix Writing.md",
+  "resolution": "",
+  "core_essence": "To continuously refine the craft and process of writing itself as a core tool for all other efforts.",
+  "emotional_drivers": [
+   "My passion for writing is foundational to nearly all my projects, and I want to dedicate effort to improving the tool itself.",
+   "I must develop and document my methods to make my creative process more effective and efficient."
+  ],
+  "objectives": [
+   "To develop and formalize a systematic, AI-assisted method for creating fiction."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward clearer, more distinctive, and more emotionally effective prose."
+  ],
+  "practices": [
+   "Write and revise regularly across active genres and Projects."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Writing"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To continuously refine the craft and process of writing itself as a core tool for all other efforts."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To develop and formalize a systematic, AI-assisted method for creating fiction."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "My passion for writing is foundational to nearly all my projects, and I want to dedicate effort to improving the tool itself. I must develop and document my methods to make my creative process more effective and efficient."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Write and revise regularly across active genres and Projects."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward clearer, more distinctive, and more emotionally effective prose."
+   }
+  ],
+  "distinctive_entities": [
+   "Write"
+  ]
+ },
+ "writing_fiction": {
+  "nexus": "writing_fiction",
+  "name": "Writing Fiction",
+  "aliases": [
+   "Writing Fiction"
+  ],
+  "matrix": "Project Matrix Writing Fiction.md",
+  "resolution": "",
+  "core_essence": "To improve the process, quality, and methods of writing fiction as a craft.",
+  "emotional_drivers": [
+   "I want to treat writing not just as a tool, but as a craft to be intentionally honed and improved.",
+   "I feel that a systematic approach to improving my writing craft will benefit all of my creative projects."
+  ],
+  "objectives": [
+   "To continuously refine the methods, tools, and quality of the prose creation process."
+  ],
+  "milestones": [],
+  "excluded": [],
+  "directions": [
+   "Toward stronger prose, scene construction, and character agency."
+  ],
+  "practices": [
+   "Draft and revise scenes with deliberate attention to character choice, voice, structure, and emotional consequence."
+  ],
+  "routes": [
+   {
+    "id": "name",
+    "kind": "name",
+    "text": "Writing Fiction"
+   },
+   {
+    "id": "mission",
+    "kind": "mission",
+    "text": "To improve the process, quality, and methods of writing fiction as a craft."
+   },
+   {
+    "id": "objective-1",
+    "kind": "objective",
+    "text": "To continuously refine the methods, tools, and quality of the prose creation process."
+   },
+   {
+    "id": "drivers",
+    "kind": "drivers",
+    "text": "I want to treat writing not just as a tool, but as a craft to be intentionally honed and improved. I feel that a systematic approach to improving my writing craft will benefit all of my creative projects."
+   },
+   {
+    "id": "practice-1",
+    "kind": "practice",
+    "text": "Draft and revise scenes with deliberate attention to character choice, voice, structure, and emotional consequence."
+   },
+   {
+    "id": "direction-1",
+    "kind": "direction",
+    "text": "Toward stronger prose, scene construction, and character agency."
+   }
+  ],
+  "distinctive_entities": [
+   "Draft"
+  ]
+ }
+}

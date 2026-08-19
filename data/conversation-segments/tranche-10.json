@@ -1,0 +1,1680 @@
+{
+ "tranche": 10,
+ "conversations": [
+  {
+   "conversation_id": "historical-9237e49b749c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Building the central theme and philosophical framework for the 'Diklis Chump' political satire (core theme statement, philosophical underpinnings, thematic dimensions)"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 18,
+     "subject": "Developing the five main character profiles (Diklis Chump, Phukher Tarlson, Malcolm Little King, Buford B. Righteous, Wade N. Whatever)"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 21,
+     "subject": "Evaluating how the revised theme integrates into the larger AI prompt template and aligning authoritarian stages with thematic dimensions"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 27,
+     "subject": "Drafting the six Authoritarian Stages (propaganda progression from 'Everything Is Great' to 'Total Collapse')"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 32,
+     "subject": "Consolidating the full thematic framework and adding the fate-vs-destiny philosophical concept"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 33,
+     "subject": "Revising the Plot Concept Development section (main plot and six subplots)"
+    },
+    {
+     "start_turn": 34,
+     "end_turn": 35,
+     "subject": "Brainstorming the Setting Concept Development section (poker-night rotation, character homes, press briefing room)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-34ae28cbd2a2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Launching the 23-day solo retreat and overview of the American Jesus prose-writing plan"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Self-discipline dilemma: controlling weed/food cravings via option-elimination and diet check-in"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Dating strategy: crafting messages to filter for INFP women"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Reflection on stillness meditation practice and its link to weed cravings"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Reflection on relationship readiness and confidence after a year of self-work"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Writing process: developing story-beat/scene frameworks and the 'ark is built' shift to prose mode"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 11,
+     "subject": "Accidental thumbs-down click / interface question"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 13,
+     "subject": "Dating: masculine leadership framework (the Amanda incident) and MBTI/INFP-INFJ personality theory"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Reflection on using AI as a therapeutic tool during the retreat"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Dating: codifying MBTI compatibility filters into a table"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 16,
+     "subject": "Frustration over zero book sales and marketing/publishing plans"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "Dating: ambivalence after securing a date with Lulu"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 18,
+     "subject": "Writing: progress on the story-beat framework and scene generation pipeline"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 21,
+     "subject": "Desert heat acclimatization and designing a climate-adaptive smart thermostat"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 23,
+     "subject": "Dating: Keira's message and growing confidence in the dating 'system'"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 26,
+     "subject": "Philosophizing on navigation-uncertainty vs destination-uncertainty (writing and dating) plus feedback on preferred AI response style"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 27,
+     "subject": "Comparing the retreat to Thoreau's Walden"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 29,
+     "subject": "Dating: emotional deflation over Keira, hardwired attraction preferences, and the Hinge algorithm"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 30,
+     "subject": "Writing: Sunday session paraphrasing gospel quotes for the Hayzeus character"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 31,
+     "subject": "Anecdote about being mistaken for gay at a bar with Ella"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 34,
+     "subject": "Dating: masculine frame/authenticity model and building a detailed future-life vision with Keira"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 36,
+     "subject": "Climate observations: a windless evening walk and investigating why the 'cold' tap water runs hot"
+    },
+    {
+     "start_turn": 37,
+     "end_turn": 37,
+     "subject": "Reflection on the necessarily slow pacing of writing inspired spiritual prose"
+    },
+    {
+     "start_turn": 38,
+     "end_turn": 39,
+     "subject": "Reflection on social/family disconnection patterns plus holiday travel and book-sequencing plans"
+    },
+    {
+     "start_turn": 40,
+     "end_turn": 41,
+     "subject": "Philosophical distinction between joy and pleasure and weaving it into American Jesus"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-87e829f168b5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Developing Mary Magdalena's character arc, advisory role, and the 'Pool of Blood' crucifixion chapter outline for American Jesus"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Analyzing biblical parallels across the whole narrative and adding realist transfiguration/resurrection scenes"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1b0c8d3a969e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Identifying the 'journey of a thousand miles' quote/parable origin"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Finding non-paywalled sources for Pink Floyd 'Comfortably Numb' lyrics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-33b18ed17c6d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Requesting plain-text-only responses"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-adef83162ce7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 41,
+     "subject": "Summarizing Thomas Watson's exposition of the Beatitudes (Matthew 5) article by article and drawing parallels to Tibetan Buddhist concepts (renunciation, self-grasping, bodhicitta, emptiness)"
+    },
+    {
+     "start_turn": 42,
+     "end_turn": 63,
+     "subject": "Developing the 'American Jesus' novel: character profile for Hayzeus L. Salvador, writing a modernized Sermon on the Mount / Beatitudes in his voice with Thomas's explanatory commentary, and reworking Jesus's crucifixion utterances"
+    },
+    {
+     "start_turn": 64,
+     "end_turn": 65,
+     "subject": "Discussion of how social hierarchy generates hatred and denial as tools that sustain oppressive systems (e.g. racism, empire)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-60546fd856ac",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 15,
+     "subject": "Drafting and revising individual Act 1 chapters (10, 13, 14, 15) of the 'American Jesus' novel, deepening the Hayzeus-Clarence relationship, and establishing the book's Hemingway-influenced prose style"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5b75ed3cbab4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 40,
+     "subject": "Debugging and redesigning the user's AI-assisted novel-writing methodology (Theme/Character/Setting/Plot frameworks), fixing AI content-condensation drift via a tiered preservation protocol, and splitting frameworks into Foundation vs. Refinement phases"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fba2646651bb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Reacting to and analyzing (equal-protection legal framework) a news article on Kansas's new law invalidating transgender residents' driver's licenses"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 12,
+     "subject": "Conceiving a 'What Would Jesus Do' AI framework/cartoon to expose religious hypocrisy in right-wing politics, discussing James Talarico and the left's abandonment of religious language, and reflecting on writing the 'American Jesus' trilogy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4c2d6c3be501",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Experimental evidence for quantum tunneling and Einstein's likely views on it"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Time-translation symmetry and violations of energy conservation"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "List of books by Geshe Kelsang Gyatso"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "The Fokker-Planck equation and its link to Nelson's stochastic mechanics"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 19,
+     "subject": "Special relativity: simultaneity, causality, absolute vs. relative time, Lorentz transformations, and Minkowski spacetime"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 26,
+     "subject": "Einstein's cosmological constant, Friedmann, and paradoxes of an infinite static universe"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 48,
+     "subject": "User's speculative theory unifying quantized (\"staircased\") gravity, the Higgs field, and quantum mechanics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5519b5c53088",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "AI agent swarm architecture: orchestrators, subprocesses, and adversarial planning design"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 8,
+     "subject": "Applying the adversarial-AI methodology to fiction writing and a pen-name publishing business"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 15,
+     "subject": "AI-driven labor and economic disruption, financial cascade, and UBI as the political response"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 21,
+     "subject": "Trump-era collapse of the post-WWII world order and generational political realignment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c99dc6301508",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 21,
+     "subject": "TV ambient-lighting camera/HDMI-sync technology and screen-adjacent camera hardware"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 39,
+     "subject": "Wiring a Samsung soundbar to a Samsung TV (HDMI ARC vs. USB vs. optical)"
+    },
+    {
+     "start_turn": 40,
+     "end_turn": 40,
+     "subject": "Safety of copper kitchen knives"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 43,
+     "subject": "Alternatives to a stainless-steel mesh fruit holder"
+    },
+    {
+     "start_turn": 44,
+     "end_turn": 54,
+     "subject": "Whole-house paint touch-up: matching Swiss Coffee, spray primers, and repairing steel door/trim"
+    },
+    {
+     "start_turn": 55,
+     "end_turn": 55,
+     "subject": "Physics of biasing light output with angled mirrors"
+    },
+    {
+     "start_turn": 56,
+     "end_turn": 61,
+     "subject": "Choosing and retrofitting an automatic closer for the front door"
+    },
+    {
+     "start_turn": 62,
+     "end_turn": 64,
+     "subject": "Metal animal feeder and farm water trough products"
+    },
+    {
+     "start_turn": 65,
+     "end_turn": 65,
+     "subject": "Rain gutter profiles and nesting one inside another"
+    },
+    {
+     "start_turn": 66,
+     "end_turn": 67,
+     "subject": "Window film for west-facing transom windows and finding a local installer"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6f8dc8fd47ec",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Trump's pardon of Juan Orlando Hern\u00e1ndez and the actual source of fentanyl entering the US"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 18,
+     "subject": "Pentagon's punishment of Senator Mark Kelly over 'illegal orders' remarks and its media/legal fallout"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2fd67dab4bda",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Credit unions serving IHSS providers in California"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-38c4697c2682",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Request for plain-text-only replies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-168ad2ccb5a7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Private debt as a privatized tax, debt-growth metrics, and political self-classification"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 9,
+     "subject": "Nordic social-democracy admiration and the bedtime cautionary-tale story engine"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Unrelated disciplinary-consequence interjection (out of context fragment)"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 15,
+     "subject": "AI story-automation pipeline, personal destiny/alignment, and American Jesus character design"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 19,
+     "subject": "Buddhist epistemology of ignorance, political category errors, and the universal moral-storytelling engine"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 23,
+     "subject": "Ethics and epistemology of the persuasion-engine project (guardrails, 2025 validation, felt-experience reality)"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 25,
+     "subject": "Marx's private property, Hardin's commons, and the critique of privatization ideology"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d834cd41798f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Installing Claude Code on macOS: npm permission errors, native installer, and PATH configuration"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 15,
+     "subject": "Subscription vs API usage strategy, pricing, context-window economics, and switching automation"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 17,
+     "subject": "Startup workflow and Obsidian AI-plugin integration strategy (Smart Connections vs alternatives)"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 21,
+     "subject": "First launch of Claude Code and learning to exit it properly"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 26,
+     "subject": "Locating and navigating to the Obsidian vault directory"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 30,
+     "subject": "Running /init, reviewing the generated CLAUDE.md, and issuing file-based commands"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 35,
+     "subject": "Terminal UI frustration and typical Obsidian + Claude Code workflow patterns"
+    },
+    {
+     "start_turn": 36,
+     "end_turn": 41,
+     "subject": "UPS/battery-backup selection and cost-benefit analysis for the Mac Studio server"
+    },
+    {
+     "start_turn": 42,
+     "end_turn": 45,
+     "subject": "Cooling and physical placement design for the server setup"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-355d2f7817d0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Chapter 23 parable selection: Millstone Warning vs Abandoned Sheep"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Chapter 30 'Planting Season' scene drafting and the Lost Flock parable"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Placing the Lost Son parable and pairing it with the Sinning Brother teaching for Chapter 40"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Chapter 40 'The Covenant' drafting brief and final parable versions"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "'Hayzeus's Mornings' subthread evaluation and the Gardener's Choice parable"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cfd3dd1e202c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Greenland tariff walk-back, the TACO trade, and EU/bond-market leverage over the US"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Predicted domestic overcompensation: Insurrection Act and credit-card cap as political theater"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 19,
+     "subject": "Institutional market skepticism, EU tech (DMA) enforcement, and the Euro reserve-currency shift"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 20,
+     "subject": "New Republic article on Trump's Insurrection Act mindset"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 21,
+     "subject": "Fox News article on the Clinton contempt vote as an Epstein-files distraction"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 23,
+     "subject": "Fact-checking the substance of the announced Greenland 'framework' deal"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b851f8ba357c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Style-guide review of book chapters 1-14 and chapter-number cross-references"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Chapter 15 'Thinking Tools Library' outline development (mode/tool/mental-model distinction)"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 12,
+     "subject": "Chapter 6 'Problem Definition' section development and style-guide polishing"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Chapter 9 relocation decision (AI agent identity content)"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 28,
+     "subject": "Designing the Project Orchestration / Problem Evolution Framework for multi-session project tracking and agent oversight"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4d9761aa47e1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Mapping Ora's tool and API capabilities (PDF conversion, image generation, direct vs pipeline tool routing)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cad21bc31e5d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Greeting only"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d19318011aff",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 14,
+     "subject": "Generating serialized 'Diklis Chump' authoritarian-satire policy entries (reality/propaganda bullets, character quotes, poker-night reactions) across topics like the Alternative Constitution, Executive Companionship Program, Ministry of Love, mandatory birthday celebration, Virility Recognition Act, hospital portrait worship, Love Sessions, state-sanctioned revenge, a loyalty kissing ritual, the Pleasure Pledge, and the Mount Rushmore monument"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c16411189143",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Executing an ideation/evaluation framework for the 'Diklis Chump: Highway to Hell' satirical narrative project: organizing plot/narrative elements, drafting a cabinet-breakdown scene, and evaluating that output"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-032d329b9e40",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Fixing technical friction points: ChatGPT thread degradation/bloat and iPhone voice-dictation autocorrect mangling unusual words"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 6,
+     "subject": "Dog behavior (Ella's coercion/agency, sibling gatekeeping instinct) reframed as an empire/monopoly metaphor, developed into a short explainer video script and a publishing-persona (Dr. Ezra Hale) strategy to spread the idea"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 15,
+     "subject": "The 'Oracle' concept: an invisible architect behind a constellation of personas/fictional university, giving the Oracle a first-person identity/scripture, and its theology of devotion-without-idolatry (cult mechanics, Buddhist negation, empire's capture of God-images)"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 21,
+     "subject": "Designing the Oracle's visual identity: a circle-with-dot logo radiating from a black field, anchoring it inside the letter O, and using it as a bare book-cover title"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 25,
+     "subject": "Legal/trademark risk of naming the book 'Oracle' and running parody domains (e.g. a Fox News spoof), generalizing into how corporate legal muscle and 'too big to fail' create systemic tyranny"
+    },
+    {
+     "start_turn": 26,
+     "end_turn": 28,
+     "subject": "An algorithm for constructing morally persuasive narrative: alternating mind-then-heart engagement, adaptable by audience, described as a fractal recursion that is the essence of the Oracle"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9a0f1198cb44",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Generating serialized 'Diklis Chump' Stage-4 (Victimhood & Persecution) satirical press-release bullets across variant framings: Christian persecution, economic betrayal, loyalty purges, terrorism labeling, small-business martyrdom, and free-speech surveillance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3b86d36abeac",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Overview of the Supreme Court's Cox v. Sony copyright/ISP-liability case"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Decentralized resistance to copyright 'empire' (Napster/DMCA history, scientific-paper paywalls) and the MLK/Malcolm X inside-outside pressure dynamic as a model for effective activism"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Stray accidental voice-dictation interruption about getting Sonic vs. eating at home"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 9,
+     "subject": "The moral-inversion/illegitimacy critique of IP law, a domain-registrar (Porkbun) competition analogy for scientific-paper pricing, and an analysis of why Cory Doctorow's decades of advocacy haven't 'won' yet (the rock-pounding model of slow cultural change)"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 10,
+     "subject": "Vigilantism and the collapse of legal legitimacy: the UnitedHealthcare CEO shooting and the Paul Hill abortion-clinic killing as cases of morality/ethics/law breaking down"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 15,
+     "subject": "Developing the 'American Jesus' novel's protagonist Hayzeus: a non-tribal altruism-vs-selfishness moral axis, moral injury from war (Iraq), his Oracle-like leadership charisma, and the author's method-acting approach to writing him"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8620d493ac22",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Building an LLM intelligence-per-dollar model-selection formula: rejecting naive index/cost ratios, Pareto frontier filtering, cost-elasticity, and settling on simple score-floor/cheapest-pick buckets (premium/optimum/budget/free) with size and Pareto toggles"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 9,
+     "subject": "Evidence that American frontier-model pricing is a bubble versus cheap high-value Chinese models, and how the 'Ora' tool's automatic price/performance comparison could be the catalyst that pops it"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 10,
+     "subject": "Strategy and risk planning for releasing Ora into the public domain: why the technology can't be suppressed once released, but personal/institutional safety (legal, financial, narrative-attack) preparations are still needed"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 11,
+     "subject": "Analyzing news of Andrej Karpathy's move to Anthropic and its trillion-dollar valuation as a late-stage bubble signal rather than evidence against the AI pricing-bubble thesis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0c0dea71bdfc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Designing and iteratively refining Ora's 'execution review' architecture: the self-evidencing/observability reframe, five evidence classes, dispatcher logic, risk tiers, capability/sensitivity instrumentation, and drafting the durable spec through multiple review passes"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-83591bd288cf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Locating and transcribing the full text of Will Manidis's viral X essay on Boston's tech decline, referenced in the Mother Jones 'The God Complex' article"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7b4cb2e2ad4a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Generating 'Diklis Chump' satirical press releases spanning Stage 1 ('Everything Is Great') and Stage 6 ('Total Collapse or Eternal Rule') of the authoritarian-decline framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c086866d70d6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Translating Chinese text from an image (a fashion-blogger dating-profile snippet)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7be62155fa6b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Designing an AI memory architecture: semantic extraction vs. summarization, RAG query structure, and a vault-based knowledge/ontology system"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c50b94d221ba",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Reference report on climate, energy, and environmental justice distributional policy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7c587a8c52b2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Touring the Hugging Face ecosystem (Models, Spaces, Datasets, PDF/Q&A tools) to inventory resources for a planned local AI swarm"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 30,
+     "subject": "Vision and mechanics of a multi-AI team with persistent vault memory: coordination, synergy, self-improvement, and continuous operation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-de8e12e4a811",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Research on Tibetan Buddhist hell cosmology: the Naraka realms, karmic causes, judgment figures, and minor hells"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 14,
+     "subject": "Developing a novel's karmic-hell descent arc, ending options, and catharsis for an unrepentant authoritarian villain"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a8c7ed3ffc19",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Current 30-year fixed and FHA mortgage rate quote"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 6,
+     "subject": "Critiquing media framing of Biden vs. Trump economic sentiment, inflation causes, and partisan media manipulation"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Asymmetry of political misinformation and the history of Republican-led gerrymandering"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Designing institutional guardrails against bad-faith executive power: emergency powers, executive orders, and DOJ independence"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cf8b49d016bd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Building and reformatting a left-wing narrative-reframing library that redirects right-wing scapegoats onto wealthy rentiers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3019c126bac2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Generating black-and-white emotional illustrations (grieving heart, sad parents scenes)"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 23,
+     "subject": "Atticus book formatting decisions: font size, margins, line spacing, headings, headers/footers, widows/orphans, and TOC control"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a34f9052c5ec",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Implementing and verifying persona/role-shift additions across the character initiation, foundation, and evaluation frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-906f6a24e833",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Generating satirical 'Diklis Chump' Reality Report / Official Press Release pairs critiquing authoritarian policy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5faeb423fbbd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "ICE detention court rulings, congressional countermeasures, shutdown/election-interference risk, and structural reforms to prevent DOJ weaponization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c5e0cd7ba0a9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Defining Main Street Independent's 'distributional honesty' journalism methodology and building its deep-research prompt library"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fb82e57c4fcc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summary of a book chapter on corporate 'doubt is our product' disinformation tactics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d2f8e672c337",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "General components of a term paper"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 5,
+     "subject": "Selecting a topic for and writing/revising a doctoral term paper on Nigerian agricultural extension communication"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6bd7208cc2f3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Transforming an autism-parenting outline into warm narrative prose"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-73431c87c793",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "The 'wobble theory' modification to stochastic mechanics as an alternative to standard quantum mechanics"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 10,
+     "subject": "AI context window vs. token limit mechanics and practical context sizes across Gemini, Claude, and ChatGPT"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-78e4f7088297",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Venezuela mineral extraction, criminal syndicate control of mining, and possible US payoff/privatization deals after Maduro's capture"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Right-wing media coverage of the Mark Kelly/Hegseth sedition dispute and Fox News' legal exposure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-13fb05a6080f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Reviewing the American Jesus book outline and developing Pastor Langston Washington's character arc and timeline"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8ff1a83f5b79",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Researching Anaheim's 'City of Kindness' movement and its origin story"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-35e9a8cf7e55",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Scarcity as the root of the good-vs-evil divide and the case for organizing society around guaranteed safety"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f58f3f243e9c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Wank R. Cox III character profile creation and transformation arc"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Karen Love character profile"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Cornbread/hush-puppies class-contempt motif for Wank Cox"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4b4e767f8282",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "2024 tax filing summary email draft to accountant"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Flight arrival time check for ex-wife and son"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "OkCupid popularity trend and demographic profile"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "The League dating app: overview, fee structure, and fit"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Revised 2024 tax filing email draft"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1d4c4f3706ef",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "WSJ Afghan-allies crackdown, US empire credibility, and enforcement leverage abroad"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d8f0a89d9518",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Ideation for marketing the Framework Creation Framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c7043a9a0f12",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "S&P 500 vs. homebuilder index divergence and decoupling analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a82ff01db3e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Meta account requirements for Ray-Ban glasses and Quest headset"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3f7b114badc3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "California laws on blocking local police and federal/ICE agents"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Fact check: Derek Chauvin and George Floyd"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5c358ba23ed1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Drafting and revising American Jesus Chapter 22"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-43a46efcb580",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Reviewing and cataloguing the American Jesus outline"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Juan's shanty setting: references and improvement suggestions"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "New Hope Center setting: references and improvement suggestions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4ad3b957d6c3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "OkCupid profile personality analysis and opener message drafting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-474473ad57a4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "DOJ 'bulldoze the Statue of Liberty' courtroom argument"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a125a6ca29a2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "MSI article on data-center ratepayer legislation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7cdd7427aa48",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "OkCupid message drafting for match 'Amy'"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-56ee0d301ae8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Evaluating the tariff-inflation 'one-time price shift' claim"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-62010d5682ff",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Greenland rare earths: blocking China and the same legal hurdles for the US"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a23e1aec9736",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Structuring productive weekend travel while renting out home"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bb74b4ca9068",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "OkCupid profile analysis and message drafting for 'Stella'"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-10c5f445aecc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Contradictory tech-stock headlines and financial media critique"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-931b302a8bf1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "iPhone verification code disappearing too fast"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-78212d6048d9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Obsidian tagging strategy for American Jesus master note"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-28985440d477",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "T-Mobile DIGITS setup for one number on two phones"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-816546b38308",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Zelle transaction limits, including Sun Community Bank"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-aba499ffec8c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Zelle transaction limits, including Sun Community Bank"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b779b282cabf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Rewriting Airbnb multi-room verification request"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ac2280078296",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "List of public domain image sites"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c9721c27fd1b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "List of public domain image sites"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-99175f407ee2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Poe's 'A Dream Within a Dream' attribution and full text"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Zhuangzi's butterfly dream"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b9eedb04d5be",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Matching gray, navy, and olive clothing pieces"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f805895531de",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Explaining SKOS and SKOS-inspired glossary structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-98da277647a3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Process for closing a Chase bank account"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-08b6877ce17a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Explaining fringe aether-based physics theories"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5ebeeb6de5b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Fixing Mac Stage Manager window grouping"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-14dc7beda14a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Auditing an AI-safety-skeptical op-ed's reasoning"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-60302336bf38",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Brainstorming titles for a divorce-and-recovery memoir"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ba548952967a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Fixing an iPhone locked by excessive Zoom magnification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bafc71e61c2f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Ergonomic wired mouse recommendations with customizable buttons"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d25d14fdeea7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Financial assets valued by residual (resale minus cost) calculation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-96afac3d1be1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dating message emphasizing family-centered lifestyle"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-722e7728236e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Fishbone diagram for intermittent deployment failures"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9e62b0d67c99",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Status of the Northgate Crossing development in Indio"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-107e808a3bf8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Worms found in dog's water bowl"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e5281a724532",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Waterparks near Dublin Airport"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-46694b939e00",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Creating a 'Thank you Jesus' image and export options"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e15043b7830c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Financial market update: S&P 500, Treasury yields, US dollar"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-85492fc17372",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Overview of ShareMouse cross-computer control software"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d13741032c40",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summary of NYT article on Maduro's capture"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-935e79455cfa",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Email providers offering RSS-to-email besides Buttondown"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-344f753ad04f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Explaining XML and its characteristics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4ca62844f311",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Researching Nandita Puchakayala's background and personality"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dc33e1e11b72",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Research plan on stochastic mechanics and quantum physics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a9d6d370e85",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "'Hummingbird' by Seals and Crofts: video link and lyrics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ff8c01d23c32",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Revising two-part colon-style chapter headings"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-379992ee0ebb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Dollar strength amid stock and bond selloff"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-dda2a597c3f5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarizing Obsidian 'Create a base' help text"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2525891f2870",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Fixing Atticus-to-Word-to-Kindle formatting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9d9664d2cde0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Research plan on giving a personal AI a sense of humor"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-704d875abe2a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Revising an INFP-targeted dating app opener"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5f35ccb9ef02",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Notice that no image was attached"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2fd732e32542",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Exact-reply test prompt"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-86caa40251f6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Feedback on a missing feedback-loop edge in a diagram"
+    }
+   ]
+  }
+ ]
+}

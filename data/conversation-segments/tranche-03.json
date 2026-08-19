@@ -1,0 +1,3980 @@
+{
+ "tranche": 3,
+ "conversations": [
+  {
+   "conversation_id": "historical-5414123f33f6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "AI agent fundamentals and model memory architecture"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Hardware constraints and storage architecture decisions"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 21,
+     "subject": "Mixture-of-Experts architecture and expert routing"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 26,
+     "subject": "Benchmark evaluation and GPT-oss model discovery"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 34,
+     "subject": "Exploring alternative models and quantization variants"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 40,
+     "subject": "Evaluating specific model candidates and comparisons"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 49,
+     "subject": "Finalizing adversarial architecture and model selection"
+    },
+    {
+     "start_turn": 50,
+     "end_turn": 56,
+     "subject": "Searching model specifications by size and bit-count"
+    },
+    {
+     "start_turn": 57,
+     "end_turn": 60,
+     "subject": "Model download, file format, and implementation details"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-150349c930d5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Character foundation framework development for Iryna Chump"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2fad0be83ca3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Plot Foundation Framework - updates and expansion"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Plot Refinement Framework - introduction, requirements, and implementation"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 15,
+     "subject": "Plot Initiation Framework - recommendations, implementation, and evaluation"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 18,
+     "subject": "Plot Refinement Framework - output assessment and restructuring"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-30d2a80883c9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Dating patterns and male sovereignty - readiness, desire, authenticity, and discernment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bc4393d8d059",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Understanding Plot Foundation Framework scope and task"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "Creating and refining Plot Foundation Framework V2.0"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Developing Plot Refinement Framework V2.0"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 15,
+     "subject": "Updating Plot Initiation Framework and evaluating completeness"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 18,
+     "subject": "Refining Plot Refinement Framework structure for choice-driven narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7bd6cc535b05",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Clarifying research scope for pandemic economic support programs analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3dfab72c72fb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Understanding Mac connectivity options and Universal Control setup"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 22,
+     "subject": "Thunderbolt cable identification and purchasing"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 26,
+     "subject": "Multi-monitor display alignment and cursor movement issues"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 32,
+     "subject": "Future of display technology and immersive computing concepts"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 41,
+     "subject": "Reconnecting Mac computers and troubleshooting Universal Control failures"
+    },
+    {
+     "start_turn": 42,
+     "end_turn": 49,
+     "subject": "Third-party keyboard and mouse sharing software solutions"
+    },
+    {
+     "start_turn": 50,
+     "end_turn": 55,
+     "subject": "Mac file sharing and remote access setup"
+    },
+    {
+     "start_turn": 56,
+     "end_turn": 60,
+     "subject": "Family IT management and system administration strategy"
+    },
+    {
+     "start_turn": 61,
+     "end_turn": 62,
+     "subject": "AI context and cross-thread awareness capabilities"
+    },
+    {
+     "start_turn": 63,
+     "end_turn": 65,
+     "subject": "Server architecture, remote access, and Tailscale VPN setup"
+    },
+    {
+     "start_turn": 66,
+     "end_turn": 70,
+     "subject": "Obsidian vault installation and software minimalism principles"
+    },
+    {
+     "start_turn": 71,
+     "end_turn": 76,
+     "subject": "Synergy software troubleshooting and cursor tracking problems"
+    },
+    {
+     "start_turn": 77,
+     "end_turn": 77,
+     "subject": "Power cord search and listing"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9c08ea4731f1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Dating profile analysis and cultural background assessment"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 22,
+     "subject": "Communication strategy and personality type identification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-487d66beb6e3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Story structure and beat development for American Jesus narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0ac7f0e8b436",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Developing cartoonist character name and establishing literary voice"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "Designing mascot character and biographical details for Hector Rentier"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-96b46c4f91e2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Reviewing American Jesus outline and identifying missing character development elements"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Creating Marjorie Temple Redd character and developing the Economic Gospel chapter"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "Formatting chapter outline and analyzing Jo Rivera's character profile gaps"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 9,
+     "subject": "Integrating Marjorie Temple Redd into existing chapter overviews across Act 3"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 15,
+     "subject": "Developing The Vannity Angle Fox News segment chapter with detailed dialogue and formatting"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 19,
+     "subject": "Developing The Reflecting Pool and Crucifixion chapter with tactical planning and symbolic analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-aee8464ccf84",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Applying Character-Theme Integration Evaluation Framework to Diklis Chump characters"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Refining framework to emphasize Choice Architecture and Moral Agency over Redemptive Possibility"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Verifying framework update preserved all original material and documentation"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Creating criteria documentation for Character-Theme Integration Evaluation Framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6761f7e70004",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Vocabulary selection and terminology modernization for manifestos"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 12,
+     "subject": "Creating and assessing the Communist Manifesto update and Aristocrat Manifesto"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 17,
+     "subject": "Book structure, narrative approach, and writing style methodology"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 20,
+     "subject": "Drafting and refining Chapter 4 on the moral choice at the heart of politics"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 25,
+     "subject": "Critical analysis of Marx's failures and planning synthesis bridge chapters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-17ae4d1fd9ca",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Gun violence statistics and the decline in mass shootings"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Government funding outcomes and policy effectiveness across domains and states"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Political messaging strategy and Democratic leadership failures"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 15,
+     "subject": "2026 Democratic primary candidates as potential aggressive political brawlers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fdd83017b937",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Formal complaint regarding dependent adult abuse and medical violations"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-df4d45b9f8f3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Parable placement strategy and initial recommendations for the American Jesus outline"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Developing and refining the Lost Flock parable for Book 2, Chapter 30"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 10,
+     "subject": "Placing Lost Son in Act 3, Chapter 40 and developing parables for Mary Magdalena"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 12,
+     "subject": "Evaluating and revising the morning scene with parable for Book 1, Chapter 23"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 13,
+     "subject": "Analyzing and revising the Chapter 25 parable"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3812c48194e2",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Malcolm Little King article and Reddit appeal letter"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Subreddit posting strategy and initial distribution"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 18,
+     "subject": "Reddit moderation issues, spam filtering, and account suspension"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 26,
+     "subject": "Venezuela geopolitics, Maduro capture, Cabello analysis"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 32,
+     "subject": "ELN border negotiations and Reddit moderator interactions"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 39,
+     "subject": "Trump's legal strategy for credit card rate cap"
+    },
+    {
+     "start_turn": 40,
+     "end_turn": 46,
+     "subject": "Proxy war dynamics, mercenary conflicts, and colonial extraction"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5441b4719c65",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Creating parallel American Judas chapters based on American Jesus"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-16f20030f26d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Son's medication management, ex-wife's control patterns, and caregiving strategy"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 17,
+     "subject": "Building evidence of harmful medication practices and addressing ex-wife's control in post-divorce relationship"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 20,
+     "subject": "Text conversation analysis with ex-wife regarding banking, accounts, and service dependencies"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 33,
+     "subject": "Continued analysis of ex-wife's entitlement patterns and boundary-setting strategies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-57949c4abff1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Texas redistricting strategy and electoral path to Democratic control"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Senator Adam Schiff contact information and staff directory lookup"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7b0ed5dce33d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 16,
+     "subject": "Dating strategy with Freddi - messaging approach and date logistics"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 24,
+     "subject": "Psychological reframing and spiritual alignment - deconstructing pedestal, Hozier discovery"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 40,
+     "subject": "Personal growth and date preparation - sobriety, energy management, waiting for response"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 55,
+     "subject": "Emotional patterns and self-analysis - attachment styles, trauma, relationship capacity"
+    },
+    {
+     "start_turn": 56,
+     "end_turn": 61,
+     "subject": "Ghosting resolution and moving forward - processing no-show, analyzing new prospects"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-435ef30ad890",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Diana's message and unmatch - profile analysis, message crafting, understanding INFP reactions"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 12,
+     "subject": "INFP messaging approach - emotional framework, three-act structure, rejecting pickup culture"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "Reading dating app signals - interpreting Bumble account pause and deletion mechanics"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fe8013652230",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Framework reception and problem identification"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Developing Capitalist Instability weakness"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 10,
+     "subject": "Developing Clashes Between Religion and Wealth weakness"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 13,
+     "subject": "Developing Faith Repression Will Target Them Too weakness"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 19,
+     "subject": "Developing Generational and Cultural Shifts weakness"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 22,
+     "subject": "Developing Meritocratic Disillusionment weakness"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 24,
+     "subject": "Developing Workers Serving Elite Interests and Nationalism vs. Globalization weaknesses"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 32,
+     "subject": "Additional weaknesses and final framework refinement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8b274552ae93",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Research gathering and outline development for Trump impeachment article"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Draft development and refinement for Substack post"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 9,
+     "subject": "Completed article evaluation and effectiveness analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-691590b40629",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "American King trilogy structure and cultural reclamation strategy"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 9,
+     "subject": "Tension, suspense, and narrative rhythm across book-level and chapter-level pacing"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 12,
+     "subject": "Strengthening narrative causality and recognizing advancement in writing mastery"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "Reading craft books as intellectual catalysts and creating reader engagement"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 19,
+     "subject": "Ayn Rand's objectivism as ideological inverse; designing counter-narrative response"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 26,
+     "subject": "Malcolm Little King's foreign policy and governance doctrine including NATO, Estonia, and democracy"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 33,
+     "subject": "Stephen Miller as model for Heinrich Mueller; understanding evil through resentment and radicalization"
+    },
+    {
+     "start_turn": 34,
+     "end_turn": 39,
+     "subject": "James Zebedee's complete character arc across three books and crucifixion moment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-83a453fa3d90",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Trump administration news updates on Greenland threats and related international tensions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-929c1d5061f6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Iran regime survival and strategic miscalculation of military action"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 8,
+     "subject": "Economic consequences of war and political responses"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Partisan media defectors as a business model"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 12,
+     "subject": "Trump's geopolitical strategy targeting Chinese allies"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Right-wing media coverage analysis of the war"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 17,
+     "subject": "War escalation events and international involvement"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 19,
+     "subject": "European and NATO response to the conflict"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 29,
+     "subject": "Trump's endgame options and economic consequences of isolationism"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b6501ff419f5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "AI system design using Edward de Bono's thinking frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c89b1c2105cb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Converting outline to structured format"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8ea31700742a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Core system architecture and MVP planning"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 13,
+     "subject": "Technical foundations: interfaces, context management, and embeddings"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 20,
+     "subject": "Reconsidering pipeline: tool use, simplification, and convergence protocol"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 22,
+     "subject": "Framework selection and leveraging AI coding capabilities"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 26,
+     "subject": "Implementation planning with existing prompt frameworks and configuration architecture"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 28,
+     "subject": "Python learning and thread summary"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bbdf1c5d18cb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Media manipulation and institutional spin tactics"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "Political news: GOP moderates defecting on Obamacare subsidies"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "Inflation report coverage and media cautious framing"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 20,
+     "subject": "Transgender youth policy: evidence, principles, and selective application"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b3e9a249c752",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Formal complaint regarding medical malpractice and dependent adult abuse"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0a20c6684797",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Hubble tension and expansion rate measurements"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 13,
+     "subject": "Cosmic inflation and alternative non-expanding universe models"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Ring galaxy formation"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 18,
+     "subject": "Creative writing assistance and chapter formatting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ad506f23f079",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Math question and model error"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f6ca40d42bd6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Oracle project: digital afterlife problem and life-extension through incremental biological-to-mechanical replacement"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Death as a meaningful boundary: finitude's role in creating meaning and refuting counter-arguments"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Cognitive liberty and platform control: sacred boundaries and corporate power without accountability"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 24,
+     "subject": "Copyright law reform: DMCA, right to repair, copyright assignment, and renewal mechanisms"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 26,
+     "subject": "Economics and moral reasoning: global savings glut explained through child's justice perspective"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 28,
+     "subject": "Child POV as narrative lens: To Kill a Mockingbird and Friendship Wisconsin book concept"
+    },
+    {
+     "start_turn": 29,
+     "end_turn": 31,
+     "subject": "Writing craft with eight-year-old perspective: lunch line scene example and analysis of emotional power"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 37,
+     "subject": "Book structure and cinematographic POV: father-uncle-son dynamic and narrative technique refinement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3e423ec9fd1f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Centrist Democrats' resistance to 'resistance liberals' and their refusal to acknowledge being wrong"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 10,
+     "subject": "Chrome browser refresh bug: troubleshooting extension conflicts, memory settings, and network protocol issues"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 26,
+     "subject": "Centrist Democrat failure in 2026: electability myth, gerrymander backfire, and left-wing populist rise"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d2783186ae29",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Pastor Langston Washington character development: profile creation, framework execution, and output refinement"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 16,
+     "subject": "Elena Vasquez character development: profile creation, framework execution, and output reduction"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 18,
+     "subject": "Shawn Carter character development: profile creation and framework execution"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f8a975aedf60",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Oracle-based political framework: static-speech technique, ledger systems, democratic voting mechanics, and institutional reform through outcome measurement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-982c801fb9b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Temperature conversion: Celsius to Fahrenheit"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-78ed9b1d7cbc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Creating and refining the conceptual framework for adding tropes to ideation process"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 8,
+     "subject": "Developing and refining the comprehensive Master Trope Library content"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Organizing how to integrate the Trope Library into the existing framework structure"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 11,
+     "subject": "Creating the detailed Trope Analysis Framework (Ideation Initiation Framework) document"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 13,
+     "subject": "Planning targeted, limited trope integration into existing character development frameworks"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 23,
+     "subject": "Implementing Layer 2.5 trope integration into the Character Foundation Framework document with complete preservation of original text"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1818636000dc",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Troubleshooting Pixel phone settings for Do Not Disturb, Messages app exceptions, and navigation controls"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Critiquing tech industry monetization of user attention and surveillance-based business models"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Exploring simple phone alternatives and launcher-based solutions for notification management"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Planning decentralized AI agent tool to bypass ads and paywalls using BitTorrent distribution and visual capture"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 14,
+     "subject": "Analyzing geopolitical shifts in IP enforcement as US trade wars break international copyright agreements"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 17,
+     "subject": "Discussing international regulatory landscape and framing tech circumvention as moral imperative against digital colonialism"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 19,
+     "subject": "Examining Reddit moderators as distribution audience and comparing AI agent approach to existing circumvention tools like Apollo and ReVanced"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e514ae27aa6a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Establishing feedback framework and evaluating American Jesus outline"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 11,
+     "subject": "Marcus Johnson character introduction in Act 1, Chapter 4"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 12,
+     "subject": "AI's revolutionary impact on writing productivity and skill transformation"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 18,
+     "subject": "Building integrated narrative universe with American Judas and character library"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 24,
+     "subject": "Malcolm Little King trilogy strategy and political narrative infrastructure"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 26,
+     "subject": "Lifestyle optimization for writing production and reality check on success inevitability"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 27,
+     "subject": "Title selection and brainstorming for Malcolm trilogy"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 32,
+     "subject": "Malcolm's integration into American Jesus and racial character dynamics"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 39,
+     "subject": "Final decision against Malcolm integration to preserve American Jesus narrative focus"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-27066ac7fc3c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Creating and evaluating Wade N. Whatever character profile using foundation framework"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "Word count estimation accuracy and framework update decisions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4f7fdeb04122",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "Understanding Laura and relationship dynamics"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 24,
+     "subject": "Full conversation reassessment and synthesis"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 34,
+     "subject": "Pre-date emotional and tactical preparation"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 42,
+     "subject": "Date outcome and profound reflection"
+    },
+    {
+     "start_turn": 43,
+     "end_turn": 50,
+     "subject": "Text coordination and handling uncertainty"
+    },
+    {
+     "start_turn": 51,
+     "end_turn": 58,
+     "subject": "Laura's silence and shift toward philosophy"
+    },
+    {
+     "start_turn": 59,
+     "end_turn": 62,
+     "subject": "Acceptance of ambiguity and universal wisdom"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3612379e0659",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Research dossier clarification on Christian Nationalism"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a9ebe2e4bc0a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Simple arithmetic question"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a450d4700b6f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Venezuela oil seizure logistics and failure prediction (Orinoco Pyre)"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 18,
+     "subject": "Prediction validation and Reddit post amplification"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 31,
+     "subject": "China's geopolitical response and international law dimensions"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 39,
+     "subject": "Rare earth supply chain crisis and Digital Ploesti strategic parallel"
+    },
+    {
+     "start_turn": 40,
+     "end_turn": 45,
+     "subject": "Domestic policy failure and electoral threats (voting rights gutting)"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fbbe8f880d2c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Wardrobe system design and recognizing false clothing distinctions"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Dust sealing system applied across scales (furniture, interior walls, exterior walls)"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Property-scale wind and dust management engineering"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-02639883a691",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Single acknowledgment of text-only request"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-52dbaa8e220d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Executing character foundation framework for Diklis Chump"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 8,
+     "subject": "AI limitations in word counting and evaluation; multi-agent system solutions"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 15,
+     "subject": "Adding and developing Milena Chump as Diklis Chump's wife character"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-acd25683a81d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Developing frameworks for AI-assisted writing method: Phase V marketing pages and Bowker description"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f902fce77ad9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Clarifying missing image attachment in previous communication"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cd9653bfa005",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Pastor Langston Washington character development and refinement"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 16,
+     "subject": "Elena Vasquez character development and refinement"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 18,
+     "subject": "Shawn Carter character initiation framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1766f9a80145",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 19,
+     "subject": "Knights of the Human Nexus organization development and chapter outline integration throughout narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-31c2d815e47d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Personal romantic message exchange"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-937e38c94ab1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 24,
+     "subject": "Establishing and refining Mimi Wright-Fubar as a political cartoonist character for MSI, including character design, visual device library, editorial judgment framework, and production standards"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2201504fe957",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Request for comprehensive reference report on distributional effects of monetary policy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-712898a5a79d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Git and Obsidian vault synchronization issues"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Framework Creation Framework architecture and design"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 16,
+     "subject": "Git repository setup and authentication for Obsidian"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 24,
+     "subject": "AI automation, Claude Code capabilities, and frameworks as business alternatives"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 28,
+     "subject": "Obsidian iPhone app Sync authentication troubleshooting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d8067861c8b1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Satirical narratives depicting authoritarian regime collapse"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e4d8f13ef84c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Greeting and engagement response"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-662d0f3118bd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Developing Act 3, Chapter 40 narrative architecture through choice-driven frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-205b7dd27d73",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Understanding federated infrastructure and website ownership models for independent publishing"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 11,
+     "subject": "Building permanent content preservation through static sites and stable URL architecture"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 18,
+     "subject": "Designing hosting infrastructure resilience against deplatforming and content removal"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 23,
+     "subject": "Developing sustainable audience strategy and independent publishing philosophy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-04cde087e05d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Formatting preference instruction"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d5efecdef186",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Samuel Tito character development for Hayzeus narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-83edd2a4d6fa",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "GDP measurement frameworks and political economy of economic indicators"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7b8129f45eb3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Character Foundation Framework Development and Verification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-25cc93e97361",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Pandemic-Era Economic Policy Empirical Report"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e894c17c1b3a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Thematic Implementation Overview"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 7,
+     "subject": "Samuel Tito Character Development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6bae25382808",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Primary Source Citation Library"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-fabdc45ad85e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Framework condensation analysis and structural decision-making"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Implementation, review, and content restoration"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 13,
+     "subject": "Verification and finalization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ca4038d3ea82",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "American Jesus outline review and scene development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1b10269c8de5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Chapter 23 Fredericksburg development: foundation building, pattern analysis, and feedback"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 6,
+     "subject": "Chapter Foundation Framework: introducing methodology for choice-driven character architecture"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Chapter 24 Economics of Mercy: applying framework to Thomas Reynolds's article"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d6e221ba2257",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Chapter 19 The Coalition: antagonist meeting development, feedback, and revision"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Chapter 20 Voices: introducing Thomas Reynolds's third article with community testimonies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-350ad5373215",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Act 3, Chapter 28 outline and Chapter Initiation Framework introduction"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 10,
+     "subject": "Act 3, Chapter 39 framework execution and development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-10209624ab8e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Character initiation framework execution for Marco Polio"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-205d92d079af",
+   "segments": [
+    {
+     "start_turn": 2,
+     "end_turn": 8,
+     "subject": "Character psychology development for Thomas Reynolds"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 11,
+     "subject": "Integrating Thomas Reynolds's psychology into narrative constraints and story structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-99abc2602603",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "American Jesus story outline review and Act 3 Chapter 23 introduction"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 17,
+     "subject": "Character Foundation Framework application to Act 3 Chapter 23"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9b8460ec4549",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Multi-AI collaboration strategy and creative workflow"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 24,
+     "subject": "Sudowrite story bible preparation and content creation"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 32,
+     "subject": "Character profile development and refinement"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 37,
+     "subject": "Chapter outline implementation with character integration"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b0ba07d133e5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Phukher Tarlson character development using Character Foundation Framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5727a8e9c524",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Thematic Implementation Overview for American Jesus novel"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Jerry Farwright Character Profile Development"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Religious Corruption Subplot Structure and Alternative Christian Community Implementation"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "Jerry Farwright Character Refinement and Comprehensive Profile Consolidation"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Southern Baptist Convention Organizational Structure and Property Rules Worldbuilding"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-87e1e056c02f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Demographic Distributional Reference Report: Generational Wealth, Economic Disadvantage, and Population Disparities"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3bb11a72bf0c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Fiverr distribution strategy: initial concept for stealth beta testing and evangelist recruitment"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 6,
+     "subject": "ToS compliance and link placement strategy: buyer profile vs brief copy approach"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Testing framework expansion: eight categories including onboarding, adversarial, documentation review; translation architecture discussion"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 14,
+     "subject": "Naming strategy with acronyms and glyphs; comprehensive framework matching for expanded scope of 27+ briefs"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Strategic pivot to feature-based user testing; Fiverr review policy compliance"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 19,
+     "subject": "Two-part testing engagement structure; marketing copy strategy with three parallel copywriters"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 22,
+     "subject": "Eight-phase project roadmap from internal preparation through launch coordination; Linux support decision"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-13351458bb73",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Character Foundation Framework applied to Cassius King: psychological architecture, patterns, archetypes, and development protocols"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-54e9288d095e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Thematic Framework and Character Integration Overview"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 4,
+     "subject": "Jerry Farwright Character Profile and Development"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Religious Corruption Subplot and Alternative Christian Community"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Jerry Farwright Character Portrayal Refinement and Finalization"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1835939ae061",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Monthly Economic Data Calendar for Distributional Analysis"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5aa35f050a8b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Dating app transformation and introverted dating strategy"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "AI interaction preferences and communication boundaries"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 20,
+     "subject": "OkCupid revisit, age demographics, and wealth compatibility screening"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 26,
+     "subject": "OkCupid profile strategy and dating pipeline management"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 30,
+     "subject": "Messaging tactics for low-information profiles"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 46,
+     "subject": "Specific dating leads and relationship dynamics with Keira"
+    },
+    {
+     "start_turn": 47,
+     "end_turn": 48,
+     "subject": "Match.com reactivation and multi-platform rotation strategy"
+    },
+    {
+     "start_turn": 49,
+     "end_turn": 55,
+     "subject": "ISFP versus INFP personality types and the fantasy-versus-reality depth dilemma"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f0533af593ba",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Proposed humiliation campaign against Trump using nightclub women"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 8,
+     "subject": "Satire as mechanism for undermining strongman personas"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Guidelines for ethical satire-based political messaging"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 16,
+     "subject": "Comprehensive theory of Trump's frame vulnerability and beautiful women as messengers"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9470f545463f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Model configuration discovery and architectural validation"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Critique of current AI agent limitations and design flaws"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Theoretical foundations: process frameworks, choice gates, and root causes of agent failure"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 12,
+     "subject": "Creating the AHI Briefing paper with empirical validation from 200-prompt study"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "Building the action layer: automation capabilities and communications features"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 22,
+     "subject": "External validation: industry convergence on harness engineering and Ora's architectural precedence"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 24,
+     "subject": "Launch timing opportunity and collaboration potential with early adopters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8f1a0834cf9f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Reference guide for source credibility hierarchy in economic reporting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-df2c430d9e3a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Story beat outline for American Jesus narrative"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d6f49bfac60a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Framework explanation for satirical authoritarianism guide"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 10,
+     "subject": "Satirical Stage 6 authoritarian policy examples"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-be0a3e2e00ee",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Philosophical foundation of monopoly instability and moral destruction"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Using fiction and anonymity to amplify moral clarity to hacker communities"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Three-act novel structure and embedded doctrine through character dialogue"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Testing doctrine against edge cases\u2014crypto, payday lending, pharma\u2014and moral constraints"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 14,
+     "subject": "CEO as unredeemed Darth Vader figure and the Ayn Rand copper-mine pivot point"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 17,
+     "subject": "Moby Dick model\u2014treating systemic doctrine as background worldbuilding, not exposition"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 19,
+     "subject": "Two-hat writing process and prioritizing story craft over ideological payload"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 21,
+     "subject": "Weaponizing Ayn Rand philosophy through CEO\u2013VP dialogue and concept inversion"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 23,
+     "subject": "Historical context of authorship, Rand's legitimacy as a person of her times, and authorial humility"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ba653f6c1aea",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Request and delivery of frame-audit reference document on propaganda and manipulation techniques"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-060b54a54e06",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Minimal acknowledgment request"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6e103f54f449",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Refining thematic implementation guide for American Jesus novel through iterative frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-79115233dec8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Developing character Buford B. Righteous transformation arc using character frameworks"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-92d7b63b0011",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Family boundary violations and nervous system outsourcing"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 12,
+     "subject": "Scripts, control patterns, and the ineffectiveness of explanation"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 16,
+     "subject": "Tool friction and priority management - transcription vs family demands"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "Duty as coalition - distinctions between duty, guilt, shame, remorse, and regret"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 20,
+     "subject": "Parents' response to boundaries and practical fraud resolution"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 21,
+     "subject": "Earned pride and self-satisfaction without grandiosity"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Continuity promises, community safety nets, and spiritual mission through Jesus and the outgroup"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 29,
+     "subject": "Macro political economy - administrative friction as hidden control, wage stagnation, monetary policy, and rentiers"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 35,
+     "subject": "Alternative cosmology theory - non-expansion universe, gravitational redshift, and gravitational wave observations"
+    },
+    {
+     "start_turn": 36,
+     "end_turn": 39,
+     "subject": "Family recognition and applied reward-structure lessons with Ella the dog"
+    },
+    {
+     "start_turn": 40,
+     "end_turn": 44,
+     "subject": "Ex-wife Michelle's control patterns and boundary enforcement with concrete examples"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b1b9171c3aed",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "NLP book outline review for style guide conformance and reader experience improvements"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6ab4042a8572",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Initial analysis of Trump's Venezuela intervention and legal objections"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Authoritarian strategy and geopolitical implications for Latin America"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 14,
+     "subject": "Marco Rubio's personal vendettas and role in Venezuela policy"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 17,
+     "subject": "Historical parallels and Delcy Rodriguez's impossible position"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 22,
+     "subject": "Rodriguez's survival strategy and Rubio as dangerous force multiplier"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 25,
+     "subject": "Cuba as next target and escalation risks"
+    },
+    {
+     "start_turn": 26,
+     "end_turn": 28,
+     "subject": "Refugee disaster and second humanitarian crisis prediction"
+    },
+    {
+     "start_turn": 29,
+     "end_turn": 31,
+     "subject": "Siege of Alesia analogy and maritime blockade scenario"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 34,
+     "subject": "Media disconnection and China's humanitarian counter-strategy"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 37,
+     "subject": "Substack post planning and comprehensive geopolitical analysis"
+    },
+    {
+     "start_turn": 38,
+     "end_turn": 41,
+     "subject": "Outreach coordination and contact information gathering"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0a01e7ce18b7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Theme initiation and foundation framework execution for Diklis Chump political satire project"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f5d3109ca47d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Simple arithmetic question"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1fda16065259",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Centralized vs distributed AI paradigm: Thompson's bubble thesis and local architecture rebuttal"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-04749862c4af",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Executing thematic frameworks for Diklis Chump political satire novel"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-08b12a7ba991",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Output format preference"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-630f6ececa81",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Setting Development and Character Homes"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 8,
+     "subject": "Phukher's Role and Multi-Series Concept"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 15,
+     "subject": "Character-Centered Book Development"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 19,
+     "subject": "Series Architecture and Complete Framework"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 21,
+     "subject": "Malcolm as Bridge to Human Nexus"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Comprehensive Framework Documentation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-67dcee300975",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Supreme Court Redistricting Decision Analysis"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Balls and Strikes Book Concept Development"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 19,
+     "subject": "Visual Motif System and Court Bias Exposure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-67af583186fa",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Setting development and character-revealing environments for narrative"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Debate over character centrality and tension between satire and sympathetic characterization"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Sycophant Symphony book concept and Phukher Tarlson's narrative arc of moral corruption"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Wade's redemption journey and the special needs catalyst for his political awakening"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Buford's quiet transformation and using relationships to create drama in subtle narrative"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 18,
+     "subject": "Multi-book series structure and strategic publication sequencing for maximum impact"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 21,
+     "subject": "Malcolm's role as bridge to Human Knexus with emphasis on hope and future vision"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Comprehensive framework documentation and complete phase development updates"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6edb60215b2f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Digital surveillance press release example establishing propagandistic framing pattern"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 12,
+     "subject": "Ten policy press releases across authoritarian stage 3: housing, generational scapegoating, loyalty purges, economic conspiracy, small business, surveillance, religious scapegoating, labor division, and manufacturing job loss"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2c6ed7ae9641",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Observability vs. orchestration: Market positioning and architectural approaches"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 12,
+     "subject": "AWS prior art release and strategic implications for the commons"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Patent landscape analysis after AWS disclosure"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 17,
+     "subject": "Model pricing transparency and oligopoly analysis"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 23,
+     "subject": "AI agent architecture: orchestration, verification independence, and human verification"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 24,
+     "subject": "Local-cloud split computing topology and positioning"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f61eeb963606",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Cuba-US economic deal feasibility and structural limitations"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 8,
+     "subject": "Adversarial interoperability as inevitable result of AI capabilities"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Technical scenarios of monopoly destruction and political drivers"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 12,
+     "subject": "Post-monopoly economy based on patronage and voluntary models"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 15,
+     "subject": "Defensive measures by monopolies and structural reasons they will fail"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-8d700d0ac8c4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Choice-driven narrative framework application to Chapter 17"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-929009250a5e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Elon Musk's political motivations and response to satirical criticism"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 7,
+     "subject": "Republican difficulty marketing Trump's unpopular tax cuts"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 20,
+     "subject": "Minimum wage as Democratic single-issue campaign strategy and economic stimulus"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b97b218c2b60",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Conversation data storage architecture and RAG implementation strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b8f84f9cf5a5",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Character development framework for Buford B. Righteous"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f09eaf2a9c4b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "U.S. state capital facts"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-efbc8b18ba73",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "Expanding James Zebedee's character contributions across multiple narrative chapters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c96673eae3da",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Buddhist compassion and witnessing economic suffering and injustice"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 8,
+     "subject": "Dark arts manual strategy and Sterling Everest character development with Swift precedent"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 16,
+     "subject": "MSI character development and meme production strategy for Judas Tito and Mimi Wright-Fubar"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-20d9840a1ce4",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Expanding James Zebedee's character contributions across Act 2 chapters"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 11,
+     "subject": "Developing James's role in Act 2, Chapter 21 The Debt Jubilee"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 14,
+     "subject": "Creating detailed 15-point outline for Chapter 21 with James's expanded contributions"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 17,
+     "subject": "Integrating James's veteran coalition and business network into Act 3 chapters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a0a622a648c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Developing Thomas Reynolds character profile with expanded 11-section template"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Evaluating all character profiles against narrative thematic elements"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Situational characters for illustrating systemic issues and Hayzeus's motivation arc"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Developing Luke as Paul's partner and epilogue narrator"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 14,
+     "subject": "Exploring alternative ending strategies and resolution approaches"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 15,
+     "subject": "Reviewing overall character structure and narrative balance"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ffeefb4a0e89",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Setting up Ora's theming system with Obsidian CSS variable compatibility"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 8,
+     "subject": "Designing bottom-up customization UI instead of dynamic Style Settings clone"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 13,
+     "subject": "Font strategy and consolidated theming specification"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 18,
+     "subject": "Obsidian plugin feasibility and API necessity for async architecture"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 26,
+     "subject": "AI industry optimization tradeoffs and harness-based branding strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1be7b9ce5e2e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Quantum mechanics paper outline review and formula validation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ff4be1e73995",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Initial template review and outline expansion for New Communist Manifesto project"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Economic foundations: MMT, money velocity, and supply-side vs. demand-side economics comparison"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 17,
+     "subject": "Reorganizing outline structure and adding new sections: debt, progressive agenda, monopolies, and moral philosophy"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 21,
+     "subject": "Developing affordability myth as major section and expanding vulnerable foundations into multi-chapter division"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0ce30aced475",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Bumble match analysis and immediate dating strategy for Hidden Hills woman"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 10,
+     "subject": "Male psychology: the paradox of proving high-value, indifference from purpose vs. abundance, and creative output"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 16,
+     "subject": "Understanding market value, universal appeal fallacy, and implementing evaluative frame for dating"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 27,
+     "subject": "Analyzing specific women's profiles, implementing evaluative messaging, and identifying wealth-signaling behavior"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a3e2a4bc294c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Fishbone diagram for deployment failures"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-811b3c01a03b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Zohran Mamdani NYC mayoralty and Tuberville's Islamophobic attacks"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 22,
+     "subject": "Venezuela invasion strategy and destabilization consequences"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 25,
+     "subject": "Mexico and Cuba as potential future invasion targets"
+    },
+    {
+     "start_turn": 26,
+     "end_turn": 27,
+     "subject": "Media spin and international responses to Venezuela operation"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 30,
+     "subject": "Opposition leaders and regional power structures in Venezuela"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 34,
+     "subject": "Trump's hypocrisy patterns and legal precedent for abduction"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 37,
+     "subject": "Congressional power dynamics and primary election calendar"
+    },
+    {
+     "start_turn": 38,
+     "end_turn": 40,
+     "subject": "Betting markets on next invasion and Cuban refugee scenario"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 42,
+     "subject": "Drafting paper on Cuba invasion consequences"
+    },
+    {
+     "start_turn": 43,
+     "end_turn": 48,
+     "subject": "China's bond market strategy as economic weapon against Trump"
+    },
+    {
+     "start_turn": 49,
+     "end_turn": 50,
+     "subject": "Greenland annexation and right-wing media spin"
+    },
+    {
+     "start_turn": 51,
+     "end_turn": 54,
+     "subject": "Venezuela implementation details and institutional theory"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6b6b662b03ad",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Transcription censorship and keyboard autocorrect settings"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 7,
+     "subject": "Screen playback interruptions and battery optimization"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 14,
+     "subject": "Do Not Disturb whitelist configuration and call screening"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 20,
+     "subject": "Attention economy and global notification management"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 25,
+     "subject": "Cloud storage silos and photo library organization strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e6bf07345c24",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Finding State Farm agent Ray Vermeulen contact information"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cfefc60d9e45",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Understanding AI-assisted writing method and plot development process"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Improving scene structure and updating plot chapter development framework"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "Implementing framework recommendations with bullet points and author instructions"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 10,
+     "subject": "Evaluating updated framework completeness and AI error correction protocols"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 13,
+     "subject": "Creating evaluation frameworks for chapter development and refinement"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 16,
+     "subject": "Analyzing plot chapter refinement framework purpose and adding evolution assessment protocol"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 20,
+     "subject": "Refining preservation system and converting to AI-friendly format for chapter refinement"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 21,
+     "subject": "Requesting plot chapter refinement evaluation framework"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Separating plot foundation framework into two frameworks with structural templates library"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 28,
+     "subject": "Finalizing separated frameworks with text-based outputs and providing fresh versions"
+    },
+    {
+     "start_turn": 29,
+     "end_turn": 29,
+     "subject": "Creating evaluation frameworks for plot structure architecture and chapter conceptual development"
+    },
+    {
+     "start_turn": 30,
+     "end_turn": 31,
+     "subject": "Creating plot refinement framework and evaluation framework for prose production focus"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 34,
+     "subject": "Providing fresh versions of plot chapter development framework and matching evaluation framework"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-498b738159f3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Providing 16-point chapter overview template for comprehensive chapter documentation"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Creating master outline format for Act 2, Chapter 18 with reduced word count and focus on drafting essentials"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Creating and correcting Act 2, Chapter 19 comprehensive overview and fixing character name accuracy (Malcolm)"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Providing Act 2, Chapter 19 in two formats: 16-point comprehensive and master outline"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Creating Act 2, Chapter 20 comprehensive and master outline versions focusing on Thomas's article documentation"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Creating Act 2, Chapter 21 comprehensive overview with focus on economic justice and Clarence's betrayal arc"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1f4f2a36f76d",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 21,
+     "subject": "Developing 'The New Communist Manifesto' outline and writing comprehensive manifesto chapters"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b395350e2269",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 17,
+     "subject": "Authoritarian decline, political collapse, and populist resistance strategies"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5e6a6fffbe99",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Research planning and execution on natural language programming for AI agents"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-341fd94b49c2",
+   "segments": [
+    {
+     "start_turn": 3,
+     "end_turn": 3,
+     "subject": "Hayzeus L. Salvador character profile development"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Matthew \"Matty\" Tax character architecture and word count optimization"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "James \"Big Jim\" Zebedee character profile and refinement"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Word count reduction revision request"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e9edf7b3ed90",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Science policy dossier scope and clarifying questions"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 2,
+     "subject": "Letterkenski science policy dossier delivery"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 5,
+     "subject": "Doctorow/EFF research prompt development and refinement"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b9256cc4359f",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "JSON envelope explanation for image models"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-9c6c8dc73477",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "MVP design and transition to natural language specifications"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 10,
+     "subject": "Bootstrap architecture and ephemeral file management"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 12,
+     "subject": "System overview and application launcher strategy"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 17,
+     "subject": "Knowledge architecture, model capabilities, and vault design"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 20,
+     "subject": "Book structure, hardware tiers, and natural language as code"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 26,
+     "subject": "Philosophical foundations and Dijkstra's critique of natural language programming"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 28,
+     "subject": "Proof of concept and pedagogical instruction modules"
+    },
+    {
+     "start_turn": 29,
+     "end_turn": 30,
+     "subject": "Pipeline configuration strategies and model orchestration"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 32,
+     "subject": "Hardware economics and autonomous work queues"
+    },
+    {
+     "start_turn": 33,
+     "end_turn": 34,
+     "subject": "Claude Skills comparison and implementation tiers"
+    },
+    {
+     "start_turn": 35,
+     "end_turn": 35,
+     "subject": "System overview summary for documentation"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ad35a4bbdca6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Character Refinement Framework execution for Thomas Reynolds"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f51835eb9280",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Water trapped in ear canal removal methods"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-50a97463b4b0",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 18,
+     "subject": "Framework enhancement across editorial, setting, evaluation, title, and marketing systems with personas and archetypal choice fiction integration"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-d3ab99d69b12",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 26,
+     "subject": "Understanding AI agent architecture: Claude Skills, orchestrators, context windows, tool calling, RAG systems, and pipeline design"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0b0494657a2c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 14,
+     "subject": "Developing and assembling formal legal complaint for James Roberts medical abandonment case"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-7cedd69d5820",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Creating and refining thematic architecture foundation for DIKLIS CHUMP political satire novel"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c80a033d4537",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Local model infrastructure and Qwen3 options"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 15,
+     "subject": "Exploring Qwen3.5 models and Mixture of Experts architecture"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 22,
+     "subject": "Cross-company model evaluation and training bias considerations"
+    },
+    {
+     "start_turn": 23,
+     "end_turn": 26,
+     "subject": "Massive 1TB parameter models and storage requirements"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 35,
+     "subject": "RAM budgeting for simultaneous model loading and compute constraints"
+    },
+    {
+     "start_turn": 36,
+     "end_turn": 42,
+     "subject": "MLX-LM framework and external SSD specifications"
+    },
+    {
+     "start_turn": 43,
+     "end_turn": 48,
+     "subject": "Evaluating and selecting external hard drive options"
+    },
+    {
+     "start_turn": 49,
+     "end_turn": 54,
+     "subject": "Architecture design decisions and final three-model configuration"
+    },
+    {
+     "start_turn": 55,
+     "end_turn": 61,
+     "subject": "Claude Skills architecture and agentic RAG for long-form writing"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b3b6a032d02e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "American Jesus outline review, thematic assessment, and epilogue planning"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 12,
+     "subject": "Developing Act 2 chapter outlines using 15-point narrative template"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-839583df5598",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 20,
+     "subject": "Profile analysis and early interaction with Lili"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 40,
+     "subject": "Sexual pacing, polarity philosophy, and personality type framework"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 62,
+     "subject": "Active engagement and real texting with Lili"
+    },
+    {
+     "start_turn": 63,
+     "end_turn": 68,
+     "subject": "Her withdrawal decision and broader pattern reflection on Brazilian women"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6d018540cf73",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 10,
+     "subject": "Jamie's profile and language analysis"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 15,
+     "subject": "Intentionality and creating the nest as third entity concept"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 20,
+     "subject": "Future visioning and narrative co-creation strategy"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 27,
+     "subject": "INFJ-INFP compatibility and Buddhist non-attachment practice"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-14a33557c0bf",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Brief text-only request"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f8cef12a5cbe",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Melanie profile analysis and vasectomy dealbreaker"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 10,
+     "subject": "Queue dynamics and preference shifting over time"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 18,
+     "subject": "Ashley, rescuer patterns, and Ella dog test for relationship consistency"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 19,
+     "subject": "Profile updates and 'yes signals only' operational rule"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 21,
+     "subject": "Attraction filters and reconsidering race category shortcuts"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Distance filter issues and LA woman as romantic narrative potential"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 30,
+     "subject": "Romance novel structure with sovereign masculinity and three-vignette ending"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 33,
+     "subject": "LA woman and distance dating through practical cost-benefit lens"
+    },
+    {
+     "start_turn": 34,
+     "end_turn": 40,
+     "subject": "Bumble oligopoly structure and antitrust/tech industry dynamics"
+    },
+    {
+     "start_turn": 41,
+     "end_turn": 44,
+     "subject": "Flow-to-production transition, Parliament model, and attention fog in execution"
+    },
+    {
+     "start_turn": 45,
+     "end_turn": 46,
+     "subject": "Another woman's profile\u2014polarity critique and blocking"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-ac069c069250",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Executing character initiation framework for Matthew Tax"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2dbf09e0c04c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 20,
+     "subject": "Fiverr beta testing and distribution strategy for Ora software"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-49546e02107c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Marco Polio character development for satirical fiction"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1a0edf490c95",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Learning methodology and intuition theory consolidated into unified document"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 4,
+     "subject": "Technical breakthrough realization and astonishment at Ora system capabilities"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 10,
+     "subject": "Visual thinking research foundation and interface design protocol development"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 13,
+     "subject": "Epiphany about bidirectional visual-AI communication and companion book on visual thinking"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 16,
+     "subject": "Subconscious processing overload during epiphany and audio documentation of the experience"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 23,
+     "subject": "Discovery of unprecedented capabilities built into Ora system and amazement at innovation scope"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 26,
+     "subject": "Hacker mindset philosophy and constraint-breaking approach to solving AI problems"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 31,
+     "subject": "Personal spiritual transformation, narcissistic abuse recognition, and emotional processing"
+    },
+    {
+     "start_turn": 32,
+     "end_turn": 33,
+     "subject": "Integration of float tank contemplative practice into understanding of consciousness and parallel processing"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0bbe45209fe7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 6,
+     "subject": "Development of 'On Judging Others' teaching using carpenter metaphor and splinter/stake imagery"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 15,
+     "subject": "Refinement of 'Ask, Seek, Knock' teaching emphasizing service over selfish gain and Holy Spirit flow"
+    },
+    {
+     "start_turn": 16,
+     "end_turn": 17,
+     "subject": "Expansion of Golden Rule with multiple dualities and Buddhist karma integration"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 23,
+     "subject": "Development of 'Narrow and Wide Gates' teaching with imagery of dropping baggage and spiritual path"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 27,
+     "subject": "Creation of 'True and False Prophets' teaching identifying contemporary false teachers and their fruit"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 30,
+     "subject": "Development of 'True Discipleship' teaching attacking 'once saved always saved' doctrine through action requirement"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 36,
+     "subject": "Refinement of 'Wise and Foolish Builders' teaching with bedrock versus shifting sand foundation contrast"
+    },
+    {
+     "start_turn": 37,
+     "end_turn": 37,
+     "subject": "Comprehensive review of complete Modern Sermon on the Mount first draft for consistency and voice"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0dfc7b83d061",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Thematic framework development for American Jesus project"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 8,
+     "subject": "Hayzeus character profile creation"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 13,
+     "subject": "John character development and biblical alignment"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 21,
+     "subject": "Character naming, positioning, and Mark's narrative role"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 26,
+     "subject": "Character list consolidation and antagonist characterization"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 31,
+     "subject": "Apostle conversion arcs and Matthew character profile"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-a38b20013844",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 12,
+     "subject": "Spiritual practice, emotional knowing versus intellectual knowledge, and book concept on meditation for reductionists"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-aefc0511b679",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Editorial Gap Analysis and Missing Setting Analysis framework updates"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Evaluation Phase II and Phase III frameworks"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 13,
+     "subject": "Title and Subtitle framework system updates"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 18,
+     "subject": "Marketing frameworks and reader-focused personas"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-2d02664ae7a9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Tariff economic effects and consumer benefits in Europe"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 13,
+     "subject": "2026 political and economic crisis scenario for wealthy class"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Instruction compliance correction regarding follow-up suggestions"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 20,
+     "subject": "Tax policy implementation mechanisms in NYC and Illinois"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c611d3221ec1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Inputting character and setting profiles into Sudowrite"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 12,
+     "subject": "Developing worldbuilding systems for Redemption Springs"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 16,
+     "subject": "Chapter outline revisions and narrative structure"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 25,
+     "subject": "Converting to trilogy structure and discussion of benefits"
+    },
+    {
+     "start_turn": 26,
+     "end_turn": 27,
+     "subject": "Sudowrite file organization and context window questions"
+    },
+    {
+     "start_turn": 28,
+     "end_turn": 36,
+     "subject": "Reflection on accomplishment and publishing companion guide"
+    },
+    {
+     "start_turn": 37,
+     "end_turn": 38,
+     "subject": "Product strategy and writing feedback systems"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-b1896e702881",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 5,
+     "subject": "Developing comprehensive 11-point James character profile with Acts 2 and 3 growth"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 7,
+     "subject": "Condensed profile format and formatting corrections"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5a41aec57ea1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Song lyrics identification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-67f0e1e0d65e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 9,
+     "subject": "Designing and building the Universal Theme Library system"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 18,
+     "subject": "Testing and evaluating the Universal Theme Library outputs"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6f31c0ceb5e7",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 11,
+     "subject": "Creating character profiles for the Diklis Chump novel"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 21,
+     "subject": "Discussing Supreme Court partisanship and judicial legitimacy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-cb04ecd15583",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Creating marketing materials and promotional content for the Expanding Awareness Cosmology book"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-1b48a214d2b6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Reviewing formal complaint document on dependent adult abuse and medical abandonment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-5d4e15328cde",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 25,
+     "subject": "Character and chapter development framework for Diklis Chump project"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-79268cb0d0cd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 13,
+     "subject": "Reading profile signals and personal selective dating process"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 26,
+     "subject": "Personal presence, sovereignty, and philosophical reflection on spirituality"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 37,
+     "subject": "Dating app mechanics, algorithms, and specific relationship decisions"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-aa46cecadfb9",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Framework Creation Framework specification and design"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "First-boot framework application and adoption implications"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 9,
+     "subject": "Framing and positioning the framework for different audiences"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 19,
+     "subject": "Soul.md concept, AI ethics, and psychological dimensions"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 21,
+     "subject": "Buddhist Dharma companion project (askgeshla.com) and personal practice"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 22,
+     "subject": "Summary briefing for framework refinement research"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-bd06565fe561",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Strategy decision: state medical board over civil malpractice lawsuit"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 9,
+     "subject": "Case details, specific violations, and Medical Board procedures"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 11,
+     "subject": "GP concurrent responsibility and emotional catharsis through accountability"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 14,
+     "subject": "Record evidence strategy and spoliation as tactical advantage"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 18,
+     "subject": "Attorney necessity and high-priority case triggers for Medical Board"
+    },
+    {
+     "start_turn": 19,
+     "end_turn": 20,
+     "subject": "Disability advocacy organizations and regional center meeting strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-23250705e906",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Test message verification"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-0712d876b1bd",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Ora branding and marketing philosophy"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 9,
+     "subject": "Learning methodology and serendipitous epiphanies"
+    },
+    {
+     "start_turn": 10,
+     "end_turn": 14,
+     "subject": "The intuition book and biographical foundation"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 16,
+     "subject": "Cross-disciplinary book ecosystem"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 19,
+     "subject": "Cosmology reframing as pattern instance"
+    },
+    {
+     "start_turn": 20,
+     "end_turn": 23,
+     "subject": "Privacy framing and marketing message refinement"
+    },
+    {
+     "start_turn": 24,
+     "end_turn": 26,
+     "subject": "Marketing document finalization"
+    },
+    {
+     "start_turn": 27,
+     "end_turn": 30,
+     "subject": "Community governance and public-domain model"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6b7e75b14db3",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Conversational RAG research and state-of-the-art techniques"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Pipeline architecture and framework approach"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 10,
+     "subject": "Framework specification and architectural resolution"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 13,
+     "subject": "System directory structure and file organization"
+    },
+    {
+     "start_turn": 14,
+     "end_turn": 14,
+     "subject": "Documentation update requirements checklist"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-e4a018948eeb",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Formal complaint revision and document implementation"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Language refinement and definitional precision"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 5,
+     "subject": "Preemptive defense strategy for tone and email evidence"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-f9d923ab780c",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "American Jesus outline review and chapter preparation"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 7,
+     "subject": "Act 3, Chapter 31 deep-dive analysis and character architecture"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Chapters 33-34 foundation work and universal pattern positioning"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 15,
+     "subject": "Chapters 33-34 choice causality and transformation mapping"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-15b5111e726b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Brief instruction acknowledgment"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-c61f58a6bdb1",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Cognitive operating system architecture and synergy framework"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 4,
+     "subject": "Agent-centric paradigm shift and governance through soul.md"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 6,
+     "subject": "Security architecture and operational reliability via oversight layers"
+    },
+    {
+     "start_turn": 7,
+     "end_turn": 8,
+     "subject": "Natural language as intelligent programming paradigm"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 10,
+     "subject": "Business implications and implementation readiness assessment"
+    },
+    {
+     "start_turn": 11,
+     "end_turn": 16,
+     "subject": "Module architecture, control flow, and mode-based routing design"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 17,
+     "subject": "Industry validation and competitive advantage of adversarial multi-agent systems"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 18,
+     "subject": "Universal data representation format with progressive outline structure"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-98d65434993a",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 3,
+     "subject": "Economic denial and populist voter betrayal reframing"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 5,
+     "subject": "Surveillance apparatus targeting the regime's own conservative supporters"
+    },
+    {
+     "start_turn": 6,
+     "end_turn": 8,
+     "subject": "Economic hardship reframing and technological/media control mechanisms"
+    },
+    {
+     "start_turn": 9,
+     "end_turn": 12,
+     "subject": "Exploitation of religious communities, generational alienation, and worker class"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-4c75792e9193",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 7,
+     "subject": "Matrix cascade analysis and economic disruption forecasting"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-63691c0bdba8",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 35,
+     "subject": "Dating profile analysis and romantic messaging strategy"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-6487ae41f01e",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 2,
+     "subject": "Framework verification and preservation protocol identification"
+    },
+    {
+     "start_turn": 3,
+     "end_turn": 12,
+     "subject": "Implementing tiered preservation across multiple frameworks"
+    },
+    {
+     "start_turn": 13,
+     "end_turn": 16,
+     "subject": "Addressing preservation failures and execution problems"
+    },
+    {
+     "start_turn": 17,
+     "end_turn": 21,
+     "subject": "Architectural reassessment and split Foundation/Refinement approach"
+    },
+    {
+     "start_turn": 22,
+     "end_turn": 24,
+     "subject": "Split framework design finalization and nomenclature"
+    },
+    {
+     "start_turn": 25,
+     "end_turn": 30,
+     "subject": "Theme Foundation Framework development"
+    },
+    {
+     "start_turn": 31,
+     "end_turn": 40,
+     "subject": "Theme Refinement Framework development"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-58c99e01c25b",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 8,
+     "subject": "Updating James Roberts Complaint document with new evidence"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-00d94eb33360",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "SpaceX IPO stock analysis and chart"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-048e42db88b6",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 4,
+     "subject": "Chapter summaries and Act 1 outline review"
+    },
+    {
+     "start_turn": 5,
+     "end_turn": 7,
+     "subject": "Restructuring manuscript with Thomas's second article"
+    },
+    {
+     "start_turn": 8,
+     "end_turn": 11,
+     "subject": "Creating Michael's death scene (Chapter 21)"
+    },
+    {
+     "start_turn": 12,
+     "end_turn": 14,
+     "subject": "Updating Act 1 overview and documenting transition to Act 2"
+    },
+    {
+     "start_turn": 15,
+     "end_turn": 17,
+     "subject": "Strengthening Mary and Hayzeus's intimate character development"
+    },
+    {
+     "start_turn": 18,
+     "end_turn": 20,
+     "subject": "Developing Hayzeus's strategic thinking and Jo's characterization"
+    },
+    {
+     "start_turn": 21,
+     "end_turn": 23,
+     "subject": "Strengthening Paul's redemptive arc and Act 1 completion"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-71d930e20e46",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Seeking spiritual guidance on Bible study leadership and discernment"
+    },
+    {
+     "start_turn": 2,
+     "end_turn": 3,
+     "subject": "Developing and structuring the New Beginnings theme into five sessions"
+    },
+    {
+     "start_turn": 4,
+     "end_turn": 6,
+     "subject": "Detailed session planning with South Western Nigerian cultural context and teaching techniques"
+    }
+   ]
+  },
+  {
+   "conversation_id": "historical-3d0a7b435365",
+   "segments": [
+    {
+     "start_turn": 1,
+     "end_turn": 1,
+     "subject": "Summarizing article about DESI dark energy map findings"
+    }
+   ]
+  }
+ ]
+}
