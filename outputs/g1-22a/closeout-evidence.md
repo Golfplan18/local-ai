@@ -75,7 +75,7 @@ These changes add no approval engine and no channel authority. They strengthen t
 
 The 2026-07-26 correction closes the sealed scan's remaining `env` nested-command path and audits the known shell-launch surface:
 
-1. A known shell profile must account for every executable the command can launch. Terminal `env` inspection plus environment assignments remain read-only, but a utility operand or ambiguous execution option makes the command unknown.
+1. A known shell profile must account for every executable the command can launch. Terminal `env` inspection — the `env` utility with options and `NAME=VALUE` operands and no utility operand — remains read-only, but a utility operand or ambiguous execution option makes the command unknown.
 2. Generic launcher utilities, execution-capable `awk`, `find` execution predicates, and child-process options on `tar`, `pandoc`, `yt-dlp`, and `zip` fail closed. A single help/version flag cannot give an unknown executable a known profile.
 3. The registered dispatcher rejects these forms before approval consumption or handler entry. The direct shell sink repeats the refusal before `subprocess.run` or `subprocess.Popen`, in foreground and background modes.
 4. The exact protected approval-store targets remain unreachable. Refusal leaves a pre-issued exact approval token unconsumed, proving that later review cannot be spent on hidden nested execution.
@@ -98,7 +98,7 @@ The focused suite proves:
 10. exact, equivalent, pattern, recursive, symlink, and hardlink forms of approval-authority access are refused before file or shell execution, including a recursive root whose tree contains a later authority alias;
 11. chat-only, substituted-task, stale-queue, foreign-Dialogue, foreign-Principal, altered-queue, already-resolved, replayed, and ambiguous inline task state grants no authority and changes no queue or approval record, while exact authenticated approval and one execution still work; and
 12. utility-bearing `env`, generic launch wrappers, embedded execution languages, and profiled-tool execution options are refused before approval consumption, handler entry, or foreground/background subprocess creation;
-13. bounded terminal `env` inspection and assignment-only forms remain available, while registered-dispatcher refusals preserve their exact unused token; and
+13. bounded terminal `env` inspection and bare assignment-only forms remain available — a leading `NAME=VALUE` prefix before a utility does not (see the shell environment-assignment correction below) — while registered-dispatcher refusals preserve their exact unused token; and
 14. the tracker, program, Registry, canonical, and this evidence preserve the held G1.17/G1.21/channel/Windows/hardware/G1.24 boundaries.
 
 ## Exact command provenance
@@ -346,6 +346,40 @@ record; the fourth isolates this shell-wrapper correction from the then-current
 vault head. Those commits and the unrelated vault working
 tree are outside this Gate's scope and were not modified, staged, or claimed
 by these checks.
+
+## Shell environment-assignment correction (2026-08-19)
+
+The 2026-07-26 packet above closed the `env` nested-command path but left a
+separate leading-assignment vector open, and this document previously implied
+the opposite by describing "environment assignments" as read-only without
+qualifying which spelling. Recorded here because a reader of the packet alone
+would have concluded the shell surface was closed.
+
+The defect: `resolve_shell_profile` stripped a leading `NAME=VALUE` prefix
+before classifying the verb, so `PATH=<attacker-dir> ls` profiled as a known
+read (`unknown=False`, `mutability=read`) while the shell executed the
+attacker's binary. Confirmed by execution, not inspection: the command
+returned `rc=0` with the attacker's output and no refusal. Three sub-defects:
+
+1. Verb substitution (`PATH=`).
+2. Library injection (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`)
+   and helper-program injection through an already-allowlisted verb
+   (`GIT_SSH_COMMAND`, `GIT_EXTERNAL_DIFF`, `PAGER`, `EDITOR`, `GIT_DIR`).
+   This class is why the correction is not a denylist: every interpreter and
+   tool ships its own such variable, so the set cannot be enumerated.
+3. Profile-name corruption — the profile was named from the unstripped token,
+   so `basename("PATH=/tmp/attacker")` recorded `action = "bash:attacker"`,
+   an attacker-controlled string, in the audit trail.
+
+The correction: any leading `NAME=VALUE` prefix before a utility fails closed,
+in every compound segment. Assignment stripping is retained for operand
+resolution, so declared read/write targets still surface on the refusal
+record. The profile is named from the stripped verb.
+
+Measured cost of the fail-closed posture: 12,688 recorded tool events contain
+56 shell command strings, none carrying a leading assignment; no Ora-internal
+caller emits one. Bare assignments (`FOO=bar`) and terminal `env` inspection
+are unaffected.
 
 ## Held boundaries and limitations
 

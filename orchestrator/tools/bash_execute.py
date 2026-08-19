@@ -261,6 +261,23 @@ def _redirect_write_targets(tokens: list[str]) -> list[str]:
 _ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
+def _has_env_assignment_prefix(tokens: list[str]) -> bool:
+    """True when a leading ``NAME=VALUE`` prefix precedes a utility.
+
+    Such a prefix decides what the shell actually runs, so the verb alone no
+    longer describes the effect: ``PATH=`` substitutes the executable,
+    ``LD_PRELOAD``/``DYLD_INSERT_LIBRARIES`` inject code into it, and a
+    utility's own helper variables (``GIT_SSH_COMMAND``, ``GIT_EXTERNAL_DIFF``,
+    ``PAGER``, ``EDITOR``, ``PYTHONPATH``, ``NODE_OPTIONS`` …) replace a
+    program it launches.  That last class is why this is not a denylist: every
+    interpreter and tool ships its own, so the set cannot be enumerated and any
+    prefix before a utility fails closed.  A bare assignment with no utility
+    (``FOO=bar``) is not this shape — it has nothing to redirect — and the
+    ``env`` utility's own operands are handled by _env_is_inspection_only.
+    """
+    return len(tokens) > 1 and bool(_ENV_ASSIGN_RE.match(tokens[0]))
+
+
 def _env_is_inspection_only(args: list[str]) -> bool:
     """Return True only when ``env`` has no utility operand.
 
@@ -517,9 +534,17 @@ def _segment_axes(segment: str) -> dict:
     """Axes for ONE simple command segment, or _UNKNOWN."""
     import shlex
     try:
-        tokens = _strip_env_prefix(shlex.split(segment))
+        raw_tokens = shlex.split(segment)
     except ValueError:
         return dict(_UNKNOWN)
+    # A leading NAME=VALUE prefix decides which executable runs and what gets
+    # loaded into it, so the verb no longer describes the effect. Fail closed
+    # BEFORE the prefix is stripped — stripping is correct for resolving
+    # operands (_command_target_paths, _cd_effect) but must not be allowed to
+    # profile the command on a verb the shell may never execute.
+    if _has_env_assignment_prefix(raw_tokens):
+        return dict(_UNKNOWN)
+    tokens = _strip_env_prefix(raw_tokens)
     if not tokens:
         return {"mutability": "read", "sensitivity": "public", "egress": "none"}
     base = os.path.basename(tokens[0])
@@ -762,8 +787,18 @@ def resolve_shell_profile(command_string: str, cwd: str = None) -> dict:
     segments = _split_segments(cmd)
     _first_profile = "unknown"
     if segments:
-        _f = segments[0].split()
-        if _f:
+        # Strip any leading NAME=VALUE prefix before naming the profile.
+        # Without this, basename("PATH=/tmp/attacker") yields "attacker" and
+        # the audit trail records an attacker-controlled string as the command
+        # name (dispatcher writes action = "bash:<profile>"). Tokenize with
+        # shlex so a quoted assignment value ("PATH='/tmp/a b' ls") cannot
+        # leak a fragment of itself into the name either; an untokenizable
+        # segment stays "unknown" rather than guessing.
+        try:
+            _f = _strip_env_prefix(shlex.split(segments[0]))
+        except ValueError:
+            _f = []
+        if _f and not _ENV_ASSIGN_RE.match(_f[0]):
             _first_profile = os.path.basename(_f[0])
     if segments is None:
         return {**_UNKNOWN, "profile": _first_profile,

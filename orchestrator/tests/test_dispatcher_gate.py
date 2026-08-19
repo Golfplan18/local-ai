@@ -550,7 +550,14 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             "bash_execute",
             {"command": "FOO=1 cat id_rsa",
              "cwd": os.path.expanduser("~/.ssh")})
-        self.assertIn("GATED", r)
+        # A leading NAME=VALUE prefix decides which executable actually runs,
+        # so this shape now takes the stronger pre-approval refusal instead of
+        # the generic gate (same supersession as the awk case above). The
+        # regression this test guards — an env prefix must not let a secret
+        # read through — holds either way, so assert on the outcome that
+        # matters: the command never reached the shell.
+        self.assertIn("SYSTEM PROTECTION", r)
+        self.assertEqual(self.shell_calls, [])
 
     def test_cd_into_secret_dir_gates_relative_read(self):
         for cmd in ("cd ~/.aws && cat config",
