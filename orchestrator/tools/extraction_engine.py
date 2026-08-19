@@ -531,7 +531,7 @@ def parse_signal_map(response: str) -> list[Signal]:
                 continue
 
             # Heuristic type classification from claim content
-            signal_type = _classify_claim(claim)
+            signal_type, type_matched = _classify_claim_with_match(claim)
             subtype = _claim_to_subtype(signal_type)
 
             signals.append(Signal(
@@ -541,7 +541,7 @@ def parse_signal_map(response: str) -> list[Signal]:
                 summary=claim,
                 proposed_note_type="atomic",
                 proposed_subtype=subtype,
-                confidence="high",
+                confidence="high" if type_matched else "low",
                 skip_reason=None,
             ))
         if signals:
@@ -631,40 +631,53 @@ def parse_signal_map(response: str) -> list[Signal]:
 
 def _classify_claim(claim: str) -> str:
     """Heuristic signal type classification from claim text."""
+    signal_type, _matched = _classify_claim_with_match(claim)
+    return signal_type
+
+
+def _classify_claim_with_match(claim: str) -> tuple[str, bool]:
+    """Classify, and report whether any pattern actually matched.
+
+    The cascade below ends in a `fact` fallthrough, which made a matched
+    quantitative fact indistinguishable from a claim that matched nothing
+    and was merely assigned the most conservative type. The second element
+    is False in that fallthrough case, so a guess can be surfaced as a
+    guess instead of travelling downstream as a confident classification.
+    """
     lower = claim.lower()
 
     # Definition patterns
     if re.search(r'\b(?:is defined as|means|refers to|is the)\b', lower):
-        return "definition"
+        return "definition", True
     if re.search(r'\b(?:is|are)\s+(?:a|an|the)\s+\w+\s+(?:that|which|where)\b', lower):
-        return "definition"
+        return "definition", True
 
     # Causal patterns
     if re.search(r'\b(?:causes?|prevents?|enables?|leads?\s+to|results?\s+in|produces?|because)\b', lower):
-        return "causal"
+        return "causal", True
 
     # Process/heuristic patterns
     if re.search(r'\b(?:steps?|procedure|method|heuristic|approach|technique|strategy)\b', lower):
-        return "process"
+        return "process", True
 
     # Evaluative/tradeoff patterns
     if re.search(r'\b(?:tradeoff|trade-off|better|worse|more\s+effective|advantage|disadvantage|expensive|cheap)\b', lower):
-        return "evaluative"
+        return "evaluative", True
 
     # Analogy patterns
     if re.search(r'\b(?:like|analogous|similar\s+to|maps?\s+to|parallel)\b', lower):
-        return "analogy"
+        return "analogy", True
 
     # Principle patterns
     if re.search(r'\b(?:principle|rule|law|always|never|must|fundamental)\b', lower):
-        return "principle"
+        return "principle", True
 
     # Quantitative fact patterns
     if re.search(r'\$\d|\d+%|\d+\s*(?:kWh|GB|MB|ms)', lower):
-        return "fact"
+        return "fact", True
 
-    # Default: fact (most conservative classification)
-    return "fact"
+    # Default: fact (most conservative classification) — unmatched.
+    return "fact", False
 
 
 def _claim_to_subtype(signal_type: str) -> str | None:

@@ -127,3 +127,92 @@ def test_non_proposition_note_types_keep_their_existing_schema_path():
     assert result.queue == "auto_approve"
     assert "substantive_propositions" not in result.checks
     assert result.checks["glossary_checks"]["pass"] is True
+
+
+def _solid_body():
+    return (
+        "- Retrieval latency drops when the working set fits in cache\n"
+        "- Measured at 45ms versus 210ms on the same corpus\n"
+    )
+
+
+def test_uncertain_subtype_routes_to_human_review():
+    """A classifier fallthrough is a guess and must not pass as confident.
+
+    `_classify_claim` ends in a `fact` fallthrough, so a matched
+    quantitative fact and a claim that matched nothing were previously
+    indistinguishable downstream.
+    """
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+
+    confident = QualityGate(signal_confidence={"signal-1": "high"}).evaluate(note)
+    guessed = QualityGate(signal_confidence={"signal-1": "low"}).evaluate(note)
+
+    assert not any("Uncertain subtype" in r for r in confident.reasons)
+    assert guessed.queue == "human_review"
+    assert any("Uncertain subtype" in r for r in guessed.reasons)
+    assert guessed.checks["subtype_confidence"]["pass"] is False
+
+
+def test_absent_confidence_map_changes_nothing():
+    """The check must be inert when no confidence was recorded."""
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+    before = QualityGate().evaluate(note)
+    after = QualityGate(signal_confidence={}).evaluate(note)
+    assert before.queue == after.queue
+    assert not any("Uncertain subtype" in r for r in before.reasons)
+
+
+def test_classifier_reports_whether_it_matched():
+    """The signal type must carry whether it was matched or defaulted."""
+    from orchestrator.tools.extraction_engine import _classify_claim_with_match
+
+    matched_type, matched = _classify_claim_with_match("The unit costs $45")
+    assert (matched_type, matched) == ("fact", True)
+
+    fallthrough_type, fell_through = _classify_claim_with_match(
+        "Some sentence with no classifiable pattern at all"
+    )
+    assert fallthrough_type == "fact"
+    assert fell_through is False
+
+
+def test_review_notes_are_persisted_not_dropped(tmp_path):
+    """The runtime path counted human-review notes and discarded them.
+
+    Every note the gate flagged for human judgement in a chat session was
+    lost with no trace: no file, no queue entry, only a tally. The batch
+    path persisted them, so the two paths disagreed about whether a
+    flagged note survived.
+    """
+    import json
+    from orchestrator.tools.batch_processor import write_review_note
+
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+    gate_result = QualityGate(signal_confidence={"signal-1": "low"}).evaluate(note)
+    assert gate_result.queue == "human_review"
+
+    path = write_review_note(note, gate_result, str(tmp_path))
+    record = json.loads(open(path, encoding="utf-8").read())
+
+    assert record["title"] == "Cache locality improves retrieval"
+    assert record["status"] == "pending"
+    assert record["body"] == _solid_body()
+    assert any("Uncertain subtype" in r for r in record["review_reasons"])
+
+    # A second note with the same title must not overwrite the first.
+    second = write_review_note(note, gate_result, str(tmp_path))
+    assert second != path
+    assert len(list(tmp_path.glob("*.json"))) == 2
+
+
+def test_review_writer_creates_its_directory(tmp_path):
+    """~/ora/data/review-queue/ has never existed; the writer must make it."""
+    from orchestrator.tools.batch_processor import write_review_note
+
+    target = tmp_path / "does-not-exist-yet"
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+    result = QualityGate(signal_confidence={"signal-1": "low"}).evaluate(note)
+    written = write_review_note(note, result, str(target))
+    assert target.is_dir()
+    assert written.startswith(str(target))

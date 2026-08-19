@@ -98,6 +98,8 @@ class BatchProcessor:
         self.vault_path = vault_path or os.path.expanduser("~/Documents/vault")
         self.manifest_path = manifest_path or MANIFEST_PATH
         self.auto_approve_review = auto_approve_review
+        # signal_id -> Pass A confidence, accumulated across chunked runs
+        self._signal_confidence: dict[str, str] = {}
         self.stats = ProcessingStats()
         self._manifest = {}
         self._file_statuses: dict[str, FileStatus] = {}
@@ -299,7 +301,9 @@ class BatchProcessor:
 
             # Step 4: Quality gate
             from orchestrator.tools.quality_gate import QualityGate, evaluate_batch
-            gate_results = evaluate_batch(all_screened)
+            gate_results = evaluate_batch(
+                all_screened, signal_confidence=self._signal_confidence
+            )
 
             file_status.notes_extracted = len(all_screened)
             file_status.notes_approved = len(gate_results.get("approved", []))
@@ -393,6 +397,12 @@ class BatchProcessor:
             from orchestrator.tools.extraction_engine import ExtractionEngine
             engine = ExtractionEngine(call_fn=self.call_fn, config=self.config)
             result = engine.extract(markdown, type_result, source_file)
+            # Carry Pass A's per-signal confidence so the gate can tell a
+            # matched classification from a fallthrough guess. Accumulated
+            # on the instance because chunked runs call this repeatedly.
+            for sig in (getattr(result, "signals", None) or []):
+                if getattr(sig, "id", None):
+                    self._signal_confidence[sig.id] = sig.confidence
             return result.screened
         except Exception:
             return None
@@ -424,6 +434,43 @@ class BatchProcessor:
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
+def write_review_note(note, gate_result, review_dir: str) -> str:
+    """Persist one human-review note and return the path written.
+
+    Shared by the batch processor and the runtime pipeline. The runtime
+    path previously counted its review notes and dropped them, so every
+    note the gate flagged for human judgement in a chat session was lost
+    silently. One implementation, so the two paths cannot diverge again.
+    """
+    os.makedirs(review_dir, exist_ok=True)
+    title = getattr(note, "title", "Untitled")
+    safe_title = _sanitize_filename(title)
+    path = os.path.join(review_dir, f"{safe_title}.json")
+
+    review_data = {
+        "title": title,
+        "note_type": getattr(note, "note_type", ""),
+        "subtype": getattr(note, "subtype", None),
+        "body": getattr(note, "body", ""),
+        "yaml_frontmatter": getattr(note, "yaml_frontmatter", {}),
+        "relationships": getattr(note, "relationships", []),
+        "source_file": getattr(note, "source_file", ""),
+        "review_reasons": getattr(gate_result, "reasons", []),
+        "checks": getattr(gate_result, "checks", {}),
+        "status": "pending",  # pending, approved, rejected, edited
+        "reviewed_at": None,
+    }
+
+    counter = 1
+    while os.path.exists(path):
+        path = os.path.join(review_dir, f"{safe_title}-{counter}.json")
+        counter += 1
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(review_data, f, indent=2)
+    return path
+
+
     def _write_to_review(self, note, gate_result):
         """Write a note to the human review queue.
 
@@ -438,31 +485,7 @@ class BatchProcessor:
             self._write_to_staging(note)
             return
 
-        title = getattr(note, "title", "Untitled")
-        safe_title = _sanitize_filename(title)
-        path = os.path.join(REVIEW_DIR, f"{safe_title}.json")
-
-        review_data = {
-            "title": title,
-            "note_type": getattr(note, "note_type", ""),
-            "subtype": getattr(note, "subtype", None),
-            "body": getattr(note, "body", ""),
-            "yaml_frontmatter": getattr(note, "yaml_frontmatter", {}),
-            "relationships": getattr(note, "relationships", []),
-            "source_file": getattr(note, "source_file", ""),
-            "review_reasons": getattr(gate_result, "reasons", []),
-            "checks": getattr(gate_result, "checks", {}),
-            "status": "pending",  # pending, approved, rejected, edited
-            "reviewed_at": None,
-        }
-
-        counter = 1
-        while os.path.exists(path):
-            path = os.path.join(REVIEW_DIR, f"{safe_title}-{counter}.json")
-            counter += 1
-
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(review_data, f, indent=2)
+        write_review_note(note, gate_result, REVIEW_DIR)
 
     def _format_note_file(self, note) -> str:
         """Format an extracted note as a vault-ready markdown file.
