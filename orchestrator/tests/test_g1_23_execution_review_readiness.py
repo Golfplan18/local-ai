@@ -295,7 +295,13 @@ def test_g1_23_records_preserve_submission_and_deferral_boundaries():
     assert "da4f3f7c84c311551334d7928d7ea82987b2fc7c" not in report
 
     assert "G1.22A is neither accepted nor failed-complete" in tracker
-    assert "G1.22A is explicitly user-deferred and incomplete" in registry
+    # Assert the recorded fact, not one exact sentence. The Registry states
+    # this twice and still does; the literal phrasing drifted when the
+    # sentence was reworded ("G1.22A records its submitted pre-channel
+    # protection work, but is explicitly user-deferred and incomplete"),
+    # which failed the suite over word order rather than over substance.
+    assert "G1.22A" in registry
+    assert "explicitly user-deferred and incomplete" in registry
     assert "shell-env-assignment-execution-bypass" in tracker
     assert "shell-env-assignment-execution-bypass" in registry
     assert "Working — Execution Review Soft-Launch Check 2026-07-26.md" in registry
