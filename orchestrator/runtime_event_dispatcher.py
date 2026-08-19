@@ -154,8 +154,20 @@ def dispatch_paths(paths: set[str]) -> dict:
         "autonomous_handlers_suppressed": [],
         "ped_events": 0, "corpus_events": 0,
         "workflow_checked": False, "revisit_checked": False,
-        "resources_checked": False, "operational_hook": None, "errors": [],
+        "resources_checked": False, "operational_hook": None,
+        "triggers_fired": [], "errors": [],
     }
+
+    # User-authored file-change Triggers. Guarded like its six siblings: one
+    # unguarded branch takes the whole listener down, including the branches
+    # that were working.
+    try:
+        from orchestrator import triggers as _triggers
+        trigger_summary = _triggers.service().dispatch_paths(paths)
+        summary["triggers_fired"] = trigger_summary["fired"]
+        summary["errors"].extend(trigger_summary["errors"])
+    except Exception as exc:
+        summary["errors"].append(f"triggers: {exc}")
 
     for path in sorted(existing_markdown):
         if _artifact_kind(path) not in {"resource", "engram"}:

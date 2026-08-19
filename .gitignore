@@ -77,6 +77,11 @@ data/oversight/
 # configuration written by /project-register or pr.register_project().
 data/projects/
 
+# User-authored Triggers (orchestrator/triggers.py). Per-machine: a Trigger
+# names a locally registered project tool and is approved by the person at
+# this keyboard, so it is no more shippable than a project pointer file.
+data/triggers/
+
 # MSI feed-data cache (raw GDELT downloads, regenerable)
 scripts/msi/cache/
 

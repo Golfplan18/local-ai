@@ -259,6 +259,26 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         keyboard_viable="Yes",
     ),
     SlashCommandSpec(
+        command="/trigger",
+        aliases=("/triggers",),
+        category="Runtime",
+        where="server",
+        summary="Author, review, and control scheduled or event-driven work.",
+        usage=(
+            "/trigger list | show <id> | create <flags> | "
+            "activate <id> [--approve <digest>] | pause|resume|retire|run <id>"
+        ),
+        mouse_path="Sidebar > Oversight > Scheduled",
+        keyboard_viable="Yes",
+        notes=(
+            "A Trigger activates an already-registered project tool or "
+            "framework; it never carries a command string. Causes are manual, "
+            "file change, calendar, and completion of another Trigger. A "
+            "calendar Trigger needs a written runtime-impossibility "
+            "justification (--because) before it can be activated."
+        ),
+    ),
+    SlashCommandSpec(
         command="/image",
         aliases=("/generate-image",),
         category="Visual",

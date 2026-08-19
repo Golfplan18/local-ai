@@ -458,6 +458,16 @@ class OversightDaemon:
             revisit_sweeper.register_age_review_deadlines(self._deadline_queue)
         except Exception as exc:
             print(f"[oversight_daemon] revisit deadline registration failed: {exc}")
+        try:
+            # Re-arm the occurrences the persisted Trigger set already
+            # declares. This is reconciliation of exact contracts, not a scan
+            # for undiscovered work.
+            from orchestrator import triggers
+            armed = triggers.service().arm_active_calendar_triggers()
+            if armed:
+                print(f"[oversight_daemon] armed {len(armed)} calendar Trigger(s)")
+        except Exception as exc:
+            print(f"[oversight_daemon] Trigger arming failed: {exc}")
 
     def _event_loop(self):
         try:
@@ -474,6 +484,7 @@ class OversightDaemon:
             "project_revisit": self._handle_project_revisit_deadline,
             "trace_retention": self._handle_trace_retention_deadline,
             "log_retention": self._handle_log_retention_deadline,
+            "trigger_calendar": self._handle_trigger_calendar_deadline,
         }
         try:
             self._deadline_queue.run(handlers, self._stop_event)
@@ -575,6 +586,16 @@ class OversightDaemon:
             self._ensure_log_retention_deadline(
                 next_day.isoformat(), timezone_name=timezone_name,
             )
+
+    def _handle_trigger_calendar_deadline(self, payload: dict):
+        """Dispatch one user-authored calendar Trigger occurrence.
+
+        The Trigger service claims the firing here and runs the work off this
+        lane — a framework run takes minutes and this thread also owns the
+        daily note, log retention, and every trace expiration.
+        """
+        from orchestrator import triggers
+        return triggers.service().handle_calendar_deadline(payload)
 
     def _handle_project_revisit_deadline(self, payload: dict):
         from oversight_events import emit
