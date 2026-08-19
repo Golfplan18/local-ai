@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-094c6034bf7d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Coalition consolidation and antagonist strategy escalation"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-562e8d35aee8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-f1afc989441b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-b4d98378df21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e7fc40d80abc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-339dbd0b4f7e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-96f69a8a2f35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-b4f3b9b9a06d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "The Judas Conclave - antagonist shadow alliance formalization"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f1afc989441b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-ca4038d3ea82#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-4e0bbd37706e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d79f993f6689#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-c3d0ffee3071#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f9d923ab780c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e38e70976f55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2fbfab0026e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-5737480b9619#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-ce729e45963a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "The Judas Conclave - antagonist shadow alliance formalization"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus foundation/chapter work, not antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Contemporary political satire, not historical American Judas fiction"
+    }
+  ]
+}

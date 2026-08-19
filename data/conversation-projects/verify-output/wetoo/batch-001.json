@@ -1,0 +1,246 @@
+{
+  "nexus": "wetoo",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo book work (economic/political content)"
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: political correctness and cancel culture chap"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo chapter development (moral/economic/political content)"
+    },
+    {
+      "candidate_id": "historical-ebf2e6268387#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Bowker book descriptions for We Too"
+    },
+    {
+      "candidate_id": "historical-bc2345944ec5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too book introduction"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-bc2345944ec5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: updating reader notes and formatting for abri"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too policy sections"
+    },
+    {
+      "candidate_id": "historical-334ec862f185#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Passion Matrix Politics"
+    },
+    {
+      "candidate_id": "historical-91c9b4284b02#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo chapter development (moral/economic/political content)"
+    },
+    {
+      "candidate_id": "historical-50875b7c4bd4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensed preview/recap for We Too series"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too policy sections"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: book publishing mechanics for wetoo series"
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-f97f6d200786#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: amazon book series descriptions and marketing"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-a0d4ea738b21#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: creating amazon product descriptions for book"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: updating italicized reader notes for abridged"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: chapter 18 - security state overreach content"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too project engagement: book extraction strategy and main street inde"
+    },
+    {
+      "candidate_id": "historical-b4717aae8fed#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto project, not We Too"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Methodology discussion, not We Too content"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "WeToo chapter: applying the ideation framework to build out "
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful WeToo engagement: gop troop deployment to dc as theater, the se"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful WeToo engagement: gop governors' dc troops, the self-contained "
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "WeToo chapter: requesting strategic validation and an overvi"
+    },
+    {
+      "candidate_id": "historical-b4717aae8fed#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo engagement via content topics: political foundations and strategy - mor"
+    },
+    {
+      "candidate_id": "historical-a39dc7dc0fa3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful WeToo engagement: l.e. n\u00e1poles essay on corporate manipulation "
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brand tax propaganda campaign, not We Too"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful WeToo engagement: planning a three-year left-wing 'brand tax' m"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo chapter development (moral/economic/political content)"
+    }
+  ]
+}

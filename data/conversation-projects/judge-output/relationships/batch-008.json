@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Realizing dating-app ambivalence reflects dropped pedestal-p"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing/editing work; not Relationships project."
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ex-wife control patterns; relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-2fd35c57b38d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Buddhist texts paraphrasing and SEO keyword development"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Establishing character voice and consistent writing perspect"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI news/political project; different project."
+    },
+    {
+      "candidate_id": "historical-d410ac8be976#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep exploration of polarity: Feminine surrender, youth as a"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Neighbor-love framework for altruism."
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-b98b7dde2242#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Crafting and refining initial message to woman named Sun: au"
+    },
+    {
+      "candidate_id": "historical-b6178076d6db#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entitlement's impact on gratitude and spiritual growth"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-b89f445b992b#3",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Death/acceptance in relationship context."
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI disruption timeline and economic arguments for rapid work"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI praise drafts for Forging a New Life After Divorce"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining the Character Framework Layer Twelve Output Managem"
+    },
+    {
+      "candidate_id": "historical-35d3ce6bf332#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal epistemology of judging others' motives: catching h"
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump's incompetence and policy failures"
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-502dcf23db23#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app opening lines"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building a consolidating Story Beat Framework and updating t"
+    },
+    {
+      "candidate_id": "historical-e085defd394e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-03792b0c388f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ella's weight-loss discipline and the guilt of loving restra"
+    },
+    {
+      "candidate_id": "historical-2ff6404c29c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal acknowledgment request"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analysis of unmatch failure and lessons learned about bold v"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI amplification for insight capture and synergy-driven cont"
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vision and mechanics of a multi-AI team with persistent vaul"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-47b3466480c2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dog training and masculine polarity: learning leadership thr"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief request for text-only response format"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fundamental physics constants and formulas"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework development for Step 31"
+    },
+    {
+      "candidate_id": "historical-92305a0aebc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing client-side ad-blocking/attention-filter and infor"
+    },
+    {
+      "candidate_id": "historical-cf87dd0bfbb9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Spiritual practice in relationship context."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining Plot Refinement Framework structure for choice-driv"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundational efforts and final schema implementation"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Initial profile analysis and seagull reference opener strate"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Summarizing Buddhist texts and meditation objects"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-1241a356940a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Crafting opening messages for dating context with masculine "
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot Refinement Framework - output assessment and restructur"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-b3b02b0b77e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework introduction and scope"
+    },
+    {
+      "candidate_id": "historical-7359aa6c62d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework analysis and confirmation of understanding"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuring and implementing SynthesisGPT system"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating conversation analysis and masculine framing"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Star Trek-inspired naming and thematic framework for documen"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic denial and populist voter betrayal reframing"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-bf757aef1ceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Integration after peak experiences, critiquing heaven-as-rew"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Request for text output"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project; different from Relationships."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference; nominal only."
+    }
+  ]
+}

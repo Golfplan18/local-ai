@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ae6b2b1fbdd6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating profile analysis to craft authentic connection messages"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expressing shared values and deep connection authentically in relationship"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agent collaboration framework, not human relationship dynamics"
+    },
+    {
+      "candidate_id": "historical-ab6365646925#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist Lamrim teachings on interconnectedness and compassion"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Oracle knowledge architecture, not interpersonal relationships"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting with no substantive content"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing personality fit and relationship values in dating"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Single brief dating message opener"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical chatbot display formatting"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Processing marriage dissolution and narcissistic abuse in relationships"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Buddhist practice of compassion-to-self, not interpersonal relationships"
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Redefining masculinity and building blueprint for future relationships"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel narrative decision, not real relationship content"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Present-moment charm and facilitating connection with others"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "UI formatting preferences"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Masculine/feminine dynamics and trapped relationship power"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI moral frameworks, not human relationships"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical documentation updates"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora framework development planning"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting"
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating messaging strategy with incomplete profile information"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character profile"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting"
+    },
+    {
+      "candidate_id": "historical-d8c73c6267df#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Analyzing internal resonance as relationship readiness metric"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fiction craft theory, not relationship dynamics"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Image generation request"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction content"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel chapter drafting"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Foundation mission expansion planning"
+    },
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character framework development"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical press release creation"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#23",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Recognizing social/family disconnection patterns"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Brief dating app opening message"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Buddhist practice and existential isolation concerns"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Evaluating compatibility and attraction in dating context"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Decision architecture for relationship compatibility evaluation"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel project briefing"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel plot framework"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character framework"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Collective intelligence document analysis"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Internal psychology theory, not interpersonal relationships"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character development framework"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating profile analysis and personality typing for compatibility"
+    },
+    {
+      "candidate_id": "historical-6a146fb56bf6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character profile"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mere greeting"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel plot framework"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Oracle AI announcement strategy"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#23",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MBTI and relationship anarchy dynamics in relationship context"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel subplot ideation framework"
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel development and outline"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book writing themes and structure"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel visual design framework"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical propaganda content creation"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction framework"
+    },
+    {
+      "candidate_id": "historical-8a168175f466#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cross-cultural relationship scenario and lifestyle exploration"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical authoritarian progression stages"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI guardrails and Oracle bootstrapping philosophy"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "First-contact dating strategies and chivalry vs egalitarianism"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI product concept ethics"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction content generation"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel character refinement framework"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Political/strategic framework development"
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel thematic architecture development"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Visual thinking research and interface design"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Internal psychological framework, not interpersonal relationships"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel thematic implementation"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction framework"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel writing methodology frameworks"
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical engagement notation"
+    },
+    {
+      "candidate_id": "historical-7a7376a5c460#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal relationship pattern transformation and dating approach"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel chapter framework development"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating profile analysis and fawn-response relationship patterns"
+    },
+    {
+      "candidate_id": "historical-587af854e46b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel chapter framework execution"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational polarity and long-term relationship dynamics"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating failure analysis and profile authenticity assessment"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Expert database framework for AI assistance"
+    },
+    {
+      "candidate_id": "historical-98262db26bac#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Meta-commentary on request processing"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel ideation framework development"
+    }
+  ]
+}

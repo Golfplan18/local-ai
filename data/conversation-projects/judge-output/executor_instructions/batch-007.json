@@ -1,0 +1,486 @@
+{
+  "nexus": "executor_instructions",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e4a018948eeb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating complete, reviewable formal complaint package with supporting changes"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SLAPP lawsuit legal advice, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics/cosmology manuscript drafting"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Airtable database filter syntax help"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme park pass purchasing strategy"
+    },
+    {
+      "candidate_id": "historical-fc4250471caa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discussion of 48 Laws of Power book"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI journalistic standards and ethics"
+    },
+    {
+      "candidate_id": "historical-68b112035b8f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Buddhist character development for fiction"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI cognitive extension framework discussion"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code and Obsidian vault integration"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NotebookLM duplicate file cleanup"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics cosmology paper drafting"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile message composition"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle delivery mechanism/strategy fiction"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics redshift-distance law research"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle fictional concept development"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted novel-writing methodology documents"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Whistleblower disclosure routing strategy"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project development coordination"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter updates and framework placement"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative continuity framework development"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Title/subtitle framework system updates"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-1705e63fd5c6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-6e103f54f449#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme refinement framework for novel"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development profile creation"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book preface/front matter development"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault smart connections discussion"
+    },
+    {
+      "candidate_id": "historical-2142a126b93a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SVG visualization refinement"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reader engagement evaluation framework"
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-1fc6742e04d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-dabd6d4f6e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Sheets formula help"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework"
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meditation/writing framework application"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-28503ecc3557#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme library execution for novel"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship analysis framework"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "The Human Nexus framework development"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice"
+    },
+    {
+      "candidate_id": "historical-839583df5598#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sexual pacing and relationship framework"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book series preview/recap writing"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-4300a407ba81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile message refinement"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-99df88574463#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unclear engagement with project content"
+    }
+  ]
+}

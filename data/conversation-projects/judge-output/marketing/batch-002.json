@@ -1,0 +1,486 @@
+{
+  "nexus": "marketing",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content creation, not marketing strategy"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework, not marketing strategy"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to marketing"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop/SSH technical setup, not marketing"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime policy pieces, not marketing"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection test message, minimal content"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content generation, not marketing"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing strategy"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cascade marketing strategy through influential nodes/audiences"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Distribution/exposure strategy for Ora software via Fiverr"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Tagline generation for book, no strategy context"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime framework, not marketing"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing related"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime narratives, not marketing"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime fiction, not marketing"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book sales and marketing strategy planning for WETOO series"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Brand tax meme campaign: production, style, distribution strategy"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime fiction, not marketing"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/polarity analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-668c6dc8fb26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious marketing concept, not user's marketing strategy"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel plot/writing frameworks, not marketing strategy"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fragment without clear marketing content"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Eight-phase project roadmap with launch coordination strategy"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content without clear marketing engagement"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Manifesto and evidence strategy for book project"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project strategy phases, product launch planning"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing and release strategy discussion"
+    },
+    {
+      "candidate_id": "historical-cb04ecd15583#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating marketing blurb/emotional hooks for book"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime writing, not marketing"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strategy and planning for reaching audience/market"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing approach and audience strategy"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Product positioning and launch strategy"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing content strategy, not marketing plan"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Product marketing and launch strategy"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book marketing and promotional planning"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing plan and audience/channel strategy"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing plan and positioning strategy"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content fragment, no marketing context"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Launch and promotional strategy planning"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book release and marketing plan discussion"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Launch strategy and market positioning"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Product rollout and marketing strategy"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Release strategy and market approach"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Promotional strategy and market planning"
+    },
+    {
+      "candidate_id": "historical-31e0a98f4239#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Launch planning and market strategy"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/dating advice, not marketing"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Audience engagement and promotional strategy"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Marketing mentioned, but not the focus"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Market strategy and channel planning"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Release and promotional planning"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Marketing mentioned in passing, not the focus"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Campaign and market strategy planning"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Launch and market planning strategy"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Product launch and marketing strategy"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strategic planning for market launch"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Marketing mentioned, but not focus"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Launch strategy and market planning"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content, not marketing"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book release and promotional planning"
+    }
+  ]
+}

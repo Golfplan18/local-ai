@@ -1,0 +1,96 @@
+{
+  "nexus": "technology",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a7991712385d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explores enabling technologies across energy, biotech, space, and computing domains."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Focuses on subconscious processing and learning methodology, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses Oracle system architecture and memory management, not technology enhancement."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses hacker mindset philosophy and AI system design principles."
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Focuses on IP law and business strategy for AI companies, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses Ora project strategy and release positioning, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political and economic commentary on AI subsidies, not technology assessment."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News article about tariffs and media figures, unrelated to technology."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflects on AI technology's impact on writing mastery and creative work enhancement."
+    },
+    {
+      "candidate_id": "historical-a495a6f11ee3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Evaluates PKM systems (Zettelkasten, atomic notes, Obsidian) for knowledge organization."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System architecture design for AI agents, not evaluation of existing technologies."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designs dual-AI system using LLMs to enhance thinking and reduce hallucination."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News article about tariffs and media figures, unrelated to technology."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#38",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Compares Gemini Pro vs Flash AI models for writing-framework technical work."
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Explores bundling multiple AI companion personas for different daily-life purposes."
+    }
+  ]
+}

@@ -1,0 +1,487 @@
+{
+  "nexus": "american_king",
+  "batch": 2,
+  "judged": 80,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bf757aef1ceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-da84b5adc823#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct American King work: 'american king'"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-f7592c246d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-e8e9f9048caf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus/American Jesus project (not American King)"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-c157d4830347#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus/American Jesus project (not American King)"
+    },
+    {
+      "candidate_id": "historical-0f15efe8763b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-74af1412346c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus/American Jesus project (not American King)"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-74af1412346c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-178acc556d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-da0de4d8ab3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-498c4d5aa261#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus/American Jesus project (not American King)"
+    },
+    {
+      "candidate_id": "historical-691590b40629#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct American King work: 'american king'"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-3286f0cfe3c7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-132275a0e56b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-5e38b0578a49#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-f970ba5f3dee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-5737480b9619#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-7c8f481a77ab#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-60c75298354d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-2fbfab0026e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction project (not American King)"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct American King work: 'american king'"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project engagement"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work (mentions potential American King sequel)"
+    }
+  ]
+}

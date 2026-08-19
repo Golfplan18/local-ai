@@ -1,0 +1,486 @@
+{
+  "nexus": "human_nexus",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian/Linter properties config unrelated to AI Agents"
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating conversation"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses AI agent capabilities for vault automation"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building AI model evaluation taxonomy and task specialty matching"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical fiction project"
+    },
+    {
+      "candidate_id": "historical-0b651a28f9c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump authoritarian fiction scenarios"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sudowrite fiction writing infrastructure and organization"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Cloud DNS nameserver technical setup"
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter on political communication strategy"
+    },
+    {
+      "candidate_id": "historical-d9e75149f365#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter outline and character development"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle personal AI system setup recap, not AI Agents research"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OkCupid profile analysis and dating messages"
+    },
+    {
+      "candidate_id": "historical-313084bad595#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Mode System architecture and pipeline, not AI Agents writing"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book chapter on right-wing content creation"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating profile analysis and relationship ethics"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump character design and dialogue prompts"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora framework Step 8 evaluation restructuring"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian embeds flattening and dashboard queries"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic book SEO metadata and description"
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating message character limits"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump ideation framework criteria"
+    },
+    {
+      "candidate_id": "historical-048e42db88b6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter death scene draft"
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical regime policy generation"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system MVP design and natural language specs"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship visioning and chemistry messaging"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md parallel properties display debugging"
+    },
+    {
+      "candidate_id": "historical-b020d492aa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmological white paper on physics and universe"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle personal AI cross-thread awareness setup"
+    },
+    {
+      "candidate_id": "historical-f71522357aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical fiction scenarios"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Outline on benefits of AI agents and hybrid collaboration"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting exchange"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reorganization using meta-principles"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message to Fery establishing connection"
+    },
+    {
+      "candidate_id": "historical-7848123699da#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Einstein static universe theory section rewrite"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real American Communist Manifesto book redraft"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Overwhelmed by rapid tooling changes personal reflection"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel writing pipeline and frameworks"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document verification for laws and regulations"
+    },
+    {
+      "candidate_id": "historical-4f21a26ab092#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Email summary of concept for personal friend"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parable placement in American Jesus chapter"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consolidating iterative prompt framework outputs"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Base filter debugging for Obsidian dashboard"
+    },
+    {
+      "candidate_id": "historical-ec8c972c086f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI infrastructure setup on Mac Studio"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge match Kira profile personality analysis"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating dynamics and book project on distinguishing tyranny"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dataview query crash and sidebar panel debugging"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agents and context engineering from video analysis"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Foundation and Matrix Framework comparison"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Voter psychology and policy accountability chapter"
+    },
+    {
+      "candidate_id": "historical-d6f49bfac60a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical authoritarianism guide"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Critique of AI agent design limitations and mundane tasks"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter draft on understanding to action strategy"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge profile thoughtful messaging response"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework implementation review and content restoration"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible and ideation framework"
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DALL-E image generation capabilities question"
+    },
+    {
+      "candidate_id": "historical-c1ca57ae49c9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-session problem definition using conversation RAG"
+    },
+    {
+      "candidate_id": "historical-2b0823a6d50b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "List of prominent AI agent researchers in the field"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "White paper on AI-enabled human intelligence amplification"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King character and writing timeline"
+    },
+    {
+      "candidate_id": "historical-90240744c3c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character profiles for Hayzeus and others"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian digital garden GitHub and Vercel setup"
+    },
+    {
+      "candidate_id": "historical-4551e5cf43cc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Digital garden distribution thread analysis"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model selection strategy and Python CLI usage"
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Metrics refinement and goodness of fit evaluation"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Style Guide Framework pair detailed comparison"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing method and ideation"
+    },
+    {
+      "candidate_id": "historical-a268d9ca74cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 1 Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-b268aebce446#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical fiction background"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message tone refinement on Hinge"
+    },
+    {
+      "candidate_id": "historical-ccb3026bd90c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Maps of content in Obsidian workspace paradigm"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting exchange"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing evaluation frameworks review"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character relationship matrices execution"
+    },
+    {
+      "candidate_id": "historical-f971afe5714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sudowrite features evaluation for fiction writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scene structure and plot chapter development"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Draft epilogue consideration for personal story"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting exchange"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Eleventy vault publishing and Obsidian Publish setup"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Three-book structure at different resolutions from same material"
+    }
+  ]
+}

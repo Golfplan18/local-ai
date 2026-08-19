@@ -1,0 +1,336 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "persistent AI memory and context window as RAM constraint\u2014core Ora memory feature"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "dating profile visual design for Hinge, unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Make.md properties issue, not Ora platform"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "multi-model orchestration design using Claude Code\u2014Ora platform architecture"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "story chapter evaluation framework, not Ora"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "OpenRouter free models and soft-launch strategy\u2014Ora licensing/distribution"
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "marriage narrative essay analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mac Studio local AI swarm architecture and MVP\u2014building Ora system"
+    },
+    {
+      "candidate_id": "historical-573ae5dba278#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "story chapter archetypal analysis, not Ora"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "explicit Ora App Store positioning and competitive differentiation"
+    },
+    {
+      "candidate_id": "historical-effebccbd384#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical fictional press releases, unrelated"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "story environmental justice subplot framework, not Ora"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architectural development and Tailscale setup"
+    },
+    {
+      "candidate_id": "historical-4871dae3fbb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pixel phone shopping specs, unrelated"
+    },
+    {
+      "candidate_id": "historical-6a4ebf326a2d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "dating profile disappearance analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora Gear system redesign and pipeline formalization"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "dating profile MBTI analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating message writing, unrelated"
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "personal life rhythm and introspection, unrelated"
+    },
+    {
+      "candidate_id": "historical-79e24cbeb76a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Samsung TV/soundbar cable setup, unrelated"
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude features overview and ORA system design incorporation"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atticus publishing platform proofreading, unrelated"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical authoritarian propaganda fiction, unrelated"
+    },
+    {
+      "candidate_id": "historical-b020d492aa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "cosmological white paper analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-74d320d60d90#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "dating app engagement tracking strategy, unrelated"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian digital garden publishing setup, not Ora"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "plot refinement framework for narrative, not Ora"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical regime policy fiction, unrelated"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "book metadata and SEO keywords, unrelated"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "generic AI prompting research, not specific Ora engagement"
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Star Trek naming and document theming, unrelated"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Wisdom Nexus positioning\u2014ambiguous if Ora or separate project"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble dating message crafting, unrelated"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "legal complaint document development, unrelated"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "dating app polarity analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-eb3179f1f568#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ChatGPT product changes analysis, not Ora platform"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "writing style guide template creation, unrelated"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tagging and properties schema, not Ora"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "voter psychology story chapter work, not Ora"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI voice satisfaction and spinner tool testing, not Ora"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI headlines/cartoons and Midjourney prompts, not Ora"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "white paper tool comparison, unrelated"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical fiction outline (DIKLIS), unrelated"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian digital garden GitHub/Vercel setup, not Ora"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian iPhone Sync authentication, not Ora"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "philosophical discussion of AI extending consciousness, unrelated"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Cloud DNS configuration, unrelated"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora background-processing and conversation architecture design"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "story tonal implications and technical friction, not Ora"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAM budgeting for simultaneous local model loading\u2014Ora core constraint"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "plot refinement framework for narrative choice, not Ora"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "book outline framework, not Ora app development"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "orchestrator boot.md architecture simplification\u2014Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "working title brainstorming for article, unrelated"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical political fiction with propaganda contrast, unrelated"
+    }
+  ]
+}

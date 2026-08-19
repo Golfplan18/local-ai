@@ -1,0 +1,486 @@
+{
+  "nexus": "science",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no science engagement."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference formatting request."
+    },
+    {
+      "candidate_id": "historical-2142a126b93a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating visualizations for Expanding Awareness Cosmology paper."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI runtime mechanics translation; not physics/cosmology."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference request."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference request."
+    },
+    {
+      "candidate_id": "historical-9debdc26db4b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Validating Big Block cosmology model against data with Occam's razor."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda strategy; no science content."
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "X-Men character question; pop culture, not science."
+    },
+    {
+      "candidate_id": "historical-9b5fb91c1839#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Thank you email referencing cosmology work; mention only, not engagement."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting instruction."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Projects feature discussion; not science."
+    },
+    {
+      "candidate_id": "historical-3b660e0ad70a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic mission reflection on AI as tool; not project engagement."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#72",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Article on TV writer productivity; not science."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy/publication economics dossier; not fundamental physics."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual and political reflection; not science engagement."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framework design for fiction; not science."
+    },
+    {
+      "candidate_id": "historical-a3d5a03a3e5b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating Plinko Paradigm quantum mechanics alternative for technical rigor."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framework design for fiction; not science."
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting request."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction writing; not science."
+    },
+    {
+      "candidate_id": "historical-99df88574463#59",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sci-fi story premise brainstorming; creative fiction, not physics."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework; not science."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal reflection on novel writing arc; not science."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework development; not science."
+    },
+    {
+      "candidate_id": "historical-5c1912002751#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing and verifying wobble model paper eliminating wave function collapse."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book concept for political/historical work; not physics/cosmology."
+    },
+    {
+      "candidate_id": "historical-ad85f53cc6d2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Analyzing boundary between scientific evidence and theoretical extrapolation in cosmology."
+    },
+    {
+      "candidate_id": "historical-6493716b1eb6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reading and studying 20th century cosmology transformation and history."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical vault publishing setup; not science content."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic AI prompting methodology research; not physics/cosmology."
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic AI empowerment vision; not specific science project engagement."
+    },
+    {
+      "candidate_id": "historical-e1e35d5d5869#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel feedback framework; not science."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News article link reference; not science engagement."
+    },
+    {
+      "candidate_id": "historical-4d6f9f65baeb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI guardrails and military policy discussion; not physics/cosmology."
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative work quality/speed tradeoff; not science."
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical sci-fi on consciousness/immortality; creative speculation, not physics."
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework character development for organizational system; not science."
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political strategy and redemption paths; not science."
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology standardization; not science."
+    },
+    {
+      "candidate_id": "historical-ae59a367dd41#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring mathematical connections between Higgs field and gravity using AI."
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "RAG system design and provenance; technical infrastructure, not science content."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Campaign strategy validation for book-plus-tools project; not science."
+    },
+    {
+      "candidate_id": "historical-40f21d0c4fcb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Paper continuation setup; routine preparation with insufficient engagement shown."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework analogies for organizational system; not science."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Testing 9B model and defending cosmology/consciousness claims."
+    },
+    {
+      "candidate_id": "historical-085d7ed782ef#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Celebrity spiritual journey; not science."
+    },
+    {
+      "candidate_id": "historical-9d1e60a5399e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Structured analysis of quantum mechanics interpretations and discussions."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test exchange; not science content."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting corrections for markdown; not science."
+    },
+    {
+      "candidate_id": "historical-194c1aeb3766#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Seeking research collaborators; too vague, no clear physics/cosmology indication."
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal strategy for novel publication; not science."
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical propaganda fiction; not science."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction development; not science."
+    },
+    {
+      "candidate_id": "historical-63297d343a27#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Market analysis for AI/capital; not physics/cosmology."
+    },
+    {
+      "candidate_id": "historical-235a30829941#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction; not science."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI authorship philosophy; not physics/cosmology science."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style rule hierarchy; not science."
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News infrastructure setup; not science."
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal correspondence draft; not science."
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal journey reflection; too generic for project engagement."
+    },
+    {
+      "candidate_id": "historical-ded7b2682253#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI information processing equations; system design, not physics."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News article link; reference only, not engagement."
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Organizing book outline combining multiple physics papers."
+    },
+    {
+      "candidate_id": "historical-71f041ad6958#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Bell's Theorem challenge and experimental validation framework."
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide creation; not science."
+    },
+    {
+      "candidate_id": "historical-fbf856901b8b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Loop quantum gravity paper research request."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Speculative concepts testing coherence of Expanding Awareness framework."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publication strategy; too vague, no clear science engagement."
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book foreword writing; not science."
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System documentation updates; not science."
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Learning framework for Ora system; not science."
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic continuation placeholder; no content."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book description framework for novel; not science."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Business model documentation; not science."
+    },
+    {
+      "candidate_id": "historical-f79ca4d0a070#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Territory analysis subject too vague; no clear science connection."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spinner project development; separate project, not science."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Exploring alternative physics models and quantization variants."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project setup message; no science engagement shown."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon description framework for novels; not science."
+    }
+  ]
+}

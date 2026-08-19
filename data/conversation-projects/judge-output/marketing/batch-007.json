@@ -1,0 +1,486 @@
+{
+  "nexus": "marketing",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-25565ad7fbfd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author branding and book front matter strategic marketing placement."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-42a52e65887d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-44b1884f98e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Comprehensive book promotion strategy and author platform building."
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-8a6f72c1245a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon product listing optimization and book discoverability strategy."
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-b13a5d453d7f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2fefd61c9a80#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not engaged with marketing strategy for published works."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not engaged with marketing strategy for published works."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a0951f5b61bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-b2cbd9b3868d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-a643b424e8d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d72434e83719#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-9710c4742c87#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-7465dc28ab4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-83c4903fef5e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-a4f26e6621f9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-7ac07094f39d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    },
+    {
+      "candidate_id": "historical-ac67a6505ac0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation addresses unrelated project; no engagement with Incubator system"
+    }
+  ]
+}

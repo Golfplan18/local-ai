@@ -1,0 +1,486 @@
+{
+  "nexus": "project_workshop",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure greeting with minimal content"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure greeting with minimal content"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal knowledge infrastructure, not production project scoping"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure discussion, not project definition or scoping"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure greeting with minimal content"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure discussion, not project definition or scoping"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation task, not project definition"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure discussion, not project definition or scoping"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technical book project orientation discussion"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure discussion, not project definition or scoping"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical task or personal discussion, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System framework documentation or design review"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation task, not project definition"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical task or personal discussion, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical research or platform support, not project workshopping"
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical research or platform support, not project workshopping"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book project revision guidance"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system details, not project scoping"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical research or platform support, not project workshopping"
+    },
+    {
+      "candidate_id": "historical-8c9540b1886d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-c1ca57ae49c9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-e377861dcb9e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical research or platform support, not project workshopping"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship coaching, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical task or personal discussion, unrelated to project scoping"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal formatting request, no project engagement"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/story project development, frameworks, or execution"
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation task, not project definition"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly aligned with project scoping"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical research or platform support, not project workshopping"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure greeting with minimal content"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/methodology creation and refinement"
+    }
+  ]
+}

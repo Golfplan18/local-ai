@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Moral foundations of progressive politics - corporate a"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User posts and assistant reviews the full \"American Jes"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: The Anaheim kindness case study and integrating the mod"
+    },
+    {
+      "candidate_id": "historical-d5f30b083dde#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Happiness research and purpose/contribution across mult"
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Book structure, narrative approach, and writing style m"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Moral framing: Untangling personal vs. collective 'entitlement' and re"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading and reviewing the full 'American Jesus' master "
+    },
+    {
+      "candidate_id": "historical-6aadb2eefd0b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political character development: Carla Marks character creation and research prompt deve"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: themes, characters, setting"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Building and iteratively revising the 'Ideation Framewo"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political leader character: Building a fictional left-wing president who publicly c"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading and reviewing the full 'American Jesus' story b"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Generalized/universal-pattern version of the 'American "
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Case study for narrative: Adapting the real-world Anaheim 'City of Kindness' stor"
+    },
+    {
+      "candidate_id": "historical-e085defd394e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Pasted 'American Jesus' themes-and-concepts reference d"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Designing a 'Theme' mechanic targeting ten conservative"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus (Book 1) story bible: universal themes, "
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus (generalized) outline review"
+    },
+    {
+      "candidate_id": "historical-82bc9a8cbe6b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User submits the full American Jesus master outline (th"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User pastes the complete 'American Jesus' story bible ("
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User pastes the full 'American Jesus' (book 1) story ou"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Concept for a 'reverse Prince' book on resisting author"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Building an AI-assisted vault/agent system: motivation,"
+    },
+    {
+      "candidate_id": "historical-db86c4c02a88#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User pastes an earlier/parallel American Jesus story bi"
+    },
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Building the 'American Jesus' novel story bible: univer"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Continuing the friend debate: researching Trump's infid"
+    },
+    {
+      "candidate_id": "historical-d70d96ebd5f9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Pasting the full 'American Jesus' themes, character, an"
+    },
+    {
+      "candidate_id": "historical-68955b67ecda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus 3 novel: outline review and chapter-refi"
+    },
+    {
+      "candidate_id": "historical-90240744c3c0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Building American Jesus character profiles (Hayzeus, Ma"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus master story bible: themes, character pr"
+    },
+    {
+      "candidate_id": "historical-8140ff4b921d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Co-writing the American Jesus novel: outline review, ch"
+    },
+    {
+      "candidate_id": "historical-0f15efe8763b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Building the \"American Jesus\" (Book 1) story bible \u2014 th"
+    },
+    {
+      "candidate_id": "historical-ec233979c12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading the American Jesus novel's master outline and C"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Submission and review of the full 'American Jesus' nove"
+    },
+    {
+      "candidate_id": "historical-3286f0cfe3c7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: 'American Jesus' book bible setup: universal thematic f"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading the American Jesus master story outline (themes"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Developing the Ideation Framework for Diklis Chump writ"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading the 'American Jesus' story bible (themes, chara"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Full 'American Jesus' story bible submission (universal"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User pastes the full 'American Jesus' story bible for t"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Ingesting the full 'American Jesus 2' universal-themes/"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus 3 story bible review: universal themes, "
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Reviewing the full 'American Jesus' master outline for "
+    },
+    {
+      "candidate_id": "historical-f8881242807a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Archetypal character analysis and choice architecture f"
+    },
+    {
+      "candidate_id": "historical-872bae7104b7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: universal themes, character"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User pastes an expanded version of the 'American Jesus "
+    },
+    {
+      "candidate_id": "historical-1a491317e118#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Reviewing the full American Jesus story bible/outline"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading the full American Jesus outline (universal them"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: universal theme/character o"
+    },
+    {
+      "candidate_id": "historical-62b0385facb5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Loading the 'American Jesus' novel outline (themes, cha"
+    },
+    {
+      "candidate_id": "historical-03792b0c388f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Building out framework documents and chapter outlines f"
+    },
+    {
+      "candidate_id": "historical-d410ac8be976#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Developing the 'American Jesus 2' novel: master outline"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus: pasting the thematic implementation gui"
+    },
+    {
+      "candidate_id": "historical-7eb3419147b1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Themes and concepts outline for 'American Jesus' pasted"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Detailed design of the 'response spinner' AI tool: tech"
+    },
+    {
+      "candidate_id": "historical-dd3f3774c641#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Executing the Theme Refinement Framework on the 'Americ"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: User submits and AI ingests the full American Jesus mas"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: universal themes, character"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus master thematic outline submission (them"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Building/refining the Ideation Framework and applying i"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Reviewing the full 'American Jesus' master outline (the"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Uploading the 'American Jesus' Themes and Concepts stor"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Satirical regime documentation exploring policy contrad"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus 3 \u2014 master thematic/story outline pasted"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Full 'American Jesus 3' story bible (universal themes, "
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Re-uploading the complete, expanded 'American Jesus' ma"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Ideation Framework applied and refined for the Environm"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Ingesting the full 'American Jesus 2' story bible (them"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Oracle browser/AI as an in-book subplot: donor's 'Reali"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Authoritarian regime satirical fiction"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Developing the novel 'American Jesus 2': universal them"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Satirical authoritarian regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-a3b201b32fc5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Building the 'American Jesus' novel bible: themes frame"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Creating satirical political fiction about authoritaria"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: universal themes, character"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: Review of American Jesus 3 master outline, character/se"
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus 3 novel development: review of the maste"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Satirical authoritarian regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative: American Jesus story bible: themes, settings & structur"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Politics project work: Extended coaching of the ongoing text debate with frien"
+    }
+  ]
+}

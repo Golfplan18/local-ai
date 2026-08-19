@@ -1,0 +1,246 @@
+{
+  "nexus": "american_king",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-89e667eccd46#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real Justice Jackson dissent analysis, not American King narrative"
+    },
+    {
+      "candidate_id": "historical-d7ece8fdb1c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Internal psychology model (parliament metaphor) unrelated to American King"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal spiritual practice reflection on hiking, not book project"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Duplicate SCOTUS analysis of Jackson dissents, not American King"
+    },
+    {
+      "candidate_id": "historical-df5bda56cf69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly American Jesus project character development (Big Jim), predecessor not American King"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#48",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real 9th Circuit National Guard case analysis and federal authority dynamics"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical Diklis Chump regime Reality Reports, distinct satirical project"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy pieces for Diklis Chump fiction"
+    },
+    {
+      "candidate_id": "historical-7d4b3c06a311#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real political strategy about Texas 2030 redistricting as leverage"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Balls and Strikes Supreme Court justices book project, different work"
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real political/economic analysis of left-wing candidate recruitment patterns"
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical Diklis Chump religious exploitation policies, distinct project"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#41",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real current events: Noem military arrests and Posse Comitatus legal analysis"
+    },
+    {
+      "candidate_id": "historical-93eec5509bef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Women's Coalition framework for American Jesus project, not American King"
+    },
+    {
+      "candidate_id": "historical-408e770f67b0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real Trump political escalation patterns and base distraction strategy"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system mode file verification work, meta-layer infrastructure"
+    },
+    {
+      "candidate_id": "historical-355d2f7817d0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus's Mornings subplot evaluation for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real geopolitical analysis: trade conflicts, Iran policy, generational alignment"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter 23 morning scene drafting for American Jesus Hayzeus narrative"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 1 Chapter 6 scene breakdown and parable placement"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real Supreme Court gun ban case analysis, no fictional character content"
+    },
+    {
+      "candidate_id": "historical-1474d3037024#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 26 beat requirements for Paul's moral crossroads"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Movement institutional success creating vulnerability\u2014central American King thesis"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Crisis architecture for movement becoming systemic force, core American King conflict"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump authoritarian decline satire grounding 2027-2028 collapse forecast"
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real political analysis of new left-wing leaders rejecting centrist apologetics"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book outline v4 restructuring ambiguous whether American King or American Jesus"
+    },
+    {
+      "candidate_id": "historical-74a79186230c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter 1 Commander's Dog scene development for American Jesus"
+    },
+    {
+      "candidate_id": "historical-b95e11bc60c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 1 Chapter 18 narrative draft explicitly American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly names American King as Malcolm Little King trilogy structure"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 20 James Zebedee conversion arc development"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 26 Mount Vernon speech Hayzeus historical reinterpretation"
+    },
+    {
+      "candidate_id": "historical-e6d87dd73ee5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Juan Bautista character development across American Jesus three-book arc"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter Foundation Framework for American Jesus Act 2 narrative architecture"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 11 Drawn by Firelight apostolic conversion scene"
+    },
+    {
+      "candidate_id": "historical-70aa02237058#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real-world political commentary using American Jesus thesis to interpret Trump"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thomas Reynolds character profile for American Jesus ensemble narrative"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shop Apostles group profile motivations for American Jesus Hayzeus followers"
+    },
+    {
+      "candidate_id": "historical-77114c2b8f52#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Song and artist selection for seven Hayzeus speeches in American Jesus"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 11 Johnny Zebedee conversion through music refinement"
+    }
+  ]
+}

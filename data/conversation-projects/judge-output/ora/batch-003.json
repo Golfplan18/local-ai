@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model selection/testing for Ora"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NLP book (Ora companion project)"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NLP book (Ora companion project)"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics research (quantum/wobble)"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "References Wisdom Nexus (Ora vault)"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic LLM comparisons"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle project (distinct from Ora)"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "References Wisdom Nexus (Ora vault)"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent platform listings"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI systems book with agent architecture"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#62",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic LLM comparisons"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura project (distinct from Ora)"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code features/debugging"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Custom persona creation (HonnoldGPT/SynthesisGPT)"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-bf0d82c82206#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code features/debugging"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-substantive greeting/request"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious/political fiction"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Three-book project outline (NLP/Adversarial/Field Manual)"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Three-book project outline (NLP/Adversarial/Field Manual)"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-substantive greeting/request"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-substantive greeting/request"
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Ora relevance"
+    }
+  ]
+}

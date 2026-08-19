@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Named persona prompting technique"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Evaluating and matching different AI models (Claud"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: AI system design using Edward de Bono's thinking f"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Discovery of unprecedented capabilities built into"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Named persona prompting technique"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI model/platform evaluation"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Summary briefing for framework refinement research"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Workflow integration with Google Sheets and platfo"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Named persona prompting technique"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Orchestrator design and cross-evaluation session m"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Debugging and redesigning the user's AI-assisted n"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Named persona prompting technique"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-3a0012ae92ba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-941494451b48#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Sleep architecture, work process orchestration, an"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: AI safety argument consolidation and refutation"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Evaluation of AI agent frameworks"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2effcc23768e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Prompt architecture and AI-tool relationship funda"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Matching AI models to tasks and logging each tool'"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Practical LM Studio setup/troubleshooting and judg"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-7a94181f5723#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Template design for prompt engineering"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Framework Creation Framework capabilities versus I"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Template design for prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Designing a local-LLM 'quarterback': hardware opti"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: AI-Assisted Writing Method overview and iterative "
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction work, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Available multi-agent frameworks and MVP planning"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear/weak connection to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct prompt engineering work: Editorial review of book chapters 1-3 for flow, co"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-instruction or unrelated topic"
+    }
+  ]
+}

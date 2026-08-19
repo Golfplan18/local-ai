@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-197f9bba79b6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-54169f247bf0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-54169f247bf0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-f7592c246d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-350ad5373215#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-bcd3eafbee93#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-285dcba65070#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-fe82500974ee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-61e810e4bf18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-197f9bba79b6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-497d67010709#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-e8e9f9048caf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work; American Judas is the antagonist mirror project"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with American Judas antagonist mirror narrative project"
+    }
+  ]
+}

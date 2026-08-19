@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5641f96f70e8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): regime"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): novel"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-b25ebfb53432#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): fiction"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): regime"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): fiction"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relationship work with specific person"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): regime"
+    },
+    {
+      "candidate_id": "historical-0aae1e8a45fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): satirical"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): chapter"
+    },
+    {
+      "candidate_id": "historical-7b0ed5dce33d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-7aca231badb1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): database"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-3698ac21577b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): book outline"
+    },
+    {
+      "candidate_id": "historical-b34fed214de8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-6a05a3640fa9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): satirical"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-d1a87e0c51cc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): regime"
+    },
+    {
+      "candidate_id": "historical-a5b84067f129#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-7ebd047651ee#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): regime"
+    },
+    {
+      "candidate_id": "historical-61e1be728b29#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal spiritual/growth work"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-e8e8d2047149#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): novel"
+    },
+    {
+      "candidate_id": "historical-0a8344b0c7eb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): character"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit relationship topic in subject"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): technical"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): novel"
+    },
+    {
+      "candidate_id": "historical-211f14516d46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (fiction/tech): novel"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-ba8b08d42e98#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No relationship content found"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantial relationship discussion"
+    }
+  ]
+}

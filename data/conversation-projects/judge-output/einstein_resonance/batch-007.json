@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c2c29998231a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User's cognitive psychology reflection, not Einstein Resonance work"
+    },
+    {
+      "candidate_id": "historical-9a60649f66a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reviewing unrelated Bell's Theorem challenge paper"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline restructuring unrelated to cosmology+quantum synthesis"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical/legal document consistency review, not physics work"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing framework design, not ER project"
+    },
+    {
+      "candidate_id": "historical-2ec5ffd19749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User's own quantum interpretation theory, not ER synthesis work"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distributional reporting review methodology unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-71f041ad6958#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bell's Theorem and quantum mechanics research unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter refinement writing framework, not ER project"
+    },
+    {
+      "candidate_id": "historical-735c5da9369b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Listing perplexing physics problems without ER engagement"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Condensing book chapter for non-ER project"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Markdown output format preference, not substantive work"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Compressing book chapter for non-ER work"
+    },
+    {
+      "candidate_id": "historical-194c1aeb3766#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Identifying collaborators for user's own paper, not ER synthesis"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing frameworks for novel writing, not ER project"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code setup and installation, not ER work"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction proposals unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-2f549ebc64a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User's own quantum experiment brainstorming, not ER synthesis"
+    },
+    {
+      "candidate_id": "historical-478c44f2eff6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-book project system overview updates, not ER work"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Prior art repository concept unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing platform Bowker discussion unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding to mental model library, not ER project"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction writing about religious corruption"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter review about environmental policy, not ER"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Simple test confirmation, no substantive content"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Annotating cosmological constant on image, not synthesis work"
+    },
+    {
+      "candidate_id": "historical-035aeff0121d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Redrafting Expanding Awareness paper gravitational lensing section"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reporting CP violation particle physics discovery news"
+    },
+    {
+      "candidate_id": "historical-59de519634d0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Identifying weak foundational interpretations in cosmology/QM"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflecting on three-book structure accomplishment, not ER"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel outline refinement unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic tariff analysis unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-b0aa129258ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal boundaries discussion, not ER work"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction story development unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter redraft about collective organization"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework Creation Framework documentation, not ER"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious corruption framework unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation recovery via OCR, not ER work"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Midjourney image generation styles list"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User's consciousness/pattern-recognition theory development"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter outline development unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-60546fd856ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter development"
+    },
+    {
+      "candidate_id": "historical-c7eacc31d735#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Expanding Awareness paper adding quantum gravity discussion"
+    },
+    {
+      "candidate_id": "historical-b4df60922cfd#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal confirmation response without substantive work"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing framework marketing pages"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Expanding Awareness Cosmology redshift-distance formula"
+    },
+    {
+      "candidate_id": "historical-124fb5fbfebb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Einstein's QM objections philosophy without ER engagement"
+    },
+    {
+      "candidate_id": "historical-74c192b3ec2a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mac microphone technical support unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Boot.md system files development unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing AI tools integration list"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User instruction about response format preference"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science fiction AI consciousness and villain design"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WeToo series book publishing strategy"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile coaching analysis"
+    },
+    {
+      "candidate_id": "historical-fe1a978268f6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "User's own static cosmology model development"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Listing prominent experts unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book preface revision instructions for non-ER work"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliament of Self framework documentation"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing strategy about three-book split"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character-theme integration evaluation"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel character profile development"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Avatar video generation platforms research"
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Initial project briefing for unrelated work"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing differential propagation concept for EAC"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy scenario unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing evaluation frameworks unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis unrelated to ER"
+    },
+    {
+      "candidate_id": "historical-52be45eaaa7b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Situational awareness Wikipedia article request"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Edge observer cosmological thought experiment"
+    },
+    {
+      "candidate_id": "historical-63eaedc497c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WeToo series book publishing setup"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing dating profile opening messages"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book preface revision for non-ER work"
+    },
+    {
+      "candidate_id": "historical-941494451b48#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal reflection on work flow states and memoir"
+    },
+    {
+      "candidate_id": "historical-9c93972e2dc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Question about Nobel Prize amount"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing strategy for unrelated work"
+    },
+    {
+      "candidate_id": "historical-c32962c7953e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter development for non-ER work"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and analysis"
+    },
+    {
+      "candidate_id": "historical-ead5fbe0e672#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Light propagation and cosmic horizons in expanding universe"
+    },
+    {
+      "candidate_id": "historical-ed78f300ea10#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing blurb for Expanding Awareness Cosmology"
+    }
+  ]
+}

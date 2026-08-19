@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction press release templates (not MSI)"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MSI infrastructure reference (Astro, Cloudflare, Substack)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MSI infrastructure reference (Astro, Cloudflare, Substack)"
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Press release template (unclear if MSI or general fiction)"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reference to MSI voice or correspondent role"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/framework/outline project (not MSI)"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reference to MSI voice or correspondent role"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Main Street Independent reference"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reference to MSI voice or correspondent role"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-f6ed8919ddd6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MSI infrastructure reference (Astro, Cloudflare, Substack)"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject names non-MSI project or Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    },
+    {
+      "candidate_id": "historical-e17e3306ef2f#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear MSI publication engagement detected"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "autism_acceptance",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile editing, not book manuscript work."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-b742c311aea1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora technical system work, not book manuscript."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship coaching, not book work."
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system book project, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto book, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora technical system work, not book manuscript."
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Buddhist/Ora system book project, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-4d731138d953#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship coaching, not book work."
+    },
+    {
+      "candidate_id": "historical-40a78faa8d83#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-33655ad00563#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship coaching, not book work."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-40a78faa8d83#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto book, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#19",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-9d54ee10c6bb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary book, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-80a707f6c5b5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary book, not autism acceptance."
+    },
+    {
+      "candidate_id": "historical-cb96d897dc2a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-cb96d897dc2a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-36363d37a833#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal memoir content about parenting autistic son."
+    },
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism acceptance book manuscript or chapter development."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Does not match autism acceptance book project scope."
+    }
+  ]
+}

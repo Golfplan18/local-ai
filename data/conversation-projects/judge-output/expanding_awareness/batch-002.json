@@ -1,0 +1,486 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: character framework/content"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: character framework/content"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-7848123699da#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Hubble observations in cosmology context"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-ead5fbe0e672#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-ce11b4fc6234#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-f5ce67c0f73d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-7848123699da#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-9debdc26db4b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-9a2769ad45c6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-763e5ba44f44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-1ba54ad28a29#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-daf779d2538f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-9debdc26db4b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-554ee7910a7a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-d0298b033f21#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-17c35649ab85#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-259fe4ed5f6d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-035aeff0121d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Engagement with cosmological equations or framework"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: ai_systems framework/content"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political framework/content"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on redshift theory or alternative cosmology model"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: dating framework/content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology-related content and discussion"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No cosmology or project work content"
+    }
+  ]
+}

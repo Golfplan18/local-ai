@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of network/API technologies and tools."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating AI Dungeon interactive AI tool features."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Learning methodology with AI tool mention, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "White paper on AI frameworks for extending cognition."
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Aura technology project."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verification journalism examples, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cataloging and evaluating AI agent technologies."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology system architecture and automation design."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System framework design and AI Boot Framework."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cataloging and evaluating AI agent technologies."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#28",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive technology discussion via matched routes."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic organizational efforts, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary criticism, not technology."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Documentation workflow, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-9470f545463f#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology system architecture and automation design."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of network/API technologies and tools."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content does not clearly engage with technology topic."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of network/API technologies and tools."
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Documentation workflow, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Aura technology project."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics white paper, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI context engineering technology discussion."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI technology systems for collaboration and knowledge."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI technology systems for collaboration and knowledge."
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating Claude AI technology for system design."
+    }
+  ]
+}

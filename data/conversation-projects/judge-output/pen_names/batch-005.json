@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author biography and Amazon book profile setup for marketing pen name authors."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical indie press with pen names as distinct contributors for credibility."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon book description framework and author platform setup for pen name authors."
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-53662eddc299#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Naming, branding, and strategic deployment of different pen name personas."
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back cover author bios for pen name authors."
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Changing the pen name author of a trilogy and author persona strategy."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-87514730b617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6087a0b56b8a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-4d731138d953#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-62b5c87a584b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-8d737dcf7ce1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to pen names project."
+    }
+  ]
+}

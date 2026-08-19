@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (7 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (6 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to fiction writing"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (7 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-7d8af9eab5be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to fiction writing"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to fiction writing"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to fiction writing"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses AI fiction methodology"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (3 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (3 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses AI fiction methodology"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to fiction writing"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (8 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (6 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (7 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (7 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses AI fiction methodology"
+    },
+    {
+      "candidate_id": "historical-71e78fbe498f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (8 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character choice architecture discussed"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character choice architecture discussed"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (4 fiction, 6 method keywords)"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-bc558102121a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (7 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (3 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character choice architecture discussed"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (5 fiction, 4 method keywords)"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (3 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses AI fiction methodology"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character choice architecture discussed"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (4 fiction, 3 method keywords)"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character choice architecture discussed"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real engagement with AI fiction writing (6 fiction, 6 method keywords)"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    },
+    {
+      "candidate_id": "historical-0ba3c36c8027#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear AI-assisted fiction writing engagement"
+    }
+  ]
+}

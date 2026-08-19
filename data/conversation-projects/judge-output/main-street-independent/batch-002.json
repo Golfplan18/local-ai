@@ -1,0 +1,486 @@
+{
+ "nexus": "main-street-independent",
+ "batch": 2,
+ "verdicts": [
+  {
+   "candidate_id": "historical-00ed839adb3a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-5b75ed3cbab4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-e529e458b0da#2",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Core MSI news distribution project"
+  },
+  {
+   "candidate_id": "historical-e529e458b0da#3",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Core MSI news distribution project"
+  },
+  {
+   "candidate_id": "historical-f8b9a289cf76#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Academic research"
+  },
+  {
+   "candidate_id": "historical-e10f540a5630#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-96f2a9714166#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Explicitly names or links to MSI"
+  },
+  {
+   "candidate_id": "historical-453028fe4a4b#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#39",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Task/milestone methodology"
+  },
+  {
+   "candidate_id": "historical-19335610c764#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Ora modes system"
+  },
+  {
+   "candidate_id": "historical-5e0eef15c9b2#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Explicitly names or links to MSI"
+  },
+  {
+   "candidate_id": "historical-b97b218c2b60#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-50a97463b4b0#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-313124f8e3ea#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-aefc0511b679#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9e96e6ba4900#8",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9e87c6313bd7#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-f1f766182695#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Personal project"
+  },
+  {
+   "candidate_id": "historical-ac7e0157434d#4",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Explicitly names or links to MSI"
+  },
+  {
+   "candidate_id": "historical-9b7dad5ff3fe#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-2fd732e32542#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9e96e6ba4900#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-130c5b751f97#4",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-ca80040f1244#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Academic research"
+  },
+  {
+   "candidate_id": "historical-57fa8805da39#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-61a4b7bd414c#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-8a089102ab82#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-151c1cf4612d#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-cc173417417e#13",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-aefc0511b679#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-609e023654e0#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-b720ebe7714a#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9e2565e4b609#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#27",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-89ea62959215#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-1913a216cb54#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9c6c8dc73477#10",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-01b76b0145f0#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-8a089102ab82#6",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-6c54e7d49b40#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-e33888f7fe19#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Explicitly names or links to MSI"
+  },
+  {
+   "candidate_id": "historical-99aa501ebc5f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-e185d8eac61e#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-c6064957adb5#3",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "MSI website/publication project"
+  },
+  {
+   "candidate_id": "historical-1c3c2408583d#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-8a089102ab82#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-54dfe0b1d699#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Academic research"
+  },
+  {
+   "candidate_id": "historical-72286847d79a#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-7aaef5d62c81#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-7ee6c8319749#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-83afb81ff072#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-a988dd0ef417#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9fbcf9e679be#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-0af59f6323b3#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-425c94f5aa3c#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-aefc0511b679#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-adcd558d23f8#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-5888bb242dc2#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#20",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-ca80040f1244#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-ca80040f1244#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-7ec3a9efedfe#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-44b1884f98e9#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-fa7b6d611b7f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-a80890a725c1#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-5045e44dce6f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9470f545463f#5",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-aefc0511b679#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-da6c84d37931#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-fabdc45ad85e#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-827f1b2d0344#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-9b94e5840983#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Fiction writing"
+  },
+  {
+   "candidate_id": "historical-130c5b751f97#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-62e63d5d8e47#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-130c5b751f97#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-d8067861c8b1#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-f8b9a289cf76#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-e350d83c9756#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-08a28736bef7#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  },
+  {
+   "candidate_id": "historical-682d5c383876#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "No clear MSI engagement"
+  }
+ ]
+}

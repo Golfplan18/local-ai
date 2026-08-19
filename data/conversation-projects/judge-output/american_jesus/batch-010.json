@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bee32e1e3497#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Political strategy debate (evangelical background, fearmongering) \u2014 echoes project themes but addresses real politics, not narrative work"
+    },
+    {
+      "candidate_id": "historical-ef2f4647a8ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly reviews American Jesus narrative structure and adapts biblical quotes to Hayzeus's voice"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extended coaching on Trump support debate with friend Shevy \u2014 political discussion, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-5dc4f6b6ef70#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Directly reviews comprehensive American Jesus outline per narrative brief"
+    },
+    {
+      "candidate_id": "historical-4c52db0d3aa9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 21 outline development for antagonist coordination (Byrd, Tito, Farwright) \u2014 narrative work on Hayzeus opposition"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference request only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora infrastructure (boot.md development) \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum physics paper drafting \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Scene/event lists by character (Hayzeus, Juan, Michael, Paul Santana) with chapter density and expansion assessment"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile image analysis \u2014 unrelated project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Michael's death as catalyst for Act I\u2192II transition (Recognition\u2192Ministry); Hayzeus becomes community leader"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Foundation Framework test on James Zebedee \u2014 detailed profile of Big Jim's arc from politicized faith to discipleship"
+    },
+    {
+      "candidate_id": "historical-56e4174c23ad#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hierarchy as root of racism \u2014 generic framework methodology echoing project themes, not project-specific work"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Internal Parliament theory and PAS specification \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Loading complete American Jesus master outline with themes, characters, three-act structure (Recognition\u2013Ministry\u2013Sacrifice)"
+    },
+    {
+      "candidate_id": "historical-a6368f78ecaa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act III restructuring, pacing analysis, and evaluation for American Jesus"
+    },
+    {
+      "candidate_id": "historical-e8c01bd404a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book 3 Act III restructuring with character reintroduction through paired conversations"
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Loading American Jesus master outline with character-theme and setting-theme integration"
+    },
+    {
+      "candidate_id": "historical-fe82500974ee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Placing and drafting biblical parables across American Jesus chapters, adapting to Hayzeus's modern voice"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Story elements and character implementation with American Jesus thematic framework"
+    },
+    {
+      "candidate_id": "historical-4ac6b8c01dae#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 8 'The March Begins' (Book 3) development via Chapter Initiation and Foundation Frameworks"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum physics white paper \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-6f52f92c3c9b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic image request for 'moral compass' \u2014 concept applicable to project but not project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Refinement Framework introduction and story-beat unification into chapter-driven master outline for American Jesus"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Persona implementation across character development frameworks \u2014 applicable to American Jesus character work"
+    },
+    {
+      "candidate_id": "historical-d72434e83719#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Kindness imagery visualization \u2014 generic concept, not American Jesus project work"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 21 'The Righteous Smear' (antagonists' propaganda) refined through framework"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Implementing persona/role-shift additions in character initiation and foundation frameworks for project characters"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject explicitly names 'American Jesus book concept' as topic"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hayzeus character used as naming inspiration for AI system \u2014 passing reference, not narrative engagement"
+    },
+    {
+      "candidate_id": "historical-5839a6add452#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus book project review and chapter planning (completed Ch. 15, planning next phase)"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Guardian article on Christian right's empathy \u2014 external article reference, not American Jesus project work"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thematic framework development explicitly for American Jesus project"
+    },
+    {
+      "candidate_id": "historical-433226858f03#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative Elements Mapping Framework creation with American Jesus materials"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump administration DEI/diversity policies \u2014 political analysis, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Adapting real Anaheim 'City of Kindness' story into American Jesus 'Kindness Thread' subplot"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics wobble model white paper \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Instruction to stop engagement-hook questions \u2014 response format preference, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-b260f174df20#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Biblical quote adaptation for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plain-text-only response request \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3, Chapters 32\u201333 ('The O'Vannity Angle' / 'Allies') outlines and drafting"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 11 condensed overview and expanded outline creation"
+    },
+    {
+      "candidate_id": "historical-7bb70a35ce2b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 33 'Allies' outline and refinement"
+    },
+    {
+      "candidate_id": "historical-36363d37a833#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Vocabulary research and brainstorming \u2014 generic activity, not American Jesus-specific"
+    },
+    {
+      "candidate_id": "historical-19b34b5b32dc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 13 'The Road of Witness' development via framework"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response request \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Archetypal framework development with American Jesus thematic examples"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response format request \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Defining Mary Magdalena character as voice of moral indictment in American Jesus"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3, Chapter 14 'Arrival' outline creation"
+    },
+    {
+      "candidate_id": "historical-926151ba9676#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus Act 3 Chapter 21 character analysis (antagonists' choice focus)"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing 'Jesus AI' meme-engine system \u2014 related concept but separate project from American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only output formatting instruction \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3, Chapter 11 'Redemption March Vol III' outline"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-755f5dd75672#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Agency, choice, and moral hierarchy \u2014 generic philosophical discussion, not narrative engagement"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character Framework Layer Twelve documentation refinement \u2014 applicable to project character work"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship analysis with Ashley \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief instruction acknowledgment \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only ('Just text, please') \u2014 no project content"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop and SSH setup \u2014 technical support, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Press release template evaluation \u2014 unclear project scope, likely different project"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Villainizing Alito/Thomas in political fiction \u2014 real-person political fiction, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2, Chapter 18 master outline creation with reduced word count"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Arc Story Beat framework scaling to American Jesus's 700+ beats with beat tags"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief acknowledgment request \u2014 formatting preference, not project content"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian heading features \u2014 tool usage support, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis for Amy \u2014 personal dating work, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-3b39f9501d71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Buddhism article meta/keywords on emotional entitlement \u2014 different project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-c2c5553fd866#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2, Chapter 16 outline with housing policy and society's moral floor discussion"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DEFCON-style moral escalation for 'Jesus AI' system \u2014 related concept but different project"
+    },
+    {
+      "candidate_id": "historical-8e858f40aafb#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 12 'Judgment at Sugar Pines' with Peter's conversion and Hayzeus's framework"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Authoritarian regime scenarios/propaganda \u2014 generic framework discussion, not project work"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework analysis and criteria alignment with master outline"
+    }
+  ]
+}

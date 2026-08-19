@@ -1,0 +1,272 @@
+[
+ {
+  "nexus": "ai_writing_method",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ai_writing_method/batch-001.json",
+  "count": 12
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/american_jesus/batch-001.json",
+  "count": 22
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/american_judas/batch-001.json",
+  "count": 5
+ },
+ {
+  "nexus": "american_king",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/american_king/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "american_king",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/american_king/batch-002.json",
+  "count": 21
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/autism_acceptance/batch-001.json",
+  "count": 2
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/einstein_resonance/batch-001.json",
+  "count": 11
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/executor_instructions/batch-001.json",
+  "count": 4
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/expanding_awareness/batch-001.json",
+  "count": 25
+ },
+ {
+  "nexus": "golf",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/golf/batch-001.json",
+  "count": 1
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/human_nexus/batch-001.json",
+  "count": 3
+ },
+ {
+  "nexus": "insight",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/insight/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "insight",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/insight/batch-002.json",
+  "count": 16
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/main-street-independent/batch-001.json",
+  "count": 25
+ },
+ {
+  "nexus": "marketing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/marketing/batch-001.json",
+  "count": 15
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/obsidian/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/obsidian/batch-002.json",
+  "count": 16
+ },
+ {
+  "nexus": "ora",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "ora",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora/batch-002.json",
+  "count": 40
+ },
+ {
+  "nexus": "ora",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora/batch-003.json",
+  "count": 8
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora-ai-app/batch-001.json",
+  "count": 1
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora-ai-org/batch-001.json",
+  "count": 11
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora_chokepoint_response/batch-001.json",
+  "count": 24
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora_foundation/batch-001.json",
+  "count": 21
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora_framework_library/batch-001.json",
+  "count": 1
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/ora_knowledge_library/batch-001.json",
+  "count": 2
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/pen_names/batch-001.json",
+  "count": 6
+ },
+ {
+  "nexus": "politics",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/politics/batch-001.json",
+  "count": 27
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/project_workshop/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/project_workshop/batch-002.json",
+  "count": 14
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/prompt_engineering/batch-001.json",
+  "count": 7
+ },
+ {
+  "nexus": "publishing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/publishing/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "publishing",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/publishing/batch-002.json",
+  "count": 35
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/quantum_mechanics/batch-001.json",
+  "count": 3
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/real_estate_book/batch-001.json",
+  "count": 6
+ },
+ {
+  "nexus": "relationships",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/relationships/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "relationships",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/relationships/batch-002.json",
+  "count": 23
+ },
+ {
+  "nexus": "science",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/science/batch-001.json",
+  "count": 24
+ },
+ {
+  "nexus": "technology",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/technology/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "technology",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/technology/batch-002.json",
+  "count": 15
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/wetoo/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/wetoo/batch-002.json",
+  "count": 24
+ },
+ {
+  "nexus": "writing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/writing/batch-001.json",
+  "count": 40
+ },
+ {
+  "nexus": "writing",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/writing/batch-002.json",
+  "count": 30
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/verify-input/writing_fiction/batch-001.json",
+  "count": 31
+ }
+]

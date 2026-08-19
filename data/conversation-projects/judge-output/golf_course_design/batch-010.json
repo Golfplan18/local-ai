@@ -1,0 +1,486 @@
+{
+ "nexus": "golf_course_design",
+ "batch": 10,
+ "verdicts": [
+  {
+   "candidate_id": "historical-6401518bc9d1#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-15b5111e726b#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-8765e805c43f#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-aba127f84acd#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-78ed9b1d7cbc#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-6fec99825434#31",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-ef0088cff234#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-e185d8eac61e#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-5d28a2b1f7c9#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-6e22abd84f17#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-366bf448a69e#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-4b70c31f0dac#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-3f28bda0a8f8#6",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Unrelated to golf course design project"
+  },
+  {
+   "candidate_id": "historical-3edebe14a9fe#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-3adbf345e8f5#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-c9a3464f357e#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-8620bf8fbb65#13",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-d0b7526c8356#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-f07bdbd64eec#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Unrelated to golf course design project"
+  },
+  {
+   "candidate_id": "historical-bbd6805fed8f#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-95a2131aa6da#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5982ab19eb25#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-27557c5769f4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-6fec99825434#50",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-40e692b2fc9d#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Trivial interaction, no project content"
+  },
+  {
+   "candidate_id": "historical-c59279e93cea#26",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-486d9ae312af#9",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-285dcba65070#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-b96238ab1500#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-130c5b751f97#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-1f15db513f6a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-17e02da12090#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-3153873d0063#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-c7e758977f0b#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-d9e75149f365#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-5ecbb4a87af9#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-09dbe2be4706#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-bf0095a00594#11",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-6f5669442ede#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-7926610a4df7#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-7bb70a35ce2b#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-ec957c095277#20",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-3110e0650216#27",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5e0ff6c98569#17",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-2c46707fc0fa#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-bee32e1e3497#21",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-e49580a92685#5",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-1ab011d561b7#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-e8e9f9048caf#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-2605f0bf8bfd#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "About watching/playing golf, not designing courses"
+  },
+  {
+   "candidate_id": "historical-aa46cecadfb9#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-c428b872e17f#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Unrelated to golf course design project"
+  },
+  {
+   "candidate_id": "historical-f7eba5bc07dd#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-2eabb5795390#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-f8d8dedfad9b#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-909f80402c03#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-c4a83152e866#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-cc589d43ae6a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-7702427f70dd#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-aa46cecadfb9#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Completely unrelated topic"
+  },
+  {
+   "candidate_id": "historical-bcece8c78dc4#6",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-bf0095a00594#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-3bddb955ade3#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-f1622449ddcd#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-07155fb1018f#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-0db7539ce5a4#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-99df88574463#58",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "About watching/playing golf, not designing courses"
+  },
+  {
+   "candidate_id": "historical-ec021413d466#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5e38b0578a49#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-8fdedf1f31ff#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-56370628b15b#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-00ad302f5f6c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-51282862b903#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-51282862b903#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f970ba5f3dee#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-fbc7a2d3ec55#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-2a38357288c1#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-492a4972a10a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  },
+  {
+   "candidate_id": "historical-27557c5769f4#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-75d522ac98a6#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic writing framework unrelated to golf"
+  }
+ ]
+}

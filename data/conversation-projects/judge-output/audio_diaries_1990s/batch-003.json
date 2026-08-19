@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (synthesis)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (synthesis)"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (publishing)"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (okcupid)"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (publishing)"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (synthesis)"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-98d0ee408acc#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-f5566f6390f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-4e6175d7abaf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (political)"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (publishing)"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (political)"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (political)"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-32df11c88044#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (dating)"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (cover)"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-74d320d60d90#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-a53f95dbc95d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or tool (satirical)"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive audio diaries engagement"
+    }
+  ]
+}

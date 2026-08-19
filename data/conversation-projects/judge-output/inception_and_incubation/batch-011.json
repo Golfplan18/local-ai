@@ -1,0 +1,390 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Listing YouTube channels; no engagement with Incubator project."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model architecture evaluation; unrelated to Incubator's recognition corpus."
+    },
+    {
+      "candidate_id": "historical-f6ed8919ddd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gates Foundation table format; no connection to Incubator."
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "X-Men character discussion; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YA fiction writing workshop; different project from Incubator."
+    },
+    {
+      "candidate_id": "historical-8aae5e6dfd71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool instruction error; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-501992260e41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Home ventilation shopping/design; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/courtship planning; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM deployment; different project from Incubator."
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics reference material; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book framework planning; different from Incubator."
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework document receipt; not Incubator work."
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document workflow planning; different project context."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship reflection; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics paper review; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-0d8896d1e3a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trojan horse fiction strategy; different project work."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relationship silence test coaching; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-947060573768#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura interface aesthetic design; different project focus."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault archiving policy discussion; not Incubator work."
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical framework; different project."
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI fiction-writing framework; different project work."
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump poker scenes framework; different project."
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle AI architecture; different system project."
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing frameworks update; different project."
+    },
+    {
+      "candidate_id": "historical-411d24eaf516#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Defensive publication strategy; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Life rhythm/self-narration habits; personal reflection, not Incubator."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ed Zitron AI industry article; not Incubator work."
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical complaint document review; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test message verification; not Incubator work."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American King trilogy development; different creative project."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#71",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix plural grammar note; not Incubator work."
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output Formalization Framework; different project work."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump currency satire; different project work."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extending Human Cognition framework; different project."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump flag policy satire; different project work."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Process Inference Framework overview; different project."
+    },
+    {
+      "candidate_id": "historical-80c2986f32b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OG-RAG ontology framework; different technical project."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Events-first AI news filter design; different project work."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Laura reconnection dating text; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-8a754010befc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code Obsidian workflows; different project."
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaint document development; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book narrative architecture reflection; different project."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Interface design feedback; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image refinement of kill switch; unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI prompt engineering; different technical project."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI industry cost analysis; different project work."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation creation; different project."
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy framework; different creative project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project status discussion; not Incubator-specific."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation workflow; different project focus."
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Data analysis visualization; different project work."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing instruction; different project."
+    },
+    {
+      "candidate_id": "historical-32df11c88044#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication framework discussion; different project."
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture documentation; different project."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration management; different project work."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical specification work; different project."
+    },
+    {
+      "candidate_id": "historical-ca163beb823b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Infrastructure planning; different project work."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Process documentation; different project focus."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Strategic planning session; different project."
+    },
+    {
+      "candidate_id": "historical-4eded76990ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool development work; different project."
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System design documentation; different project."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementation planning; different project work."
+    },
+    {
+      "candidate_id": "historical-1b7bd4582adb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Operational procedures; different project context."
+    }
+  ]
+}

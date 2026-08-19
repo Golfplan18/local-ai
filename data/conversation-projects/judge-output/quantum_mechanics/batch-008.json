@@ -1,0 +1,114 @@
+{
+  "nexus": "quantum_mechanics",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c7eacc31d735#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses quantum gravity philosophy in expanding-awareness paper, not Wobble Model or double-slit simulation work"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line meta-preference about output format, no project engagement"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline management across AI tools; no quantum mechanics or Wobble Model work"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic quantum/particle physics backgrounder on balance and symmetries, not project-specific work"
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophy of Einstein's intuition; unrelated to Wobble Model or double-slit experiment"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output preference statement; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book framework; unrelated quantum mechanics project"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile photo review; no connection to project"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output preference statement; no project engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Financial trading algorithm design; unrelated to quantum mechanics"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web research for technofeudalism book; unrelated to quantum mechanics project"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output preference statement; no project content"
+    },
+    {
+      "candidate_id": "historical-5b63242b6859#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluation of someone else's physics paper on Bell's theorem, not Wobble Model work"
+    },
+    {
+      "candidate_id": "historical-45be448aef71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bell test measurement analysis; engages quantum mechanics but focuses on Bell experiments, not double-slit simulation"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Propaganda and tribal dynamics book chapter; unrelated to quantum mechanics"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output preference statement; no substantive engagement"
+    },
+    {
+      "candidate_id": "historical-7b3d2996067a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluation of Partanen-Tulkki gravity theory; quantum physics but wrong focus (gravity vs. Wobble Model)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM model architecture design; unrelated to quantum mechanics project"
+    }
+  ]
+}

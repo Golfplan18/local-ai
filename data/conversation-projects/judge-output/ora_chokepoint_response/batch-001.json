@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "auditing outline v4 for content fidelity and restoring missi"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "designing and iteratively refining ora's 'execution review' "
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Found 3 Chokepoint indicators"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "oura project status report, debugging silent failures, and d"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "redesigning the ideation/evaluation/mapping framework toolin"
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "redesigning the narrative elements framework tooling"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Found 3 Chokepoint indicators"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "clearing the v0.2.2/v0.2.3 decision backlog, settling the si"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "evaluating and finalizing press release templates and meta-c"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "rebuilding the objectives & milestones framework itself: add"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework pair structure and enhancement methodology"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "public-domain children's literature corpus for pepper voice "
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "creating stage-specific instructions for six stages of autho"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework creation framework capabilities versus ifttt"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "pas framework handoff setup: reviewing v0.2 deferred items, "
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "reviewing library content and the inference report, discover"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "evaluating framework documents for ai-assisted fiction writi"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "outlining extending human cognition framework with knower-do"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "developing weakness-specific exploitation instructions for c"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "archetypal character choice fiction project overview"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "visual protocol research, specification development, and imp"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "reprinting the objectives/milestones framework and a task-co"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "developing two-part economic reality report and official pre"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Found 2 Chokepoint indicators"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "uploading/verifying the framework creation framework, local "
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework specification and architectural resolution"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "universal reviser output"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "character refinement framework criteria analysis and develop"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "universal reviser output"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "thread a: verification of 17 completed mode files"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "drafting front-matter praise for divorce recovery book"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "thread e: system overview update for 17-mode system and four"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "anthropic's small societal impacts team and ai safety effort"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework restructuring and updates to implement idea preser"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "adding mental models and educational resources to a catalog "
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "adding mental models and resources to collection"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework transformation to integrate archetypal character c"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "verification and finalization"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "task review and framework inventory confirmation"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework project overview and character initiation framewor"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework verification and checks"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "reviewing and refining the pas (parliamentary assessment sys"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "evaluation phase ii and phase iii frameworks"
+    },
+    {
+      "candidate_id": "historical-50a97463b4b0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "framework enhancement across editorial, setting, evaluation,"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "aligning ai swarm system overview with updated book outline "
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "persona implementation for character development frameworks"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "implementing and verifying persona/role-shift additions acro"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "system overview v2 design review concerns"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "chapter refinement framework enhancement and criteria alignm"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "thread b: boot file updates with 17-mode registry and browse"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "mode verification and framework execution"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "boot.md file development through v3 with generation framewor"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "verification of argument audit framework findings"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "mode verification checklist execution"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "gear 4 pipeline specifications review"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "book cover quality evaluation framework for step 38"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "book cover quality evaluation framework and document creatio"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "introduction to satirical fiction project and initial framew"
+    },
+    {
+      "candidate_id": "historical-94ee1b08bed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "writing evaluation framework for novel development"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "phase i comprehensive framework evaluation and updates"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "document review and clarification before executing thread c "
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Found 2 Chokepoint indicators"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "commissioning and delivering evidence manifesto for book pro"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "documentation update requirements checklist"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "restructuring technical outline with content loss verificati"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "character foundation framework development and verification"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "technical book outline review: innovations, structural gaps "
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "remote ai agent teams and human-ai collaboration structure"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Found 2 Chokepoint indicators"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "sustained project of revising the novel's library of ai narr"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "master outline review and systematic enhancements with forma"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "code snippet or technical implementation"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "creating paired reality/propaganda bullet points and basic p"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "git and obsidian vault synchronization issues"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "amazon description framework and criteria document creation"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "back matter framework planning and approach"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "the human nexus framework development - content, ethical dir"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "debugging and redesigning the user's ai-assisted novel-writi"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "back matter framework development for step 32"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "word count estimation accuracy and framework update decision"
+    }
+  ]
+}

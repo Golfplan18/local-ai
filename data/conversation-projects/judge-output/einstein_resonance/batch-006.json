@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-52be45eaaa7b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-22318fe13a0b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing section on ER quantum/cosmology theory with Big Block, Higgs field, matter-antimatter concepts"
+    },
+    {
+      "candidate_id": "historical-1577988d6692#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Proposing cosmological model discussing universe as system, Einstein, Hubble"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-730472456dde#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-32df11c88044#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-ead6a8ebe0d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-989e07b761e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-7d8af9eab5be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-ba2223ca68fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-73431c87c793#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-5c55fe6f78f6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-7bd6cc535b05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2af1e25db010#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-52be45eaaa7b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-1a3a64a1d868#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-5b63242b6859#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-d9e75149f365#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-c5f1dd379ba4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technical evaluation of cosmology paper with matter-antimatter epoch analysis"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-60fa526ae0c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2cecb37ae5af#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-617ba86fe65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-9b5fb91c1839#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or administrative matter"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-2cecb37ae5af#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-6c9a4768cef4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive ER project engagement detected"
+    }
+  ]
+}

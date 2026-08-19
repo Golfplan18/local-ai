@@ -1,0 +1,486 @@
+{
+ "nexus": "divorce",
+ "batch": 1,
+ "verdicts": [
+  {
+   "candidate_id": "historical-fe35b9d77e73#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-6029893e7e51#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Archive/consolidation work for different project (not Divorce)"
+  },
+  {
+   "candidate_id": "historical-9e96e6ba4900#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-38762cddc166#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-1f4f2a36f76d#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., developing 'the new communist manifesto'...)"
+  },
+  {
+   "candidate_id": "historical-ff4be1e73995#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., initial template review and outline expa...)"
+  },
+  {
+   "candidate_id": "historical-0568a73d7317#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., auditing outline v4 for content fidelity...)"
+  },
+  {
+   "candidate_id": "historical-ca80040f1244#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-89ea62959215#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., book outline restructuring for ai system...)"
+  },
+  {
+   "candidate_id": "historical-5131d762081a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-1ade8625ca91#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-05306a125cea#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-05306a125cea#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-6fec99825434#74",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., replicating notebooklm's retrieval workf...)"
+  },
+  {
+   "candidate_id": "historical-0ba3c36c8027#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., book outline and file architecture restr...)"
+  },
+  {
+   "candidate_id": "historical-b920e3ff5271#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5287fad52ae2#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-05306a125cea#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-892b074a9ea4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-313124f8e3ea#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-58d275baf1a9#11",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Archive/consolidation work for different project (not Divorce)"
+  },
+  {
+   "candidate_id": "historical-0af59f6323b3#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-a646193dcf54#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#27",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e10f540a5630#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-da6c84d37931#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-d8067861c8b1#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e350d83c9756#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-3853dbe35160#15",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-b6501ff419f5#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e3f17068bdfe#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-906f6a24e833#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-adcd558d23f8#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-7ec3a9efedfe#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-7ee6c8319749#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-9fbcf9e679be#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-23c3bf40876a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5889e950940e#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-61a4b7bd414c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5045e44dce6f#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-b323df2b49f4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Archive/consolidation work for different project (not Divorce)"
+  },
+  {
+   "candidate_id": "historical-0b0494657a2c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-6b7e75b14db3#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-60ba37a9e0bb#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-a2a308bff913#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e5140753776a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-2355fd3b4328#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-c428b872e17f#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-f8b9a289cf76#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e89596a74ab3#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-01b76b0145f0#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-bb74b4ca9068#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5b178a194e53#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., uploading/verifying the framework creati...)"
+  },
+  {
+   "candidate_id": "historical-c428b872e17f#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-7ae98272b7d1#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-05306a125cea#5",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-3bfa19d94676#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Explicit engagement with Forging a New Life After Divorce book"
+  },
+  {
+   "candidate_id": "historical-c59279e93cea#64",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., managing a huge book outline across note...)"
+  },
+  {
+   "candidate_id": "historical-6029893e7e51#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., scoping three book outlines built on the...)"
+  },
+  {
+   "candidate_id": "historical-6b7e75b14db3#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-3853dbe35160#12",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Archive/consolidation work for different project (not Divorce)"
+  },
+  {
+   "candidate_id": "historical-0c0dea71bdfc#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-db8fa70e139c#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5e1209f4750f#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-d3162259aceb#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5b75ed3cbab4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-d3162259aceb#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-07eaa5763c30#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-05a28545b05b#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e89596a74ab3#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5c536a9c7e32#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book work for different project (e.g., aligning ai swarm system overview with u...)"
+  },
+  {
+   "candidate_id": "historical-1d3e633d103c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-38762cddc166#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e89596a74ab3#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-e9edf7b3ed90#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-c8c82f1a541c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-19335610c764#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-9b94e5840983#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-5aaeadff1df3#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  },
+  {
+   "candidate_id": "historical-dba985b3db89#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Generic methodology or unrelated project discussion"
+  }
+ ]
+}

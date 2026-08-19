@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9139b2ce658d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 novel bible: thematic/character/voice frame..."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover framework development, not narrative content."
+    },
+    {
+      "candidate_id": "historical-a63f7e78f60d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Act 3 Chapter 16 'The Lost Cause': Marcus/Hayzeus..."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying the refinement framework to Act 2 Chapters 10-14 ou..."
+    },
+    {
+      "candidate_id": "historical-b9e6912c3609#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Running the Chapter Initiation and Chapter Foundation Framew..."
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Analysis of different work (marriage narrative essay)."
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thematic implementation and plot architecture for American J..."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Peter \"Pete\" Stone character profile dev"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-562e8d35aee8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 14 of American Jesus novel: Roanoke River crossing d..."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Condensed conceptual-outline reformattin"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-6bc8621eeffe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Foundation Framework presentation and application to..."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-4e0bbd37706e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating and adapting parables for American Jesus narrative..."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-e1a6fc7514a3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "James Zebedee's character arc development across American Je..."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: The Human Nexus framework."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-c1dad3e45daa#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Plot framework development and thematic "
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Evaluation Phase II Comprehensive Framew"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-17af7e3f41b3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus master story bible submitted in sections: the..."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic satirical form, no explicit project engagement."
+    },
+    {
+      "candidate_id": "historical-f970ba5f3dee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible: themes/character integration, ..."
+    },
+    {
+      "candidate_id": "historical-ad8176951b9a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development and execution of the Chapter Foundation Framewor..."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic analytical task without project-specific engagement."
+    },
+    {
+      "candidate_id": "historical-ca4038d3ea82#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus outline review and scene development..."
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Creating integrated parable sequence for"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining Act 1 Chapter 12 'Judgment at Sugar Pines..."
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User pastes the full 'American Jesus 3' story bible (themes,..."
+    },
+    {
+      "candidate_id": "historical-a792d1367777#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus: master outline load-in and Act 3 Chapter 2 (..."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Completing the full trilogy outline and splitting ..."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-2fbfab0026e0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Foundation Framework analysis of American Jesus chap..."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-d669b1012862#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1 chapter-by-chapter outline for a religious-allegory no..."
+    },
+    {
+      "candidate_id": "historical-5737480b9619#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus outline review and chapter structure organiza..."
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building and iteratively revising the 'Ideation Framework' t..."
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus: pasting the thematic implementation guide an..."
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic satirical form, no explicit project engagement."
+    },
+    {
+      "candidate_id": "historical-47c4c55f8bbc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus book chapter outline review..."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-2c8a385790b8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building the 'Act 3, Ch. 6: The War Room' chapter architectu..."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious Corruption subplot thread..."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Applying the framework to Chapter 6: \"Re"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining Chapter 24 'The Economics of Mercy' (Thom..."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical programming (boot file registry), not narrative work."
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Loading the 'American Jesus' master outline into memory (the..."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-7bb70a35ce2b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Chapter 36 'The Last Supper': outline an"
+    },
+    {
+      "candidate_id": "historical-730472456dde#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Recap chapter draft and length revisions"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only, not project engagement."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Recap chapter draft and length revisions"
+    },
+    {
+      "candidate_id": "historical-c3d0ffee3071#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Archetypal analysis of American Jesus chapters 40-41 outline..."
+    },
+    {
+      "candidate_id": "historical-f8881242807a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project-relevant routes match chapter content: Archetypal character analysis and choice"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing copy framework, not manuscript narrative work."
+    },
+    {
+      "candidate_id": "historical-d79f993f6689#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Archetypal analysis of American Jesus chapters 40-41 outline..."
+    }
+  ]
+}

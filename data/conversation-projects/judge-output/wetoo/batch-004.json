@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing framework: building the ideation framework libraries"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, not a project"
+    },
+    {
+      "candidate_id": "historical-63eaedc497c9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit #wetoo series publishing setup and pricing work"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing framework: character foundation framework development and ver"
+    },
+    {
+      "candidate_id": "historical-95c513c07a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI project or news platform work"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: implementation, review, and content restoration"
+    },
+    {
+      "candidate_id": "historical-907b49a7a5f3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too narrative/propaganda strategy framework"
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: trump second-term political/economic news: project"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, not a project"
+    },
+    {
+      "candidate_id": "historical-54ab94725ead#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: political manifesto outline review"
+    },
+    {
+      "candidate_id": "historical-4eee97fe2b88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal We Too mention: fox news coverage strategy and class war versus cu"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: defining and naming the personal 'effort' taxonomy"
+    },
+    {
+      "candidate_id": "historical-5c39f6894381#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: loki archetype analysis and chaos versus calculate"
+    },
+    {
+      "candidate_id": "historical-e894c17c1b3a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: thematic implementation overview"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: thread d: book outline v4 restructuring and conten"
+    },
+    {
+      "candidate_id": "historical-d5efecdef186#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: samuel tito character development for hayzeus narr"
+    },
+    {
+      "candidate_id": "historical-af00128bdcee#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: delivering complete character specification in aud"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: designing a persistent ai memory / second-brain sy"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: designing 'jesus ai': a hypocrisy-mirror meme engi"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: story elements and character implementation"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing framework: debugging and redesigning the user's ai-assisted n"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: building a visceral-imagist word lexicon for writi"
+    },
+    {
+      "candidate_id": "historical-a9a9b2392f41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: iteratively rewriting and simplifying the 'ideatio"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: science policy dossier scope and clarifying questi"
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: political satire framework exposing authoritarian "
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: designing a persistent ai memory / second-brain sy"
+    },
+    {
+      "candidate_id": "historical-eeac84ac2758#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: harlan byrd character choice architecture and inte"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: chapter 20 - meritocratic disillusionment content "
+    },
+    {
+      "candidate_id": "historical-f4b4dd95d1ff#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: thematic implementation and character psychology f"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: trade conflicts, iran military policy, and generat"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: adding cooperative agreement principles to permane"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: political rhetoric strategy and 'algorithmic rape'"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: thread e: system overview update for 17-mode syste"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: extended cognition framework and synthesisgpt deve"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI project or news platform work"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#116",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: jimmy kimmel's suspension as a hypocrisy-exposure "
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: visual protocol research, specification developmen"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: document verification for laws and regulations"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, not a project"
+    },
+    {
+      "candidate_id": "historical-537591fd6d00#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: developing act 2 chapter 16 'factory revolution' ("
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: calmatters investigation on california's lack of p"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: releasing a paywall-free 'library of human knowled"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: iteratively revising the american jesus ai story-d"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: persona implementation for character development f"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: developing and writing the novel 'american jesus' "
+    },
+    {
+      "candidate_id": "historical-f086250082a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: derisive terminology and profane language for char"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: managing a huge book outline across notebooklm/cha"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: writinggpt configuration: writing style and tone"
+    },
+    {
+      "candidate_id": "historical-ebf2e6268387#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: generating collections of fake conservative review"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: drafting and revising chapter 43, 'a new specter r"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#47",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: inaccessible wapo skrmetti article link"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI project or news platform work"
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: satirical political writing demonstrating authorit"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: implementing and verifying persona/role-shift addi"
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: thematic implementation and johnny zebedee charact"
+    },
+    {
+      "candidate_id": "historical-fede8f4d6849#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: developing thematic framework and character archit"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: pas framework handoff setup: reviewing v0.2 deferr"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: reorganizing foundation structure using meta-princ"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: evaluating mistral nemo as a local model"
+    },
+    {
+      "candidate_id": "historical-c326932c1b69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: american jesus thematic implementation: character "
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: reorganizing outline structure and adding new sect"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: brief verification check of assistant connectivity"
+    },
+    {
+      "candidate_id": "historical-b268aebce446#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: satirical fiction framework for authoritarian regi"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: consolidating to a single iterative prompt framewo"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: rentier-capitalist demonization art campaign, anti"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: developing the human nexus framework with organiza"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: extended, frustrating troubleshooting saga to make"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: replicating notebooklm's retrieval workflow for ma"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: the buddha's historical precedent, the credibility"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: web links and varoufakis access - meta-discussion "
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: polarity/sovereignty philosophy and ongoing coachi"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal We Too mention: clearing the v0.2.2/v0.2.3 decision backlog, settl"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: writing guidelines review and improvement"
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: generating satirical authoritarian regime policies"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: summary of a calmatters article on public-defense "
+    },
+    {
+      "candidate_id": "historical-d9bf99fa9877#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: paul santana character development and damascus mo"
+    },
+    {
+      "candidate_id": "historical-43917af113ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-3019c126bac2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Different topic/project: atticus book formatting decisions: font size, marg"
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: thematic implementation and plot architecture for "
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction project: thematic foundation and character architecture for"
+    }
+  ]
+}

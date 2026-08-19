@@ -1,0 +1,486 @@
+{
+  "nexus": "diklis_chump",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test exchange or minimal content."
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical character framework development for Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion unrelated to Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-71e78fbe498f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical character framework development for Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Press release and propaganda content for Diklis Chump persona."
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character profile development for different project."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical character framework development for Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on Diklis Chump persona or content."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical character framework development for Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-280a3f493a4d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-bbffd146c708#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump-book subplot and Diklis Chump integration work."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Press release and propaganda content for Diklis Chump persona."
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character profile development for different project."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Press release and propaganda content for Diklis Chump persona."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump-book subplot and Diklis Chump integration work."
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship advice, unrelated project."
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-51282862b903#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-6e893b335342#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive engagement with Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework design, no Diklis Chump connection."
+    }
+  ]
+}

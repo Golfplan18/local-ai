@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic connection evaluation."
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-ec233979c12e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project name mentioned; limited engagement."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-872bae7104b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating and relationship-focused engagement."
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-bef280e7b699#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-ab5c440ce2a9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-cd9653bfa005#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project name mentioned; limited engagement."
+    },
+    {
+      "candidate_id": "historical-d2783186ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-cd50af8fd9c6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating and relationship-focused engagement."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-01c66745fcc3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#39",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#47",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating and relationship-focused engagement."
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-8140ff4b921d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-3c965bcb5fb4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating and relationship-focused engagement."
+    },
+    {
+      "candidate_id": "historical-722b0457ce18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-f709ec9ca909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-7eb3419147b1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating and relationship-focused engagement."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Project direction-related engagement."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-dd3f3774c641#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project name mentioned; limited engagement."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#33",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with relationship project."
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic connection evaluation."
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "False positive: fiction/system work, not relationships."
+    }
+  ]
+}

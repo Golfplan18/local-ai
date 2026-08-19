@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-35db0428f286#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile for fictional persona unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical board complaint letters unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile for fictional persona unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses journalism discipline and propaganda detection"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian property troubleshooting unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pipeline orchestration for Ora system unrelated to MSI"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system automation design unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile refinement unrelated to MSI"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora analytical mode architecture unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story/character ideation framework unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AHI paper on AI architecture, not journalism/publication work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code CLI documentation unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian file organization unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-ae6b2b1fbdd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story ideation framework unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back cover blurb framework for book unrelated to MSI news"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and MBTI typing unrelated to MSI"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model specification search unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-fc15f6db2316#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Media infiltration for political manipulation contradicts journalistic honesty"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal response request, no MSI engagement"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI memory system design unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-29d7c866b147#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic analytical methodology, not MSI's journalism work"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-9185d1b6bdf0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Media infiltration for embedding propaganda contradicts MSI mission"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical campaign is MSI content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown framework unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-d23a0b236c5d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website and publishing infrastructure directly supports MSI"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown framework unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI psychosis analysis unrelated to journalism/publication"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-411d24eaf516#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown framework unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code documentation unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-b7c3a2a27fcb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject line vague; likely not MSI-specific"
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code documentation unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Left-wing meme campaign relates to MSI persona content strategy"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unclear; insufficient for acceptance"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text preference unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API and Poe platform exploration unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted writing methodology, not journalism discipline"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API technical exploration unrelated to publication work"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-32df11c88044#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject 'Main discussion' too vague for MSI engagement"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unable to evaluate from available excerpts"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code documentation unrelated to publication"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system design unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unclear from available context"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-63297d343a27#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unclear from available context"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unclear from available context"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference in personal context"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unknown context unrelated to journalism"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge system architecture unrelated to publication work"
+    }
+  ]
+}

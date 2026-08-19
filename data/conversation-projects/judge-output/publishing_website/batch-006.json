@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing_website",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle concept discussion, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API script configuration, not Old Cypress Publishing."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing productivity reflection, not publisher."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump tax bill analysis, unrelated to publisher website."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fashion advice and book distribution strategy, not website."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical ping test error, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora analytical mode architecture, not publisher website."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wisdom Nexus framework editing, not publisher website."
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora philosophical grounding analysis, not publisher."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific paper editing, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-81b60d7522e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tibetan Buddhist teachings, unrelated to publisher site."
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific paper outline work, not publisher website."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases tutorial, not Old Cypress Publishing."
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WSJ editorial philosophy research, not publisher site."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model selection discussion, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reader notes formatting, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-3019c126bac2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atticus book formatting decisions, not publisher website."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reader notes italicization, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Script generation and API testing, not publisher website."
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Comprehensive document creation, not publisher website."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conflict prioritization framework, not publisher website."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-44b1884f98e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tech monopoly bypass strategy, not publisher website."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent app curation, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-501992260e41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Home ventilation systems, unrelated to publisher site."
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora-ai-app marketing website, not Old Cypress Publishing."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ego/motivation reflection, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-1e463fb5cd5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Firefox DNS resolution issue, unrelated to publisher."
+    },
+    {
+      "candidate_id": "historical-d23a0b236c5d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Website infrastructure general discussion, not Old Cypress."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visualization and diagramming work, not publisher website."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation mission expansion with software, not publisher."
+    },
+    {
+      "candidate_id": "historical-de5da6e19198#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dystopian press release, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book back cover blurb criteria, not publisher website."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline management, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-377cd8bae827#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American history book review, not publisher website."
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundational Vision section expansion, not publisher."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format and markdown negotiation, not publisher."
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Base filter debugging, not publisher website."
+    },
+    {
+      "candidate_id": "historical-9d759c36efb2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MindManager map export, not publisher website work."
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gear 4 pipeline specifications review, not publisher."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting preference, unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outline work and framework updates, not publisher."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI voice portraits satisfaction, not publisher website."
+    }
+  ]
+}

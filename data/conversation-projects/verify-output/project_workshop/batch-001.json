@@ -1,0 +1,246 @@
+{
+  "nexus": "project_workshop",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building narrative universe across multi-book series with master timeline and character constellation."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing ideation framework for Diklis Chump project with systematic criteria and structure."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic AI system architecture discussion (Knower-Doer framework) without specific project scoping."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Scoping and clarifying questions for science policy dossier (10k-15k word project)."
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing ideation framework on Diklis Chump with gap analysis and character arc evaluation."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing and refining research prompt for Doctorow/EFF dossier project deliverable."
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing ideation evaluation framework for narrative project with scoring and threshold verification."
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Planning Ora system architecture with vault setup and RAG implementation as foundational test case."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project status report on Ora using it as test case for vault-based project tracking system."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Scoping white paper project with thesis, audience, sections, and analytical framework for Knower-Doer concept."
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing ideation framework on DIKLIS CHUMP narrative project with pattern recognition and analysis."
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing ideation/evaluation framework for Diklis Chump with scene drafting and narrative output evaluation."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical discussion of LangFlow and LangChain tools; not project scoping or evaluation."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing and harmonizing design documents for Ora Foundation project scope and foundation."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Letterkenski author's version of science policy dossier project with specific scope and requirements."
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iteratively refining ideation initiation framework output format from scene requirements to story beats."
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating and refining framework for adding tropes to ideation process; framework development for project work."
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing Project Orchestration/Problem Evolution Framework for multi-session project tracking and oversight."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Naming nomenclature for project hub document; isolated nomenclature task, not project scoping."
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussing two divergent writing projects (Story Generation vs Novel Writing) and marketing strategy integration."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Redesigning framework for idea preservation and junkyard management; metadata for project organization."
+    },
+    {
+      "candidate_id": "historical-433226858f03#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing Narrative Elements Framework based on Ideation Framework template for project structuring."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#35",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creating spreadsheet pipeline for project notes; technical implementation detail, not project scoping."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting up SynthesisGPT with mission statement and extended cognition framework for guided AI agent."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing purpose reflection and audience impact; genre/writing philosophy, not project workshop activity."
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Running ideation evaluation framework on narrative project with junkyard/data-loss mechanism."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Aligning AI Swarm system overview with book outline specifications and Ora system architecture."
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building American Jesus story bible and iterating companion ideation framework with themes/characters/beats."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussing pipeline orchestration architecture and thin orchestrator pattern for Ora system design."
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Re-evaluating ideation framework output, diagnosing content-loss flaw, and implementing framework fixes."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing purpose reflection and audience impact; genre/writing philosophy, not project workshop."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing real-time voice AI interface and neuroscience of latency; technical design not project scoping."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Long-term accretion approach to writing; writing process philosophy, not project evaluation/scoping."
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing and executing meta layer for Ora system with oversight frameworks and orchestration."
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing The Human Nexus framework with organizational structure and branding; complex project design."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reframing to-do lists as objectives; conceptual vocabulary change, not project scoping."
+    },
+    {
+      "candidate_id": "historical-54ab94725ead#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Political manifesto outline review; single artifact review, not project scoping/evaluation."
+    },
+    {
+      "candidate_id": "historical-5c39f6894381#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loki archetype analysis and chaos/competence examination; literary analysis, not project workshop."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web interface implementation and HTML/CSS/JavaScript fundamentals; technical tutorial, not project scoping."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing Problem Evolution Framework as project map for AI agents and design process scoping."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Internal Ora pipeline instructions"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spinner tool design philosophy discussed"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora RAG technical architecture"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump fictional project review"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Governance framework outline"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Gear 4 framework architecture"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Admin request for file versions"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Main Street Independence website and spinner tool work"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump content generation output"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Preservation problem discussion too vague"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names MSI publication structure explicitly"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model selection for Ora pipeline"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura pipeline debugging methodology"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wayback Machine reliability assessment"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT configuration different project"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spinner tool DEFCON escalation response design"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Base filtering configuration"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing method ideation"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical outline and style guide"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verifier findings on AI safety argument"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#18",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Oracle persona context adaptation for MSI voice"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical content generation"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Foundation design document review"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump religious policy content"
+    },
+    {
+      "candidate_id": "historical-94ee1b08bed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing evaluation framework"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon book description framework"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump political content output"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy research dossier"
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework design philosophy"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian frontmatter properties configuration"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Diklis Chump framework stages refinement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases feature learning"
+    },
+    {
+      "candidate_id": "historical-de5da6e19198#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Press release table format for propaganda tool"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing method document review"
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Policy tracker discussion too vague"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating relationship visioning"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon and NovelAI platform comparison"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme framework tiered preservation update"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External Obsidian Bases article review"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle persistent memory architecture"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter refinement framework enhancement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Templater template for Obsidian Bases"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "News website conception and architecture planning"
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Automated news service with multiple personas"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fulfillment and expression vague"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora boot.md file development"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents curation from platforms"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI productivity and timeline discussion"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents list compilation"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "World Library concept different project"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-AI team vision and mechanics"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent platform consolidation"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local service phone number lookup"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ed Zitron generative AI article"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Global impact declarations and ritual"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora boot v5 browser automation"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Main Street Independent news infrastructure and pen names"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project briefing and satirical framework acknowledgment"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book extraction strategy and Main Street Independent platform"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Separating news site from propaganda analysis"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marco Polio character development"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical AI coherence and morality debate"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Human Nexus extended cognition framework"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Client-side ad-blocking and filter design"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External technology industry article review"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policies output"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#56",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Flight tracking query"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-driven news feed disintermediating gatekeepers"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle fundraising and charity vetting system"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Immigration research dossier for columnist"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Online Services strategic direction"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora thread C update with 17 modes"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture concept linking"
+    },
+    {
+      "candidate_id": "historical-769863476d32#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Medium and Substack AI publishing policies"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime legislative proposals"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "GDELT accuracy metrics for source verification"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General writing style guide template"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Okta Verify authentication app query"
+    },
+    {
+      "candidate_id": "historical-c5e0cd7ba0a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Main Street Independent distributional honesty methodology"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing workflow and marketing strategy"
+    }
+  ]
+}

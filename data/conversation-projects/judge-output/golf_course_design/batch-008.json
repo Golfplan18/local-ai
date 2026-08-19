@@ -1,0 +1,486 @@
+{
+  "nexus": "golf_course_design",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ec957c095277#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-9d54ee10c6bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8721de3a16a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-44aa7d3f9f75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-e7ffb1ecc74d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-bf757aef1ceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-947060573768#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#69",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-4222bdb5792d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-75c8d734ed6a#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-339dbd0b4f7e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-ed50481f05a0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-1a9081e98f99#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf design or golf-as-spiritual-practice work"
+    }
+  ]
+}

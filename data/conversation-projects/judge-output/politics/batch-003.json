@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bf757aef1ceb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-96f69a8a2f35#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-b4f3b9b9a06d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-feda250a6023#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-35d3ce6bf332#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-92d3704a8af4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-9efc5b50aa68#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-b3b02b0b77e6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-7359aa6c62d4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#22",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended political discussion connecting to movement/values."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-ab5c440ce2a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended political discussion connecting to movement/values."
+    },
+    {
+      "candidate_id": "historical-a7fde0905ce9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-9d3913b3270f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-5c39f6894381#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-54ab94725ead#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-6f52f92c3c9b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of building movement/inspiring people with values."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Politics mentioned but no clear focus on altruistic principles."
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of building movement/inspiring people with values."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended political discussion connecting to movement/values."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#38",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended political discussion connecting to movement/values."
+    },
+    {
+      "candidate_id": "historical-99df88574463#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#53",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Politics mentioned but no clear focus on altruistic principles."
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Politics mentioned but no clear focus on altruistic principles."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-35db0428f286#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-153328554b28#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#84",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#55",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended political discussion connecting to movement/values."
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#63",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-82b7c4640cb9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-49546e02107c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political framework discussion with moral/ethical principles evident."
+    }
+  ]
+}

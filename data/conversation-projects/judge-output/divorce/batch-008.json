@@ -1,0 +1,486 @@
+{
+  "nexus": "divorce",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-be0d3c587c33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Memoir section on marriage dissolution, separation, and divorce"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-1058aae35cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-7a7376a5c460#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-e1e35d5d5869#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-354d7910e48d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-947060573768#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-80a707f6c5b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-eceb8510d307#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#99",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-6e103f54f449#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    },
+    {
+      "candidate_id": "historical-433226858f03#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of divorce book or archival content"
+    }
+  ]
+}

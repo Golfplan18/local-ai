@@ -1,0 +1,246 @@
+{
+  "nexus": "technology",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WritingGPT framework using writing guides and style references"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "ConsensusGPT system for tracking expert beliefs vs scientific consensus"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NotebookLM retrieval mechanism for managing large outlines without context window overflow"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Context window management across NotebookLM, ChatGPT, Claude, Gemini for book outlines"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian embedded file bases for project templates and navigation consolidation"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meta-categories and concept linking for knowledge organization system"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Learning make.md documentation for software understanding"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code installation and setup on new system"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Editorial review process for book chapters discussing AI/thinking technologies"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/market analysis of AI agents, not practical technology exploration"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-AI team architecture with vault memory coordination and self-improvement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System directory structure and file organization for AI knowledge system"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oura project technical development, harness architecture, and operational progress"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "SynthesisGPT multi-expert system framework and persona creation"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Boot file updates with 17-mode registry and browser evaluation framework"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "SynthesisGPT tool integrations for solving goals"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system capabilities and technical breakthroughs in framework"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System Overview update for 17-mode system and architecture"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Remote SSH connection setup for accessing Mac Studio"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#28",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Epistemology of partial knowledge in Obsidian-based knowledge management"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Poe platform as alternative to API-based AI access"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Poe platform discovery and evaluation for multi-model AI access"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora visual intelligence architecture and visual-thinking integration"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code multi-threaded workflow enabling programming capabilities"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hierarchical data storage with mental models integration"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Bidirectional visual-AI communication in Ora system"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Making Obsidian vault AI-accessible via publishing platforms"
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DMCA circumvention framing overshadows practical Claude Code exploration"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Internal dispatch protocol message, not actual conversation segment"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consciousness/cosmology claims without practical technology engagement"
+    },
+    {
+      "candidate_id": "historical-31e0a98f4239#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian project template standardization for task dashboards"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Template automation frustration and abandonment, not sustained engagement"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hugging Face ecosystem inventory for local AI swarm resources"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cognitive exoskeleton technology and intelligence multiplication through AI"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI swarm architecture with pattern library for problem-solving"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora pipeline gaps discovery and practical API cost management"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing framework and methodology"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal procrastination reflection, not technology engagement"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Internal prompt formatting template, not real conversation"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book documentation updates, not technology evaluation or exploration"
+    }
+  ]
+}

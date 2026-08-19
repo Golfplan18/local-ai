@@ -1,0 +1,168 @@
+{
+  "nexus": "politics",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly drafts mission and objectives for Passion Matrix Politics project"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#57",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Political content but no engagement with altruistic framework or movement building"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Manipulation tactics contradict project's core altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction subplot review unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction subplot review unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extended cognition framework for different project"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Human Nexus framework development for different project"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Supreme Court analysis lacks engagement with project's altruistic mission"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Supreme Court analysis lacks engagement with project's altruistic mission"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#55",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction character development unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient content to evaluate engagement"
+    },
+    {
+      "candidate_id": "historical-52046b4b78e3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel adaptation work unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel adaptation work unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "MSI transmission strategy for different project"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic knowledge-sharing philosophy without Politics project focus"
+    },
+    {
+      "candidate_id": "historical-deb42c930be9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto development discussing movement strategy aligned with altruistic goals"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fiction ideation framework for different creative project"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction framework development unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction framework development unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic ideation framework refinement without Politics project subject matter"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "American Jesus novel chapter refinement unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "American Jesus novel chapter refinement unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-c5907e989a0f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "American Jesus novel chapter development unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-8a0501f3d8a0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "American Jesus novel chapter about fictional movement unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-75312ea77abb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fictional character profile for American Jesus unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic knowledge management system design unrelated to Politics project"
+    },
+    {
+      "candidate_id": "historical-1362dcc7bfbf#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic methodology discussion about moral language without Politics project focus"
+    }
+  ]
+}

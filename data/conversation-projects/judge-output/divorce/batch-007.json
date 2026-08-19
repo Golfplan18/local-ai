@@ -1,0 +1,486 @@
+{
+  "nexus": "divorce",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-b1557b8e3e3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-ccb3026bd90c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#109",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-cb042d2249b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-1b3998cff711#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal divorce narrative, not book archival project"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (autism parenting)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-4551e5cf43cc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-b798480dc867#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-0dad9518b2c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-6f6869e6a2c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-097113ab0fa4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-b25ebfb53432#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General framework/methodology, not Divorce book project"
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (autism parenting)"
+    },
+    {
+      "candidate_id": "historical-a0d4ea738b21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-fd3cc53f11a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated political/other content"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-02a0d4ab6823#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-907b49a7a5f3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No relevant connection to Divorce book archival project"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-32e4363cbe6b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Article about divorce trends, not Divorce book project"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Oura technical project unrelated to politics"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic AI system architecture framework"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User describing seeing political clarity needed; drivers route indicates mission engagement"
+    },
+    {
+      "candidate_id": "historical-abcde02dea15#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep analysis of Chief Justice Roberts' judicial bad faith on voting rights act"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Archive discovery for propaganda analysis methodology supporting political writing"
+    },
+    {
+      "candidate_id": "historical-a3ca1be4fe57#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel with explicit political goal: Christians voting against political right"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework applied to build American Jesus political parable"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic AI agents curation utility"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Cosmology theory; mentions deprioritizing it for politics but not engaging with politics project"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Democratic messaging dysfunction and Mamdani campaign strategic analysis"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic continuing discussion without political content"
+    },
+    {
+      "candidate_id": "historical-f03be4666978#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Left-wing operative blueprint with altruistic coalition framework"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message refinement on Hinge platform"
+    },
+    {
+      "candidate_id": "historical-88711618073c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trump administration policy and Harvard academic freedom discussion"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Third-order political-economic effects analysis including UBI and AI displacement futures"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Vault publishing technical implementation"
+    },
+    {
+      "candidate_id": "historical-929009250a5e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Minimum wage as Democratic single-issue campaign strategy"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Visualization and diagramming tools methodology"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Satirical authoritarian framework applied to policy areas"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Aura development project priorities"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#27",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Senate tax bill Social Security provision analysis"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel-writing pipeline frameworks for political fiction"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "WritingGPT configuration tool for general writing"
+    },
+    {
+      "candidate_id": "historical-5d9613ddf7d4#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 Chapter 3 outline with parable sequences"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Module architecture and control flow technical design"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Evaluating Mistral NeMo local model"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#109",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "LeftSpin propaganda tool design with viral strategy for partisan messaging"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#35",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User's hero's journey arc and moral philosophy in novel context"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Project folder structure and dependency installation"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "SynthesisGPT tool sub-goals and integrations"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Discussion of tech-industry article"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Web search API comparison for technical integration"
+    },
+    {
+      "candidate_id": "historical-ef2749e6d5a9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump administration abuse of power analysis"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Foundation mission expansion including software displacement education"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Why left-wing writing fails emotionally; Democratic communication strategy"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#43",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "California Prop 36 and Democratic crime messaging strategy"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Memes as foundational left-wing political strategy"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#64",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Texas Ten Commandments law and SCOTUS reversal strategy"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying framework to draft American Jesus Act 2 chapters"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ted Gioia's knowledge system collapse signs"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Macro political economy analysis of administrative friction and control"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal notes retrieval and Bumble conversation"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Right's propaganda legitimacy dependency and Streisand strategic analysis"
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Analyzing marriage narrative essay"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 Chapter 20 apostles occupation outline"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fulbright Board mass resignation strategic critique"
+    },
+    {
+      "candidate_id": "historical-f970ba5f3dee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible with political theme integration"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mental model library building for general visualization"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Automated publishing pipeline technical implementation"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump tax bill Republican disagreements and reconciliation"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Iterative drafting of general Ideation Framework"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Plot framework redesign for general novel writing"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political futures under AI: UBI prospects and authoritarianism analysis"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Document comprehension utility"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#82",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "VA anti-Democrat hiring rule analysis and de-politicization strategy"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Societal impact analysis and foundation political strategy"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Outline to narrative prose transformation utility"
+    },
+    {
+      "candidate_id": "historical-192ef9fd538d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Science and history discussion"
+    },
+    {
+      "candidate_id": "historical-b029d4de4873#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Buddhist meditation and generosity descriptions"
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Right-wing propaganda tactics and political resistance strategy"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework applied to American Jesus chapters"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Document analysis consolidation"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#58",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Court ruling analysis and judicial background research"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Opening messages for Emily personal communication"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cooperative agreement principles general memory"
+    },
+    {
+      "candidate_id": "historical-9e47f37f11fd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trump vulnerabilities through Epstein and betrayal narrative"
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trump incompetence and policy failures analysis"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Satirical fiction legislative proposal titles for political satire"
+    },
+    {
+      "candidate_id": "historical-bef800fcbf38#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 screenplay development framework"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical political parody articles using propaganda framework"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal relationship communication and cartoon tie-in"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing cascade strategy through influential nodes for political reach"
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "International backlash against Trumpism in democratic elections"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Speed learning method formalization as general framework"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI development trajectory and jobs disruption"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Making capitalism appealing to younger audiences for political persuasion"
+    },
+    {
+      "candidate_id": "historical-9de69c955a4a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King character campaign strategy development"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Managing failure modes in propaganda spinner tool"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI-augmented writing methodology for general fiction"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agents list compilation"
+    }
+  ]
+}

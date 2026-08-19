@@ -1,0 +1,486 @@
+{
+  "nexus": "science",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2a38357288c1#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: reflecting on ai pioneering and digital immortality, develop"
+    },
+    {
+      "candidate_id": "historical-c87dbe8d729f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: editing and improving a white paper on quantum interference patte"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: developing visual design elements, aesthetics, and organizat"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: reorganizing foundation structure using meta-principles and "
+    },
+    {
+      "candidate_id": "historical-ec021413d466#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: i need the title to be a challenge and a command\u2014something t"
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-science work: developing the 'diklis chump"
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: belief architecture with axioms, hypotheses, and provenance "
+    },
+    {
+      "candidate_id": "historical-d90c666e2e55#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics topic: mathematical foundations of infinity, division by zero, and planc"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: oracle's anonymous serendipity distribution philosophy"
+    },
+    {
+      "candidate_id": "historical-3b6f22dfd610#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: hubble's law alternative gravitational lensing model"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: ora-ai-app marketing website design \u2014 framework-first refram"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: commissioning and delivering evidence manifesto for book pro"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: aligning ai swarm system overview with updated book outline "
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: adding an embedded files section to matrix templates; excel-"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: vault documentation development and chat processing framewor"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics topic: analyzing flaws in argument that ai is merely statistics and ther"
+    },
+    {
+      "candidate_id": "historical-fe1a978268f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: physics of gravitational reach and the user's static universe cos"
+    },
+    {
+      "candidate_id": "historical-5396f17193e2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained physics discussion (6 key terms)"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List/index: curating list of ai agents available from smythos platform"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: knowledge-quality design"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List/index: consolidating aura's 75+ analysis modes into an outcome-driv"
+    },
+    {
+      "candidate_id": "historical-558e128f95ef#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained physics discussion (3 key terms)"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained physics discussion (9 key terms)"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: cascade marketing strategy through influential nodes"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: restructuring technical outline with content loss verificati"
+    },
+    {
+      "candidate_id": "historical-43905cd2c700#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: restructuring outline from multi-level numbering to indents"
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Commissioned research on non-physics: delivering research as markdown file on buddhist psychology"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: authoritarian regime satirical fiction"
+    },
+    {
+      "candidate_id": "historical-fd77d4ba5e8a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: double-slit electron diffraction experiment data analysis and wob"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: loneliness/isolation, the amma comparison, and fear of losin"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: creating satirical political fiction about authoritarian reg"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: edge observer cosmological thought experiment"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: epiphany about bidirectional visual-ai communication and com"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: letterkenski science policy dossier delivery"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics topic: particle physics terminology"
+    },
+    {
+      "candidate_id": "historical-fa950fcebcb3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: new tired light theory versus expanding universe model"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: establishing frameworks for story beat generation and charac"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained physics discussion (3 key terms)"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: vanessa attraction-wiring exploration (fetish, personality t"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: ora meta-layer architecture for autonomous cognitive operati"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-science work: outlining and marketing the memoir/manifesto 'the vault,' in"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics topic: marketing blurbs and book praise for expanding awareness cosmolog"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics topic: marketing blurb creation and refinement for expanding awareness c"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: website demonstration design and technical architecture"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-science work: using fiction and anonymity to amplify moral clarity to hack"
+    },
+    {
+      "candidate_id": "historical-f6ed8919ddd6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: cosmology, gravitational effects, and universe expansion models"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: reprinting the objectives/milestones framework and a task-co"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: ai story-automation pipeline, personal destiny/alignment, an"
+    },
+    {
+      "candidate_id": "historical-7196bd3360ab#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: expanding awareness cosmological concept and planck-scale matter-"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: master outline review and systematic enhancements with forma"
+    },
+    {
+      "candidate_id": "historical-7d910695136f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: developing and refining steady-state universe model and cmb expla"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: developing worldbuilding systems for redemption springs"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: dating message refinement and tone adjustment for hinge matc"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: exploring database technology options and video integration"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: critique of evaluation draft quality/conformance and chapter"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: writing and iteratively refining emotional, accessible intro"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: satirical authoritarian regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: thread d"
+    },
+    {
+      "candidate_id": "historical-fdfc6429d8d9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: obsidian add-on research for wikipedia integration"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: discovery of additional book projects and project manifest i"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: gratitude for an ai-enabled 'second life' and hatred of barr"
+    },
+    {
+      "candidate_id": "historical-a38b20013844#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: spiritual practice, emotional knowing versus intellectual kn"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: ucla campus expansion and undeveloped land"
+    },
+    {
+      "candidate_id": "historical-9debdc26db4b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: attempting to visualize double-slit electron diffraction graph"
+    },
+    {
+      "candidate_id": "historical-2fe5abdd6033#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: santa monica child abuse case and institutional patterns ena"
+    },
+    {
+      "candidate_id": "historical-e99085d9ca5f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: time of possession advantage in football strategy"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: enabling technologies and adjacent possible breakthroughs"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: ai-assisted writing method overview and iterative developmen"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: documenting the felt experience of breakthrough epiphanies f"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: thread e"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: phone selection and carrier financing mechanisms"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: satirical regime documentation exploring policy contradictio"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/outline work: confirming the book's 'unlock journey' (door/key) structure "
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal topic: satirical authoritarian regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: scaling to parallel/mirrored vault worker machines and the s"
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: einstein's published works bibliography"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence: developing and refining the comprehensive master trope libra"
+    },
+    {
+      "candidate_id": "historical-c5f1dd379ba4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct physics engagement: writing a paper section bridging eac and standard model cosmology"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/system work: feminine pacing as wisdom, mountain-dove metaphor, and mascu"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/organizational work: ai agent teams white paper outline summarization"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 13,
+  "verdicts": [
+    {
+      "candidate_id": "historical-25aab1d10d9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political invective/propaganda/narrative strategy development"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project development/organization for different project"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#94",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal story/lookup"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-74a79186230c#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#50",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-178acc556d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-da0de4d8ab3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal story/lookup"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-ebf2e6268387#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-88711618073c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-9139b2ce658d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political/economic analysis or strategy for We Too mission"
+    },
+    {
+      "candidate_id": "historical-cefa9d813001#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-f971afe5714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-dd3f3774c641#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Manifesto/We Too book development"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#57",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-8222b9b9e6ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#71",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#46",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-de9f58d0eac3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-f9e9876d6cc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book/chapter development with We Too-relevant political content"
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-f03be4666978#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-d3d652d1ff13#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-7b81cb5f4ab7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project content (different narrative fiction project)"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#64",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/tech research or unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political/economic analysis or strategy for We Too mission"
+    },
+    {
+      "candidate_id": "historical-deb42c930be9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit We Too project reference"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit We Too project reference"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-17af7e3f41b3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative fiction development (not American Jesus)"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#46",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book/chapter development with We Too-relevant political content"
+    }
+  ]
+}

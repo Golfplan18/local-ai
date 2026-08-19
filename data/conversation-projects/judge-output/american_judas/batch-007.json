@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2b6e1ae0390a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist subplot development (Wank Cox environmental justice)"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-1b76f2cc0c5a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-06cc652a33a3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-1b76f2cc0c5a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist framework restructuring for American Jesus antagonist threads"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework applied to Environmental Justice antagonist subplot"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-7369792cf1fb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-1b76f2cc0c5a#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-8dedf8d90ee4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-f4c380ab7da7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-ec3859522493#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist coalition deep analysis of chapters 29-30"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-801ebe92c228#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-9dd6631cd426#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-274695306038#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas project engagement"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not substantive engagement with American Judas project"
+    },
+    {
+      "candidate_id": "historical-197f9bba79b6#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 3 antagonist coalition moral choice analysis"
+    }
+  ]
+}

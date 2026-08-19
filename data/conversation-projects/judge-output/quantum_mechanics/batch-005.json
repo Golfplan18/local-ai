@@ -1,0 +1,486 @@
+{
+  "nexus": "quantum_mechanics",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-35faa8bc4ca2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Quantum mechanics discussion not specific to Wobble Model"
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-a085cf3a552b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-c55ce644790d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Wobble Model engagement"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-f710abe1dee4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Quantum mechanics discussion not specific to Wobble Model"
+    },
+    {
+      "candidate_id": "historical-a085cf3a552b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Quantum mechanics discussion not specific to Wobble Model"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-943af47ceecd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-74f18b45368e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Quantum mechanics discussion not specific to Wobble Model"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-e8feeda1cd3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-b981f8afa6fb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-ae6eda564f1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-7aa10f6e1bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-bf0d82c82206#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-194c1aeb3766#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different physics project (Bell, Higgs, cosmology, etc.)"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    },
+    {
+      "candidate_id": "historical-951576e5e137#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with Wobble Model or simulation project"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Literal test command with no engagement on prompt engineering substance"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed framework for organizing multi-agent AI system instructions (SWARM.md/AGENT.md)"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content; creative writing exercise"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extended cognition white paper revision discussion; philosophical content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Analysis of AI reasoning limitations; theoretical AI discussion, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Catastrophic command safeguards for vault; data protection policy, not AI communication"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Application launcher and priority queue system description; infrastructure design"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generating satirical authoritarian regime policy content; creative writing"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical propaganda contrast; creative writing about fictional regime"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Plot chapter development and evaluation frameworks for fiction writing; storytelling methodology"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Test confirmation; literal test command only"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing comprehensive writing style prompt template; refinement of AI output guidance"
+    },
+    {
+      "candidate_id": "historical-b1125ef34aef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed comparison of custom multi-agent AI architecture vs commercial solutions"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mobile interface implementation for Ora; technical infrastructure, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#11",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Multi-monitor workspace optimization; productivity setup, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge architecture for extended cognition; structured inquiry and prompt evaluation framework"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Logical coherence vs moral reasoning in AI; philosophical ethics, not workflow"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conclusion and handoff instructions for next thread; administrative transition"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hardware/model configuration decisions; infrastructure architecture, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Searching model specifications by size/bit-count; model selection, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Parallel model architecture with different instructions; system design"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Document automation frameworks; tangential to prompt engineering as a methodology"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#58",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI reasoning paper analysis; theoretical AI, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cloud DNS nameserver setup; infrastructure, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Configuration file architecture for interface; system design patterns"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generating satirical authoritarian regime content using Diklis Chump framework"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy content; creative writing"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Layered sequential AI prompt processing; designing AI personas for editing pipeline stages"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating expert AI personas (HonnoldGPT, SynthesisGPT); persona-based prompt strategy"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI capability trajectory and job impact; AI analysis, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personality framework ethics and applications; personality systems, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Documenting AI-assisted writing methodology and framework-pairing process"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and relationship ethics; personal development"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Updating book framework documentation; content management"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shopping and filtering as AI application; use case, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Power supply and physical hardware setup; infrastructure, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluating dating profile and crafting opening message; personal/dating content"
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Product messaging and homepage positioning for Ora; marketing strategy"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Comparing Poe vs direct Claude costs; service evaluation"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Verifying GPT-5 release hype article; content verification"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Git and Obsidian vault synchronization; tool integration issues"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agent swarm architecture with orchestrators and adversarial planning; system design"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing and refining research-focused prompt; prompt refinement"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Massive 1TB parameter models and storage; hardware/model discussion"
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Drafting fiction chapter on politics and moral choice; creative writing"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop access and SSH configuration; system administration"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Iteratively revising Ideation Framework prompt; prompt refinement for story beats"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Science policy dossier scope and clarification; research project scoping"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI prompt layering and designing ordered suite of AI personas per writing stage"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology with design-based system optimization"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and personality analysis; personal dating application"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OkCupid profile personality analysis and message drafting; dating content"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Philosophical concepts and frameworks; generic philosophy, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Style guide framework pair analysis and enhancement; prompt refinement"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Strategic vision for AI idea transmission and voice cloning; conceptual AI strategy"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Static IP and DNS zone configuration; infrastructure, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-6c54e7d49b40#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Patent protection and open-source architecture strategy; business/legal"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting dating app opening message; personal dating content"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Benchmark evaluation and model discovery; model selection"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI safety argument audit and verifier findings; argument analysis"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Resonance in partner selection vs value evaluation; relationship psychology"
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Feedback on prompt architecture gaps and recommendations; prompt system critique"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Judgment as limiting factor in AI teams; AI collaboration philosophy"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Visual thinking systems and expertise development; learning/thinking methodology"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy proposals for fictional authoritarian leader; creative writing"
+    },
+    {
+      "candidate_id": "historical-aa55f025efbe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Editorial or op-ed analysis on political/cultural topic; content analysis"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Library content review and developing personality framework distinctions; personality system"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book outline v4 restructuring and content restoration; fiction planning"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Implementing persona/role-shift across character frameworks; fiction character methodology"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-assisted fiction writing method and Ideation Framework; writing methodology with AI"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Autistic son's learning and Buddhist compassion; personal/parenting content"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Benchmark analysis and model selection for local hardware; hardware evaluation"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Persistent AI memory/second-brain system design; AI system architecture"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Surveying AI tools for math visualization; tool evaluation"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI teams as human subconscious extensions; AI collaboration philosophy"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting dating profile and message on Hinge; dating content"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Persona implementation for character development frameworks; fiction methodology"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Revising Framework Creation Framework tone; documentation revision"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Integrating white paper with fictional Mira narrative; content integration"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Multi-monitor workspace for AI team and assistant; productivity optimization"
+    }
+  ]
+}

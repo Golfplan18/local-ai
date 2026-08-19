@@ -1,0 +1,36 @@
+{
+  "nexus": "american_judas",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-51444e9eb889#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outlining Act 1 chapters of American Jesus protagonist narrative, not antagonist-perspective mirror."
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses MSI character blindness mechanics and devices; unrelated to American Judas."
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining American Jesus Act 2 Chapter 23; developing protagonist narrative, not antagonist retelling."
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Replacing Act 2 outline and event structure for American Jesus, not American Judas antagonist manuscript."
+    },
+    {
+      "candidate_id": "historical-da0de4d8ab3b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character analysis for American Jesus (undeveloped secondary characters); not developing antagonist-perspective narrative."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "nexus": "quantum_mechanics",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-af966f125328#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses Nelson's stochastic mechanics and quantum potential theory, not the Wobble Model simulation project."
+    },
+    {
+      "candidate_id": "historical-7c72303a869b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Identical content to prior candidate: Nelson's mechanics framework, no Wobble Model or double-slit work."
+    },
+    {
+      "candidate_id": "historical-03cd093cc60a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explores Pauli exclusion principle and quantum spin as classical angular momentum; unrelated to Wobble Model or simulation."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing_website",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f608fe6fc31b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publisher website vs Substack strategy comparison; book promotion with website option"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publisher website vs Substack comparison table; author platform with website decision"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-02b6ab5422a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-e66fbf91911a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon book profile optimization and marketing page content"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-assisted novel writing method overview for author workflow"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Kindlepreneur self-publishing platform with author marketing strategy"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented book workflow with Amazon description and marketing integration"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Independent publishing philosophy with website/Substack strategy for audience"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book front matter praise for author bio/sales page content"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework for book sales pages"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website architecture for dual-audience engagement and publisher hub"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website design and technical architecture planning for publisher"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book marketing strategy and author platform development planning"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-51282862b903#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book marketing strategy including author platform development"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Blogging as publisher platform with HTML/website software integration"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "PubFunnels marketing funnel platform for publisher ecosystem"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "PubFunnels author marketing funnel for publisher/author platform"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework development for book sales content"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website architecture design for publishing hub (MSI site build)"
+    },
+    {
+      "candidate_id": "historical-1fc6742e04d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substack-to-website integration for publishing distribution"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct project unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-dabd6d4f6e4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website-to-Substack integration for publisher content distribution"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Automated publishing pipeline for digital product generation"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with publisher website project scope"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/verification exercise unrelated to publishing"
+    }
+  ]
+}

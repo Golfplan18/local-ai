@@ -1,0 +1,120 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal Obsidian vault sharing; AI accessibility for individual use, not public commons"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction writing framework verification; no engagement with cognitive infrastructure commons"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-augmented fiction outlining for personal creative project; not about establishing commons"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Style guide framework development for fiction; personal creative methodology"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal belief system and knowledge organization; not public-domain infrastructure"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus thematic implementation for fiction novel; personal creative work"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framework updates for fiction writing; personal creative methodology"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Edward de Bono thinking tools extraction; reading/analysis of existing methodology, not developing commons"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Special needs parenting memoir excerpt; no connection to cognitive infrastructure"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical discussion of local model downloads and quantization; personal tool configuration"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire about authoritarian regime symbols; not about cognitive infrastructure"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy scenario dialogue; political commentary unrelated to knowledge commons"
+    },
+    {
+      "candidate_id": "historical-f0fbd4efdfbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmic parable artwork and AI image generation style guide; creative fiction work"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Swarm book outline alignment update; personal book project, not commons infrastructure"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework evaluation and mapping updates for fiction; personal creative methodology"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vignettes showing knowledge liberation impact; discusses hosting/mirroring freed knowledge, permanent URLs, mission integrity against IP lawsuits"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marcus Johnson character profile for American Jesus; personal creative fiction work"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Industry research on evaluator-optimizer loops; LLM methodology discussion, not cognitive infrastructure commons"
+    },
+    {
+      "candidate_id": "historical-aa55f025efbe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Op-ed on AI and job automation; philosophical economics essay, not about establishing commons infrastructure"
+    }
+  ]
+}

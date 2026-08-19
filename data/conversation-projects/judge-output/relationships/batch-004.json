@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wellbeing applied to dating and relationship"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-68955b67ecda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Crafting romantic opening message with relationship intent"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire framework, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist framework on love and attachment in relationships"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Feminine personality in romantic context"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire framework, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-100618cf9e7c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-802551fb3e3e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-af315528f8ae#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-02a0d4ab6823#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-0dad9518b2c0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-097113ab0fa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-a38b20013844#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-7e2729630ed8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-8222b9b9e6ea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-eceb8510d307#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-01c66745fcc3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and romantic relationship work with real engagement"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#36",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-a3116b6f42ab#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary fiction work on American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-3fa91717596e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#128",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire framework, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-e9591bf14815#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-e6b2424c255b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-0f70cfd32ef8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-feddf97774e3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-5cd03bf4ef96#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-13ef5c257426#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-0bbe45209fe7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-d5f684c3181f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire framework, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive relationship practice work identified"
+    }
+  ]
+}

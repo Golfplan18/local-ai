@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1678ee40faeb#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-3920bee9ce49#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-57d370d149b6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#63",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-ec3859522493#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter development with American King narrative context"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Political discussion without American King markers"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter development for non-American-King project"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-0d5c2a4e986f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-1678ee40faeb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-9d3913b3270f#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic plot/setting development"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework/Ora infrastructure work, not American King"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#54",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-95eff4a001be#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political analysis, no American King content"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#45",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#46",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/Ora meta-discussion, not American King project"
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#82",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or topic"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora verification/framework technical work, not American King"
+    },
+    {
+      "candidate_id": "historical-5e38b0578a49#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter/Act development for American King manuscript"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or topic"
+    },
+    {
+      "candidate_id": "historical-f8881242807a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-7aca87ae7e75#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-ca7b201df286#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or topic"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework/Ora infrastructure work, not American King"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-497d67010709#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter/Act development for American King manuscript"
+    },
+    {
+      "candidate_id": "historical-9c3c3a5353f3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-f03be4666978#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter development for non-American-King project"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or topic"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-e55ad76bcce4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/leadership discussion for American King"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-65618ad9bacf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/leadership discussion for American King"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter development with American King narrative context"
+    },
+    {
+      "candidate_id": "historical-f1b39378527f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-6d0cdd5485f4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-99df88574463#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-1678ee40faeb#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character/chapter/manuscript work on American King/Jesus"
+    },
+    {
+      "candidate_id": "historical-1b10269c8de5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter development with American King narrative context"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework/Ora infrastructure work, not American King"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework/Ora infrastructure work, not American King"
+    },
+    {
+      "candidate_id": "historical-cfee1ba18356#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter/Act development for American King manuscript"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User metadata preference, not project content"
+    },
+    {
+      "candidate_id": "historical-9431a514e0f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-28031b5f52d7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project or topic"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic political/policy discussion, no American King narrative"
+    },
+    {
+      "candidate_id": "historical-f03be4666978#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear American King project markers found"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus ideation on narrative subplot"
+    }
+  ]
+}

@@ -191,3 +191,5 @@ data/archive/
 # data/conversation-projects/judge-output/ are NOT derived and are kept.
 data/conversation-projects/candidates.json
 data/conversation-projects/judge-input/
+data/conversation-projects/verify-input/
+data/conversation-projects/rerun-batches.json

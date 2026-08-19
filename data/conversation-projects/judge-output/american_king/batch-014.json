@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 14,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2f135a725277#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical/legal matter; unrelated to American King."
+    },
+    {
+      "candidate_id": "historical-47c4c55f8bbc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-95fb2712dde6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical/legal matter; unrelated to American King."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-696be87928fc#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-95fb2712dde6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Background research; not direct project engagement."
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus trilogy content (book/chapter work)."
+    },
+    {
+      "candidate_id": "historical-74a79186230c#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book refinement work on trilogy."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project character/persona work."
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project character/persona work."
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#59",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-8a67f89f4547#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#19",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-545de649ce39#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book refinement work on trilogy."
+    },
+    {
+      "candidate_id": "historical-b1896e702881#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-408e770f67b0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-ce729e45963a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-df4d45b9f8f3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus trilogy content (book/chapter work)."
+    },
+    {
+      "candidate_id": "historical-c4740cecb2c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Background research; not direct project engagement."
+    },
+    {
+      "candidate_id": "historical-d6572e058915#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-c854bdb07df2#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-75c8d734ed6a#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-048e42db88b6#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-f1afc989441b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-07601188454d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-a7fde0905ce9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-b4c6e254db86#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#55",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#32",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#47",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-87514730b617#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-a676f140e14d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-f4c380ab7da7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus trilogy content (book/chapter work)."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#66",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-a3ac29a0f44f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-96b46c4f91e2#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus trilogy content (book/chapter work)."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#66",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#47",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-b7c34de15ea9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news about others; not American King project."
+    },
+    {
+      "candidate_id": "historical-af00128bdcee#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-7c643a787a18#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book refinement work on trilogy."
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-93eec5509bef#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct character engagement (Malcolm/Hayzeus)."
+    },
+    {
+      "candidate_id": "historical-f214a9ef874f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Background research; not direct project engagement."
+    },
+    {
+      "candidate_id": "historical-d81ad7a18ca9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    },
+    {
+      "candidate_id": "historical-6f31c0ceb5e7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient connection to American King project."
+    }
+  ]
+}

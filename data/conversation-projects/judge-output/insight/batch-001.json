@@ -1,0 +1,486 @@
+{
+  "nexus": "insight",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Collecting mental models/frameworks, not personal insights"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Collecting mental models/frameworks, not personal insights"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system/tool configuration or development"
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal development or reflection"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Passion Matrix Insight engagement"
+    },
+    {
+      "candidate_id": "historical-2f602a33caef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-efe8eb44ab79#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring suffering and freedom"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic tool help or document analysis"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist teachings on suffering and liberation"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal narrative about consciousness"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist teachings on suffering and liberation"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project management or system organization"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system/tool configuration or development"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal insight or spiritual topic"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system/tool configuration or development"
+    },
+    {
+      "candidate_id": "historical-cc589d43ae6a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist teachings on suffering and liberation"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-5533e4b23002#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-e08973e1a3b2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-cf87dd0bfbb9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-7a7376a5c460#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-d5f30b083dde#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal insight or spiritual topic"
+    },
+    {
+      "candidate_id": "historical-125b714d2ccd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist teachings on suffering and liberation"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-0aae1e8a45fd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-88240b584023#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring suffering and freedom"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-150544113dee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring suffering and freedom"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal development or reflection"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring suffering and freedom"
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-81b60d7522e1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-3b39f9501d71#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal insight or spiritual topic"
+    },
+    {
+      "candidate_id": "historical-b029d4de4873#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-d72434e83719#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-a38b20013844#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation practice and development"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice or philosophy"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal insight or spiritual practice"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient personal insight relevance"
+    }
+  ]
+}

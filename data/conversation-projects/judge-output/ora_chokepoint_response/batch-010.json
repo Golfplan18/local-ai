@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9ab725f78144#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing Ora anti-capture legal structure to prevent monopolization"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-947060573768#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Removing proprietary dependencies to enable Ora as free alternative"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#128",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Public domain repository strategy to prevent intellectual property enclosure"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-aef7035766c8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-ba1621d247a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analysis of tech silos in PDF/image tools and adversarial interoperability liberation"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-e11bca727453#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-51e80ff7256c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-e5ba15999b20#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-621c5e21328b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building private AI infrastructure to break commercial AI oligopoly dependency"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-07601188454d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-e4a018948eeb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-67f0e1e0d65e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-8982bea6fb40#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-495c6e662187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-d4fefa6a6af5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-aee8464ccf84#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2c6a89dfd447#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-4eded76990ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model pricing analysis and cheap local models as alternative to AI oligopoly"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with building/evaluating free alternatives to monopoly software"
+    }
+  ]
+}

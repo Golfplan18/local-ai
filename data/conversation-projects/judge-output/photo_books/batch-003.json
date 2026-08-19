@@ -1,0 +1,486 @@
+{
+  "nexus": "photo_books",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a2a308bff913#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message analysis, unrelated to photo books"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault project system architecture, not photo books"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating connection with Gia, not photo books"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis for Janessa, not photo books"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Poetry and relationship reconnection with Ashley, not photo books"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Masculine-feminine dynamics paraphrasing, dating context, not photo books"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating communication strategy and relationship pacing, not photo books"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, not photo books"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis, not photo books"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code terminal integration setup, not photo books"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis on AI Extension System, not photo books"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis for Lili, not photo books"
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NotebookLM outline framework for Communist Manifesto book, not photo books"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship coaching and Ashley signal interpretation, not photo books"
+    },
+    {
+      "candidate_id": "historical-71957187b84f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR dating profile extraction for Esmeralda, not photo books"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Progressive political book chapters, not photo books"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction about regimes, not photo books"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing affordability myth section for book, not photo books"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Proof of concept and pedagogical instruction, not photo books"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic reform and corporate governance book, not photo books"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools survey for visualization, not photo books"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dialogue and character expansion for narrative, not photo books"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Various topics conversation, not photo books"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outline change synthesis for book project, not photo books"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review for spelling, not photo books"
+    },
+    {
+      "candidate_id": "historical-377cd8bae827#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto outline review, not photo books"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile disappeared from Hinge, not photo books"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix template and Excel automation, not photo books"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime scenarios, not photo books"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Three book outlines for Parliament of Mind project, not photo books"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political criticism of Bob Menendez, not photo books"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cultural guerrilla warfare chapter drafting, not photo books"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT configuration for writing style, not photo books"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Production timeline and release corpus strategy, not photo books"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Comparing platforms and features, not photo books"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Revising preview chapters for book project, not photo books"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book 2 preview chapter condensing, not photo books"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding mental models and resources to collection, not photo books"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding mental models and resources, not photo books"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Two preview chapter creation, not photo books"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship handling with Amber, not photo books"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura project status and debugging, not photo books"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing workflow and marketing strategy, not photo books"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Press release templates and meta-criteria, not photo books"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship analysis with Ashley, not photo books"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output, not photo books"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stage-specific instructions for authoritarian progression, not photo books"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Cover Concept Framework for book project, not photo books"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon Description Framework for book, not photo books"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging and MBTI analysis, not photo books"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship visioning, not photo books"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Boot.md file development for infrastructure, not photo books"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transform outline into narrative prose, not photo books"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Historical and factual research questions, not photo books"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PKM Architecture Orientation, not photo books"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon Book Description Framework, not photo books"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting corrections for markdown, not photo books"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Restructuring technical outline, not photo books"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Instagram privacy change analysis, not photo books"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Business Model Documentation, not photo books"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content generation, not photo books"
+    },
+    {
+      "candidate_id": "historical-c2de9981cc0a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Photo scan services in Coachella Valley for organizing family photos"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack editor technical issues, not photo books"
+    },
+    {
+      "candidate_id": "historical-ae08905acd6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating photo response draft for woman, not photo books"
+    },
+    {
+      "candidate_id": "historical-10ea4e9efe12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Polycarbonate window sealing solution, not photo books"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian content generation, not photo books"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR dating profile transcription for Kellie, not photo books"
+    },
+    {
+      "candidate_id": "historical-5ee063d04e40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Special needs parenting book project, not photo books"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile presentation and match analysis, not photo books"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal presence and spirituality reflection, not photo books"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tier 0 development and hardware requirements, not photo books"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating interaction with Vanessa, not photo books"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-augmented book development workflow, not photo books"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating authenticity analysis for unmatched woman, not photo books"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and opening message, not photo books"
+    },
+    {
+      "candidate_id": "historical-6a2774b656eb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating frame through house flipping, not photo books"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message wording refinement, not photo books"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Propaganda book concept brainstorming, not photo books"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Declined image analysis request, dating context, not photo books"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Nancy dating profile analysis, not photo books"
+    }
+  ]
+}

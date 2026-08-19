@@ -1,0 +1,488 @@
+{
+  "nexus": "project_workshop",
+  "batch": 9,
+  "judged": 80,
+  "accepted": 29,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-86a412483c9f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-67f0e1e0d65e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Operating principle, not project scoping"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content for existing book"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project scope expansion analysis"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative project ideation and concept development"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project scope expansion and ideation"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework design for project execution"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project architecture design"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project impact and scope analysis"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-cd76c0e44ce2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project positioning and strategy"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project content concept development"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-1bbdf7f2be38#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative project framework"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis tool"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project development"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project input design framework"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuration or system message"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear project workshop engagement"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative project concept development"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project design or framework development"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative project ideation and concept development"
+    },
+    {
+      "candidate_id": "historical-ca422347a07b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel project structure and planning"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "marketing",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c428b872e17f#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon/KDP product matrix and release-cadence marketing strategy"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic: Curating AI agents from AI Agent App templates"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Luxury branding and website header design strategy"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book production timeline and multi-book launch strategy"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform automation and distribution strategy"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character strategy for target audience appeal"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic: Immigration research dossier creation for columnis"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon/KDP product matrix and release-cadence marketing strategy"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple-voice/persona publishing and reach strategy"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic: AI-augmented writing methodology for fiction: outl"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework for publishing and audience strategy"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework for publishing and audience strategy"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple-voice/persona publishing and reach strategy"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework for publishing and audience strategy"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple-voice/persona publishing and reach strategy"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Product and market positioning strategy"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Off-topic personal/dating content"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-974539d89ba3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#15",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework for publishing and audience strategy"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple-voice/persona publishing and reach strategy"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple-voice/persona publishing and reach strategy"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive marketing strategy engagement"
+    }
+  ]
+}

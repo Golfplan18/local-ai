@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/documentation work"
+    },
+    {
+      "candidate_id": "historical-f9d923ab780c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool/documentation work"
+    },
+    {
+      "candidate_id": "historical-2aaa983b1dad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile work"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political text work"
+    },
+    {
+      "candidate_id": "historical-094d710a9e79#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-bcd3eafbee93#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-dc5b80a29f58#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character work"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-c14bbae8e487#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meme creation project"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-8a0501f3d8a0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-a64dfbfca7d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-c0746d1f902e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-587af854e46b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character work"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-ed1d5236500a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-19b34b5b32dc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-730472456dde#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing methodology"
+    },
+    {
+      "candidate_id": "historical-5ecbb4a87af9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-378328829725#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-1b76f2cc0c5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Jesus mention"
+    },
+    {
+      "candidate_id": "historical-9baca7caf0f1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character work"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Jesus"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-41303cf3858d#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "58 analysis modes and Gear paths for Ora"
+    },
+    {
+      "candidate_id": "historical-88d7207ce271#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Product messaging for Ora platform"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural language programming book project (not Ora)"
+    },
+    {
+      "candidate_id": "historical-c1dad3e45daa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora ToS and link placement strategy"
+    },
+    {
+      "candidate_id": "historical-65b0b8059fb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-8c9540b1886d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-abb8672364ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-e377861dcb9e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-ffeefb4a0e89#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting up Ora's theming system"
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI agent architecture with orchestrator/boot language"
+    },
+    {
+      "candidate_id": "historical-5a20df4aa05a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora domain strategy (ora-ai.app)"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Boot framework chapter (from book, not Ora app)"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Eight-phase Ora launch roadmap"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing meta layer for Ora system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3cdd1c9b5789#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-ba8b08d42e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora boot files and system update"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about Ora App platform"
+    }
+  ]
+}

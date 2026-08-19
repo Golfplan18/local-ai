@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d480b9b4fa9b#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic cosmology article without framework engagement"
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transcription tools discussion, no physics content"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction writing feedback system, unrelated to project"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User developing new physics framework reconciling quantum and relativity"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical outline editing, unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project, not Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework evaluation, not project engagement"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction outline, different project"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test prompt response, not substantive discussion"
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaint review, unrelated subject"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship advice, unrelated content"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to project"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument review, different project"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious fiction chapter development, different project"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology framework, not physics project"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to project"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy dossier scope, not project engagement"
+    },
+    {
+      "candidate_id": "historical-99df88574463#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Monitor configuration discussion, unrelated to project"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-c4740cecb2c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-5396f17193e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-1e7f51b82e80#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Quantum mechanics paper on Bell's Theorem with Einstein-Podolsky-Rosen connection"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework verification for AI system, not physics"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-802551fb3e3e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Software/AI framework verification, not physics project"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework configuration, not physics project"
+    },
+    {
+      "candidate_id": "historical-26ba5aad5b1c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Identifying top physics problems and multiverse theory concepts related to unified framework"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-730472456dde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-9b036fdffb5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-8a6f72c1245a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-14cb9cf3ace0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-7c8ebab1ca93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-b4df60922cfd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-f6129ba414b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project-related keywords in excerpts"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI memory/second-brain philosophy - not political project engagement"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Extensive discussion of moral framework for left politics vs right, reclaiming patriotism"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1-2 chapters of American Jesus novel - core narrative work on altruistic political movement"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta communication preference only"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political analysis of tax bill and GOP strategy from moral/economic justice perspective"
+    },
+    {
+      "candidate_id": "historical-6c19fd4f5325#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ICE shooting law enforcement narrative - police violence issue, not political alt framework"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of American exceptionalism and failed presidency as moral/political critique"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI expert team system conceptualization - technical infrastructure, not political project"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference - meta request only"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora framework infrastructure work - local AI technical deliverables"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character embodies authentic Christ figure in modern America political context"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#38",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction concept about populist demagogue taking propaganda literally - moral framework exploration"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-47e4504fa029#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political messaging campaign reclaiming sacred symbols from right - direct altruistic framework"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SCOTUS Louisiana redistricting case - legal news summary, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-76f769b5834d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News website RSS feed setup - technical infrastructure, not political messaging"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 Chapter 15 - movement evolution from protest to prefigurative politics"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#61",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Voice of America contempt hearing - legal/news story, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#21",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus meme book and novel production planning for political messaging"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 Chapter 15 detailed outline showing movement organization and systemic response"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing American Jesus full outline with themes of altruistic political movement"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm book project identifying weaknesses in right-wing coalition for political strategy"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thematic foundation and character architecture for American Jesus altruistic narrative"
+    },
+    {
+      "candidate_id": "historical-992831c7f420#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Democratic candidate quality - generic political analysis, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-1127ad0541d7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Moral disgust imagery for cartoons about rentiers - character voice work but unclear project link"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crime rate comparison red/blue states - generic political data, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-09a77fad48aa#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative structure debate for book - too thin excerpt to confirm project engagement"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project reclaiming religion and patriotism from political right"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical policy scenario about flag replacement - unclear if project-specific work"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Economic critique and bad-president historical parallels as political messaging"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mike Lee public lands bill - news article analysis, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum physics paper - completely unrelated technical work"
+    },
+    {
+      "candidate_id": "historical-7528c0fb7d24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fed leadership Trump threats - political news, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book release/publication strategy using psychohistory for political impact planning"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Electoral and judicial system reform discussion showing altruistic political change framework"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Doctorow/EFF research prompt - EFF policy work, not Politics project"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MSI voice portraits and propaganda testing for political messaging work"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SCOTUS Trump v CASA ruling - legal news summary, not altruistic framework"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Kindlepreneur self-publishing overview - business/publishing tech, not political work"
+    },
+    {
+      "candidate_id": "historical-0f70cfd32ef8#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Killi Noempathy character development for American Jesus political narrative"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MTG biographical piece for political messaging and character study"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Kamala Harris polling analysis as political content for messaging"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Craft theory on tension/suspense - writing technique, not political project"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-f086250082a7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Derisive terminology list for character voice - too thin to confirm project engagement"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-581dcf555145#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Books on responding to political right with rhetoric and messaging strategies"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#55",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Joni Ernst Medicaid comment as political content and critique"
+    },
+    {
+      "candidate_id": "historical-5fd1a6086d57#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Books on responding to political right - research for altruistic messaging framework"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapter 13 outline testing movement's witness and moral confrontation"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Article testing and sourcing for political content about family values messaging"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content using Chump framework for political critique"
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act II thematic implementation and plot architecture for American Jesus political movement"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#128",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Repurposing testing for authenticity and projected political rebalancing concepts"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot refinement framework for American Jesus novel structure and narrative"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character relationship matrices for American Jesus movement dynamics and interactions"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trump financial self-enrichment analysis as political critique"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google AI Studio capabilities - tool query, not political work"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta only"
+    },
+    {
+      "candidate_id": "historical-4d6f9f65baeb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Anthropic guardrails article - tangential to altruistic principles but not direct engagement"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fox News spin analysis critiquing political messaging about bill"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework transforming raw material into narrative elements for political work"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rage at copyright gatekeepers aligns with altruistic principle of access and freedom"
+    }
+  ]
+}

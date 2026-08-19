@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-annotation of vault notes for indexing and retrieval system."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Infrastructure for vault rendering layer, not candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical theory of consciousness, unrelated to candidate curation."
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative paraphrasing exercise, not about candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference request, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Summarizing Obsidian+Claude workflow videos, not Incubator."
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Email migration technical work, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle project vision, distinct from Incubator project."
+    },
+    {
+      "candidate_id": "historical-24ef24f634ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story framework iteration, not about candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-8c03a4b8ec21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content framework, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LLM cost-quality evaluation methodology, not Incubator."
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating queue dynamics discussion, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative vignette structure for creative work, not Incubator."
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Applying frameworks to story development, not Incubator."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Patent defensive publication strategy, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for novel, not about candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework execution for character creation, not Incubator."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NotebookLM RAG methodology, architectural reference not Incubator."
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dystopian policy brainstorming, creative content not Incubator."
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution, not Incubator."
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-86a412483c9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophy of pattern recognition and intuition, not Incubator."
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework families for personal/business decision-making, not Incubator."
+    },
+    {
+      "candidate_id": "historical-b1e1108ce4ca#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Failed clarification attempt, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Organizing framework library, not about candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Tagging methodology for vault organization, generic workflow not Incubator."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation capture verification, not about Incubator."
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Conversation summarization strategy, manages chat not candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-74d320d60d90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR analysis, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-6f52f92c3c9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Definition request for 'moral compass', unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-b625dff005a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime framework, creative content not Incubator."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document taxonomy and nomenclature, organizes document types not candidates."
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework transformation for novel, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI coding agents for circumvention, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses risk of AI judgment substitution in second-brain system\u2014core Incubator essence."
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating strategy and profile analysis, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-620d871f161f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile editing, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical architecture sequencing, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hugging Face category exploration, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pipeline orchestrator pattern architecture, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic tariff analysis, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Making vault AI-accessible via Publish/Digital Garden, candidate accessibility."
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative narrative development, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-0b651a28f9c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Feedback on specific AHI document, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app data integrity issue, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marriage essay analysis, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "HVAC duct fan specifications, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-354d7910e48d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Romance story headline creation, creative work not Incubator."
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework for story subplot, creative work not Incubator."
+    },
+    {
+      "candidate_id": "historical-e1e35d5d5869#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Feedback on American Jesus document, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-d34a4ff2d053#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Decentralized social media alternatives, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora meta-layer architecture discussion, organizational not candidate-specific."
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic tariff analysis revision, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge opener message crafting, dating work not Incubator."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#28",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Epistemology of partial knowledge in vault\u2014philosophy not candidate system."
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework implementation for creative work, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extended Cognition Framework theory, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mining dating threads into books\u2014curating old material, adjacency-relevant."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious exploitation satire, creative content not Incubator."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and parable message, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-6a4ebf326a2d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile mismatch, unrelated to Incubator."
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application to environmental justice, creative not Incubator."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Reviewing/harmonizing past Ora Foundation thinking\u2014candidate organization."
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OkCupid profile analysis, dating work not Incubator."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflection on vault restructuring vs. writing, meta not Incubator."
+    },
+    {
+      "candidate_id": "historical-66684266af3d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dead internet hypothesis discussion, theoretical not Incubator."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web interface implementation, technical not Incubator."
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile development, creative not Incubator."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Societal implications of automation, theoretical not Incubator."
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication preference setting, user preference not Incubator."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Craft theory on literary tension, creative theory not Incubator."
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Buddhist psychology research delivery, specific research not Incubator."
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework development, creative not Incubator."
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis, dating work not Incubator."
+    }
+  ]
+}

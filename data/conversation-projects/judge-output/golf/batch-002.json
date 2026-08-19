@@ -1,0 +1,486 @@
+{
+  "nexus": "golf",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Passion Matrix Golf definition with spiritual/design focus."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-2605f0bf8bfd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament/NCAA rankings; factual trivia queries."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf as spiritual practice; meditation and playing golf discussed."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gary Player vitality, discipline, and lifelong fitness as exemplar."
+    },
+    {
+      "candidate_id": "historical-fce1fcd29980#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Clubhead manipulation for speed; technical swing mechanics."
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing training; explosiveness and smooth acceleration technique."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-1a9081e98f99#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf swing mentioned as example in AI swarm discussion."
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf listed as personal interest/effort category, not substantive."
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile; golfer identity mentioned only."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf course design discussed substantively."
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf used as analogy for Buddhist compassion practice."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf passes mentioned in theme park discussion."
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned as future goal, not core engagement."
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned as future goal, not core engagement."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-1bd676a33f7e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ABC's golf coverage theme song; factual trivia."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-112a03d65342#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Lifelong golfer identity in political discussion; golf mentioned metaphorically."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf used as example of enlightenment/trained reflex under pressure."
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-2f2a4483f6cc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Championship golf mentioned passingly in lifestyle reflection."
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned in satire; fictional narrative detail."
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf swing mentioned but minimal engagement."
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf swing technical mechanics; no spiritual dimension."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf resorts in satirical fiction; not core project engagement."
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content in excerpts."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal golf practice/swing testing over multiple days."
+    }
+  ]
+}

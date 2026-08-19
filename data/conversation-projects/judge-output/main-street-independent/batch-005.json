@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault/PKM personal knowledge architecture - not MSI"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle concept - general tool design, not MSI publication"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of setting up Main Street Independent on remote server"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Standalone coding packages pricing - not MSI"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme Foundation Framework - not MSI"
+    },
+    {
+      "candidate_id": "historical-1a6d2d64f81e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External link access limitations - not MSI"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora framework design - not MSI publication"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Projects feature - not MSI"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chatbot display formatting - not MSI"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MIT Supermind Ideator - not MSI"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting display preferences - not MSI"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle project design - not MSI publication"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI features - not MSI"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal effort taxonomy - not MSI"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Publisher cancellation - not MSI"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GPT-5 availability question - not MSI"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis - not MSI"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI swarm architecture - not MSI"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Publish URLs - not MSI"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hugging Face ecosystem inventory - not MSI"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General AI writing method - not MSI"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora installer development - not MSI"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics document styling - not MSI"
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities', 'name']"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-11', 'milestone-23']"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-16', 'name']"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities', 'milestone-1']"
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities', 'name']"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1', 'milestone-11']"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1', 'milestone-6']"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities', 'milestone-11']"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-16', 'milestone-6']"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6', 'name']"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-11', 'milestone-20']"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1', 'milestone-11']"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-20', 'milestone-23']"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-20', 'milestone-6']"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-76f769b5834d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MSI route (['objective-1']) + MSI-related subject"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-f09eaf2a9c4b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-23']"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1']"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1']"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#31",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-6be9b11c926e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-11']"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-1']"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#26",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-630f6ececa81#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MSI route (['objective-1']) + MSI-related subject"
+    },
+    {
+      "candidate_id": "historical-c313331954d0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-23']"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject despite MSI route"
+    },
+    {
+      "candidate_id": "historical-702f60f836c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['name']"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile - not MSI"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile - not MSI"
+    },
+    {
+      "candidate_id": "historical-2fefd61c9a80#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['milestone-6']"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct MSI reference in text"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#47",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No MSI-specific routes: ['entities']"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Output Formalization Framework"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Skills vs system architecture"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Skills vs system architecture"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: AI swarm architecture and OpenClaw tool "
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Therapeutic technique"
+    },
+    {
+      "candidate_id": "historical-433226858f03#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-22d64dfb3258#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Ora Online Services - Strategic Directio"
+    },
+    {
+      "candidate_id": "historical-4decf38d9ebe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gear system discussion"
+    },
+    {
+      "candidate_id": "historical-12de677cc6ee#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Book problem definition discussion"
+    },
+    {
+      "candidate_id": "historical-433226858f03#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-df2979f4e876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/medical content"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-32df11c88044#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/medical content"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing project"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system discussion"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Modes and problem definition"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing project"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5b6504fe1761#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-573ae5dba278#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Modes and problem definition"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/medical content"
+    },
+    {
+      "candidate_id": "historical-59aef9bc777a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Modes and problem definition"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gear system discussion"
+    },
+    {
+      "candidate_id": "historical-baea66480190#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Marketing document finalization"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Cognitive load reduction and societal im"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-722b0457ce18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Dialogue and character interaction expan"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-67af583186fa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#15",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3110e0650216#46",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora system: Video summary: 'Getting Started with Obs"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gear system discussion"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Modes and problem definition"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    }
+  ]
+}

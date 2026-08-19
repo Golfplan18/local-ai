@@ -1,0 +1,486 @@
+{
+  "nexus": "autism_acceptance",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#72",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-ebf2e6268387#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (foundation/Oracle), not Autism Acceptance book"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (foundation/Oracle), not Autism Acceptance book"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-07601188454d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f6129ba414b7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-0041097f554d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-e5ba15999b20#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-d5a1c2ee1ee7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-99614d682408#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#11",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-bc558102121a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-b1b9171c3aed#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-c56550cc395f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with autism acceptance book/outline publishing"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-d72434e83719#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-39e79b3401f6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-478c44f2eff6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-2d427089da7e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-d6f49bfac60a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    },
+    {
+      "candidate_id": "historical-b798480dc867#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with autism acceptance book project"
+    }
+  ]
+}

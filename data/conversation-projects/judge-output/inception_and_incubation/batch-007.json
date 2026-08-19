@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Theoretical foundations: process frameworks, choic"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Novel writing development: draft evaluation, style"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Mixture-of-Experts architecture and expert routing"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Managing a huge book outline across NotebookLM/Cha"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Satirical authoritarian regime scenarios including"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Dialogue and character interaction expansion"
+    },
+    {
+      "candidate_id": "historical-c854bdb07df2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: AI image generators"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Explicitly discusses documentation, knowledge preservation, and permanent memory"
+    },
+    {
+      "candidate_id": "historical-3a0012ae92ba#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses Mem0 memory architecture with key decisions extraction"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reflection on writing purpose and aligning projects"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Home-nesting renovation project and cultivating pl"
+    },
+    {
+      "candidate_id": "historical-75f6cada5169#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Dating profile analysis and relationship communica"
+    },
+    {
+      "candidate_id": "historical-5c55fe6f78f6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Fundamental questions about path differences and s"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building external knowledge system with vault structure"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: OCR extraction and personality analysis of Casey's"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#15",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Obsidian ACE system for organizing ideas"
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Communication strategy and personality type identi"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Iteratively revising Ideation Initiation Framework"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: In-world 'inversion metrics' wall, graft/halo voca"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Technical foundations: interfaces, context managem"
+    },
+    {
+      "candidate_id": "historical-44b1884f98e9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building second brain - surfacing organized knowledge"
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Initial attraction to woman based on arboretum pho"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Journalistic standards framework and research prom"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Anonymity and operational-security architecture fo"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Editorial review of book chapters 1-3 for flow, co"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Implementing vault publishing solution"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Google AI Studio capabilities and its role in prom"
+    },
+    {
+      "candidate_id": "historical-f5566f6390f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Book cover image generation for divorce/phoenix re"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Continuing previous outline work and framework est"
+    },
+    {
+      "candidate_id": "historical-4e6175d7abaf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Book cover image generation attempts and platform "
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Trump's legal claims against Harvard University"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Google Sheets/regex tasks for scripture numerals, "
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: AB: revisited profile analysis"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Global impact declarations and 'Humanity has spoke"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Authenticity, masculine frame, and Buddhist practi"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Understanding AI agent architecture: Claude Skills"
+    },
+    {
+      "candidate_id": "historical-63a2688051d1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Proposition-based indexing and RAG efficiency"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Satirical authoritarian policy framework generatio"
+    },
+    {
+      "candidate_id": "historical-90dfd8e4fcf3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Memory access across separate chat sessions"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Choosing male nicknames for AI assistants (Chad, J"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Weighing a match with a locally tall (6'1\") woman"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal AI swarm with RAG and conversation indexing"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Naming AI assistants with male nicknames (Chad, Ge"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing American Jesus novel-planning framework"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Age vs height filter symmetry and the 5'9\" visibil"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: CalMatters investigation on California's lack of p"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Long-term accretion approach to writing"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building Ideation Framework iteratively"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Creating satirical fiction outline for DIKLIS CHUM"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora Online Services - Strategic Direction"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Initial framework pair analysis and criteria align"
+    },
+    {
+      "candidate_id": "historical-3019c126bac2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Atticus book formatting decisions: font size, marg"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault publishing solution implementation"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Drafting complaint letters to medical and nursing "
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework specification and architectural resolution"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Integratron venue lookup and 150-character date-in"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault publishing solution"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Massive 1TB parameter models and storage requireme"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Loneliness/isolation, the Amma comparison, and fea"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Setting a standing rule to suppress Claude's follo"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: MSI policy article series production workflow"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Learning methodology and serendipitous epiphanies"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Financial concerns, money anxiety, chivalry framin"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Creating reality/propaganda pairs for dystopian Di"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Minimal acknowledgment request"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Interruption: an accidentally recorded dog-groomer"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Summary of a CalMatters article on public-defense "
+    },
+    {
+      "candidate_id": "historical-2c1ec751594d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Deep research on boot.md specification design"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Defining specific targets and methods"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Exploring Qwen3.5 models and Mixture of Experts ar"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI systems for externalizing thought and decisions"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Brief request for text-only response format"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Masculine/feminine dating dynamics, the 'sovereign"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Laconic pointers and experience-first communicatio"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Evaluating and selecting external hard drive optio"
+    },
+    {
+      "candidate_id": "historical-6a2774b656eb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Woman unmatches confirming armor prevented polarit"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Text output preference"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework improvements for Progressive Questioning"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing frameworks for story and character ideation"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject unrelated to candidate generation or recognition: Text output preference"
+    }
+  ]
+}

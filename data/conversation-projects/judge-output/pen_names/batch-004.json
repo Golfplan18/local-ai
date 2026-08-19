@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "White paper on quantum mechanics, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character Foundation Framework for beats, not author pen names"
+    },
+    {
+      "candidate_id": "historical-adff703b9c62#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character initiation framework for Mark Davis, not author pen names"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-7bc0bd1174e6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character framework for Mark Davis, not author pen names"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Anonymous technical release strategy, but doesn't discuss public infrastructure"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Legal complaint, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#97",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using real names in fiction characters, not author pen names"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Reddit moderation issues, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian plugin setup, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character Refinement Framework, not author pen names"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical political fiction, character development"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile messaging, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-aa9aec9b04ed#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character development for Phukher Tarlson, not pen names"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-1678ee40faeb#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building fictional political persona online presence with LinkedIn, Medium, Substack, Twitter, blog"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-6ba3c2f80257#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Writing style guide for project voice, not author pen names"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile analysis, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-b0ba07d133e5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character framework for Phukher Tarlson, not pen names"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-7d528f780ba2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing company branding and strategy, but doesn't focus on pen name infrastructure"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Novel writing frameworks, not author pen names"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Oracle anonymity/partner recognition, not about public pen name infrastructure"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile introduction, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-af315528f8ae#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile analysis, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ISBN and publishing mechanics, not specifically pen names"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating strategy and messaging, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character development profile, not author pen names"
+    },
+    {
+      "candidate_id": "historical-9c9373b7583c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character initiation framework, not author pen names"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Chapter outline revisions, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection status confirmation, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical propaganda content, not author pen names"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile analysis and courtship, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Relationship communication strategy, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Make.md software documentation, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Feedback check objections, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book outline scoping, not specifically pen names"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character foundation framework, not author pen names"
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Live draft evaluation and revision, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character framework setup beats, not author pen names"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-74450e02b141#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character framework execution, not author pen names"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-90240744c3c0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character profiles for fiction, not author pen names"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character development, not author pen names"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating match decision, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile assessment, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text formatting preference, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating coaching and profile analysis, unrelated to pen names"
+    }
+  ]
+}

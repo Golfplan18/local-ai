@@ -1,0 +1,486 @@
+{
+  "nexus": "writing",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework pair verification for Step 1 of AI-assisted writing method"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Front-matter drafting for specific book project, not method development"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing process design for trilogy and prose generation workflow"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework development for AI-Assisted Writing Method Phase I"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework development integrating Plot Foundation structure"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Assisted Story Generation and Novel Writing Method architecture discussion"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Exploring external AI Dungeon tool for dialogue, not method development"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-Assisted Writing Method document review and framework analysis"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Establishing writing voice for specific project, not methodology development"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Structure Refinement Framework for Step 20 of writing method"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Evaluation Framework updates and document refinement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework verification and component documentation for AI-assisted writing"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework and prompt development for Phase V writing method"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document numbering and consistency fixes in AI-assisted writing methodology"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework enhancement project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Addressing preservation and execution issues in writing method implementation"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story-beat framework and scene generation pipeline development"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System architecture and concept linking for writing method components"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building craft resource library and archetype system for writing method"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Step 8 Reader Engagement Evaluation framework restructuring"
+    },
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating interaction messaging strategy, not writing method development"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "White paper and fictional narrative integration, unclear if method-related"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship messaging strategy, not writing method"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing guidelines review and improvement"
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting, not writing method development"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted novel-writing methodology documents and criteria development"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Incomplete dossier planning, subject unclear"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Code implementation, not writing method development"
+    },
+    {
+      "candidate_id": "historical-71e78fbe498f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Character profiles and conversation framework, context unclear"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Narrative writing refinement, unclear if method or specific project"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis and general responses, not writing method"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writer monetization methods, not method development"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented novel-writing production system reflection and framework discussion"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#36",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Author perspective on AI-assisted writing method"
+    },
+    {
+      "candidate_id": "historical-bc566cacbd13#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Literary conventions automation, unclear if method-related"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#25",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Author interview discussing AI-assisted writing method"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/scene mapping matrix tool for writing method"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reflections on AI writing system and creative process"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Scene-mapping matrix development for writing method"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character and scene mapping with Parliament theory for writing method"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline and scene continuity in trilogy writing process"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#35",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing method planning and reflection"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing process discussion"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trilogy writing process discussion"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Trilogy writing process discussion"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic subject, likely not writing-method-related"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing method planning or discussion"
+    }
+  ]
+}

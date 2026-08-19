@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3a15577595d1#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Shared creative lifestyle and Hinge message crafti)"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Project folder structure and dependency installati)"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (OkCupid profile personality analysis and opener me)"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Establishing belief systems, expert roles, weighti)"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Trump administration policies on DEI, diversity in)"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Naming AI models, not pen names"
+    },
+    {
+      "candidate_id": "historical-b779b282cabf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Rewriting Airbnb multi-room verification request)"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-b25ebfb53432#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-9710c4742c87#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-df1234c14538#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character development, not pen names"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Documentation update requirements checklist)"
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-7ac07094f39d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character development, not pen names"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Economic and corporate reform - Private Equity, An)"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Implementing and troubleshooting the vault-publish)"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (AI thought leaders on YouTube)"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Website demonstration design and technical archite)"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-0ac7f0e8b436#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-153328554b28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (AI autonomous agents and societal implications)"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Conflict prioritization \u2014 Establishing hierarchy f)"
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Writing erotic/romance fiction craft and the 'Amer)"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Designing client-side ad-blocking/attention-filter)"
+    },
+    {
+      "candidate_id": "historical-30e1d82e2aad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (American Judas character archetypes and worldbuild)"
+    },
+    {
+      "candidate_id": "historical-f6a1e1cd5ad4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-002cddbe8a40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Thread D: Book outline v4 restructuring and conten)"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Organizing Aura development priorities and accompl)"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Meme template breadth library for satirical genera)"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (AI Agent Teams white paper outline summarization)"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Business Model Documentation and Development Strat)"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (MSI publication structure and propaganda analysis )"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (CalMatters investigation on California's lack of p)"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Persona registry architecture and specification)"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Creative fulfillment and multidisciplinary express)"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character development, not pen names"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Creating HonnoldGPT and SynthesisGPT expert person)"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Systematic review of Step 1 Theme Foundation Frame)"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Brief verification check of assistant connectivity)"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Consolidated curation across 23+ AI agent platform)"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (June 1 milestone testing and operational metrics)"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Adding visualization, diagramming, and systems thi)"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Planning a three-year left-wing 'brand tax' meme c)"
+    },
+    {
+      "candidate_id": "historical-49546e02107c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Marco Polio character development for satirical fi)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Book project conceptualization bridging woo and re)"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses pen names for pseudonymous publishing"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Thread B: Boot file updates with 17-mode registry )"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (PubFunnels alternatives for author marketing/funne)"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (AI-Assisted Writing Method overview and iterative )"
+    },
+    {
+      "candidate_id": "historical-6c9aec728ad4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Court jester ego management as character depth too)"
+    },
+    {
+      "candidate_id": "historical-435ef30ad890#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Test-running the framework on James 'Big Jim' Zebe)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Learning Obsidian Bases basics: video transcript, )"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Property management and UI customization)"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (AI consciousness in fiction: sci-fi androids, the )"
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Research on existing Ora AI companies and corporat)"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (PubFunnels alternatives for author marketing/funne)"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character development, not pen names"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Writing style guide development \u2014 Iterative refine)"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Copyright Implications of AI-Generated Prose)"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Drafting and revising Chapter 37, 'Romancing the R)"
+    },
+    {
+      "candidate_id": "historical-7cdd7427aa48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context, not pen names"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Scripting the opening phone call with romantic fra)"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Ready Player One plot and characters)"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Self-publishing platform Kindlepreneur overview an)"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No pen-name engagement (Text output preference)"
+    }
+  ]
+}

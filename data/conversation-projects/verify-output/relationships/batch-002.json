@@ -1,0 +1,144 @@
+{
+  "nexus": "relationships",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-79268cb0d0cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile vetting based on personality signals, not compassion or relationship frameworks."
+    },
+    {
+      "candidate_id": "historical-cd50af8fd9c6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character count check for Hinge message; purely mechanical task."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference instruction only."
+    },
+    {
+      "candidate_id": "historical-01c66745fcc3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist Great Compassion: freeing sentient beings from suffering, interconnectedness, altruistic commitment."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile comparison and match-pattern analysis, not relationship cultivation."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmological framework on Hubble's Law; unrelated to relationships."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative theme-writing framework; not about relationships."
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Simple greeting exchange; no substantive content."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT tool configuration; unrelated to relationships."
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reconsidering an ex-partner after emotional growth; practicing empathetic, authentic reconnection."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference instruction only."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference instruction only."
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting a Hinge message; dating-app communication tactic, not relationship framework."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference instruction only."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference instruction only."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Global political/moral judgment framework; not about personal relationships."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-app dating strategy and lead volume management; not relationship cultivation."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#33",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep reflection on emotional resonance over status; developing empathetic skills for genuine connection."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Love-your-neighbor framework as emotional algorithm; compassion across boundaries, altruistic practice."
+    },
+    {
+      "candidate_id": "historical-ee5f0516ee8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile redesign around resonance principle; profile strategy, not relationship cultivation framework."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app volume strategy and lead triage; app mechanics, not relationship framework."
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting a message to a PhD candidate's profile; dating communication tactic."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge opener message crafting; dating app opening tactic, not relationship framework."
+    }
+  ]
+}

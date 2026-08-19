@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-610f2c5b9318#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#41",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Johnny Zebedee character development"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#78",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#54",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-af80e1d55516#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-d5efecdef186#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#53",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#58",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-f03be4666978#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-4c52db0d3aa9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-0d5c2a4e986f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-96bcf6e48bca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-deb42c930be9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#96",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-d746a9b698ab#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm press-conference doctrine for American King"
+    },
+    {
+      "candidate_id": "historical-17e0e9328038#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-c80752c53d0f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-a1c03710767f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King narrative"
+    },
+    {
+      "candidate_id": "historical-3e616cd444ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-562e8d35aee8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Johnny Zebedee character development"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-96bcf6e48bca#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-8d8cf54012e8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-a67b63c82871#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-1b10269c8de5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct \"American King\" reference"
+    },
+    {
+      "candidate_id": "historical-661c9e58e6aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-da088a4e229a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#46",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    },
+    {
+      "candidate_id": "historical-3335f32daa15#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character/plot work"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King project indicators"
+    }
+  ]
+}

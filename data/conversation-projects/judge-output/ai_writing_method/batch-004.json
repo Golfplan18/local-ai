@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: trump"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: tariff"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI writing system"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#36",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI writing system"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: divorce"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: medical malpractice"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction work"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction work"
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: dating profile"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI tool selection"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI tool selection"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus work"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: okcupid"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient fiction engagement"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction work"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen name management"
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: autism parenting"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction work"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction chapter outline"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical work"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump fiction work"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction: quantum"
+    }
+  ]
+}

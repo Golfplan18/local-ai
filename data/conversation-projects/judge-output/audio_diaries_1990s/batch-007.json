@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character framework, unrelated to audio-diary project"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta discussion of Ora knowledge project, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character framework, unrelated to audio-diary project"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test response, not project content"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto discussion, unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/system setup, unrelated to audio-diary content"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot framework discussion, not audio-diary specific"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction authorship masking technique, not audio-diary assessment"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-74d320d60d90#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/system setup, unrelated to audio-diary content"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General fiction/writing methodology, not audio-diary assessment"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system architecture discussion, not audio-diary project"
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-e1e35d5d5869#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-630f6ececa81#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-c4b2d96292f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto discussion, unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-280a3f493a4d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character framework, unrelated to audio-diary project"
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character framework, unrelated to audio-diary project"
+    },
+    {
+      "candidate_id": "historical-3b660e0ad70a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character framework, unrelated to audio-diary project"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General fiction/writing methodology, not audio-diary assessment"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto discussion, unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General fiction/writing methodology, not audio-diary assessment"
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    },
+    {
+      "candidate_id": "historical-c0746d1f902e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with audio-diaries-1990s project"
+    }
+  ]
+}

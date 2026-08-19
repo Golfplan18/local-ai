@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Initial framework pair analysis and criteria align) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Focused on marketing/e-commerce frameworks, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Focused on marketing/e-commerce frameworks, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Character profile development and refinement) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Developing the American King trilogy concept: Malc) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Recovering and preserving the Kira conversation vi) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Narrative arc integration strategy) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-32df11c88044#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Carla Marks background research project) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Coaching on Hinge match Kira: profile analysis, IN) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Kira (Hinge match) profile analysis, INFP typing, ) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Planning a three-year left-wing 'brand tax' meme c) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-f1468d58b18a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Remote desktop access and SSH connection setup for) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Reconstructing and analyzing the on-again/off-agai) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-87514730b617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-2532edddf63b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Analyzing research paper and extracting researcher) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Crafting dating profile and message to Esther on H) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Evaluation of classical mechanics explanation for ) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-5e2be2ba762d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Anthropic's small societal impacts team and AI saf) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Creating 3D sphere and spherical shell visualizati) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Adding cooperative agreement principles to permane) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Zooming out to a broader spiritual/writing project) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Connection test) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (AI companionship framework and automation architec) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Focused on marketing/e-commerce frameworks, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Surveillance apparatus targeting the regime's own ) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (System overview v2 design review concerns) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Embedding real URLs and discovered-documents frami) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Developing and refining the AI-assisted novel-writ) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-27e3b263b325#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Personal narrative essay development: marriage and) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic fiction framework discussion without audio diary subject matter"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Image analysis and description) unrelated to audio diaries"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About novel writing frameworks, not 1990s audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses fictional satire of authoritarian regime, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Focused on marketing/e-commerce frameworks, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject (Life rhythm, self-narration habits, sleep deprivat) unrelated to audio diaries"
+    }
+  ]
+}

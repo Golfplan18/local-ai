@@ -1,0 +1,300 @@
+{
+  "nexus": "ora-ai-org",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project about Communist Manifesto, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message drafting, not website work"
+    },
+    {
+      "candidate_id": "historical-c63ef13e4a6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "USB charger efficiency analysis, unrelated to ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics cosmology framework, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI system setup, not ora-ai.org website"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web search API comparison, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code and analysis modes, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message, not website development"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-99da57ed3e30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project Oracle wealth distribution, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction writing, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Decides where to host frameworks: Main Street Independent, ora-ai.app, ora.org website"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Agent development project goals, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-d8f0a89d9518#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing Framework Creation Framework, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project Oracle epistemology discussion, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI swarm architecture setup, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing methodology review, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-544f37cebbec#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External URL access issue, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-44427aee95a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API economics and subscriptions, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app messaging, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative scene development, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework design philosophy, not specific to ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project Oracle data pods, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-AI team architecture, not ora-ai.org site"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper writing and guidelines, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop SSH setup, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character persona development, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system overview update, not ora-ai.org site"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship analysis, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Documentation update about frameworks, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YouTube AI thought leaders research, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing methodology, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app interaction, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code and Obsidian workflow articles, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designs hosting infrastructure with Cloudflare and VPS"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline restructuring, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personality profiling from dating app, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic safety efforts, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora tier system and Python capabilities, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cloud vs local Python evaluation, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book blurb criteria development, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model benchmarking for hardware, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI pioneering and digital immortality philosophy, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian markdown preservation, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM model configuration, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relationship analysis, not ora-ai.org"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automated publishing pipeline for different purpose, not ora-ai.org"
+    }
+  ]
+}

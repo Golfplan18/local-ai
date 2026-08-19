@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bbdf1c5d18cb#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to mission (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief format request."
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to drivers (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meme format reference tool (practice-1)."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Supreme Court opinion re: birthright citizenship."
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Main Street Independent manifesto (altruistic political framework)."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-b268aebce446#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political satire exposing authoritarian regime rhetoric."
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus tests political co-option of movement."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle project as left-wing political voice/ledger."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Left-wing political messaging strategy via memes."
+    },
+    {
+      "candidate_id": "historical-da088a4e229a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical political fiction ideation framework."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political left moral arguments re: crypto regulation."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis."
+    },
+    {
+      "candidate_id": "historical-75312ea77abb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to objective-1 (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool feature discussion, not politics."
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mary Magdalena as political moral voice."
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter on political communication strategies."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool usage/workflow question."
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative craft outline, not political engagement."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Classified as practice route (no substantive engagement)."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump tariff policy & political consequences."
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to objective-2 (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#67",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public opinion polling on Trump military deployment."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#34",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump administration confrontation with university."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative craft framework."
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Classified as practice route (no substantive engagement)."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle project as left-wing political voice/ledger."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trade policy analysis & tariff consequences."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fed independence threat from Trump political pressure."
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GOP fiscal politics affecting healthcare policy."
+    },
+    {
+      "candidate_id": "historical-fe82500974ee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative craft outline, not political engagement."
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure narrative character development work."
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Confused exchange with no substantive content."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis."
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character relationship development (narrative)."
+    },
+    {
+      "candidate_id": "historical-b625dff005a5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political satire exposing authoritarian regime rhetoric."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical implementation work."
+    },
+    {
+      "candidate_id": "historical-0b651a28f9c9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Satirical format practice (practice-1 route)."
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient substantive political content."
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GOP politics on Medicaid and SALT cap."
+    },
+    {
+      "candidate_id": "historical-764ef391b566#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework mission, not specifically political."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal hardware shopping."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real-time analysis of Trump policy impacts."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Media literacy education as political immunization."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating profile analysis."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Canada-US trade negotiations."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-f0fbd4efdfbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing exercise."
+    },
+    {
+      "candidate_id": "historical-1362dcc7bfbf#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to objective-1 (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#30",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Counter to Trump's voting suppression strategy."
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to drivers (likely political engagement)."
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile (narrative craft)."
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development (political protagonist)."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Atlantic article on Trump-era corruption."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development (political protagonist)."
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical political fiction on regime loyalty tests."
+    },
+    {
+      "candidate_id": "historical-ca7b201df286#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Governance and leadership analysis."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle project as left-wing political voice/ledger."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical programming work."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development (political protagonist)."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Historical inspiration from political cartooning."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Classified as practice route (no substantive engagement)."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#60",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Biblical parable placement in American Jesus."
+    },
+    {
+      "candidate_id": "historical-07601188454d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump tariff analysis & left-wing political response."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#60",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump administration confrontation with university."
+    },
+    {
+      "candidate_id": "historical-13351458bb73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pure narrative character development work."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient substantive political content."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference request."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#43",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GOP fiscal politics affecting budget legislation."
+    }
+  ]
+}

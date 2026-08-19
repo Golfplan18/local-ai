@@ -1,0 +1,330 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e0e73ce09778#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology paper bibliography citations"
+    },
+    {
+      "candidate_id": "historical-a1469dfe3bb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics paper outline and critique"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump writing project ideation"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political activism/Arkansas/Walmart content"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging for Hinge"
+    },
+    {
+      "candidate_id": "historical-71957187b84f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR extraction"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI framework expansion for knowledge system"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Base table and property management"
+    },
+    {
+      "candidate_id": "historical-150b631559ce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian CSS snippet for properties"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-Assisted writing method framework"
+    },
+    {
+      "candidate_id": "historical-d91529b4b115#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book review of Minority Rule by Berman"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Three-document narrative system recap"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent architecture and Claude Skills"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with real estate book project"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation Framework for narrative writing"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference request only"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Phase I comprehensive framework evaluation"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Intuition book and biographical foundation"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical propaganda content generation"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local-model escalation architecture"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Objectives/Milestones framework reprint"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter 3 narrative story integration"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fundamental physics constants and formulas"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tag-to-property conversion"
+    },
+    {
+      "candidate_id": "historical-6f559ed01f99#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics and cosmology paper updates"
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Template design for instruction handling"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Environmental Justice subplot"
+    },
+    {
+      "candidate_id": "historical-40f21d0c4fcb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics/cosmology paper continuation"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis with MBTI"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thread C narrative framework deliverables"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WSJ editorial philosophy history"
+    },
+    {
+      "candidate_id": "historical-a1c03710767f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "KillTheBill hashtag political strategy"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AHI Briefing paper on AI research"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline about Ora system"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Ideation Framework application"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message wording refinement"
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents project brainstorming"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal Story Engineer framework analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases article review"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Procrastination about AI computer setup"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system installation and style guide"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing pipeline and AI personas framework"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Metadata Menu relational lookup"
+    },
+    {
+      "candidate_id": "historical-7921627e01e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bell's Theorem paper outline"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character-Theme Integration evaluation"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text messaging strategy with woman"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction legislative proposal"
+    }
+  ]
+}

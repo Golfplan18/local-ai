@@ -1,0 +1,102 @@
+{
+  "nexus": "obsidian",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual design for fictional narrative framework, not vault engineering"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Converting tags to properties for vault metadata lifecycle management"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outlining content framework for Extending Human Cognition, not vault structure"
+    },
+    {
+      "candidate_id": "historical-956f8e4e5f9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Transitioning vault from project-based to atomic-notes knowledge architecture"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Analyzing content concepts and frameworks, not vault as tool"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault as training center and RAG-accessible knowledge source for AI"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian Bases plugin limitations for file operations and views"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault architecture with epistemic markers, atomic notes, RAG Knower/Doer design"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project on dating dynamics; mentions Oracle automation but not vault"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Updating narrative element framework criteria, not vault engineering"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#45",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Customizing Obsidian interface via CSS snippets for note appearance"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Updating book publishing process documentation, not vault implementation"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating LangChain agent templates, unrelated to vault"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building web interface to integrate vault as knowledge retrieval source"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault as curated knowledge library in Knower/Doer system architecture"
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Locating and navigating Obsidian vault directory for setup"
+    }
+  ]
+}

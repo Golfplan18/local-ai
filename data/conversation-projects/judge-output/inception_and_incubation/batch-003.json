@@ -1,0 +1,487 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 3,
+  "judged": 80,
+  "verdicts": [
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Generates/curates candidates for explicit human review"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verifying existing work, not incubating candidates"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Completing existing deliverables, not incubating ideas"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Generates/curates candidates for explicit human review"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Incubating new analytical mode/framework architecture design"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Incubator framework process and qualifying criteria explicitly"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-e6b2424c255b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image creation/analysis work, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#18",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image creation/analysis work, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research/exploration work, not incubating distinct candidates"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework expansion involving conceptual development"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Exploring adjacent breakthroughs for technical domains"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Incubating new book project concept and scope"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research/exploration work, not incubating distinct candidates"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research/exploration work, not incubating distinct candidates"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Incubating new analytical mode/framework architecture design"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verifying existing work, not incubating candidates"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship/profile analysis, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Exploring vault/PKM architectural approaches and design"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Work on specific implementation, not incubation of ideas"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content generation project, not idea incubation"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Critiquing framework outline, scope, and strategy"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User preference setting, not idea incubation"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "writing_fiction",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel writing development: draft evaluat"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ai-assisted writing method overview and "
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Platform evaluation, not prose craft"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ai-assisted writing method document revi"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story ideation framework"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing review"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing style/quality"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project work handoff"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story ideation framework"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing the ai-assisted novel writing "
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool setup/configuration"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Platform evaluation, not prose craft"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual/image creation"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing the ai-assisted novel writing "
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Custom writing tool"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character profile development and refine"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-AI fiction workflow"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document structure and formatting improv"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic framework review"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-6ba3c2f80257#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing style/quality"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Critique of evaluation draft quality/con"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Editing the 'chapter refinement framewor"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story ideation framework"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic framework review"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sustained project of revising the novel'"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Editing the 'chapter refinement framewor"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project reflection/summary"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing reusable framework documents a"
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic conversation prompt"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character-scene mapping method"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character-choice tracking"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing/publishing element"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Meta-level persona"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#25",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#36",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tony stubblebine author-interview link a"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Platform evaluation, not prose craft"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project reflection/summary"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction-related subject"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework review/evaluation"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear context"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool setup/configuration"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development/implementation"
+    }
+  ]
+}

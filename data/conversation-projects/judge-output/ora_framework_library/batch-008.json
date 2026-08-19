@@ -1,0 +1,474 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-efebec279550#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-947060573768#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-ca422347a07b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with Framework Library infrastructure or Ora framework commons"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with Framework Library infrastructure or Ora framework commons"
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-8e9ef2e746fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-71a76c5b4b22#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-de2a6c4c1c31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with Framework Library infrastructure or Ora framework commons"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#42",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-8efeb99dce31#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with Framework Library infrastructure or Ora framework commons"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-6c54e7d49b40#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Framework Library curation, specification, or delivery"
+    }
+  ]
+}

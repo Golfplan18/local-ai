@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-99df88574463#44",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-e78f7a40daf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-83f96eef871e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-66aebfe42a5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-99df88574463#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King pen name for political book publishing"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical framework"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-839583df5598#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character from another project"
+    },
+    {
+      "candidate_id": "historical-8c03a4b8ec21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical framework"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-c38f505771f5#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#53",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-b746937ed3db#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-05b142dec97e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Counterpropaganda strategy using symbolic inversion for political messaging"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-9ad653b9d77f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-1058aae35cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal debate, not project work"
+    },
+    {
+      "candidate_id": "historical-ca99db225e8d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Class consciousness media critique of economic propaganda"
+    },
+    {
+      "candidate_id": "historical-7869dec93d7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical framework"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-fe8013652230#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character archetype development for We Too (conservative worker disillusionment)"
+    },
+    {
+      "candidate_id": "historical-350ad5373215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#29",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical framework"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-5e38b0578a49#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character from another project"
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political narrative strategy using Moby Dick model for embedded systemic critique"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for output format"
+    },
+    {
+      "candidate_id": "historical-24b6e44d8854#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI research topic"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of We Too engagement"
+    }
+  ]
+}

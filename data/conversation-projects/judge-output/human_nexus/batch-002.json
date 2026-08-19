@@ -1,0 +1,486 @@
+{
+  "nexus": "human_nexus",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project: database/Robert Greene"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit book on NLP for AI Agents"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura project, not AI agents book"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing methodology, not agents"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model selection/technical, not agents book"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extended cognition white paper, no agents focus"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database/belief system setup, not agents"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book chapters, different project"
+    },
+    {
+      "candidate_id": "historical-f710abe1dee4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing AI Agent development in paper"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Outlining AI agent creation process"
+    },
+    {
+      "candidate_id": "historical-3a0012ae92ba#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Agent automation project work"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Outline for AI Agent Systems book"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire parody, not agents"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI usage philosophy, not agents book"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mental models collection, not agents"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Natural Language Programming of AI Agents book"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Programming AI agents, prompt architecture"
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "White paper on AI agents release strategy"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon game feature, not agents"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Knowledge organization and AI agent coordination"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic AI writing methodology, not agents book"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Transforming outline to prose, unclear scope"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation, political satire"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, different project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Obsidian vault setup, not agents-specific"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Authoritarian regime satirical fiction"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Outline audit, unclear which project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack technical issues, unrelated"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Divorce recovery book, different project"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Agent architecture and Identity Framework"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NLP for AI Agents book with PAS work"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AHI paper validation, not agents focus"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Outline for AI Agent Systems book"
+    },
+    {
+      "candidate_id": "historical-0ada3161c388#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Silicon Valley white paper, unclear scope"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder structure, technical setup"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "make.md documentation learning, unrelated"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project release, different project"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical narratives, political satire"
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper guidelines, unclear content"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI platform agent listings, tool overview"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology, not agents"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agent failure foundations and theory"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Press release template evaluation"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content, political satire"
+    },
+    {
+      "candidate_id": "historical-f710abe1dee4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Section expansion on AI agent implementation"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Graph visualization tools, unrelated"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book framework outline with agents content"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book framework positioning and structure"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output Formalization Framework for Ora"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT framework, different system"
+    },
+    {
+      "candidate_id": "historical-dbe5b4e08c48#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agent programming framework breakthrough"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing method Phase V, not agents"
+    },
+    {
+      "candidate_id": "historical-b1b9171c3aed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NLP book outline review and style"
+    },
+    {
+      "candidate_id": "historical-5e6a6fffbe99#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NLP for AI agents research and report"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of writing AI tools, not agents book"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Natural language as programming paradigm"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure for writing method"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework ecosystem decisions, unclear context"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura project status, different project"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hierarchical skills for novel writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Chapter evaluation framework, not agents"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Skills architecture for writing"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Soul.md and AI ethics framework content"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel-writing methodology debugging"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Prompt standardization for writing"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon book description framework"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mistral NeMo model evaluation"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper with links, unclear agents content"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, completely unrelated"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Tiered preservation framework implementation"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parliamentary Agent Specification (PAS)"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Avatar video generation platforms"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Natural language as source code for AI"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura project development, different project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover evaluation framework"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System overview update, unclear context"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover concept framework"
+    },
+    {
+      "candidate_id": "historical-ad61398d03a2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Context/natural language programming for AI"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative development and scene expansion"
+    }
+  ]
+}

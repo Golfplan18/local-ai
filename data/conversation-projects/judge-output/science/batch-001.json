@@ -1,0 +1,486 @@
+{
+  "nexus": "science",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models library (generic thinking tools)"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI distribution strategy, not science"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-4decf38d9ebe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of universe expansion theory and physics"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-d0a71191a21c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models library (generic thinking tools)"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Discussion of scientific modeling and hypothesis"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models library (generic thinking tools)"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-d09f187685a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-e0e73ce09778#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "organizing citations for cosmology paper bibliography"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Scientific modeling discussion"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Scientific modeling discussion"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "developing and refining the expanding awareness cosmology fr"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-758ec55a9552#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-86a412483c9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-7848123699da#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-ba117f7cfc3d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "drafting, reviewing, and editing sections of a scientific pa"
+    },
+    {
+      "candidate_id": "historical-a085cf3a552b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "scientific paper evaluation and physics analysis"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-6f559ed01f99#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-60b77e6daee7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "citation suggestions for cosmology paper"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#25",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-735c5da9369b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "scientific problems in physics, astronomy, cosmology, and un"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "grief for suppressed intuitives and the physics conceptual-b"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-7848123699da#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-4b6b6c664445#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Scientific modeling discussion"
+    },
+    {
+      "candidate_id": "historical-4104222d4e24#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "origin of the universe and big bang causation challenges"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "fundamental physics constants and formulas"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple science references in excerpt"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-8efeb99dce31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple science and physics references in discussion"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "physicists' overreliance on mathematics in cosmology"
+    },
+    {
+      "candidate_id": "historical-cb04ecd15583#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-74f18b45368e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Discussion of scientific modeling and hypothesis"
+    },
+    {
+      "candidate_id": "historical-2ec5ffd19749#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "mini-paths quantum physics interpretation and interference p"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with scientific work"
+    }
+  ]
+}

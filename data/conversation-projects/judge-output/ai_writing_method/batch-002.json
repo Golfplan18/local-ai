@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Refinement Framework step-by-step analysis and criteria development"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement framework purpose and evolution assessment integration"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting Foundation Framework data preservation and structural improvements"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app message strategy unrelated to fiction writing method"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot chapter refinement evaluation framework specifications"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sudowrite prose generation applying writing method frameworks"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Style Guide Configuration Framework development and evaluation"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Theme Refinement Framework multiple-layer architecture"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing style guides not tied to AI-assisted fiction method"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book project, not fiction writing"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework libraries for Diklis Chump fiction project"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Meta Persona style profile development disconnected from method"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Story imagery brainstorming not engaged with method framework"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing style guide template without method context"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test message with no substantive content"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Children literature corpus project unrelated to writing method"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PAS Parliamentary Assessment System framework different project"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Foundation Framework analysis within 45-step process"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora execution review architecture distinct from writing method"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented writing methodology discussing fiction process"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Implementation planning with generic prompt frameworks"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Documentation update checklist without method substance"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Extending Human Cognition framework unrelated topic"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation not writing method work"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic AI safety discussion unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Understanding AI-assisted writing method and plot development"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ideation Framework for fiction writing project"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Foundation Framework analysis and enhancement"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic request for text output format"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference request without substance"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-Assisted Writing methodology design-based architecture"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical outline restructuring unrelated to writing method"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime narrative unrelated to writing method"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Content not fully examined, appears mixed topics"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content unrelated to method"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief text-only request without substantive content"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing frameworks for plot structure development"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Conflict prioritization for stylistic rules without method"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Series Continuity Distillation Framework for trilogy outlines"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Novel writing method and project organization framework"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plain text output request without substantive content"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot foundation framework restructuring and libraries"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Theme Foundation Framework foundational principles development"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only format request without substantive content"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Front-matter praise draft for divorce recovery book"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic formatting preference without substance"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request without method content"
+    }
+  ]
+}

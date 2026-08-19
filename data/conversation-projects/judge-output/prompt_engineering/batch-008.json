@@ -1,0 +1,444 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-29bc2f84d962#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DNS infrastructure configuration"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI system mode and component architecture"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hardware procurement and cost analysis"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault automation and agent system architecture"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional AI persona design ethics"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG query and prompt evaluation integration"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI system learning and technical understanding"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and capabilities insights"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document restructuring, not prompt methods"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics theory discussion"
+    },
+    {
+      "candidate_id": "historical-5095ea2b9825#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "LLM training curriculum and data design"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Model training bias and parameter analysis"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief tagline generation task"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework criteria and evaluation methodology"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Style guide framework for model configuration"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-32b3c16e3584#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework criteria and evaluation methodology"
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework criteria and evaluation methodology"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#32",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-dcd97cd3ce99#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-e63933cdc92c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document restructuring, not prompt methods"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-0ada3161c388#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework criteria and evaluation methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-1fda16065259#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-46e38a0cdae8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction worldbuilding"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-4cda4f61e2fb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not match prompt engineering scope"
+    }
+  ]
+}

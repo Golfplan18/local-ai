@@ -1,0 +1,378 @@
+{
+  "nexus": "technology",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile personality analysis, not technology"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting only"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot foundation framework for creative writing"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Python vs AI capabilities; local file automation discussion"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back matter framework for book publishing"
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation evaluation framework for creative projects"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story evaluation framework for novel development"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Testing AI analysis frameworks on website 24/7"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Idea preservation framework for creative work"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Business model development strategy"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System mode files verification and configuration"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting only"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology redshift-distance law research"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-9c43910b19a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing project content organization"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora Foundation technology platform design"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Local AI First Boot Framework with MLX/Ollama"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book pedagogy focused on AI impact, not technology evaluation"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mode system specification for reasoning system"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics and classical physics research"
+    },
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story character and plot development framework"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional book concept about Supreme Court"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character foundation framework for story writing"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Schema implementation for creative project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ChatGPT availability status question"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical framework for fictional narrative"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing and ideation"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation about governance"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hierarchical skills for novel writing automation"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona and voice for storytelling project"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and message analysis"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI voice testing, not technology"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative trope library for creative writing"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Architecture design and model configuration"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Breakthrough experience documentation for future book"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal mission grounding, not technology"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper section on writing pitfalls"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economics and monetary policy discussion"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character description from chats"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Rewriting biblical text for fiction project"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pipeline orchestration and system architecture"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical economic narrative writing"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agents and local deployment architecture"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative trope library for fiction"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story foundation framework review"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project briefing for satirical framework"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Memory systems vs Ora conversation RAG architecture"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework for AI-assisted fiction"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thread C mode files update"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code and Obsidian AI workflow tools"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing framework marketing"
+    },
+    {
+      "candidate_id": "historical-7bd6cc535b05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research scope for economic programs analysis"
+    },
+    {
+      "candidate_id": "historical-40b87f9ba83a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Claude Code features and framework comparison"
+    },
+    {
+      "candidate_id": "historical-ca99db225e8d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic policy and career crisis discussion"
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "LLM model-selection formula and cost optimization"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Two-stage prompt system for book development"
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YouTube link delivery troubleshooting"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application to personal insight project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflecting on time spent on vault restructuring"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Self-publishing platform and marketing tools"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Process documentation update for frameworks"
+    }
+  ]
+}

@@ -769,6 +769,103 @@ def build_judge_input(batch_size: int, only: list[str] | None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# verify-input
+# ---------------------------------------------------------------------------
+
+_REASON_STOP = set(
+    """the and for that with this from are was not but its one all any can has have
+    into each than then them they their there when which who will would been being
+    over under more most some such only other same every does did how why what where
+    must may might shall should could about your you our project projects discussion
+    mention direct content related engagement segment""".split()
+)
+
+
+def _reason_words(text: str) -> set[str]:
+    return {w for w in _WORD.findall(text.lower()) if len(w) >= 4 and w not in _REASON_STOP}
+
+
+def build_verify_input(batch_size: int) -> None:
+    """Re-judge accepted candidates whose reason does not describe them.
+
+    A judge working through 80 candidates can drift into writing one batch's
+    summary into every candidate's reason field: a political-satire segment
+    was accepted for the golf passion with the reason "Golf swing
+    biomechanics and technique analysis", which is a different candidate's
+    sentence. The verdict may still be right, but nothing in the record shows
+    it was reached on this candidate, so it is re-judged one at a time.
+    """
+    accepted = json.loads((OUT_DIR / "accepted.json").read_text(encoding="utf-8"))["accepted"]
+    profiles = json.loads((OUT_DIR / "profiles.json").read_text(encoding="utf-8"))
+
+    candidates: dict[tuple[str, str], dict] = {}
+    for path in (OUT_DIR / "judge-input").glob("*/batch-*.json"):
+        nexus = path.parent.name
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for row in data.get("candidates", []):
+            candidates[(nexus, row["candidate_id"])] = row
+
+    root = OUT_DIR / "verify-input"
+    if root.exists():
+        for old in root.glob("*/batch-*.json"):
+            old.unlink()
+    root.mkdir(parents=True, exist_ok=True)
+
+    manifest = []
+    for nexus, rows in sorted(accepted.items()):
+        suspect = []
+        for candidate_id, verdict in rows.items():
+            row = candidates.get((nexus, candidate_id))
+            if row is None:
+                continue
+            reason = _reason_words(verdict.get("reason", ""))
+            if not reason:
+                suspect.append(row)
+                continue
+            described = _reason_words(
+                row["subject"] + " " + " ".join(e["text"] for e in row["excerpts"])
+            )
+            if not (reason & described):
+                suspect.append(row)
+        if not suspect:
+            continue
+        profile = profiles[nexus]
+        block = {
+            "nexus": nexus,
+            "name": profile["name"],
+            "core_essence": profile["core_essence"],
+            "resolution_statement": profile["resolution"],
+            "objectives": profile["objectives"],
+            "excluded_outcomes": profile["excluded"],
+            "distinctive_entities": profile.get("distinctive_entities", []),
+        }
+        project_dir = root / nexus
+        project_dir.mkdir(parents=True, exist_ok=True)
+        for i in range(0, len(suspect), batch_size):
+            batch_no = i // batch_size + 1
+            path = project_dir / f"batch-{batch_no:03d}.json"
+            chunk = suspect[i : i + batch_size]
+            path.write_text(
+                json.dumps(
+                    {
+                        "project": block,
+                        "batch": batch_no,
+                        "expected_candidate_ids": [r["candidate_id"] for r in chunk],
+                        "candidates": chunk,
+                    },
+                    indent=1,
+                ),
+                encoding="utf-8",
+            )
+            manifest.append({"nexus": nexus, "batch": batch_no, "path": str(path), "count": len(chunk)})
+        print(f"{nexus:26s} re-judging {len(suspect):4d} of {len(rows):4d}")
+
+    (OUT_DIR / "verify-manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+    total = sum(m["count"] for m in manifest)
+    print(f"\n{total} candidates in {len(manifest)} verification batches")
+
+
+# ---------------------------------------------------------------------------
 # collect
 # ---------------------------------------------------------------------------
 
@@ -786,6 +883,23 @@ def collect(strict: bool) -> dict:
     output_root = OUT_DIR / "judge-output"
     real_conversations = set(load_segments())
 
+    # A re-judgement of an accept whose recorded reason did not describe it
+    # replaces the original verdict. 55% of those were overturned on a
+    # second, single-candidate reading, so they are not a rounding error.
+    overrides: dict[tuple[str, str], str] = {}
+    for path in (OUT_DIR / "verify-output").glob("*/batch-*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for verdict in data.get("verdicts", []):
+            candidate_id = verdict.get("candidate_id")
+            if isinstance(candidate_id, str):
+                overrides[(path.parent.name, candidate_id)] = str(
+                    verdict.get("verdict", "")
+                ).strip().lower()
+    stats_overridden = 0
+
     accepted: dict[str, dict[str, dict]] = defaultdict(dict)
     problems: list[dict] = []
     stats = {
@@ -795,6 +909,7 @@ def collect(strict: bool) -> dict:
         "accepted": 0,
         "fabricated_ids": 0,
         "unjudged_ids": 0,
+        "verified_overrides": 0,
     }
 
     for item in manifest:
@@ -830,7 +945,12 @@ def collect(strict: bool) -> dict:
                 continue
             seen.add(cid)
             stats["verdicts"] += 1
-            if str(verdict.get("verdict", "")).strip().lower() != "yes":
+            decision = str(verdict.get("verdict", "")).strip().lower()
+            override = overrides.get((nexus, cid))
+            if override is not None and override != decision:
+                stats_overridden += 1
+                decision = override
+            if decision != "yes":
                 continue
             row = by_id[cid]
             if row["conversation_id"] not in real_conversations:
@@ -863,6 +983,7 @@ def collect(strict: bool) -> dict:
                  "sample": unjudged[:5]}
             )
 
+    stats["verified_overrides"] = stats_overridden
     result = {
         "stats": stats,
         "problems": problems,
@@ -992,6 +1113,9 @@ def main() -> int:
     p_judge.add_argument("--batch-size", type=int, default=80)
     p_judge.add_argument("--only", nargs="*")
 
+    p_verify = sub.add_parser("verify-input", help="re-judge accepts whose reason does not describe them")
+    p_verify.add_argument("--batch-size", type=int, default=40)
+
     p_collect = sub.add_parser("collect", help="validate judge output and assemble accepted set")
     p_collect.add_argument("--strict", action="store_true", help="exit non-zero if any batch is bad")
 
@@ -1013,6 +1137,10 @@ def main() -> int:
                 f"obj={len(profile['objectives']):2d} ms={len(profile['milestones']):2d}"
             )
         print(f"\n{len(profiles)} profiles -> {path}")
+        return 0
+
+    if args.command == "verify-input":
+        build_verify_input(args.batch_size)
         return 0
 
     if args.command == "collect":

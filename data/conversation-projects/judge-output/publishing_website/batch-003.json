@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing_website",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-e33888f7fe19#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-fac0edc87b4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Planning website platform and infrastructure (WordPress vs self-hosted) for Old Cypress"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-8002e7d1dbf5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Old Cypress Publishing project engagement"
+    }
+  ]
+}

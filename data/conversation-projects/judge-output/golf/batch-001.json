@@ -1,0 +1,486 @@
+{
+  "nexus": "golf",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-05cb3844ae30#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-9e75bc94aa5f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf practice and solitary play experience."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned in dating context, not practice."
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models catalog; golf mentioned in passing."
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-bf10e2241cb9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned in dating context, not practice."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf practice and solitary play experience."
+    },
+    {
+      "candidate_id": "historical-1f8a94efe3a5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf practice and solitary play experience."
+    },
+    {
+      "candidate_id": "historical-01adabd8e236#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; golf secondary mention."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-36e048a4fd1a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-fa32fdd7ffed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf coaching wisdom and performance psychology."
+    },
+    {
+      "candidate_id": "historical-2605f0bf8bfd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#43",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-097113ab0fa4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; golf secondary mention."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#37",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-0dad9518b2c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; golf secondary mention."
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video game golf, not real golf practice."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#41",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-golf content; unrelated context."
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#36",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf news/tournament factoid, not practice discussion."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf news/tournament factoid, not practice discussion."
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing biomechanics and technique analysis."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models catalog; golf mentioned in passing."
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical content or code, not golf discussion."
+    },
+    {
+      "candidate_id": "historical-c8fe1154c01a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf coaching wisdom and performance psychology."
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Dating message coaching; golf tangential."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-2605f0bf8bfd#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-2605f0bf8bfd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-06e86c695094#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video game golf, not real golf practice."
+    },
+    {
+      "candidate_id": "historical-d977f5d39c6e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-16147ce14d32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video game golf, not real golf practice."
+    },
+    {
+      "candidate_id": "historical-06e86c695094#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video game golf, not real golf practice."
+    },
+    {
+      "candidate_id": "historical-0a5f5209c7b0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-1eb8bfd10eb2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-8d9470e7999a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; golf secondary mention."
+    },
+    {
+      "candidate_id": "historical-4d731138d953#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-6a2774b656eb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-fa32fdd7ffed#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf coaching wisdom and performance psychology."
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf practice and solitary play experience."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing biomechanics and technique analysis."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing biomechanics and technique analysis."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context for classification."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Low similarity score suggests tangential connection."
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Low similarity score suggests tangential connection."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; golf secondary mention."
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive golf swing mechanics or spiritual practice."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Low similarity score suggests tangential connection."
+    },
+    {
+      "candidate_id": "historical-8a168175f466#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Low similarity score suggests tangential connection."
+    }
+  ]
+}

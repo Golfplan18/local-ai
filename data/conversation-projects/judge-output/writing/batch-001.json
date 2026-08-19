@@ -1,0 +1,487 @@
+{
+  "nexus": "writing",
+  "batch": 1,
+  "judged": 80,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 13 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 3 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 9 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (6 routes)"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 8 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 5 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 7 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 5 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 4 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 7 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 3 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 3 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 2 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 8 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (5 routes)"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 12 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 9 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 4 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-6ba3c2f80257#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 3 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 5 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 4 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 4 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strong route matches (4 routes)"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Subject indicates framework/methodology work: Split framework design finalization and nomenclatu"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive engagement with AI-assisted fiction methodology"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 2 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 10 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 2 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 8 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 5 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-a66877239394#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No substantive engagement with AI-assisted fiction methodology"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 8 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 2 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with 6 project-specific terms"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#34",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Subject indicates framework/methodology work: Marketing materials: author-interview answer, back"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Subject indicates framework/methodology work: Step 6 Setting Foundation Framework review, data p"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single but substantive mention of project-specific concept"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#21",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing discussion (no fiction/methodology content)"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Subject indicates framework/methodology work: Initial framework pair analysis and criteria align"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with 2 project-specific terms"
+    }
+  ]
+}

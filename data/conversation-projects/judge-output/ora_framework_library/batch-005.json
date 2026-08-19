@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-4f52f428430a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Uses Framework Creation Framework to formalize processes"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-012841caabf0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework library vocabulary with substantive engagement"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Uses Framework Creation Framework to formalize processes"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework library vocabulary with substantive engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework library mention without engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designs/discusses Framework Library architecture"
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Executing specific framework, not library work"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designs/discusses Framework Library architecture"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework library vocabulary with substantive engagement"
+    },
+    {
+      "candidate_id": "historical-2372b67f7235#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-5e2be2ba762d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework library mention without engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-433226858f03#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-c14bbae8e487#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-49546e02107c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designs/discusses Framework Library architecture"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Executing specific framework, not library work"
+    },
+    {
+      "candidate_id": "historical-67f0e1e0d65e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#24",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework discussion not library-related"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating/using framework for specific project"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No meaningful framework vocabulary"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Uses Framework Creation Framework to formalize processes"
+    }
+  ]
+}

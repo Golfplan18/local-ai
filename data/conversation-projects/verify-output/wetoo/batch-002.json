@@ -1,0 +1,150 @@
+{
+  "nexus": "wetoo",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b1e1108ce4ca#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical character content; distinct fictional regime project, not economic justice corpus"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Charlie Kirk research and MSI spinner project; not We Too economic framework work"
+    },
+    {
+      "candidate_id": "historical-2e9b53c593f1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Establishing Graeber as expert on debt/value/inequality; direct source material for We Too corpus"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sherman Act history and monopoly as moral betrayal; core We Too economic extraction framework"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 10 Private Debt outline; explicit We Too book chapter development on extraction"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moral fury as narrative weapon for movement; We Too objective-3 strategy (recognition to action)"
+    },
+    {
+      "candidate_id": "historical-0b651a28f9c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical content generation; distinct fictional dystopia project"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Immune system/moral anesthesia frame as unifying principle; foundational We Too persuasion methodology"
+    },
+    {
+      "candidate_id": "historical-a8fcf4d875ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "L.E. Nápoles on regulatory/political/media capture; We Too source material on elite extraction"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MMT and demand-side economics for New Communist Manifesto; explicit We Too economic theory foundation"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic ideation framework and writing methodology; not engaged with We Too specific content"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "The Vault project outline; distinct personal-AI memoir different from We Too manifesto"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump reality/propaganda pairs; satirical dystopia project, not We Too"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Administrative friction as control; rentier extraction and wage stagnation core to We Too mission"
+    },
+    {
+      "candidate_id": "historical-f97f6d200786#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rural voter exploitation by conservative coalition; direct We Too objective-2 (exposing contradictions)"
+    },
+    {
+      "candidate_id": "historical-91494f089ebd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wade N. Whatever character from Diklis Chump series; fictional regime project work"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Distinct book project (household manual/reductionist-woo bridge); different vision from We Too"
+    },
+    {
+      "candidate_id": "historical-96dad629d2c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wade N. Whatever character framework from Diklis Chump series; not We Too"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist compassion witnessing economic suffering; We Too moral clarity and binary framing"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atomic note-taking system methodology; knowledge-management tool review, not We Too"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#51",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GOP donor/voter contradiction on labor; permanent We Too wedge-issue messaging strategy"
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump Stage-4 persecution satire; distinct political-fiction project"
+    },
+    {
+      "candidate_id": "historical-deb42c930be9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too manifesto outline revision; explicit book development addressing elitism trap"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Affordability myth section and New Communist Manifesto outline; We Too book content development"
+    }
+  ]
+}

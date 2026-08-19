@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-90540d87d222#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-f1a27856b26b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-99abc2602603#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-a792d1367777#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-5727a8e9c524#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly identified as American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-66aebfe42a5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-9ad653b9d77f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-178acc556d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-da0de4d8ab3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-aa7597f3fba6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-b2fb58333914#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-f4afdfa9869f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-7bb70a35ce2b#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-ad8176951b9a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-54e9288d095e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly identified as American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-00ad302f5f6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-e55ad76bcce4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-fd00438c0d00#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly discusses American Judas project"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-a013ebab8aa4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly discusses American Judas project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-d6e221ba2257#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative development"
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative work"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient engagement with American Judas"
+    }
+  ]
+}

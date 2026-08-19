@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (white paper)"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (local LLM system)"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#19",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-8848a4c29411#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal knowledge management, not public-domain library"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal knowledge management, not public-domain library"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#28",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-50a97463b4b0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d9e7ab3cb019#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (white paper)"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal knowledge management, not public-domain library"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (news filtering)"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (white paper)"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-9b5fb91c1839#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal knowledge management, not public-domain library"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (white paper)"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-0ba3c36c8027#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG architecture with specification and manifest details"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (book outline)"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project (news filtering)"
+    },
+    {
+      "candidate_id": "historical-d7ece8fdb1c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantial engagement with knowledge library systems"
+    }
+  ]
+}

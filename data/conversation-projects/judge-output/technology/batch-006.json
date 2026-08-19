@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "OpenRouter integration for Ora installer eliminates adoption friction"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework outline review; methodology not technology"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted writing framework for plot; methodology focus"
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message examples; unrelated to technology"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal prompt framework strategy; not general tech evaluation"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#77",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI industry bubble economics; not tech evaluation"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Avatar platforms, TTS, LongCat/Bernini models evaluation"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#67",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI infrastructure spending analysis; not tech evaluation"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Standardizing writing prompts; methodology not technology"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "NLP field launch strategy and prior art; not tech evaluation"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Continuous AI operation for productivity; technology design"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project scope and naming strategy; business planning"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wall Street regulatory dossier; not technology"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of AI YouTubers; reference list not evaluation"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Modern Monetary Theory economics; not technology"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Scientific writing and cosmology; not technology evaluation"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "LangFlow and LangChain workflow technologies"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing craft theory; not technology focused"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project roadmap and Linux support; planning not tech"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code capability evaluation and orchestration"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document structure improvements; writing methodology"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Theoretical process foundations; not tech evaluation"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multimodal routing and image processing architecture"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-AI collaboration for creative work"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cognitive OS architecture for thinking"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Outline review and analysis; document editing"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI personas and prompt layering architecture"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge architecture and model capabilities"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ultrawide monitor selection and specifications"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "OCR profile extraction technology"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Visualization tools and Sankey diagrams for writing"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Brave and Serper web search API comparison"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing tech: Eleventy and Obsidian Publish"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book chapter review and revision; writing work"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora pipeline architecture and design"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework mechanics evaluation; not technology"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep AI model selection and evaluation"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "SaaS business model for writing framework"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tool design philosophy and escalation mechanics"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented book development workflow"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Context documentation; not technology evaluation"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing tech: Eleventy and Obsidian Publish"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wisdom Nexus philosophy; not technology focused"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative development for organizational framework"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI industry structure and personal infrastructure tech"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical foundations; not technology evaluation"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Work ethic personality profile; not technology"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Art archive search; not technology"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Advanced visual and RAG techniques"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented creative workflow and prompts"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI for solitary writer feedback"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code and model selection for drafting"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude vs Gemini vs GPT tool comparison"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing accretion approach; methodology not tech"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Market dynamics and adoption barriers; analysis"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative universe infrastructure for fiction"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Art archive search; not technology"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Matching AI models to writing tasks"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework Creation Framework; methodology"
+    },
+    {
+      "candidate_id": "historical-99df88574463#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Monitor resolution and size specifications"
+    },
+    {
+      "candidate_id": "historical-7848123699da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology theory; not technology"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political campaign strategy; not technology"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI pen-name agents for news infrastructure"
+    },
+    {
+      "candidate_id": "historical-1b7bd4582adb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Digital clock and USB charging tech"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge-quality tech and epistemic tracking"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "ToS and business strategy; not technology"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agents and gatekeeper technology impact"
+    },
+    {
+      "candidate_id": "historical-6c54e7d49b40#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "IP and architecture release strategy"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Lists of experts; reference lists"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#109",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Propaganda tool design and framework"
+    },
+    {
+      "candidate_id": "historical-04749862c4af#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Thematic framework execution for fiction"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Adversarial AI methodology for fiction"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI counter-manifesto capability exploration"
+    },
+    {
+      "candidate_id": "historical-0a01e7ce18b7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction theme framework execution"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora positioning in coding-tool ecosystem"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Archetypal fiction project; not technology"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI tech impact on cognitive load"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Phone selection and carrier technology"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Google AI Studio technology evaluation"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conversation processing pipeline architecture"
+    }
+  ]
+}

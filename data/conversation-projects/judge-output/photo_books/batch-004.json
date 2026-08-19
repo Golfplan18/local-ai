@@ -1,0 +1,486 @@
+{
+  "nexus": "photo_books",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-491631da91ab#45",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-24ef24f634ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-74d320d60d90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-7ac07094f39d#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research/reference content, not photo book project."
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-af315528f8ae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-730472456dde#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-9154f17e7583#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile/strategy, not photo book work."
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content, unrelated to photo books."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project (Ora or other), not photo books."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-ab6365646925#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject unrelated to photo book organization/production."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing/book project, but not family photo books."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User stylistic preference, not photo book project."
+    }
+  ]
+}

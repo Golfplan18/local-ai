@@ -1,0 +1,12 @@
+{
+  "nexus": "golf",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manipulation tactics. Excerpt discusses surveillance policy exploitation targeting conservative voters; unrelated to golf course design or spiritual insight."
+    }
+  ]
+}

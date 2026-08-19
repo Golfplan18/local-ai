@@ -1,0 +1,486 @@
+{
+  "nexus": "project_workshop",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trope library development within writing project"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Enhancing writing methodology frameworks; implementing project"
+    },
+    {
+      "candidate_id": "historical-0d8896d1e3a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction strategy for political writing; not workshop scoping"
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical writing work product; implementing project"
+    },
+    {
+      "candidate_id": "historical-35fd4c71fd0e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System capability expansion framework; building, not scoping"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide refinement; methodology development"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating AI agents from templates; curation"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trilogy outline completion; work ON project"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project development at week 8; implementing project"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis (Hinge); personal"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile MBTI analysis; personal"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-augmented workflow reflections; personal process"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dinner invitation message; personal communication"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trope library for narrative shorthand; project implementation"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-Assisted Novel Writing Method overview; implementing"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tropes as narrative shorthand; writing methodology"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious deification policies; MSI content"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deep dive into NovelAI features; tool exploration"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satisfaction with MSI voice portraits; MSI review"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework as evolving document; project implementation"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ego and documenting OS in Obsidian; system design"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Three-year left-wing brand tax meme campaign; content"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework as living document; methodology refinement"
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire framework; content work"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Navigation vs destination uncertainty; philosophy"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evidence manifesto for book project; book work"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Drafting chapters on progressive agenda; book content"
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper release strategy; campaign work"
+    },
+    {
+      "candidate_id": "historical-25565ad7fbfd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR/translation; personal"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing framework suite for American Jesus; implementing"
+    },
+    {
+      "candidate_id": "historical-7465dc28ab4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge management system architecture; implementing"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framing and character archetypes; writing project"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character-choice scene mapping; implementing writing project"
+    },
+    {
+      "candidate_id": "historical-e8feeda1cd3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Inquiry typology research plan; research methodology"
+    },
+    {
+      "candidate_id": "historical-722b0457ce18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atomic knowledge management architecture; system implementation"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Work-pace diary: 8-week build sprint; project progress"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Condensing outline and character documentation; writing work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discovering Claude Code and designing; implementing system"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and message to Esther; personal"
+    },
+    {
+      "candidate_id": "historical-c0746d1f902e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trojan Horse Fiction Strategy; implementing project"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble opening message for Stacey; personal"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI systems for externalizing thought; personal productivity"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI operation and productivity; personal system"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating and refining Plot Framework V2.0; implementing"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting ground rules for MSI thread; coordination"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Feminine personality types and romance; personal"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hierarchical skills architecture for workflows; productivity"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Various topics; insufficient data"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and polarity analysis; personal"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building Templater template for Obsidian; tool implementation"
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian policies; MSI content"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hierarchical skills architecture; productivity system"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot Foundation Framework updates; implementing project"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code execution methodology; implementing system"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon description framework creation; project work"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework inventory confirmation; implementing framework"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon book description framework; project work"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Initiation Framework development; implementing"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating satire about state-worship; MSI content"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unread segment; insufficient data"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cognitive operating system architecture; system design"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing method review; implementing project"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Properties vs tags discussion; system design detail"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical narrative on religious corruption; MSI content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tagging framework for processing chats; utility tool"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Step 8 evaluation framework restructuring; implementing"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework creation framework specification; implementing"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted novel writing implementation"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-augmented writing methodology for fiction; methodology"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and messaging; personal"
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Learning Obsidian Canvas features; tool exploration"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Sheets substring formulas; technical utility"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementing tiered preservation across frameworks; project work"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI news filter to strip propaganda; news system"
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Troubleshooting formatting and spacing; technical"
+    },
+    {
+      "candidate_id": "historical-764ef391b566#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extended cognition framework mission/goals; implementing"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mapping Ora's tool/API capabilities; implementing project"
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot framework for writing; project implementation"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Architectural Framework expansion for cognition; implementing"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cassandra dread about AI project impact; personal"
+    }
+  ]
+}

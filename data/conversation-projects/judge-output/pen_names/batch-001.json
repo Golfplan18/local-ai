@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT tool configuration, not pen names"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT style analysis, not pen name infrastructure"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona recommendations for fictional character frameworks"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementing personas in story frameworks, not pen names"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Database project with passing reference to adding author"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Organizing existing pen names as distinct characters with backstories"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Heteronym strategy: author as character across multiple works"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Code snippet output, no pen name engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project outline, not pen name infrastructure"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Dossier building for fiction project, not pen names"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing platform features (AI Dungeon vs NovelAI)"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Worldbuilding for Redemption Springs novel"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI platform features, not pen names"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Exploring AI writing tools for one of multiple pen names"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generating satirical articles, content creation"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content generation"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding mental models to catalog"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content generation"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding resources to collection"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation, content creation"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting up multiple publishers under Bowker for different pen names"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical narrative content generation"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Meta Persona profile but unclear if pen names"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app message crafting, not pen names"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content generation"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names as personas with digital life and communications presence"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack API research, not pen names"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project organizational naming, not pen names"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political content exploitation instructions"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Naming project matrix system"
+    },
+    {
+      "candidate_id": "historical-ec8c972c086f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Automation infrastructure for writer/publisher with multiple pen names"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building Oracle persona with multi-channel rollout strategy"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure for writing framework"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing WeToo series with pen name and ISBN infrastructure"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic report and press release content"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sudowrite story bible writing tool usage"
+    },
+    {
+      "candidate_id": "historical-63eaedc497c9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WeToo series publishing setup with pen name"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura project software debugging"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Job description for publisher writing under various pen names"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile for novel/story"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon features exploration"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian framework"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book metadata optimization, unclear if pen name"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sudowrite file organization"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and MBTI"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and analysis"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profiles into Sudowrite for story"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reviewing library personality system"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Populating database with biographical data"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building archetypal choice architecture for novel"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project briefing for satirical framework"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover trend analysis"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Surveying AI visualization tools"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction legislative proposal titles"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating patterns and male sovereignty reflection"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app messaging strategy"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building author platform and indie-press pen-name collective"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover concept framework"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating satirical political content"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Back cover blurb framework for book"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story ideation framework"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story ideation framework"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Okta authentication app explanation"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Architecture design decisions for system"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic AI safety article review"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflection on novel writing accomplishment"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal biography in Hemingway style"
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple pen names as personas for AI news service"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Making Obsidian vault AI-accessible"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude app voice features and settings"
+    }
+  ]
+}

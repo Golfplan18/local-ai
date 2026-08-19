@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-54e9288d095e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel: religious distortion thematic framework"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#98",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude AI service status check"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix templates and Excel automation"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and relationship management advice"
+    },
+    {
+      "candidate_id": "historical-5727a8e9c524#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus thematic implementation overview"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic AI safety team profile"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Private equity extraction mechanics and rentier class dynamics"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump voter loyalty and extraction narrative analysis"
+    },
+    {
+      "candidate_id": "historical-3286f0cfe3c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus book bible setup"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ChatGPT model comparison"
+    },
+    {
+      "candidate_id": "historical-d70d96ebd5f9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus themes, character, and plot submission"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible loading"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible submission"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Global impact declarations and responsibility-obscuring rhetoric"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stylistic formatting request"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference request"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent Teams white paper outline"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus outline completion upload"
+    },
+    {
+      "candidate_id": "historical-1a491317e118#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible review"
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Right-wing propaganda tactics and political resistance strategy"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus outline loading"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal response request"
+    },
+    {
+      "candidate_id": "historical-fe8013652230#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework weaknesses and refinement for critical analysis"
+    },
+    {
+      "candidate_id": "historical-17af7e3f41b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible submitted in sections"
+    },
+    {
+      "candidate_id": "historical-f7592c246d5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matching biblical parables to American Jesus outline"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project on emotional intelligence and AI collaboration"
+    },
+    {
+      "candidate_id": "historical-0c09a009208d#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Propaganda extraction: demonization, innuendo, fabrication techniques"
+    },
+    {
+      "candidate_id": "historical-798d9a12d93c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Market humanism economic paradigm (philosophical framework, not We Too corpus work)"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "On-again/off-again relationship analysis"
+    },
+    {
+      "candidate_id": "historical-70c20a590738#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Red Scare propaganda repurposing against authoritarianism"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI coherence and morality debate (tangential right-wing reference)"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Smythos AI agents platform curation"
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus generalized outline review"
+    },
+    {
+      "candidate_id": "historical-ed2807b9a6c9#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Housing Justice narrative exploring property extraction and policy failure"
+    },
+    {
+      "candidate_id": "historical-82bc9a8cbe6b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master outline submission"
+    },
+    {
+      "candidate_id": "historical-68955b67ecda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 3 novel outline review"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible paste"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump-base loyalty psychology and extraction economics analysis"
+    },
+    {
+      "candidate_id": "historical-f709ec9ca909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 2 novel themes and refinement"
+    },
+    {
+      "candidate_id": "historical-db86c4c02a88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus parallel story bible"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Accidental dog-groomer conversation recording"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satire fiction-writing framework (different project)"
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump policy failures and government incompetence (generic political criticism)"
+    },
+    {
+      "candidate_id": "historical-8140ff4b921d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Co-writing American Jesus novel: outline and chapter refinement"
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter on policy mechanisms and session wrap-up"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble opening message composition"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Foundation profile development for political character"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 3 story bible review"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Modern Monetary Theory and free-rider economic fallacy"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master story bible"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master story outline"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#72",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Taylor Sheridan productivity analysis"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus book 1 story outline"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database technology and video integration"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Kira profile development and INFP relationship strategy"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative merger execution"
+    },
+    {
+      "candidate_id": "historical-62b0385facb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel outline"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 3 master outline expanded"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md for Obsidian/Google Drive integration"
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical political/economic press-release development"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#128",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "A/B testing for authenticity (adjacent political work, not core We Too)"
+    },
+    {
+      "candidate_id": "historical-7eb3419147b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus themes and concepts"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image refinement of angry man pressing kill button"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Josh Agle/Shag art archive search"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output (meta-prompt work)"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Edge Observer literary criticism request"
+    },
+    {
+      "candidate_id": "historical-6761f7e70004#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book structure and political narrative methodology"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus themes and concepts story bible"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder structure and installation"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible universal theme/character"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Surveillance apparatus targeting regime conservatism"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scene/event list review by character"
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 3 novel development"
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 3 novel development"
+    },
+    {
+      "candidate_id": "historical-07601188454d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump tariff policy and left-wing political leader analysis"
+    }
+  ]
+}

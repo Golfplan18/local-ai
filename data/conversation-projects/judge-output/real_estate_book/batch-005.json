@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1406be3d3477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: drafting when individual creation become"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: sudowrite story bible preparation and co"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: drafting chapter 36, 'manufacturing the "
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: manifesto creation and finalization: dra"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real estate content but not home purchase book"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: paradigm shift in authorship and rapid a"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: masculine/feminine dating dynamics, the "
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: developing affordability myth as major s"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: brainstorming front-matter page titles a"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: drafting chapters 1-2 on installation an"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: drafting appendix on wobble model mathem"
+    },
+    {
+      "candidate_id": "historical-5ee063d04e40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: special needs parenting book: drafting a"
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: demonstrating character across published"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-system work, not book project"
+    },
+    {
+      "candidate_id": "historical-7d7333a1df18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: novel setting development for american j"
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: building comprehensive bibliography orga"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: creating plot refinement framework and e"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: framework transformation to integrate ar"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: developing and refining ai-assisted writ"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: book narrative architecture and personal"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: chapter 6 'redefining strength' - new wi"
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-58c99e01c25b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-377cd8bae827#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: review and comparison of the real americ"
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real estate content but not home purchase book"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-d09f187685a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: separating plot foundation framework int"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/unrelated matter"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: chapter refinement framework analysis an"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: improving scene structure and updating p"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: revising book section on three-part awak"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: requesting plot chapter refinement evalu"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: act 3, chapter 7 outline creation and co"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: parable refinement for james and michael"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: designing the subplot-integration mechan"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: placing parables in american jesus chapt"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: bedtime creation story storytelling and "
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Other book project: book title development and subtitle refi"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No connection to real estate book"
+    }
+  ]
+}

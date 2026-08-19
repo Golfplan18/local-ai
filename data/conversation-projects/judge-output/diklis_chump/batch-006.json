@@ -1,0 +1,486 @@
+{
+  "nexus": "diklis_chump",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-313084bad595#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump named in subject or title"
+    },
+    {
+      "candidate_id": "historical-7bc0bd1174e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump named in subject or title"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-adff703b9c62#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump named in subject or title"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-eaf5d37a9e26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump named in subject or title"
+    },
+    {
+      "candidate_id": "historical-4f52f428430a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-bc566cacbd13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-6541ebfec54e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-d4b6e76be8b0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-a085cf3a552b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump discussed in excerpts"
+    },
+    {
+      "candidate_id": "historical-f5566f6390f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive Diklis Chump project engagement"
+    }
+  ]
+}

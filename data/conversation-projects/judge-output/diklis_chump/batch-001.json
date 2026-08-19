@@ -1,0 +1,486 @@
+{
+  "nexus": "diklis_chump",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is execution-review architecture; no Diklis Chump engagement."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic persona/production discussion; no Diklis Chump connection evident."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-6a8a2820ace3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-90147737228c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic persona/production discussion; no Diklis Chump connection evident."
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mentions correspondence/email without Diklis Chump production detail."
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-0a01e7ce18b7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-04749862c4af#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Engram mentioned in production context."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Diklis Chump or Engram vocabulary; unrelated project."
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject is about unrelated Ora/MSI project, not Diklis Chump."
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of 'Diklis Chump' in discussion."
+    }
+  ]
+}

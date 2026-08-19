@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-60cc11936873#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-26609c564d3b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-46694b939e00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User requests image creation ('Create an image that depicts...'); assistant provides design and export options."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical writing project documentation; no image generation engagement."
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses image creation limitations; user requests formula placement guidance for visual work."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LLM model specifications and quantization; unrelated to image generation craft."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Microsoft Word styles, mathematical equation formatting; manuscript tooling, not image generation."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style exercises (Hemingway, McCarthy, ChatGPT emulation); not image generation."
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SSH connection setup for remote Mac access; technical infrastructure, not image generation."
+    },
+    {
+      "candidate_id": "historical-a3fdd553fceb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-7d35baf6912b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-0ebd64e7a7d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Error report about missing image attachment; no image generation work."
+    },
+    {
+      "candidate_id": "historical-301499770ae3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-writing framework discussion; mentions 'frameworks' generically but no image generation work."
+    },
+    {
+      "candidate_id": "historical-93cddfe1c4be#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-41a1f5e699ab#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical writing project (DIKLIS CHUMP); no image generation engagement."
+    },
+    {
+      "candidate_id": "historical-58ebe6d7d833#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-fc7f209fa1c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-b9285acd1b28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Tagline generation for a work title; not image generation."
+    },
+    {
+      "candidate_id": "historical-5fe12db186a5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hugging Face model categories: user discusses text-to-image, image-to-image, vision model taxonomy for Ora platform."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Power cord and USB-C cable specifications; hardware networking, not image generation."
+    },
+    {
+      "candidate_id": "historical-6417b464f6cd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-946e97d75160#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-f4a30072196b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-b3bcc469a112#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-50c01b3d8e56#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-cleanup tool discussion, unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-3bf15e1d79d4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-e907ea091141#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-c21b81a920cd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-1772df5776a9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-83e904f78a80#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-ef3d5b483626#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-907ec9112429#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Three-book outline planning (technical, accessible, cartoon books); not image generation."
+    },
+    {
+      "candidate_id": "historical-08849ed8e05b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-bd1d3867e91c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI writing mastery and creative system reflection; not image generation practice."
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book metadata, descriptions, Bowker identifiers, SEO optimization; not image generation."
+    },
+    {
+      "candidate_id": "historical-b93e8248135c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-8e74e28cb260#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-f7316ce7ca7b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-cf797e2fa3c3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-332fba426826#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-b3c8f9cd3ccb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Dream image concept; user refines face rendering, urban setting, affluence details; iterates on MidJourney prompts."
+    },
+    {
+      "candidate_id": "historical-2dbd3f56ab9a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Python script generation, file format issues (TextEdit vs Code), Gradio UI setup; not image generation."
+    },
+    {
+      "candidate_id": "historical-ecba501d13c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-9d6fce0c12bf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-94c698a2f11c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-35dd871f6185#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-a90b5c3590fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-10e3021c86c7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Nominal mention: user notes missing image attachment in error scenario."
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework design philosophy for transformation processes; no image generation engagement."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical writing project (DIKLIS CHUMP); no image generation engagement."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical outline restructuring with content verification; not image generation."
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test prompt; no substantive content or image generation."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Author branding, pen names, book front matter design; not image generation."
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Simple connection test; no substantive content."
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-efebec279550#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Connection test or missing context."
+    }
+  ]
+}

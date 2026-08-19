@@ -1,0 +1,258 @@
+{
+  "nexus": "writing_fiction",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework execution on novel"
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message writing, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework for American Jesus"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting-Character-Theme framework for novel structure"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative-detail reservoir and scene planning system"
+    },
+    {
+      "candidate_id": "historical-d410ac8be976#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 chapter refinement framework"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book, not fiction"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reflection on spiritual fiction writing pace and intensity"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#32",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story-beat refinement and Beatitudes prose writing"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing project system enhancement discussion"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Literary conventions and descriptive devices"
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 chapter refinement framework application"
+    },
+    {
+      "candidate_id": "historical-ec233979c12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 1 chapter refinement with drafting"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Literary conventions and descriptive devices"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI acceleration of fiction writing craft and process"
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Transforming chapter framework into prose drafting instructions"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character creation and ideation framework at scale"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating messaging strategy, not fiction writing"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-feda250a6023#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction writing discussion"
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction writing process and system"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Non-fiction book writing strategy"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement framework application"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Prose creation process refinement"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction politics book, not fiction"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing project framework discussion"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book, not fiction"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction framework execution"
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter framework refinement"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Non-fiction communication writing"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile writing, not fiction"
+    },
+    {
+      "candidate_id": "historical-92d3704a8af4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel character framework development"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Prose creation quality refinement"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction writing process discussion"
+    },
+    {
+      "candidate_id": "historical-3153873d0063#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel character framework execution"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only, no fiction content"
+    },
+    {
+      "candidate_id": "historical-6f6869e6a2c7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction writing development"
+    }
+  ]
+}

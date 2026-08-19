@@ -1,0 +1,486 @@
+{
+  "nexus": "golf_course_design",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing framework design, not golf."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Jesus AI meme engine project, not golf."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sci-fi perception concepts, not golf."
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing evaluation frameworks, not golf."
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External hard drive evaluation, not golf."
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter 17 outline, not golf."
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical project, not golf."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Orchestrator design/session management, not golf."
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump ideation framework, not golf."
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop/SSH setup, not golf."
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Paper citations request, not golf."
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Prior art repository concept, not golf."
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents curation, not golf."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/corporate reform book, not golf."
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loki mythology/Trump analysis, not golf."
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent specification research, not golf."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics evaluation, not golf."
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Collective intelligence framework analysis, not golf."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf mentioned in dating context, not design."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon description framework, not golf."
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf as personal hobby/training analogy, not design."
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus setting profiles, not golf."
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing evaluation frameworks, not golf."
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal narratives/Hemingway retellings, not golf."
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI model comparison ranking, not golf."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parallel AI system architecture, not golf."
+    },
+    {
+      "candidate_id": "historical-132275a0e56b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapters review, not golf."
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parable placement in American Jesus, not golf."
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf course is setting metaphor in novel, not design project."
+    },
+    {
+      "candidate_id": "historical-7c8f481a77ab#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapters review, not golf."
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Music pairings for Seven Speeches, not golf."
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Material review and draft revision, not golf."
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf course imagery for American Jesus novel, not design."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Two preview chapter, not golf."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus introductory narrative, not golf."
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Worldbuilding for Redemption Springs, not golf."
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hardware architecture for AI models, not golf."
+    },
+    {
+      "candidate_id": "historical-499065142c34#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Chapter Refinement, not golf."
+    },
+    {
+      "candidate_id": "historical-8a168175f466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf in romantic/lifestyle fantasy, not design."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework, not golf."
+    },
+    {
+      "candidate_id": "historical-87505b41503c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Richmond speech architecture, not golf."
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Richmond speech development, not golf."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb criteria, not golf."
+    },
+    {
+      "candidate_id": "historical-d09f187685a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Big Block concept development, not golf."
+    },
+    {
+      "candidate_id": "historical-77114c2b8f52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character progression beats, not golf."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder structure, not golf."
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Professional golfers as examples in economic project, not design."
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault management philosophy, not golf."
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not golf."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf activity for energy/health, not design."
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Journal reference updates, not golf."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Richmond chapter outline, not golf."
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapter refinement, not golf."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, not golf."
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parable refinement, not golf."
+    },
+    {
+      "candidate_id": "historical-32df11c88044#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Carla Marks background research, not golf."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parable placement in chapters, not golf."
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf course community in relationship fantasy, not design."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Real estate project includes golf but focuses on general land development, not golf course design."
+    },
+    {
+      "candidate_id": "historical-7d7333a1df18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel setting development, not golf."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline creation, not golf."
+    },
+    {
+      "candidate_id": "historical-c6a63e6fcc33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf course as novel setting metaphor, not design."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual design elements, not golf."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT system config, not golf."
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Iryna Chump character development, not golf."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI features deep dive, not golf."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora installation/hardware chapters, not golf."
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta persona for knowledge, not golf."
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not golf."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system capabilities discovery, not golf."
+    }
+  ]
+}

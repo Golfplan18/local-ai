@@ -1,0 +1,486 @@
+{
+  "nexus": "writing_fiction",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-801ebe92c228#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing business strategy, not prose craft"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing tool discussion without fiction focus"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction narrative craft framework"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-f1468d58b18a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction narrative POV technique discussion"
+    },
+    {
+      "candidate_id": "historical-7bb70a35ce2b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-9dd6631cd426#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#20",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Story positioning and promotional writing"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-a66877239394#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-fiction professional writing, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political document analysis, not fiction writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Refining fiction writing process and frameworks"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-add8a658b7b0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative technique for fiction craft"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative structure and character archetype analysis"
+    },
+    {
+      "candidate_id": "historical-c3f9daa6e005#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative structure and character archetype analysis"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-c1dad3e45daa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline refinement and structure"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction narrative POV technique discussion"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Fiction narrative POV technique discussion"
+    },
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline refinement and structure"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Story positioning and promotional writing"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative technique for fiction craft"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#22",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Brief writing advice without specific fiction framework"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Brief writing advice without specific fiction framework"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Brief writing advice without specific fiction framework"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development discussion"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#28",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Story positioning and promotional writing"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing tool discussion without fiction focus"
+    },
+    {
+      "candidate_id": "historical-bc566cacbd13#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline refinement and structure"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story outline and character arc development"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for refining chapter prose drafting"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing business strategy, not prose craft"
+    },
+    {
+      "candidate_id": "historical-6c9aec728ad4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Brief writing advice without specific fiction framework"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic content without clear fiction craft connection"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework application"
+    }
+  ]
+}

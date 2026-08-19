@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora infrastructure updates with mode registry and configuration systems."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for implementing persona structures and recognition verification."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text messaging strategy - dating coaching, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework - Diklis Chump project."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Military strategy and Sun Tzu expertise system."
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Universal reviser output - Ora pipeline tool, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection test - unrelated."
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble dating analysis and message strategy."
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book metadata and SEO description."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT style configuration - unrelated."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Execution review architecture with observability and evidence collection."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework for organizing raw creative ideas into structured format."
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework for organizing raw creative ideas into structured format."
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message refinement - not idea incubation."
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble profile analysis and dating message composition."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework validation and strategic planning for idea incubation."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper development with expert system - content creation, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Visual protocol research and specification."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Redesigning ideation/evaluation framework tooling for organizing narrative elements."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Redesigning ideation/evaluation framework tooling for narrative elements."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tagline generation - simple request."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Effort taxonomy OCR and tagging - file organization, not idea system."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Thread context management and OCR transcript preservation."
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR transcription of dating profile."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Token efficiency optimization."
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting - playful opening."
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and message composition."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code installation and setup."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating as marketing funnel analogy - not idea incubation."
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing ideation framework for creative project ideation."
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical framework execution for Diklis Chump creative project."
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide template creation."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/Samantha personal relationship details."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangChain template agent extraction."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework redesign for preserving ideas and managing dormant candidates."
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General AI agent team organization."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extended cognition framework - possibly unrelated."
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Initial dating profile review and compatibility."
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Matrix cascade analysis for economic forecasting."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis - not idea incubation."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Comparing platforms and features - unclear."
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SoulSpec AI agent specification standard."
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument consolidation and refutation."
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary criticism request for academic paper."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policies and consequences."
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Repository system for discovering adjacent/related candidate materials."
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Star Trek naming and thematic framework for document."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "PAS framework handoff - unclear relevance."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real-world examples from news publications."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tagline generation request."
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tool design for managing imperfection and escalation - recognition-based."
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and Hinge message composition."
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "MIT Supermind Ideator reference - tool reference, not system design."
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System overview v2 design review - documentation maintenance."
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Consolidating materials - document assembly, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian framework applied to policy."
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating-related message refinement."
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Avatar video generation platforms research."
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical framework for religious exploitation policy."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Orchestrator design and cross-evaluation session management."
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy proposals for fictional authoritarian leader."
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Human Nexus framework development for system organization."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Remote AI agent teams and collaboration - general org, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transform outline into narrative prose - writing task."
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging and MBTI analysis."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating AI agents from app templates - agent selection, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Version management and file decision - technical maintenance."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework updates and refinement - general framework work."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora background processing architecture - infrastructure, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI safety argument audit and revision - argument analysis, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble match analysis and dating dynamics."
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework mode verification system for recognition gate."
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Philosophical concepts and frameworks - general philosophy, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian vault architecture for organizing project incubation system."
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework verification and checks - testing/validation work."
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Memory systems comparison - infrastructure analysis, not idea incubation."
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Profile photo refinement and description - dating profile work."
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system design using Edward de Bono thinking frameworks."
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework for preserving ideas and managing dormant candidates."
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verification of argument audit framework - verification testing."
+    }
+  ]
+}

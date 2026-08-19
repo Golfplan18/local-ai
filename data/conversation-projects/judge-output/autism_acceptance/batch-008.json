@@ -1,0 +1,486 @@
+{
+  "nexus": "autism_acceptance",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Building the 'American Jesus' novel story bible: u)"
+    },
+    {
+      "candidate_id": "historical-c8199fa85fb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-bc2345944ec5#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-76f31c5b4907#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Drafting, revising, and sending a formal pre-Chris)"
+    },
+    {
+      "candidate_id": "historical-b0bdfa2c41b9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Generating satirical policy scenarios for fictiona)"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Proposed humiliation campaign against Trump using )"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3b39f9501d71#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-839583df5598#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Active engagement and real texting with Lili)"
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Crafting visionary dating message for INFP persona)"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel, not Autism Acceptance book"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Email setup implementation and Gmail migration str)"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Macro political economy - administrative friction )"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Comprehensive theory of Trump's frame vulnerabilit)"
+    },
+    {
+      "candidate_id": "historical-c32962c7953e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel, not Autism Acceptance book"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-a5b84067f129#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-d19318011aff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Generating serialized 'Diklis Chump' authoritarian)"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (We Too series: reviewing and refining user-drafted)"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Editing and fact-checking individual We Too policy)"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Designing a real-time voice-to-screen AI interface)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character, not Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Aura project breakthrough on consolidating 20 mode)"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Using fiction and anonymity to amplify moral clari)"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Deep dive on Samantha as the 'Devoted Muse'/INFP a)"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-b2839f2e0ebc#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-011e5295604a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (We Too series: RECAP covering the moral/strategic )"
+    },
+    {
+      "candidate_id": "historical-3216698678b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Refining and iterating on message to communicate h)"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Books on propaganda collapse: status loss, redempt)"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Creating reality/propaganda pairs for dystopian Di)"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Framework transformation to integrate archetypal c)"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Channeling political rage into satire fiction: the)"
+    },
+    {
+      "candidate_id": "historical-c4a83152e866#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-b1e1108ce4ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Implementation guidance: LangFlow documentation an)"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-f6129ba414b7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Dating strategy with Rina - profile analysis, mess)"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Consolidating materials into a unified document)"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Extended Cognition Framework: theory, implementati)"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Developing the 'American Jesus' novel: character p)"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (AI consciousness in fiction: sci-fi androids, the )"
+    },
+    {
+      "candidate_id": "historical-7d4b3c06a311#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Texas 2030 redistricting as the critical political)"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-947060573768#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-947060573768#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Reframing AI agents as background process executio)"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Malcolm Little King trilogy strategy and political)"
+    },
+    {
+      "candidate_id": "historical-2fe8d25422a5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Creative development of Hayzeus character and mode)"
+    },
+    {
+      "candidate_id": "historical-30dad538ca34#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (We Too series: Four Horsemen / moral-strategic fra)"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book-related but unclear if about Autism Acceptance"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-d81ad7a18ca9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Practical application of frame-free communication )"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Dating Aida and managing her intensity)"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engages with different project (Her withdrawal decision and broader pattern reflec)"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Autism Acceptance book project"
+    }
+  ]
+}

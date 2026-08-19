@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development via Character Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development via Character Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character profile development via frameworks"
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-498c4d5aa261#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-9efc5b50aa68#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-ed2807b9a6c9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-f1a27856b26b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development for American Jesus project"
+    },
+    {
+      "candidate_id": "historical-537591fd6d00#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-492a4972a10a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot structure via Plot Framework"
+    },
+    {
+      "candidate_id": "historical-ed1d5236500a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-589bf9777155#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 5 via frameworks"
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-e12deb632496#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development via Character Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-132275a0e56b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-7c8f481a77ab#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 17 via frameworks"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-1c673631d578#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 17 via frameworks"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development via Character Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-82bc9a8cbe6b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-1cc83d43bb6b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical articles about authoritarian stages, distinct from American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic Reality Report for satirical fiction project, not American Jesus"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Continuity framework for trilogy compression"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible and master outline review/development"
+    },
+    {
+      "candidate_id": "historical-8a67f89f4547#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-db86c4c02a88#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible and master outline review/development"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project about \"Diklis Chump\", distinct from American Jesus"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 1 via frameworks"
+    },
+    {
+      "candidate_id": "historical-d746a9b698ab#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 11 via frameworks"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Empty code block segment"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 1 via frameworks"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 11 via frameworks"
+    },
+    {
+      "candidate_id": "historical-09dbe2be4706#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible and master outline review/development"
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 3 via frameworks"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework development and execution for novel components"
+    },
+    {
+      "candidate_id": "historical-662d0f3118bd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 4 via frameworks"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-c157d4830347#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline development"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-e085defd394e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter architecture development via Chapter Refinement Framework"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 35 via frameworks"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 7 via frameworks"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development of Chapter 2 via frameworks"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development engagement"
+    }
+  ]
+}

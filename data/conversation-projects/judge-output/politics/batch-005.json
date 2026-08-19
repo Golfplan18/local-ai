@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#18",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "derek thompson's 'abundance' debate on the political left"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "analysis of trump's overreach trajectory, endgame timing, pa..."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ai-generated partisan news and manipulating trump via tailor..."
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#16",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "yellow journalism as historical parallel for bs media's rise..."
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-63297d343a27#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "bubble unfolding in real time: market indicators, ipo timing..."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "moral-override protocols in war, draft exemptions, and israe..."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "legality of la troop/marine deployment (posse comitatus, ins..."
+    },
+    {
+      "candidate_id": "historical-52046b4b78e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "populating expert database with biographical data, images, a..."
+    },
+    {
+      "candidate_id": "historical-ed32d9f01388#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "us wire service apis and rss feeds for news content distribu..."
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "democratic weakness and establishment media framing of trump"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-a53f95dbc95d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "satirical dystopian ideas about authoritarian governance"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "drafting chapters 7-8 on mmt and private debt"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "constitutional crisis: trump lawsuit against federal judges..."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "evaluation of classical mechanics explanation for quantum ph..."
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "tool urgency, adoption inevitability, and signals of a rare..."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-1a6d2d64f81e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "external link access limitations and constraints"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#39",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "maga base backlash over a possible iran strike and trump's l..."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#42",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "student-visa social-media screening and wealthy jewish donor..."
+    },
+    {
+      "candidate_id": "historical-4491887874ad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "document analysis and synthesis of ai expert teams framework"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "calmatters investigation on california's lack of public defe..."
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "foreign tourism decline and gdp impact of trump's travel ban..."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "researching the kirk shooter's identity and kirk's anti-gay..."
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "chapter concept feedback and strategic positioning"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#37",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "vox's supreme court term wrap-up and whether the right's unp..."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#25",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "trump's west point speech and narcissism concerns"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#54",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "left-wing link-aggregator idea, substack punditry's ego prob..."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#35",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "senate passes the megabill by circumventing the byrd rule; i..."
+    },
+    {
+      "candidate_id": "historical-91494f089ebd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "character wade n. whatever development through initiation an..."
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "trump's megabill tax cuts and democratic messaging strategy..."
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "doj drops floyd/taylor police-reform accords; policing as au..."
+    },
+    {
+      "candidate_id": "historical-deb42c930be9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-8222b9b9e6ea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging altruistic moral framework"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-96dad629d2c1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "character initiation and foundation framework for wade n. wh..."
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "abortion policy impacts, supreme court limits on injunctions..."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "implementing and troubleshooting the vault-publishing soluti..."
+    },
+    {
+      "candidate_id": "historical-5fc6226e797b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "generating and reformatting 'diklis chump' satirical press-r..."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "web links and varoufakis access - meta-discussion about web..."
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "video upload and format troubleshooting for dating apps"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#25",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "fox news megabill coverage: gop vote math and who owns blame..."
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "ai system design using edward de bono's thinking frameworks"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "ai agent teams white paper outline summarization"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "kristi noem's incompetence, right-wing impunity, and predict..."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "documentation update requirements checklist"
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "new generation of left-wing leaders rejecting centrist apolo..."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#55",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "doubts over the senate megabill's july 4 timeline"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-058da6b62a43#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "political drama, debt ceiling theater, and cycles of democra..."
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "summary of a calmatters article on public-defense investigat..."
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ed zitron article arguing generative ai isn't a sustainable..."
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "elon musk's political alignment and the 'diklis chump' satir..."
+    },
+    {
+      "candidate_id": "historical-9185d1b6bdf0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "deep dive into ai dungeon features"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#28",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "two more house/senate republicans decline reelection after b..."
+    },
+    {
+      "candidate_id": "historical-fc15f6db2316#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    },
+    {
+      "candidate_id": "historical-408e770f67b0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "trump's harvard confrontation and economic indicators of dec..."
+    },
+    {
+      "candidate_id": "historical-d7388c85a153#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "malcolm character from american jesus and senator warnock's..."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating content to inspire future creatives"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-cd2b804d6d80#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-cefa9d813001#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive discussion of American Jesus trilogy elements"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-f970ba5f3dee#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-b4d98378df21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-dd3f3774c641#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-587af854e46b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of trilogy themes, characters, or narrative structure"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive discussion of American Jesus trilogy elements"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with American Jesus project materials"
+    },
+    {
+      "candidate_id": "historical-7eb3419147b1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-dcff669b6f6d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on American Jesus manuscripts or trilogy structure"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-6df52da330e2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-e7fc40d80abc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-70c3d876ce20#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with American Jesus project materials"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-e6d87dd73ee5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with American Jesus project materials"
+    },
+    {
+      "candidate_id": "historical-92305a0aebc9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-90540d87d222#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-497d67010709#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-cfee1ba18356#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus conversation with character or chapter work"
+    },
+    {
+      "candidate_id": "historical-cd2b804d6d80#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-e38e70976f55#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-cd2b804d6d80#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-8d8cf54012e8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-6f5669442ede#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of trilogy themes, characters, or narrative structure"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General writing discussion, different project focus"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a66f322e58f7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with American Jesus story bible and themes"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with American Jesus project materials"
+    },
+    {
+      "candidate_id": "historical-7b81cb5f4ab7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter refinement and outline work for American Jesus"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No meaningful American Jesus project engagement"
+    }
+  ]
+}

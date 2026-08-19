@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-org",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publication, not ora-ai-org website"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-c48eea34025a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-c24a80a07bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-10a88ba1019a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-10a88ba1019a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-1bbdf7f2be38#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Astro deployment for MSI, not ora-ai-org"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-3c7adc370ed2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character/theme development, not website framework library"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference statement, not project engagement"
+    },
+    {
+      "candidate_id": "historical-764ef391b566#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shared vocabulary with ora-ai-org but different project context"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entity or name route match without project context"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly designs meta-layer: vault, MindSpec, conversation RAG, adversarial pipeline"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only, no Ora engagement"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bitwarden password manager setup unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic cognitive exoskeleton concept, not Ora-specific"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Natural language programming for AI agents, adversarial architecture, supervisor/executor design"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora application examples: Geshe Kalsang, soul.md, provenance hierarchy, web frontend"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "SynthesisGPT and extended cognition, different system from Ora"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM setup, generic model networking unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theme Framework for writing, not Ora"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YouTube video link, not relevant to Ora"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document outline formatting, not Ora"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic cross-thread memory discussion, minimal Ora specificity"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Market positioning of Ora, reliability claim, adversarial pipeline distinctiveness"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Children's story development unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-f79ca4d0a070#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "T19 spatial composition territory analysis, mode design, boundary testing"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Dataview setup, not Ora"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Projects general features, not Ora"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extending Human Cognition white paper, different project"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judas persona development for MSI/writing, not Ora"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document outline changes, not Ora"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental model library request without Ora context"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault and software minimalism, not Ora"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Learning framework for Ora: guided exploration, six phases, AI as thinking partner"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault path navigation, not Ora"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-63297d343a27#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora's pipeline reliability as load-bearing claim, cross-checking mechanism"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended cognition, vault, two-brain architecture, MindSpec governance"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relational polarity and dating dynamics, not Ora"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mac connectivity and Universal Control, not Ora"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Extended Human Cognition book outline, different project"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-55f96fc476b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Auto repair setting profile for creative writing, not Ora"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only formatting instruction only"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating patterns and male sovereignty coaching, not Ora"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only request acknowledgment only"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response request only"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative Elements Framework for writing, not Ora"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Oracle's serendipity distribution and narrative operating system philosophy"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Script debugging for technical task, not Ora"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Journal article reference updates, not Ora"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Flow state monk-mode, recursive cross-check method, dual hemispheric AI structure"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framework criteria for writing, not Ora"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship thread, not Ora"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Continuous operation milestone, priority queue, autonomous task execution for Ora"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference only"
+    }
+  ]
+}

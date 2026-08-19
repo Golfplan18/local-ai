@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient substantive content."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific technology system implementation."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content use of AI, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal communication, not technology discussion."
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing technology-based knowledge systems."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora/Aura system architecture discussion."
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing technology-based knowledge systems."
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-9470f545463f#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI model evaluation and comparison."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content use of AI, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Curating/inventorying technology platforms."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content use of AI, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora/Aura system architecture discussion."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific technology system implementation."
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific technology system implementation."
+    },
+    {
+      "candidate_id": "historical-eceb8510d307#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific technology system implementation."
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-feddf97774e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora/Aura system architecture discussion."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Curating/inventorying technology platforms."
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-31e0a98f4239#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing technology-based knowledge systems."
+    },
+    {
+      "candidate_id": "historical-7a94181f5723#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI model evaluation and comparison."
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific technology system implementation."
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing technology-based knowledge systems."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit technology/tool exploration."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#25",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conceptual/organizational framework, not technology-focused."
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Content creation project, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI model evaluation and comparison."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-bcda83504e00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit technology/tool exploration."
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit technology/tool exploration."
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content use of AI, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content use of AI, not technology evaluation."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient substantive technology engagement."
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Core objective with substantial technology discussion."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not about technology evaluation or exploration."
+    }
+  ]
+}

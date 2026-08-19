@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User requesting bibliography generation for cosmology paper; not engagement with Knowledge Library system."
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#106",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaint drafting; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-861847909a3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Domain registration and SEO advice; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian properties troubleshooting; not Knowledge Library project work."
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#57",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video game DLC and sales discussion; unrelated to knowledge library project."
+    },
+    {
+      "candidate_id": "historical-9ed5b61bd8e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed discussion of Ora RAG pipeline: semantic extraction, ontological grounding, hierarchical chunking."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI persona development; not Knowledge Library system work."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project framework development; not Knowledge Library engagement."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Survey of visualization tools; not engagement with Knowledge Library system design."
+    },
+    {
+      "candidate_id": "historical-4f21a26ab092#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User dictating ideas about knowledge bases; generic methodology, not Knowledge Library engagement."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Agent behavior weighting; parliamentary architecture, not Knowledge Library."
+    },
+    {
+      "candidate_id": "historical-67f0e1e0d65e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative theme analysis system for creative writing; not Knowledge Library."
+    },
+    {
+      "candidate_id": "historical-5e2be2ba762d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing or design framework work; separate from Knowledge Library project."
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing or design framework work; separate from Knowledge Library project."
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#58",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework summary for different project; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship management; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI prompt engineering for custom tools; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-085efb55d38e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship advice; unrelated to knowledge library project."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical troubleshooting or tool surveys; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-e2d3718bb053#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Custom expert persona creation; tool building, not Knowledge Library."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-5200575d5e7f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model API survey; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-e9e9b2c3dbcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#55",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-0b90f51e80c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application to AI industry hype; generic methodology discussion."
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science paper editing; citations handling, not Knowledge Library system."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto writing project; unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-c24a80a07bbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#68",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-9d759c36efb2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault styling; vault management tool configuration, not Knowledge Library."
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science paper editing; citations handling, not Knowledge Library system."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API and script setup; tool building, not Knowledge Library system work."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Browser tool design; not Knowledge Library architecture."
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API and script setup; tool building, not Knowledge Library system work."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal reflection on ego and making AI public; not Knowledge Library engagement."
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#54",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-544f37cebbec#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical limitation statement; not project engagement."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI communication style guidance; not Knowledge Library work."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-d4303a5cbc59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Website governance planning; not Knowledge Library system design."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship advice; unrelated to knowledge library project."
+    },
+    {
+      "candidate_id": "historical-a7bcabdde0ed#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local vault integration with NotebookLM; tool implementation, not Knowledge Library architecture."
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics framework documentation; not Knowledge Library system work."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with Knowledge Library system; subject differs from core project."
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework components; separate project."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework components; separate project."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#66",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics research derivation; separate knowledge domain."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#66",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news commentary; retrieved by RAG but unrelated to knowledge library."
+    }
+  ]
+}

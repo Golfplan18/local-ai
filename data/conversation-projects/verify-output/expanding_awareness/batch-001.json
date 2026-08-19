@@ -1,0 +1,156 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reviews quantum mechanics paper challenging Bell's Theorem, not cosmology work"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Integrating cosmology book chapters; discusses Big Bang alternative via redshift interpretation"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology book as case study in Einstein Resonance; alternative conceptual schemes discussion"
+    },
+    {
+      "candidate_id": "historical-60fa526ae0c0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Alternative cosmological model challenging inflation; Higgs-based matter-antimatter explanation"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology book work; gravitational lensing alternative to Big Bang expansion"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology paper breakthrough on dark energy via redshift reinterpretation"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expanding Awareness Cosmology framework development and refinement"
+    },
+    {
+      "candidate_id": "historical-3b6f22dfd610#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hubble's Law alternative model via gravitational lensing mechanism"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Philosophical alignment review of quantum paper with Expanding Awareness Cosmology"
+    },
+    {
+      "candidate_id": "historical-ead5fbe0e672#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expanding universe model critique; cosmic event horizons and light propagation analysis"
+    },
+    {
+      "candidate_id": "historical-ce11b4fc6234#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expanding Awareness cosmology chapter structure, diagrams, objections review"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing titles for cosmology book (Awaken to a New Reality variants)"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal nominal mention; excerpt is single sentence without substantive engagement"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Defending cosmology paper theory against expert critique; parsimony argument"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Big Bang hypothesis rejection; redshift and expanding universe critique"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Forging a New Life After Divorce book project; distinct from cosmology work"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Aura development priorities main focus; cosmology mentioned as one item in passing"
+    },
+    {
+      "candidate_id": "historical-99df88574463#22",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Hubble tension and dark energy debate; Adam Riess LCDM model challenges"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics paper (wobble model, Bell's Theorem, double-slit); not cosmology"
+    },
+    {
+      "candidate_id": "historical-ead6a8ebe0d4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Alternative cosmological paradigm without expansion; static universe model"
+    },
+    {
+      "candidate_id": "historical-7aa10f6e1bc9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gravity derivation from Higgs field; early universe and Big Bang alternative model"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative universe project; distinct fictional work unrelated to cosmology"
+    },
+    {
+      "candidate_id": "historical-90362b03d88e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum wobble model and double-slit experiment; not cosmology/redshift work"
+    },
+    {
+      "candidate_id": "historical-2350cedf5818#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics outline (wobble model, double-slit); not cosmology"
+    },
+    {
+      "candidate_id": "historical-83edd2a4d6fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GDP measurement frameworks and economic indicators; unrelated to cosmology"
+    }
+  ]
+}

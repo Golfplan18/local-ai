@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian Bases plugin technical troubleshooting; different project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault knowledge epistemology, engram/import/resource typology, knowledge authenticity"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Content preservation in writing project, not knowledge library"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora system overview; infrastructure not knowledge library"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian Templater plugin debugging, different project"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Processing conversation notes; tangential to knowledge library work"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical problem with formatting, not knowledge library project"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora AI system capabilities review"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical debugging, vault interaction but not knowledge library"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Obsidian plugin configuration, infrastructure not content library"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Local model setup and AI system config"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#36",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical Obsidian plugin question"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian technical setup"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document structure and editing, different project"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical AI config and system performance"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system question about capabilities"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical settings question"
+    },
+    {
+      "candidate_id": "historical-235a30829941#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Persona and voice documentation"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical Obsidian issue"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora system technical question"
+    },
+    {
+      "candidate_id": "historical-f608fe6fc31b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agent framework discussion"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Writing process and document editing"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#48",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical infrastructure question"
+    },
+    {
+      "candidate_id": "historical-b1557b8e3e3a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Knowledge indexing framework but not knowledge library"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document preservation and editing"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#58",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical configuration"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI capabilities and performance question"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question about AI system"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Content tagging and categorization, tangential"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-7d528f780ba2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing company for public domain works; directly relevant to knowledge library mission"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#35",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Configuration and setup"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system performance question"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Navigation and infrastructure setup"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Conversational RAG research and indexing techniques relevant to knowledge library pipeline"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#25",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Vault tooling changes and automation, infrastructure not library"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#34",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical configuration"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Writing methodology question"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#69",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical setup"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Wisdom Nexus philosophy and process library design, philosophy of knowledge organization"
+    },
+    {
+      "candidate_id": "historical-2c1ec751594d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical system question"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system capability question"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document content preservation work"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical tool question"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian technical question"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system configuration"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical infrastructure question"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical configuration"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal archival methodology and knowledge curation for AI access"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI capabilities question"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework categories refinement, not knowledge library"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-21f0d22e4ee3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question"
+    },
+    {
+      "candidate_id": "historical-a495a6f11ee3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system question"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical configuration"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian technical question"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework elements categorization, not knowledge library"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI capabilities and technical access discussion"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical configuration"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal preference discussion"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Technical infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical question"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Military strategy integration; different project"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora system mode/framework architecture; different project"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Marketing evaluation frameworks; different project"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic document comprehension and analysis"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Molecular notes concept vs atomization in knowledge frameworks"
+    },
+    {
+      "candidate_id": "historical-72286847d79a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Pipeline checkpointing and retention; Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agent template curation; different project"
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "White paper composition guidelines; different project"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Governance framework validation; different project"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Complaint document review; different project"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ideation framework development; different project"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agent vision expansion; different project"
+    }
+  ]
+}

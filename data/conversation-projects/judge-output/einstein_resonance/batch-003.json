@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework, not Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework, not Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-86a412483c9f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-9041029a8377#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Quantum physics theory discussion"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary criticism of unrelated paper"
+    },
+    {
+      "candidate_id": "historical-763e5ba44f44#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Alternative cosmology theory with Einstein/shell theorem references"
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Einstein's cosmological constant and historical physics theory"
+    },
+    {
+      "candidate_id": "historical-7796033afbfd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology paper referencing Einstein ideas"
+    },
+    {
+      "candidate_id": "historical-246f73bf2cea#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic document comprehension task unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-2142a126b93a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating visualizations for cosmology paper"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge management project Ora, not Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing/metaphor guidance without Einstein Resonance content"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political campaign project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-01668822fb6c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Low vector similarity, unlikely to belong to project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-b4df60922cfd#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Low vector similarity, unlikely to belong to project"
+    },
+    {
+      "candidate_id": "historical-1be7b9ce5e2e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Quantum physics theory discussion"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Technical visualization work, not Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-52be45eaaa7b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology paper development work"
+    },
+    {
+      "candidate_id": "historical-52be45eaaa7b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-bd45b545e16a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-2cecb37ae5af#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct reference to Einstein Resonance project work"
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Low vector similarity, unlikely to belong to project"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-fcb5c679d74d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Quantum physics theory discussion"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-fe2a96858620#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Quantum physics theory discussion"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-f214a9ef874f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics theory discussion with moderate text similarity"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-59580a00b5c8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Low vector similarity, unlikely to belong to project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to Einstein Resonance project"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire/fiction project unrelated to Einstein Resonance"
+    }
+  ]
+}

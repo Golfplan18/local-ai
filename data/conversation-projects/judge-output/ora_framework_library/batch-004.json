@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/manifesto project work, not framework library"
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system development, not framework library"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-4b9053bd5352#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/manifesto project work, not framework library"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-e17e3306ef2f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-9ddb6d44297b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-67f0e1e0d65e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-bef280e7b699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/manifesto project work, not framework library"
+    },
+    {
+      "candidate_id": "historical-0ba3c36c8027#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-d8f0a89d9518#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework execution/verification, not library maintenance"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing frameworks, not public library curation"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-e3ec2b4b5fcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-28503ecc3557#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book documentation about frameworks, not library curation"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework application or personal development, not library curation"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content/research work, not framework library"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool configuration, not framework library"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-947060573768#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora product strategy, not framework library"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of framework library engagement"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/manifesto project work, not framework library"
+    }
+  ]
+}

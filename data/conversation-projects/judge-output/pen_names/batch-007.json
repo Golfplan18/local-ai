@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora technical project"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/framework work"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-00b3cb160943#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/medical verification work"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-22d64dfb3258#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/framework work"
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/framework work"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book/writing with author identity considerations"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical/technical framework"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Novel development without pen name focus"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing/book work without clear pen name focus"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific pen name authorship and strategy"
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing/book work without clear pen name focus"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-6717bddf06be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development"
+    },
+    {
+      "candidate_id": "historical-2139db64d615#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-d664add83095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional character development"
+    },
+    {
+      "candidate_id": "historical-af00128bdcee#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/framework work"
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen name public platform infrastructure"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#56",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/technical matters unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book/writing with author identity considerations"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen name selection for publication"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-864404aa59ef#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Author identity/pen name introduction"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific pen name authorship and strategy"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-df1234c14538#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book/writing with author identity considerations"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-ae6b2b1fbdd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing/book work without clear pen name focus"
+    },
+    {
+      "candidate_id": "historical-e47d24a349d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-efebec279550#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Satirical fiction with pen name consideration"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI publication project"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated formatting request"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-c99dc6301508#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/technical matters unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical/technical framework"
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating matters"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing/book work without clear pen name focus"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI publication project"
+    },
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework without pen name context"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to pen name project"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical/technical framework"
+    }
+  ]
+}
