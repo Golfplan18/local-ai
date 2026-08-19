@@ -68,7 +68,9 @@ needed. The full lists are still preserved for display and round-trip.
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import sys
 import threading
 from typing import Any, Callable, Iterable
@@ -801,6 +803,86 @@ def index_file(
         stats["indexed"] += 1
     if verbose:
         print(f"  + {chroma_meta['title']}")
+
+
+def make_title_similarity_search(
+    engrams_dir: str | os.PathLike[str] | None = None,
+):
+    """Build the ``vault_title_search`` callback the note quality gate takes.
+
+    Returns ``callback(title) -> float``: the similarity between a candidate
+    title and the closest existing engram title. The gate rejects at 0.95 and
+    routes to human review at 0.85; without a callback it skips the check
+    entirely, which is why it never ran at either live call site.
+
+    **String similarity, not embedding similarity, and deliberately so.** An
+    embedding query was tried first and is unusable here on two independent
+    counts, both measured: it costs ~5 s per note warm, which a per-note gate
+    cannot carry; and this corpus embeds into a narrow band — a real title
+    scored 0.584 while pure gibberish scored 0.509 — so nothing would ever
+    reach 0.85, leaving the check wired but permanently silent. The 0.95 and
+    0.85 thresholds only make sense as *title text* similarity, which is also
+    what the check is named for.
+
+    This complements rather than duplicates
+    ``engram_promotion._find_active_duplicate``, which compares whole-note
+    semantics at 0.92 immediately before the vault write. Semantics catch a
+    restatement in different words; this catches the same title arriving
+    twice, early enough for a human to merge or edit rather than silently
+    declining to write. Promotion remains the safety net, so this may fail
+    open without a duplicate reaching the vault.
+
+    Titles are read from engram filenames and cached on first use.
+    """
+    import difflib
+
+    state: dict = {"slugs": None, "failed": False}
+
+    def _norm(text: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+
+    def _load() -> set:
+        from orchestrator import runtime_paths as _rp
+        root = engrams_dir or os.path.join(_rp.VAULT_STR, "Engrams")
+        slugs = set()
+        with os.scandir(root) as it:
+            for e in it:
+                if not e.name.endswith(".md"):
+                    continue
+                stem = e.name[:-3]
+                # filenames are "YYYY-MM-DD_slug"; keep the slug
+                slugs.add(stem.split("_", 1)[1] if "_" in stem else stem)
+        return slugs
+
+    def _search(title: str) -> float:
+        if state["failed"] or not title:
+            return 0.0
+        try:
+            if state["slugs"] is None:
+                state["slugs"] = _load()
+            candidate = _norm(title)
+            if not candidate:
+                return 0.0
+            if candidate in state["slugs"]:
+                return 1.0
+            close = difflib.get_close_matches(
+                candidate, state["slugs"], n=1, cutoff=0.85)
+            if not close:
+                return 0.0
+            return difflib.SequenceMatcher(None, candidate, close[0]).ratio()
+        except Exception as exc:
+            # Fail open, once and loudly. A vault-read problem must not stop
+            # notes being evaluated, and promotion still guards the write.
+            state["failed"] = True
+            print(
+                "[knowledge_index] title-similarity search unavailable; "
+                "duplicate titles will not be flagged this run: "
+                f"{type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            return 0.0
+
+    return _search
 
 
 def get_knowledge_collection(

@@ -301,8 +301,17 @@ class BatchProcessor:
 
             # Step 4: Quality gate
             from orchestrator.tools.quality_gate import QualityGate, evaluate_batch
+            try:
+                from orchestrator.tools.knowledge_index import (
+                    make_title_similarity_search,
+                )
+                title_search = make_title_similarity_search()
+            except Exception:
+                title_search = None
             gate_results = evaluate_batch(
-                all_screened, signal_confidence=self._signal_confidence
+                all_screened,
+                vault_title_search=title_search,
+                signal_confidence=self._signal_confidence,
             )
 
             file_status.notes_extracted = len(all_screened)
