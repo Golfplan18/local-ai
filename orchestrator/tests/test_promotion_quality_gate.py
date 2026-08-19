@@ -216,3 +216,88 @@ def test_review_writer_creates_its_directory(tmp_path):
     written = write_review_note(note, result, str(target))
     assert target.is_dir()
     assert written.startswith(str(target))
+
+
+def test_duplicate_title_check_runs_when_search_is_supplied():
+    """The gate skips duplicate checking entirely without a callback.
+
+    Both live call sites passed nothing, so this check never ran in
+    production despite being documented as a review trigger.
+    """
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+
+    rejected = QualityGate(vault_title_search=lambda t: 0.97).evaluate(note)
+    assert rejected.queue == "auto_reject"
+    assert any("Duplicate title" in r for r in rejected.reasons)
+
+    flagged = QualityGate(vault_title_search=lambda t: 0.88).evaluate(note)
+    assert flagged.queue == "human_review"
+    assert any("Potential duplicate" in r for r in flagged.reasons)
+
+    clear = QualityGate(vault_title_search=lambda t: 0.10).evaluate(note)
+    assert not any("uplicate" in r for r in clear.reasons)
+    assert clear.checks["duplicate_title"]["pass"] is True
+
+
+def test_skipped_duplicate_check_does_not_report_as_passed():
+    """A check that did not run must not look like a check that passed."""
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+    result = QualityGate().evaluate(note)
+    check = result.checks["duplicate_title"]
+    assert check["pass"] is None
+    assert check["skipped"] is True
+
+
+
+def test_title_search_flags_real_and_near_duplicate_titles(tmp_path):
+    """Exact title repeats reject; edited variants go to a human."""
+    from orchestrator.tools.knowledge_index import make_title_similarity_search
+
+    (tmp_path / "2026-01-01_cache-locality-improves-retrieval.md").write_text("x")
+    (tmp_path / "2026-01-02_unrelated-note-about-weather.md").write_text("x")
+    search = make_title_similarity_search(engrams_dir=str(tmp_path))
+
+    assert search("Cache locality improves retrieval") == 1.0
+    assert 0.85 <= search("Cache locality improves retrieval speed") < 1.0
+    assert search("Zxqvblirp nonsense that matches nothing") == 0.0
+    assert search("") == 0.0
+
+
+def test_title_search_is_case_and_punctuation_insensitive(tmp_path):
+    """The same title in different casing is still the same title."""
+    from orchestrator.tools.knowledge_index import make_title_similarity_search
+
+    (tmp_path / "2026-01-01_cache-locality-improves-retrieval.md").write_text("x")
+    search = make_title_similarity_search(engrams_dir=str(tmp_path))
+    assert search("CACHE LOCALITY, improves retrieval!") == 1.0
+
+
+def test_title_search_fails_open_when_the_vault_is_unreadable(tmp_path):
+    """A vault-read failure must not stop notes being evaluated.
+
+    engram_promotion still compares whole-note semantics before the vault
+    write, so this check may fail open without a duplicate getting through.
+    """
+    from orchestrator.tools.knowledge_index import make_title_similarity_search
+
+    search = make_title_similarity_search(engrams_dir=str(tmp_path / "missing"))
+    assert search("Cache locality improves retrieval") == 0.0
+    # Having failed once it must not retry per note.
+    assert search("Another title entirely") == 0.0
+
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+    result = QualityGate(vault_title_search=search).evaluate(note)
+    assert result.queue in {"auto_approve", "human_review"}
+
+
+def test_gate_rejects_a_title_the_vault_already_has(tmp_path):
+    """End to end: the factory's output drives the gate's verdict."""
+    from orchestrator.tools.knowledge_index import make_title_similarity_search
+
+    (tmp_path / "2026-01-01_cache-locality-improves-retrieval.md").write_text("x")
+    search = make_title_similarity_search(engrams_dir=str(tmp_path))
+    note = _note(title="Cache locality improves retrieval", body=_solid_body())
+
+    result = QualityGate(vault_title_search=search).evaluate(note)
+    assert result.queue == "auto_reject"
+    assert any("Duplicate title" in r for r in result.reasons)

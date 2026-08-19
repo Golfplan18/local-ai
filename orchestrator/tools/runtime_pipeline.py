@@ -410,8 +410,19 @@ class RuntimePipeline:
                 for sig in (getattr(extraction, "signals", None) or [])
                 if getattr(sig, "id", None)
             }
+            # The gate skips duplicate checking entirely without this
+            # callback, which is why it had never run at either call site.
+            try:
+                from orchestrator.tools.knowledge_index import (
+                    make_title_similarity_search,
+                )
+                title_search = make_title_similarity_search()
+            except Exception:
+                title_search = None
             gate_results = evaluate_batch(
-                extraction.screened, signal_confidence=signal_confidence
+                extraction.screened,
+                vault_title_search=title_search,
+                signal_confidence=signal_confidence,
             )
 
             approved = gate_results.get("approved", [])

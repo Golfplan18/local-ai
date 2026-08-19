@@ -188,7 +188,14 @@ class QualityGate:
             elif similarity >= 0.85:
                 review_reasons.append(f"Potential duplicate (similarity {similarity:.3f})")
         else:
-            checks["duplicate_title"] = {"pass": True, "detail": "Vault search not available — skipped"}
+            # A check that did not run is not a check that passed. Recording
+            # it as passed is what let this stay inert and unnoticed at both
+            # live call sites; "skipped" is now visible in the result.
+            checks["duplicate_title"] = {
+                "pass": None,
+                "skipped": True,
+                "detail": "Vault search not supplied — duplicate check did not run",
+            }
 
         # Early return on rejection
         if reject_reasons:
