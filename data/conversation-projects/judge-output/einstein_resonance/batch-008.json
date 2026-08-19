@@ -1,0 +1,102 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d90c666e2e55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic quantum mechanics infinities discussion. No Einstein, project name, or synthesis focus."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entirely different project: spiritual-practice book using middle-path framework."
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Academic quantum mechanics (Fokker-Planck/Nelson's mechanics). No project engagement."
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile personality analysis. Completely unrelated subject matter."
+    },
+    {
+      "candidate_id": "historical-ab7eb030ee0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Supernova cosmology and dark energy discovery. Observational astronomy, not Einstein's integration project."
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Administrative framework word-count updates. No connection to Einstein Resonance."
+    },
+    {
+      "candidate_id": "historical-50875b7c4bd4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic three-book split planning with summaries/recaps. No Einstein or project identification."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Entirely different project: religious/spiritual book on Jesus's parables preservation."
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Expert Teams white paper analysis (Knower/Doer concept). Different project."
+    },
+    {
+      "candidate_id": "historical-4491887874ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional narrative (Mira's journey, Wisdom/Passion framework). Entirely different project."
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating advice and relationship dynamics analysis. No relation to physics or Einstein project."
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI book restructuring project (moving technical content). Different project entirely."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing urgency for the Oracle/Nexus project. No Einstein Resonance identification."
+    },
+    {
+      "candidate_id": "historical-90cab69c387f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Bibliography of quantum mechanics papers (Bohmian mechanics, Nelson). No project engagement shown."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional narrative (Act 3 chapters with Thomas/Michael/Washington march). Different project."
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Expert Teams white paper uniqueness analysis. Entirely different project framework."
+    }
+  ]
+}

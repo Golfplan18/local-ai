@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-14b9ceccf826#82",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discrimination policy discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool debugging and configuration"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic project startup"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Antitrust law discussion foundational to chokepoint"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Antitrust as one of several political economy topics"
+    },
+    {
+      "candidate_id": "historical-12de677cc6ee#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book writing and methodology work"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework specification work"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-d34a4ff2d053#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Alternative creator monetization outside platform enclosure"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework distribution strategy for Ora alternatives"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Media monopoly, not software enclosure"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Positioning Ora as alternative within coding-tool ecosystem"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Service performance issue"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Misinformation detection system"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a450d4700b6f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Prediction and content amplification work"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b1e1108ce4ca#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-f61eeb963606#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Antitrust law discussion foundational to chokepoint"
+    },
+    {
+      "candidate_id": "historical-d9f46ee6de4d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-334e95d91d00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-bbffd146c708#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-4decf38d9ebe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a268d9ca74cb#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-51e80ff7256c#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Antitrust law discussion foundational to chokepoint"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d34a4ff2d053#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-a73ae9da13fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-fd7625cff218#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-99df88574463#53",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework specification work"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    },
+    {
+      "candidate_id": "historical-6aadb2eefd0b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear chokepoint engagement"
+    }
+  ]
+}

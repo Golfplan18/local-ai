@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Satirical contrast between working-class econ..."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Coaching on Hinge match Kira: profile analysi..."
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Writing and refining a progressive political ..."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Preserving URLs and designing resilient plain..."
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Self-publishing platform Kindlepreneur overvi..."
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Universal reviser output..."
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About AI-Assisted Writing Method overview and itera..."
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Automated publishing pipeline: product genera..."
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Book metadata, description, keywords, and SEO..."
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Production timeline and release corpus strate..."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Vision and mechanics of a multi-AI team with ..."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Documentation update requirements checklist..."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Restructuring technical outline with content ..."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Ideation Framework validation and strategic p..."
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Hierarchical skills architecture for complex ..."
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Project architecture, novel writing workflow,..."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Processing Relevance AI platform agent listin..."
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Various topics (conversation 11 - content not..."
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Reviewing the AI-Assisted Novel Writing Metho..."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Book project development: author's note on em..."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Adding visualization, diagramming, and system..."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Scoping three book outlines built on the PAS/..."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Building SynthesisGPT framework and creating ..."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Document review and clarification before exec..."
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Trump's legal claims against Harvard Universi..."
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Troubleshooting formatting and copy-paste spa..."
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Character profile development and refinement..."
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Material review and draft revision..."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Conclusion and transition to new thread with ..."
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Executing instructions to generate the Expand..."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of real estate book project"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Designing and iteratively refining Ora's 'exe..."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Initial methodology document review and feedb..."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About SynthesisGPT sub-goals and tool integrations..."
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Ideation Framework development for AI-assiste..."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Token efficiency optimization and streamlined..."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About AI-assisted writing framework project overvie..."
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About AI-assisted fiction writing framework develop..."
+    },
+    {
+      "candidate_id": "historical-7204c53686df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Creating and using GPTs, token memory optimiz..."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Vault/PKM deep architecture: RAG protocol doc..."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Framing and positioning the framework for dif..."
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Developing the Output Formalization Framework..."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Developing 'The New Communist Manifesto' outl..."
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Building a systematic AI-collaborative fictio..."
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Building a systematic AI-assisted fiction-wri..."
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Editorial review of book chapters 1-3 for flo..."
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Consolidating materials into a unified docume..."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Back Matter Framework development for Step 32..."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Testing AI sycophancy/honesty claims and desi..."
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Multi-AI writing workflow and tiered feedback..."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About PKM Architecture Orientation..."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Substack editor technical issues..."
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Restructuring the AI-assisted novel writing m..."
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Reviewing and updating Ora book outline..."
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About AI-Assisted fiction writing method and Ideati..."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Thread E: System Overview update for 17-mode ..."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Extended, frustrating troubleshooting saga to..."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Managing a huge book outline across NotebookL..."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Analyzing flaws in argument that AI is merely..."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Defining and naming the personal 'Effort' tax..."
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Dating profile analysis, polarity preference,..."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Generating satirical 'Diklis Chump' Reality R..."
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Adding cooperative agreement principles to pe..."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Economic and corporate reform - Private Equit..."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Creating stage-specific instructions for six ..."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Preface and front matter development..."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Standardized framework 'execution command' fo..."
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Review and update recommendations...."
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Drafting complaint letters to medical and nur..."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Back Matter Framework planning and approach..."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Revising multiple brief preview and overview ..."
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Generating satirical authoritarian regime con..."
+    },
+    {
+      "candidate_id": "historical-436f62522459#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About AI comic book creation tools and online comic..."
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Research on definition clarity and syntax for..."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Kira (Hinge match) profile analysis, INFP typ..."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Providing fresh versions of plot chapter deve..."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Initial template review and outline expansion..."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Steps 20-21 Chapter Drafting and Review workf..."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Back Cover Blurb Framework introduction and s..."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About Deep dive into AI Dungeon features..."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book drafting framework for fiction project, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book drafting framework for fiction project, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-44aa7d3f9f75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific/academic paper, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (characters, plugin troubleshooting, personal relationships)."
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book drafting framework for fiction project, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific/academic paper, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (characters, plugin troubleshooting, personal relationships)."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different fiction book project (American Jesus/Redemption Springs)."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (characters, plugin troubleshooting, personal relationships)."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#29",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book drafting framework for fiction project, not real estate guide."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-b742c311aea1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (characters, plugin troubleshooting, personal relationships)."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (characters, plugin troubleshooting, personal relationships)."
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book chapter work (Digital Swarm Warfare theme), not real estate."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate home purchase guide content."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no real estate content."
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System/architecture discussion unrelated to real estate guide."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text preference request, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, unrelated to AI methodology"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference, not systematic procedures"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing knowledge expert system with AI personas"
+    },
+    {
+      "candidate_id": "historical-c1ca57ae49c9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-session prompting, RAG, progressive questioning methodology"
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "White paper composition using AI systematically"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Requesting title suggestion for unrelated work"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Empty query fragment, minimal content"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing ideation framework for AI collaboration"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Remote AI teams and human-AI collaboration structure"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conversation RAG and persistent memory procedures"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Agent-centric paradigm, governance, AI problem-solving"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Requesting mythological name, simple lookup"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework development for AI workflows"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-augmented writing methodology and procedures"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal text messaging strategy, unrelated"
+    },
+    {
+      "candidate_id": "historical-700bae99367b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "ORA orchestration system, adversarial review, RAG"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#33",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hardware/infrastructure selection, not procedures"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Visual integration into Ora, feature development"
+    },
+    {
+      "candidate_id": "historical-7796033afbfd#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Brief reflection on collaboration, not engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book project structure, not prompting"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic AI-assisted novel writing method"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile updates for writing project"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing content, not methodology"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal AI interface and workflow design"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Memoir/manifesto publishing strategy"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon description criteria, specific artifact"
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Star Trek naming for writing project"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Milestone testing for projects, not prompting"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Local AI deployment and system architecture"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database integration, not prompting procedures"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Validating ideation framework for AI work"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Societal implications, not procedures"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Semantic extraction for prompt reconstruction"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical creative writing content"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Claude Projects analysis and AI agent concepts"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Managing outlines across AI context windows"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Enhancing SynthesisGPT collaboration framework"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research dossier creation, not prompting"
+    },
+    {
+      "candidate_id": "historical-eceb8510d307#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system design feedback, architectural"
+    },
+    {
+      "candidate_id": "historical-c63ef13e4a6a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Prompt routing workflow to AI chatbots"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hierarchical framework architecture for AI workflows"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model evaluation testing, not procedures"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing ideation framework for writing"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Worldbuilding for specific writing project"
+    },
+    {
+      "candidate_id": "historical-2532edddf63b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research paper analysis, not methodology"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pydantic AI framework explanation"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Comprehensive AI-assisted writing method"
+    },
+    {
+      "candidate_id": "historical-bbffd146c708#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Grammar specification language for prompting"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing framework with procedures"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice, unrelated"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution for novel"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character initiation framework, project-specific"
+    },
+    {
+      "candidate_id": "historical-3b660e0ad70a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI as thinking partner for creative work"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System development and documentation"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating AI prompts for writing frameworks"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Externalizing thought with AI, vault architecture"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal publishing strategy/fantasy"
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Article summary on AI economic impact"
+    },
+    {
+      "candidate_id": "historical-5b6504fe1761#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Standing instructions for AI communication"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Understanding systematic procedures for AI work"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Knowledge library and AI system setup"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Model architecture analysis, technical"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Visual-AI communication and tool integration"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-assisted writing method review and refinement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "George Lucas analogy, personal philosophy"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mode system specification and procedures"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Open-source model analysis, not procedures"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Self-publishing platform overview"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Adversarial model selection and workflow"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dialogue efficiency and collaboration"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#46",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Instructing AI to modify interaction style"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Making vault accessible to AI collaboration"
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary AI representation, not procedures"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Making vault accessible to AI systems"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Model architecture for workflow selection"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Understanding AI tool use and convergence"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Model setup procedures and implementation"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Hardware and model selection prerequisites"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MoE architecture understanding for workflows"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction exploiting political weaknesses, not about idea incubation."
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Empty code block with engagement strip log, unrelated to project."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework outline (Diklis Chump), not about recognition/incubation."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dossier planning for different project, not about incubating candidates."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Press release structure for satirical project, not about candidate surfacing."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database population task, unrelated to incubation process."
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system (RMPS) framework, not about idea recognition/incubation."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Children's literature corpus project, not about recognizing adjacent ideas."
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models catalog work, not about the incubation process itself."
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental models resources collection, not about recognizing new candidates."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Press release template evaluation, execution work not incubation."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation, not about candidate recognition."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical article development stages, not about incubation methodology."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Authoritarian progression stage instructions, specific project work."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime narrative scenarios, not about idea surfacing."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation, not about recognizing candidates."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent curation task, separate project work."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy pieces generation, not about incubation."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental model library building, not about candidate generation."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reality/propaganda bullet points, satirical project execution."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction writing, not about recognition process."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy content, not about incubating new ideas."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical reality report generation, specific project work."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent templates processing, different project."
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated personal project."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura project status discussion, separate project management."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Swarm system outline, different technical project."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Authoritarian fiction scenarios, satirical project work."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent listings processing, project-specific task."
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline restructuring, separate project work."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical article generation, not about incubation."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System directory structure, technical organization task."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangFlow documentation, technical tool work."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Expert Teams framework analysis, different project."
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent Teams white paper outline, separate project."
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation, personal project."
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic safety efforts discussion, external organization."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder structure setup, technical task."
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meme template library development, specific project."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not about recognition process."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Continuing discussion tag, no specific project content."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Immigration research dossier, separate project work."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System overview updates, technical documentation."
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent curation, specific platform task."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of recognizing and incubating ideas systematically."
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis and response, utility work."
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Left-wing meme campaign planning, separate project."
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical economic contrast, not about incubation."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visualization and systems thinking concepts, framework building."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert system architecture, technical project."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy pieces, not about candidate recognition."
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mindfulness practices discussion, wellness topic."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile coaching, personal project."
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chatbot display formatting, technical configuration."
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Speech formatting preferences, technical setup."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PAS framework review, separate system work."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture with linking and dependencies, technical project."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message coaching, personal project."
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cooperative principles documentation, not about incubation."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Documentation checklist updates, technical task."
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Polarized messaging options, specific content project."
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-AI team architecture discussion, separate system design."
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automated publishing pipeline planning, specific system work."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT framework development, separate AI system project."
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical governance content, not about idea recognition."
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, personal project."
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Collective intelligence document analysis, separate project."
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outline content audit, separate project work."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database and video technology options, technical exploration."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reviser output artifact, technical output."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mistral model evaluation, technical assessment."
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Various mixed topics conversation, unclear content."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical foundations and model resources, knowledge building."
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating profile analysis, personal project."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-as-statistics philosophical argument, abstract discussion."
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation, not about idea surfacing."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation recovery via OCR, technical task."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database with credential tiers, separate system project."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump ideation framework, separate project."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona implementation for character development, separate project."
+    }
+  ]
+}

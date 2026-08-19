@@ -1,0 +1,486 @@
+{
+  "nexus": "obsidian",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Daily notes, vault structure, citation tracing in vault"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-478c44f2eff6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Obsidian as RAG vault, skeleton/flesh structure philosophy"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Folder flattening, Engrams, property-driven vault organization"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-9ddb6d44297b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault as external RAM, pattern buffer reloading"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian setup framework for vault initialization"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian grey-screen, sync backlog troubleshooting"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-c1dad3e45daa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-433226858f03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-35fd4c71fd0e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-79789b155b09#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault content curation, quality gate, metadata vetting"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-cd76c0e44ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault sync backlog and grey-screen issues"
+    },
+    {
+      "candidate_id": "historical-647f969cf1ae#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-46e38a0cdae8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with Obsidian vault work"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "writing",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engaging with conceptual framing of ideas through writing"
+    },
+    {
+      "candidate_id": "historical-75f6cada5169#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book terminology discussion, not systematic writing method"
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal content without writing engagement"
+    },
+    {
+      "candidate_id": "historical-39e79b3401f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Transforming outline into flowing narrative prose"
+    },
+    {
+      "candidate_id": "historical-f0fbd4efdfbd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iterative refinement of narrative parable"
+    },
+    {
+      "candidate_id": "historical-b2839f2e0ebc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Converting outline to flowing narrative with tone"
+    },
+    {
+      "candidate_id": "historical-839583df5598#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship texting, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Heteronym writing voices system for MSI authorship"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Copyright implications of AI-assisted writing method"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Editing Chapter Refinement Framework document"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Revising Ideation Initiation Framework for story beats"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative complexity system for multi-character fiction"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relational polarity discussion, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-6c9aec728ad4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Two-engine writing process: logic + feeling method"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety team discussion, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussing active verbs in written communication"
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework implementation and documentation updates"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI transformation of writing productivity and method"
+    },
+    {
+      "candidate_id": "historical-f5566f6390f4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover generation for narrative project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI model evaluation for general tasks"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Worldbuilding system development for fiction"
+    },
+    {
+      "candidate_id": "historical-4e6175d7abaf#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover generation attempts"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character creation framework execution at scale"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Authorship philosophy with AI-assisted method"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Bedtime storytelling, not systematic writing"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools research, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Implementing framework guidance for writing"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying Continuity framework to narrative briefs"
+    },
+    {
+      "candidate_id": "historical-8119d79e5390#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Classical writing with prompt engineering, generic"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics explanation, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical topic about isolation"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative-detail reservoir for ideation framework"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Condensing outline and character documentation strategy"
+    },
+    {
+      "candidate_id": "historical-4decf38d9ebe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Paper evaluation for technical merit, not writing"
+    },
+    {
+      "candidate_id": "historical-6ace41bdfa51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app messaging, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing-inspired spiritual work and process timing"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Evaluating specialized writing AI tools, not method"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project matrix system with MSI character profiles"
+    },
+    {
+      "candidate_id": "historical-ca422347a07b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Executing plot development framework for novel"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Critiquing Evaluation Draft and Chapter frameworks"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter drafting and review workflow clarification"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Research on overused AI phrases for writing quality"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automated publishing pipeline, not writing method"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Self-publishing platform overview, not method"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character foundation framework and ideation framework use"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI satirical content creation, different project"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chatbot UI formatting, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Secret pen-name publishing strategy and legacy"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relationship communication and psychology analysis"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI satirical fiction (Diklis Chump), different project"
+    },
+    {
+      "candidate_id": "historical-ccc994d054e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI sycophancy testing and fact-verification protocol"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating satirical political fiction narrative"
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI propaganda content (Diklis Chump), different project"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating withdrawal reflection, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal productivity reflection, not writing method"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Multi-persona problem-solving system, not writing method"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book front-matter titles and marketing taglines"
+    },
+    {
+      "candidate_id": "historical-37d2f5fd82d5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rewriting parenting book outline into prose"
+    },
+    {
+      "candidate_id": "historical-d5a1c2ee1ee7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Converting outline to narrative prose with subheadings"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Understanding AI-assisted writing method and plot process"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework development and finalization"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework changes implementation and document finalization"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing blurbs for book, not writing method"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing copy creation for book, not writing method"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Automating headline-to-template workflow for novel"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Context-window optimization via prompt engineering"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#32",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story-beat setup refinement for American Jesus"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Author branding and front-matter design, not method"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel writing workflow and project architecture"
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message opener, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating evaluation frameworks for plot and chapter"
+    },
+    {
+      "candidate_id": "historical-5c882b745643#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Transforming outline into narrative prose"
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ledger therapy algorithm, unrelated to writing"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Production timeline and release corpus strategy"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative retellings in Hemingway style"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hierarchical skills architecture for automated novel writing"
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Development Framework for AI-assisted novel writing"
+    }
+  ]
+}

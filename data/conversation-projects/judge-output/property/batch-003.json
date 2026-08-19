@@ -1,0 +1,486 @@
+{
+  "nexus": "property",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mythology topic (Aphrodite), unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Swarm system alignment with book outline, not real estate"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Main Street Independent website project (MSI), not real estate"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation Framework for writing architecture, not real estate"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection test message only"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book marketing and sales strategy (generic), not real estate"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI natural language programming book overview, not real estate"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PKM architecture orientation, not real estate"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hugging Face AI ecosystem exploration, not real estate"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack serialization for book sales, not real estate"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dijkstra and natural language programming philosophy, not real estate"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical press release about fictional country, not real estate"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Edward de Bono thinking frameworks, not real estate"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiverr beta testing for Ora software, not real estate"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book launch sales and Substack automation, not real estate"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault RAG data architecture, not real estate"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura AI project status and documentation, not real estate"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating patterns and relationships, not real estate"
+    },
+    {
+      "candidate_id": "historical-42c314205d1f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI development feasibility and disruption thesis, not real estate"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangFlow and LangChain AI workflow tools, not real estate"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dinner invitation and personal correspondence, not real estate"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Market transformation via AI agents and game theory, not real estate"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona implementation for character development, not real estate"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona/role-shift framework implementation, not real estate"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder structure and dependency installation, not real estate"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Objectives & Milestones framework application (generic), not real estate"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code discovery and multi-model orchestration, not real estate"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundational Vision section expansion, not real estate"
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent team organization, not real estate"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault publishing and Eleventy/Obsidian Publish, not real estate"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework creation and AI agent book outline, not real estate"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Microsoft Word setup and customization, not real estate"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book epilogue addition planning, not real estate"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book development, not real estate"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-AI team coordination and vault memory, not real estate"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Projects feature discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon writing features exploration, not real estate"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing for Diklis Chump satire, not real estate"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship correspondence with Juliana, not real estate"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted Diklis Chump poker scene writing, not real estate"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knower-Doer AI system architecture metaphors, not real estate"
+    },
+    {
+      "candidate_id": "historical-24ef24f634ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and relationship dynamics analysis, not real estate"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mistral NeMo local model evaluation, not real estate"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Taylor Sheridan work ethic analysis, not real estate"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atomic Note Coach framework and documentation, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mac file manager with tagging (Forklift), not real estate"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applies framework specifically to Passion Matrix Property real estate project"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundational schema implementation for database, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases auto-updated numeric properties, not real estate"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reductionist scientists and Einstein Resonance concept, not real estate"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expanding Awareness Cosmology framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tagging procedures and properties schema, not real estate"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal correspondence with Samantha (dating), not real estate"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual writing project and love algorithms, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Properties/classification system wrap-up (Obsidian), not real estate"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge sharing philosophy and Ora documentation, not real estate"
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing framework enhancement with research capability, not real estate"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Product strategy for fiction series and books, not real estate"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gratitude expression and childhood memory reflection, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian lowercase property-value convention discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura consolidation and open-source release philosophy, not real estate"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing productivity reflection, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dataview-driven dropdown project property (Obsidian), not real estate"
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf execution mode and overthinking prevention, not real estate"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases filters and formulas implementation, not real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md properties display issue (Obsidian), not real estate"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Front-matter praise for divorce recovery book, not real estate"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ed Zitron AI industry article analysis, not real estate"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora business plan implementation decisions, not real estate"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tech industry article discussion (wheresyoured.at), not real estate"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Psychohistory self-reflection on pattern recognition, not real estate"
+    },
+    {
+      "candidate_id": "historical-cca17f8284c9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge vs facts in free information environment, not real estate"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "File organization using Obsidian tags and properties, not real estate"
+    },
+    {
+      "candidate_id": "historical-e63933cdc92c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI adoption and automation historical lessons, not real estate"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local service phone number lookups (Coachella Valley), not real estate"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expanding Awareness Cosmology framework execution, not real estate"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI vault/agent system building and personal retreat, not real estate"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI systems book outline restructuring, not real estate"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal philosophy on desire and Buddhist attachment, not real estate"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases formula syntax exploration, not real estate"
+    }
+  ]
+}

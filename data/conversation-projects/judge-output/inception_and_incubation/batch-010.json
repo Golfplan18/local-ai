@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses surfacing and organizing dormant ideas from past work"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-2effcc23768e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-de20b1d76f4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6e103f54f449#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-0a8344b0c7eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Directly discusses Incubator classification system"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-2532edddf63b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-9d759c36efb2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-9154f17e7583#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-ba8b08d42e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-c4b2d96292f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-55f0a83c9ec2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About personal matter or specific project, not Incubator"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not clearly related to Incubator project"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical infrastructure, not Incubator idea curation"
+    }
+  ]
+}

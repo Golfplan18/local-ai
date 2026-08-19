@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive project content"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Book extraction strategy and Main Street Independe"
+    },
+    {
+      "candidate_id": "historical-8e717ed1db75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Trump's political crisis over Minneapolis ICE oper"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Kingship explicitly mentioned; user logging book sub-thread notes for work on American Kingship"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Transform outline into narrative prose"
+    },
+    {
+      "candidate_id": "historical-41ba22c82d4d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: SAVE America Act voting requirements and Senate fi"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive project content"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News analysis about Trump-Iran policy, not American King project work"
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#60",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Fed independence versus 'unitary executive' theory"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive project content"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Planning a 'lead book' mapping press releases and "
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive project content"
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Developing the 'Salvadoran Gulag' fictional subplo"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Soul.md concept, AI ethics, and psychological dime"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Refining Chapter 22 'Unaffordable Care' (highway a"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Chapter 4 'Recorded Truth' - Love for Enemies para"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#55",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: AI disrupting management consulting (McKinsey)"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Supreme Court threat to overturn Obergefell and th"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Amazon Book Description Framework development for "
+    },
+    {
+      "candidate_id": "historical-53662eddc299#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Do you have access to the complete library of writ"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Amazon Description Framework criteria and design r"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Satirical policy proposals for fictional authorita"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Style guide conformance review and implementation "
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Personal operating system as trained defaults and "
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Implementing and troubleshooting the vault-publish"
+    },
+    {
+      "candidate_id": "historical-691590b40629#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Title directly states 'working on the plot for American King'; designing counter-narrative using Ayn Rand as ideological foil"
+    },
+    {
+      "candidate_id": "historical-95eff4a001be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Immigration enforcement, sanctuary city policies, "
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Conversation processing pipeline architecture"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Creating satirical political content across multip"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Developing 15-point outline for Act 3, Chapter 5 '"
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Political correctness and cancel culture chapter d"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Designing a persistent AI memory / second-brain sy"
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Copyright law reform: DMCA, right to repair, copyr"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Continuous discussion of cosmological theories and"
+    },
+    {
+      "candidate_id": "historical-00ad302f5f6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-4222bdb5792d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Character foundation framework execution for Pasto"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#53",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Fed governor Cook firing standoff and the 'Goldilo"
+    },
+    {
+      "candidate_id": "historical-3cecf07f36b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Character development framework for Heinrich Meull"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Evaluating framework documents for AI-assisted fic"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Satirical policy scenario: faith-based wealth refo"
+    },
+    {
+      "candidate_id": "historical-036079b001e1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Character Foundation Framework execution and compr"
+    },
+    {
+      "candidate_id": "historical-8d700d0ac8c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Choice-driven narrative framework application to C"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive project content"
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Political messaging, propaganda, healthcare policy"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Book outline restructuring and chapter reorganizat"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Cover design concept exploration and phoenix image"
+    },
+    {
+      "candidate_id": "historical-ae43b6c9f8a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Trump credit card rate cap causing financial crisi"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Integrating military strategy and Sun Tzu expertis"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: AI safety argument consolidation and refutation"
+    },
+    {
+      "candidate_id": "historical-3c2721536c32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Act 3, Chapter 14 Arrival outline creation"
+    },
+    {
+      "candidate_id": "historical-70c3d876ce20#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Drafting, reviewing, and editing sections of a sci"
+    },
+    {
+      "candidate_id": "historical-f09eaf2a9c4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: U.S. state capital facts"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Trump's forced deportee-return as a tactical retre"
+    },
+    {
+      "candidate_id": "historical-dc5b80a29f58#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Peter Stone character development in objective-2 context (post-Hayzeus movement continuity)"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Formatting corrections for markdown bullet points "
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Trump's pressure on Fed governor Lisa Cook and the"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Immigration research dossier creation for columnis"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Senate GOP leadership pushback and Hawley's Medica"
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Drafting the six Authoritarian Stages (propaganda "
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Architecture design decisions and final three-mode"
+    },
+    {
+      "candidate_id": "historical-9d3913b3270f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Authoritarian stages alignment with themes and fra"
+    },
+    {
+      "candidate_id": "historical-87514730b617#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Pastor Langston Washington character development a"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Oura project status report, debugging silent failu"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Historical and Factual Research Questions"
+    },
+    {
+      "candidate_id": "historical-b2fb58333914#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Judge blocks sanctuary-city funding cuts; Trump's "
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Tier 0 development and discovery of minimal hardwa"
+    },
+    {
+      "candidate_id": "historical-eab5676e7468#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Transformative academic papers and white papers in"
+    },
+    {
+      "candidate_id": "historical-6e459e00f169#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Developing narrative work: thematic framework and "
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: GOP megabill's tax-cut 'sweetener' strategy, voter"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project material, not American King"
+    },
+    {
+      "candidate_id": "historical-9a91827c03db#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No real engagement with American King project; segment focus: Healthcare subsidy cliff crisis and political blam"
+    }
+  ]
+}

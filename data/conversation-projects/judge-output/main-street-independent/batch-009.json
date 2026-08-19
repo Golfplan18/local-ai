@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book on AI literacy, not MSI news publication"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical LLM infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book front matter and Kindle earnings"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "MoE model architecture technical details"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Journalism methodology for propaganda fact-checking"
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal dating advice, not publishing"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Oura design tool project, not MSI"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical campaign strategy"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Claude behavior configuration rule"
+    },
+    {
+      "candidate_id": "historical-76adeb31ba2d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Chat history management across services"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Story subplot framework, not MSI news"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical framework with Phukher/Malcolm characters"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal memoir/manifesto project"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Conversational RAG pipeline architecture"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile OCR/MBTI analysis"
+    },
+    {
+      "candidate_id": "historical-b6874355e506#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Zombie media site criticism for AI news production"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora analytical territories research"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic independent publisher job description"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal Hinge dating introduction"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "WSJ editorial philosophy history, not MSI"
+    },
+    {
+      "candidate_id": "historical-2532edddf63b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Research paper analysis tool"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Story plot framework development"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Art archive search"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Jesus AI satirical project, unconfirmed as MSI"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "PDF pipeline and outline architecture"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal dating profile recovery"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#25",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "User-assistant conflict over compliance"
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Academic paper citation request"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora Step 8 evaluation framework"
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating profile optimization"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic formatting preference"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "SynthesisGPT system configuration"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Spiritual practice and writing"
+    },
+    {
+      "candidate_id": "historical-44427aee95a1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "LLM cost-benefit analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian Bases technical limitation"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian Bases plugin debugging"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fiction chapter condensing"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating message strategy"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "NLP book chapter development"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Test confirmation"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satire about state-worship monuments"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Story continuity analysis framework"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Complaint document consistency check"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fiction chapter outline creation"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Make.md documentation research"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal writing methodology"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fiction chapter redraft"
+    },
+    {
+      "candidate_id": "historical-bf0d82c82206#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora interface mockup rebuild"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "White paper formatting tools"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic project briefing"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Parliamentary Agent theory book"
+    },
+    {
+      "candidate_id": "historical-9de69c955a4a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Malcolm Little King character development"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI reliability and structure fixes"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Visual RAG techniques"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian markdown philosophy"
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "DSBS book project"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-433226858f03#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Narrative Elements Framework"
+    },
+    {
+      "candidate_id": "historical-5e2be2ba762d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Framework evaluation and verification"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Script storage and execution"
+    },
+    {
+      "candidate_id": "historical-ded7b2682253#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI context window expansion"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "URL preservation and content design"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#66",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework to invert messaging and publish online"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Thread handoff instructions"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Prior art repository concept"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text-only format request"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Output formalization framework"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Relationship personality dynamics"
+    },
+    {
+      "candidate_id": "historical-5d974b97f06d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Media framing analysis of redistricting"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Framework correction"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Text output preference"
+    }
+  ]
+}

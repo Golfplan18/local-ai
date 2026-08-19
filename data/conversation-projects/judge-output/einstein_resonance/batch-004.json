@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a3d5a03a3e5b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble model paper evaluation for quantum framework"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative arc synthesis and scene reconciliation"
+    },
+    {
+      "candidate_id": "historical-fd77d4ba5e8a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble model experimental validation with data"
+    },
+    {
+      "candidate_id": "historical-ba2223ca68fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physics trivia (Copenhagen/Dyson sphere)"
+    },
+    {
+      "candidate_id": "historical-90362b03d88e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Physics outline with double-slit thought experiment"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI argument consolidation unrelated to project"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper distribution strategy"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content framework"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI sycophancy and honesty testing"
+    },
+    {
+      "candidate_id": "historical-2350cedf5818#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Physics outline double-slit integration"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical state-worship monument content"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book chapter with cosmology alternative discussion"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic extraction analysis book chapter"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Foundation governance design"
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic analysis book chapter recap"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Drama screenplay chapter"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack email configuration"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/fiction chapter integration"
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction story outline"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated book project"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative work"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated book section"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character work"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated writing project"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel manuscript"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative development"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing unrelated to physics"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated fiction content"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/story development"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project unrelated to Einstein Resonance"
+    },
+    {
+      "candidate_id": "historical-0c7c8bffec84#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript work"
+    },
+    {
+      "candidate_id": "historical-864404aa59ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative"
+    },
+    {
+      "candidate_id": "historical-9d54ee10c6bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated story content"
+    },
+    {
+      "candidate_id": "historical-2cecb37ae5af#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/fiction development"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Big Bang alternative cosmology discussion"
+    },
+    {
+      "candidate_id": "historical-2e98e79e7c63#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-c87dbe8d729f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-dc33e1e11b72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated book work"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated fiction"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative work"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated book project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic analysis recap"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-7d910695136f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction development"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic analysis book"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-9debdc26db4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction work"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-ce11b4fc6234#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-8d685686f8d0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-c5344476fa3d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated narrative"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated manuscript"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated work"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-7fc9a72104ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Double-slit experiment with barrier testing"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack technical issues"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing methodology framework"
+    }
+  ]
+}

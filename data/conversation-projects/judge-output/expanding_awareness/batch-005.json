@@ -1,0 +1,486 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Drafting/revising wobble model paper sections or outline"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Drafting/revising wobble model paper sections or outline"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cataloging thought experiments supporting expanding awareness hypothesis"
+    },
+    {
+      "candidate_id": "historical-ad85f53cc6d2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-2d427089da7e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-598ef3b1068a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-83107adeca72#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-f8a975aedf60#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-86caa40251f6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-83edd2a4d6fa#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-da12664e6238#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-8b22d98db872#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-6b6d9e90f09e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-41c4eb22ac98#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-65d50f7468a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a1469dfe3bb4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Drafting/revising wobble model paper sections or outline"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-7921627e01e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Drafting/revising wobble model paper sections or outline"
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a643b424e8d3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a4f26e6621f9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Matched to project objective (scientific discussion of alternative theory)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-6be9b11c926e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing discussion for different project"
+    },
+    {
+      "candidate_id": "historical-74c192b3ec2a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-235a30829941#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-1b7bd4582adb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Cosmology terminology only, not expanding awareness content"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No cosmology or expanding awareness content"
+    }
+  ]
+}

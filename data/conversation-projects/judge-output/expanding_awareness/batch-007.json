@@ -1,0 +1,486 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-41303cf3858d#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-0a20c6684797#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-7b3d2996067a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-59de519634d0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Big Bang and redshift mechanism discussion"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-ce93d70219b4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dark energy and \u039bCDM cosmological model"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expanding Awareness cosmology framework generation"
+    },
+    {
+      "candidate_id": "historical-59580a00b5c8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmological paradoxes and Mach principle"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-59aef9bc777a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-a268d9ca74cb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-194c1aeb3766#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-7d910695136f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Steady-state universe model and CMB"
+    },
+    {
+      "candidate_id": "historical-01668822fb6c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble model for Bell's Theorem paper"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-47e944364965#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-864404aa59ef#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Steady-state cosmology discussion"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated subject matter"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2ed192b7a474#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-6a146fb56bf6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple engagement keywords: 2"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-7d528f780ba2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct engagement with public-domain publishing"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-eaf5d37a9e26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing framework, not project work"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-a73ae9da13fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sustained discussion of public-domain practice"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-d8dd0fa315f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-433226858f03#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-8d737dcf7ce1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-3bddb955ade3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-413c2c706f2b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement signals"
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic is clearly unrelated to Ora Foundation"
+    }
+  ]
+}

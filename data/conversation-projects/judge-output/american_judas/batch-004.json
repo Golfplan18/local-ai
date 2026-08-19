@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f7eba5bc07dd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character (Meuller)"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-6bc8621eeffe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "The Judas Conclave - antagonist chapter"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-b9e6912c3609#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist coalition development"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-d746a9b698ab#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-1a491317e118#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-9efc5b50aa68#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-fbc7a2d3ec55#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-c157d4830347#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-7bb70a35ce2b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-498c4d5aa261#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-559b9b58c9cf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapter 34 - antagonist war room"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Explicitly mentions American Jesus"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient American Judas indicators"
+    },
+    {
+      "candidate_id": "historical-92305a0aebc9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework methodology"
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Protagonist (Hayzeus) narrative"
+    }
+  ]
+}

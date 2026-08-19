@@ -1,0 +1,486 @@
+{
+  "nexus": "einstein_resonance",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-keyword engagement with physics work (3 terms)"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Einstein Resonance project reference"
+    },
+    {
+      "candidate_id": "historical-d0298b033f21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-8efeb99dce31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-194c1aeb3766#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-d09f187685a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-keyword engagement with physics work (3 terms)"
+    },
+    {
+      "candidate_id": "historical-2f8a21bf0b5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-0c75044c1171#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-7848123699da#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-6f559ed01f99#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-9a2769ad45c6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-f7e855710a7f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-c7eacc31d735#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-89425504f60f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ee29c771ba78#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-79d0ba81343a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Multiple project terms but no substantive discussion"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Einstein Resonance project reference"
+    },
+    {
+      "candidate_id": "historical-ce93d70219b4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project structure discussion (2 key terms)"
+    },
+    {
+      "candidate_id": "historical-7848123699da#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-44aa7d3f9f75#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-cb04ecd15583#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-989e07b761e0#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ae59a367dd41#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-a085cf3a552b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-74f18b45368e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-d0a71191a21c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-e11704732e0f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-4104222d4e24#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-0fdea4b5d76e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-9d1e60a5399e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-758ec55a9552#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-428bd09d1c32#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-abe4d58951ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-428bd09d1c32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single keyword mention without substantive engagement"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project structure discussion (2 key terms)"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-f2023923ffca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 1)"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 1)"
+    },
+    {
+      "candidate_id": "historical-60b77e6daee7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-7848123699da#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-9ac0a92a7546#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-a1469dfe3bb4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ce93d70219b4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-keyword engagement with physics work (6 terms)"
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-7921627e01e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Multiple project terms but no substantive discussion"
+    },
+    {
+      "candidate_id": "historical-e0e73ce09778#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    },
+    {
+      "candidate_id": "historical-40f21d0c4fcb#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-47c7f5e5d907#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-b275cc0d057f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-60b77e6daee7#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    },
+    {
+      "candidate_id": "historical-4ea63465a411#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-c3357298eb32#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Physics work discussion with project terminology"
+    },
+    {
+      "candidate_id": "historical-7848123699da#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-40f21d0c4fcb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed work on QM/cosmology framework and structure"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project structure discussion (3 key terms)"
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive work on QM/cosmology manuscript with Einstein references"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive project engagement (keywords: 0)"
+    }
+  ]
+}

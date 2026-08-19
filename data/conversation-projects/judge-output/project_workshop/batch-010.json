@@ -1,0 +1,66 @@
+{
+  "nexus": "project_workshop",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f8d8dedfad9b#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses Six Hats evaluation methodology; echoes workshop language but doesn't engage project scoping or definition work itself."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "One-line format request with no substantive content; unrelated to project evaluation or scoping."
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User building AI swarm infrastructure; infrastructure development, not project workshop engagement or idea evaluation."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "One-line format request with no substantive content; unrelated to project workshop."
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining writing framework evaluation criteria; evaluates existing methodology, not new project definition or scoping."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satire writing about political currency redesign; unrelated to project workshop scope or mission."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "One-line format request with no substantive content; unrelated to project workshop."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluating AI Dungeon and Kink AI tools for character dialogue; tool evaluation, not new production project scoping."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "One-line format request with no substantive content; unrelated to project workshop."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "One-line format request with no substantive content; unrelated to project workshop."
+    }
+  ]
+}

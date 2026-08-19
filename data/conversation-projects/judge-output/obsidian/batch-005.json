@@ -1,0 +1,486 @@
+{
+  "nexus": "obsidian",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creative framework (idea preservation, not vault)"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book metadata and SEO (unrelated project)"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mode file generation (Ora project, not Obsidian)"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault philosophy and chat management architecture"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework Creation Framework (generic methodology)"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google analysis (policy discussion, not vault)"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Master outline review (generic writing project)"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project file lifecycle management (Ora/generic)"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto (writing project, not vault)"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto outline (writing project)"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Processing 39k chats into RAG corpus"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclassified"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction (creative writing)"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Foundation Framework (writing framework)"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument (policy discussion)"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Plot development frameworks (writing project)"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy dossier (policy work)"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System architecture with concept linking (generic)"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon features (game, not vault)"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content (creative writing)"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Learning make.md for vault properties"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#32",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian plugin management and vault optimization"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extending human cognition outline (book project)"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Facebook interoperability tool (technical project)"
+    },
+    {
+      "candidate_id": "historical-604911397df5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "make.md properties system configuration"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Expert database architecture (generic system)"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "PKM architecture with Obsidian integration"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Persistent memory architecture (generic)"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical report generation (creative writing)"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Final integration and quality review (generic)"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "API limitation discussion (technical unrelated)"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis (personal, not vault)"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-Assisted Writing Method (generic methodology)"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System overview design review (generic)"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project recap request (generic)"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Verification and finalization (generic)"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Technological Convergence section (book writing)"
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Reverse-engineering framework (generic methodology)"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation (personal, not vault)"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Pipeline orchestration architecture (technical)"
+    },
+    {
+      "candidate_id": "historical-90dfd8e4fcf3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Memory access across chat sessions (generic)"
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "YouTube link delivery troubleshooting (unrelated)"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "American Jesus story framework (creative writing)"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Document taxonomy and nomenclature system"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Tier 0 development (technical project)"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Molecular notes and framework analysis (vault-related)"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "3D sphere visualization (math/visualization)"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "RAG and memory architecture (Ora, not Obsidian)"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Knowledge sharing philosophy (generic)"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Business Model and vault strategy"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Complaint review (legal, not vault)"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-Assisted Writing methodology (generic)"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Cognition through AI outline summary (generic)"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System overview for architecture (generic)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Markdown viewers (ancillary vault tools)"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Soul.md concept (unrelated project)"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliament cartoon series (unrelated project)"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project architecture decisions (generic)"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Model evaluation and bias (technical unrelated)"
+    },
+    {
+      "candidate_id": "historical-9c43910b19a6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing project locations (generic)"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transform outline to narrative (book writing)"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Military strategy integration (unrelated)"
+    },
+    {
+      "candidate_id": "historical-04749862c4af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thematic frameworks for satire (creative writing)"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#16",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Smart Connections and embedding model for vault"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ora background architecture (different project)"
+    },
+    {
+      "candidate_id": "historical-0a01e7ce18b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thematic framework for satire (creative writing)"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content (creative writing)"
+    },
+    {
+      "candidate_id": "historical-baea66480190#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Evaluation execution (generic review)"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Preservation system for chapter refinement (writing)"
+    },
+    {
+      "candidate_id": "historical-6021edd34d4d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian properties CSS styling"
+    },
+    {
+      "candidate_id": "historical-32b3c16e3584#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI therapist architecture (unrelated)"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT system (unrelated project)"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting Initiation Framework (creative writing)"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting Initiation Framework (creative writing)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code GUI alternatives (unrelated)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Obsidian Bases video summary (documentation)"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character description (creative writing)"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document taxonomy and nomenclature (vault organization)"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction (creative writing)"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating match coaching (personal dating)"
+    }
+  ]
+}

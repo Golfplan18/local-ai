@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e458a350d765#15",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Mission/objective route with engagement signals"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-d9e7ab3cb019#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-21f0d22e4ee3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-947060573768#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-c63196be1906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public-domain focus with supporting context"
+    },
+    {
+      "candidate_id": "historical-feddf97774e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Open-source with anti-enclosure framing"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-99da57ed3e30#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public-domain focus with supporting context"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public-domain focus with supporting context"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-79789b155b09#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Data collection without mission engagement"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Data collection without mission engagement"
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public-domain focus with supporting context"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit public-domain/commons engagement"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public-domain focus with supporting context"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-a8fcf4d875ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-a39dc7dc0fa3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-8d3c6d1a7326#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Routed but no actual mission engagement"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement signals detected"
+    }
+  ]
+}

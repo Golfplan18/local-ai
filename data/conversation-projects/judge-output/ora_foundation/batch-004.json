@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework enhancement"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction novel story bible"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction story bible"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Political doom-spiraling, universal dignity of contribution"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction story bible"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework enhancement"
+    },
+    {
+      "candidate_id": "historical-e8e8d2047149#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus fiction story bible"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework refinement research and best practices"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Give Ora away for free\u2014direct engagement with foundation mission"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework completeness evaluation and AI error correction"
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development and subplot ideation"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pipeline architecture and framework approach"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Python learning and thread summary"
+    },
+    {
+      "candidate_id": "historical-589bf9777155#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marcus Johnson character development\u2014fictional character"
+    },
+    {
+      "candidate_id": "historical-e12deb632496#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marcus Johnson character development\u2014fictional character"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Alternative cosmology theory\u2014not Ora Foundation"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LM Studio and GGUF model coordination"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework Creation Framework specification"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project on emotional intelligence in AI"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story outline"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political parody articles using framework"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Step 8 Reader Engagement Evaluation framework"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relationship analysis and personal strategy"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus themes and story structure"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel planning framework"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI reliability concerns and structural changes"
+    },
+    {
+      "candidate_id": "historical-138c2711f923#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not classified"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sequential satirical articles on authoritarian decline"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Structural framework errors identification"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal AI-assisted vault/agent system (personal use, not foundation)"
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus outline review"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation and policy contradictions"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal knowledge architecture and philosophy"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project briefing and satirical framework"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Moral case for public-domain release over enclosure"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-ff68c25125c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical narratives of authoritarian regime collapse"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus naming/trademark and parody domains"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework analysis"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building case for reductionist scientists"
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not classified"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating satirical political fiction"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal book outline RAG and PKM system design"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Authoritarian regime satirical fiction"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loneliness/isolation and fame concerns"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework restructuring for idea preservation"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining preservation system for chapter refinement"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cold-ice reference dossier on Wall Street regulation"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementing tiered preservation across frameworks"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime with dual perspectives"
+    },
+    {
+      "candidate_id": "historical-de2a6c4c1c31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cloudflare hosting and Ora deployment feasibility"
+    },
+    {
+      "candidate_id": "historical-fb82e57c4fcc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Summary of book chapter on disinformation tactics"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating stage-specific instructions for authoritarian progression"
+    },
+    {
+      "candidate_id": "historical-82bc9a8cbe6b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master outline"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Positioning Ora in coding-tool ecosystem, release plan"
+    },
+    {
+      "candidate_id": "historical-e085defd394e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus themes-and-concepts document"
+    },
+    {
+      "candidate_id": "historical-8d3c6d1a7326#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Not classified"
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Simple greeting exchange"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master outline"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Individual agency and power to change systems"
+    },
+    {
+      "candidate_id": "historical-db86c4c02a88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot chapter development framework and evaluation"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Claude Code workflow and obsolescence of careers"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework redesign"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Agent-centric paradigm and soul.md governance"
+    },
+    {
+      "candidate_id": "historical-d70d96ebd5f9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible pasted"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Finalizing separated frameworks with outputs"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation-trilogy insights\u2014about fiction"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework and Evaluation implementations"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel outline review"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public domain choice, moral foundation, internal motivations"
+    },
+    {
+      "candidate_id": "historical-211f14516d46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter refinement framework"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Refinement Framework criteria analysis"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy dossier scope"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Framework output management system"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Application examples (Geshe Kalsang chatbot, fan sites) enabling commons access"
+    }
+  ]
+}

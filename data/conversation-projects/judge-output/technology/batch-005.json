@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing strategy"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific research"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI literacy education and technology teaching"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No technology evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture discussion"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scientific research"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology evaluation indicated in subject"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Local model architecture design and evaluation"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-122e5513ad49#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Organizational work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Local model architecture design and evaluation"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No technology evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No technology evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No technology evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-313084bad595#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture discussion"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#26",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-5e2be2ba762d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-a7991712385d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-8f3367437d36#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing strategy"
+    },
+    {
+      "candidate_id": "historical-e17e3306ef2f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture discussion"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#25",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture discussion"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#36",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-a495a6f11ee3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology evaluation indicated in subject"
+    },
+    {
+      "candidate_id": "historical-22c63fca5bb0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical troubleshooting"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Mentions technology but no evaluation engagement"
+    },
+    {
+      "candidate_id": "historical-947060573768#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology evaluation or analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Using AI as a tool, not evaluating technology"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI/model capabilities and limitations analysis"
+    }
+  ]
+}

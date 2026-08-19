@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#45",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating comprehensive writing style guide template framework"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework specification: expanding Knower-Doer framework analogies"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework specification: developing Knower-Doer architecture metaphors"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Writing style guide iterative refinement framework"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Testing and identifying issues in First Boot Framework"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-411d24eaf516#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Community governance and public-domain model for framework commons"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-573ae5dba278#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-d23a0b236c5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-236562c25855#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Patent defensive publication strategy for framework commons protection"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Developing frameworks for AI-assisted writing methodology"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Establishing hierarchy for style guide framework rules"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-413c2c706f2b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with framework library work"
+    }
+  ]
+}

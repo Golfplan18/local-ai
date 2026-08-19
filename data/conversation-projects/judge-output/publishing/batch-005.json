@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7926610a4df7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Business card printing options\u2014publishing production infrastructure"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety philosophy, not publishing work"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fictional writing setup, not publishing business"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book manuscript chapters being redrafted\u2014active publishing work"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing blurb creation for book front matter"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing blurb refinement for book publication"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Kindle book production metadata and back matter strategy"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent framework discussion, mentions book publication tangentially"
+    },
+    {
+      "candidate_id": "historical-b7c3a2a27fcb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substack automation for AI-assisted publishing"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI cognition framework, not publishing engagement"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian fiction content creation, not publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch strategy and Substack serialization planning"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical character design and dialogue framework, not publishing"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political manifesto chapter drafting, not publishing business"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Back Matter Framework documentation for publishing artifacts"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Author's personal purpose alignment, not publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Matter Framework development for book production"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book production process documentation and frameworks"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Nonfiction book structure and publishing deliverables planning"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author platform and book launch infrastructure strategy"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary theory and writing aesthetics, not publishing business"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book sales strategy and publication timeline management"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Manuscript writing coaching, not publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General career advice, publishing tangential"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform and audience-building strategy"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book metadata and production specifications"
+    },
+    {
+      "candidate_id": "historical-e99085d9ca5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophy and worldview exploration, not publishing work"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#72",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing pipeline and workflow automation planning"
+    },
+    {
+      "candidate_id": "historical-98d65434993a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch and publishing timeline coordination"
+    },
+    {
+      "candidate_id": "historical-92305a0aebc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing advice and author coaching, not publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing portfolio and book launch strategy"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual/philosophical content, not publishing business"
+    },
+    {
+      "candidate_id": "historical-13ef5c257426#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing strategy and author platform building"
+    },
+    {
+      "candidate_id": "historical-211f14516d46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General life coaching, publishing unrelated"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book publication timeline and distribution planning"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing workflow documentation and process"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book distribution and publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing method and craft discussion, not publishing pipeline"
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Manuscript feedback and editing, not publishing business"
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform strategy and reader growth"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing operations and distribution management"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author branding and publishing platform strategy"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch marketing and distribution coordination"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing timeline and project management"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing infrastructure and workflow setup"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book production schedule and publishing operations"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing portfolio and audience expansion strategy"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing critique and craft development, not publishing"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Author interview and life story, not publishing business"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical exploration, publishing unrelated"
+    },
+    {
+      "candidate_id": "historical-e25750aa4bcb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform and reader community building"
+    },
+    {
+      "candidate_id": "historical-95eff4a001be#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch strategy and marketing coordination"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing timeline and production management"
+    },
+    {
+      "candidate_id": "historical-0d8896d1e3a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical inquiry, publishing unrelated"
+    },
+    {
+      "candidate_id": "historical-ac2280078296#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal reflection, not publishing work"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author platform and book distribution planning"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#42",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing operations and workflow coordination"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Manuscript editing and writing technique, not publishing"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch and audience growth strategy"
+    },
+    {
+      "candidate_id": "historical-c0746d1f902e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content creation strategy, publishing tangential"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing timeline and book launch orchestration"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General writing and publishing discussion, too vague"
+    },
+    {
+      "candidate_id": "historical-99df88574463#34",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing operations and distribution setup"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch marketing and publication strategy"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform strategy and reader acquisition"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Author brand and book distribution planning"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#63",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing coordination and workflow management"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book production timeline and publishing operations"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#63",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing infrastructure and project management"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing dialogue and character development, not publishing"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch strategy and distribution coordination"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing timeline and production scheduling"
+    },
+    {
+      "candidate_id": "historical-8fa75517b7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General life advice, publishing unrelated"
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing instruction, not publishing infrastructure"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book distribution and publishing platform strategy"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Abstract philosophical framework, not publishing"
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal development, publishing unrelated"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General skill development, not publishing focused"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical framework, not publishing work"
+    },
+    {
+      "candidate_id": "historical-ad8b9c0aef31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Abstract concept exploration, publishing unrelated"
+    }
+  ]
+}

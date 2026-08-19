@@ -1,0 +1,390 @@
+{
+  "nexus": "golf_course_design",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing mechanics: strong grip and wrist release techniques."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-589bf9777155#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament information, not design or spiritual practice engagement."
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-0c39951aa4b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-bef800fcbf38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-a63f7e78f60d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-60546fd856ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-aa7597f3fba6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-b020d492aa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#79",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament information, not design or spiritual practice engagement."
+    },
+    {
+      "candidate_id": "historical-6bc8621eeffe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-6ebb0b8751d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-44f72ed1685d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-8d9470e7999a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-daaad7fd620a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-e12deb632496#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-90362b03d88e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-17e0e9328038#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel project, distinct from golf_course_design."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-cefa9d813001#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-48bf9dfd1c5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-b029d4de4873#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction chapter development, not golf-related."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic creative or writing framework, not golf-specific."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Not engaged with golf course design or spiritual golf practice."
+    },
+    {
+      "candidate_id": "historical-977389185c3d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or domain."
+    }
+  ]
+}

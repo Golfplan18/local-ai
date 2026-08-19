@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 13,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-b95e11bc60c7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#60",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-a1469dfe3bb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-3af2ff465426#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-9a936e9c8150#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-fd9717bf1541#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-e6d87dd73ee5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-96bcf6e48bca#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-70aa02237058#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-60c75298354d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-af80e1d55516#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#61",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-77114c2b8f52#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#63",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#63",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-7794a2ae7557#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-205d92d079af#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-a59015fd8845#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-5727a8e9c524#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-75c8d734ed6a#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-7921627e01e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-74a79186230c#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-e6cb37b0a381#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-e6cb37b0a381#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-e7fc40d80abc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-085efb55d38e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-bf59b048d8c5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#56",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project-specific terms found"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project term with engagement context"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American King vocabulary detected"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 10,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3cced031743e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapters 15-17 ideological critique book work"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King Substack (different project)"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "analyzing elle's profile and refining opening mess"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI advocacy voices (different project)"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "test confirmation response"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Electoral mechanics analysis (not We Too)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "project 2025 and whether ai could produce a counte"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "test ok response request"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "janessa: retrieving prior notes, opening a bumble "
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI advocacy voices (different project)"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "coaching the silence test and interpreting ashley'"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#24",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Supreme Court analysis (not We Too focus)"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI advocacy voices (different project)"
+    },
+    {
+      "candidate_id": "historical-378328829725#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "minimal acknowledgment request"
+    },
+    {
+      "candidate_id": "historical-e944872d1fdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-9baca7caf0f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Book 1 Chapter 3"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "single acknowledgment of text-only request"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "messaging strategy for woman (wida) from profile a"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "meta persona profile development and empowerment s"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-c38f505771f5#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "conservative thought as incoherent class rationali"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "iteratively revising the 'ideation initiation fram"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "integrating military strategy and sun tzu expertis"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon KDP publishing strategy (generic)"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon KDP publishing strategy (generic)"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "right-wing spin critique and the birth of a left-w"
+    },
+    {
+      "candidate_id": "historical-b33af45ba2e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Digital Swarm Warfare book (different)"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "thread corruption and data integrity issues with a"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "testing framework expansion: eight categories incl"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "executing instructions to generate the expanding a"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic book structure advice"
+    },
+    {
+      "candidate_id": "historical-70155eb97644#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Economic analysis (not We Too specific)"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-0041097f554d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapters 15-17 ideological critique book work"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "initial review of dating profile and compatibility"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "brief request for text-only response format"
+    },
+    {
+      "candidate_id": "historical-a59015fd8845#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Electoral mechanics analysis (not We Too)"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satire fiction (different project)"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "fiverr beta testing and distribution strategy for "
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-fd3cc53f11a5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto project (different)"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ideation framework applied and refined for the env"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satire fiction (different project)"
+    },
+    {
+      "candidate_id": "historical-ad8b9c0aef31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satire fiction (different project)"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "thread c update execution with 17 modes and requir"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#32",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "millennial political trends and right-wing media's"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satire fiction (different project)"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book outline restructuring (other project)"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "claude code throttling, rate-limit stalls, and ses"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "practical implementation decisions and personal mi"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "california redistricting versus right-wing media's"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "building/refining the ideation framework and apply"
+    },
+    {
+      "candidate_id": "historical-3b39f9501d71#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "meta description and keyword development for buddh"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character foundation framework execution for lucif"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "identifying additional systems of oppression and c"
+    },
+    {
+      "candidate_id": "historical-225a3af8c9be#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "joanna rivera blackwell character foundation and d"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "verifier findings and revised argument about ai sa"
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump political analysis (not We Too specific)"
+    },
+    {
+      "candidate_id": "historical-408e770f67b0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump political analysis (not We Too specific)"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "claude projects feature and capabilities"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "news snippets and reflections: medicaid/dissident "
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book on masculinity (different book)"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "profile analysis and early interaction with lili"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "text output preference"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ray dalio's economic warning and millennials' gene"
+    },
+    {
+      "candidate_id": "historical-7ca503139e39#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Economic analysis (not We Too specific)"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "distribution strategy for white paper on ai-enable"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ai thought leaders on youtube"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel (different project)"
+    }
+  ]
+}

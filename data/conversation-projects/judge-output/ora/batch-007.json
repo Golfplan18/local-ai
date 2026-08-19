@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e458a350d765#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Open Mind Foundation governance initiative"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (3 signals)"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-d81ad7a18ca9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Organizational framework with 4 Ora signals"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character development (American Jesus)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Drive file system tool"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character development (American Jesus)"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (3 signals)"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (6 signals)"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction (Diklis Chump)"
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (6 signals)"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Python programming instruction"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-9901381f3bfe#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship strategy"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction (Diklis Chump)"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#38",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#56",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API/platform technical exploration"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-40c3ef8536a0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-c48eea34025a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-5d0ccef39fb2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (6 signals)"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-55f96fc476b8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#67",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-9901381f3bfe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#18",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#5",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Minimal Ora engagement (1 signal)"
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Ora engagement signals"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API/platform technical exploration"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trivial text preference instruction"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship strategy"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Strong Ora engagement (4 signals)"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API/platform technical exploration"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack platform technical issues"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Moderate Ora engagement (2 signals)"
+    }
+  ]
+}

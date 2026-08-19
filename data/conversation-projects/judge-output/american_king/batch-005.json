@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ef2749e6d5a9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump Pentagon news, no American King engagement"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#63",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly shapes American King as manifesto"
+    },
+    {
+      "candidate_id": "historical-5faeb423fbbd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump ICE policy news only"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plans to boot Malcolm Little King posts"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Full three-act plot outline for narrative"
+    },
+    {
+      "candidate_id": "historical-630f6ececa81#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Setting and character homes development"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 5 prose drafting for narrative"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Big Jim Zebedee character profile"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Project 2025 Trump strategy, not narrative"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus story bible submission"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian AI accessibility tech setup"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#58",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Abrego Garcia immigration news"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel bible upload"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#34",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "California National Guard lawsuit news"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1 Chapter 3 outline development"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus master story bible"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "GOP megabill news coverage"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 chapter refinement framework"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus story bible review"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#84",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "NYT gerrymandering news article"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 20 meritocratic disillusionment"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapter 18 outline"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus master outline upload"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Press release stage instructions only"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump Impoundment Act news"
+    },
+    {
+      "candidate_id": "historical-88711618073c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump overreach strategy analysis"
+    },
+    {
+      "candidate_id": "historical-d7388c85a153#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Malcolm character context with Warnock"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 master framework"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Peter Stone character profile"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible"
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#79",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "House Budget Committee tax bill news"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible submit"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI memory system philosophy only"
+    },
+    {
+      "candidate_id": "historical-f08fb53aea3d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Judas Griftance in American King"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter 16 Lost Cause framework analysis"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 novel bible"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic document comprehension task"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter 16 philosophical framework"
+    },
+    {
+      "candidate_id": "historical-5d9613ddf7d4#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 Chapter 1 outline drafting"
+    },
+    {
+      "candidate_id": "historical-88711618073c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Democratic strategy, Cuomo analysis only"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1 Chapter 1 outline"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1 all chapters outline"
+    },
+    {
+      "candidate_id": "historical-dcff669b6f6d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Paul character profiles"
+    },
+    {
+      "candidate_id": "historical-ab5c440ce2a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story Beat Worldbuilding Framework"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sturdy Tree parable for Chapter 5"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#25",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Fox News GOP megabill coverage"
+    },
+    {
+      "candidate_id": "historical-ec64825e834d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump emergency declaration speculation"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible ingest"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic word count reduction edit"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora boot file technical updates"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Supreme Court checks erosion analysis"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Senate GOP Medicaid tax bill news"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Dating conversation analysis"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story elements and character implementation"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus thematic guide"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Obsidian vault AI accessibility setup"
+    },
+    {
+      "candidate_id": "historical-aa7597f3fba6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 novel development"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot initiation redesign for narrative"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI system design thinking framework"
+    },
+    {
+      "candidate_id": "historical-61c66c0f0173#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mary Magdalena character development"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Trump overreach trajectory analysis"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#74",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "NYT gerrymandering article link only"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Archetypal choice architecture building"
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus narrative fiction draft"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Hinge match profile dating analysis"
+    },
+    {
+      "candidate_id": "historical-7ce6fb2a3094#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Biblical verses applied to Hayzeus"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic writing guidelines review"
+    },
+    {
+      "candidate_id": "historical-f2506d36e1b6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mary Magdalena character profile"
+    },
+    {
+      "candidate_id": "historical-d4e9ab371852#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Republican trifecta blame dynamics"
+    },
+    {
+      "candidate_id": "historical-e7c6773928fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 35 architecture development"
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marcus Johnson character development"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Classical mechanics quantum phenomena"
+    },
+    {
+      "candidate_id": "historical-9de69c955a4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Working class political strategy article"
+    },
+    {
+      "candidate_id": "historical-ef2f4647a8ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus narrative overview review"
+    },
+    {
+      "candidate_id": "historical-5d9613ddf7d4#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 Chapter 3 covenant outline"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Newsom lawsuit shadow-docket news"
+    },
+    {
+      "candidate_id": "historical-5737480b9619#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus outline structure review"
+    },
+    {
+      "candidate_id": "historical-7917fd3a7d98#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Peter Stone character framework"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapter 1 refinement framework"
+    },
+    {
+      "candidate_id": "historical-c854bdb07df2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Gerrymandering solutions analysis only"
+    }
+  ]
+}

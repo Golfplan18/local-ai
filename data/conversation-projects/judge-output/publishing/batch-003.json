@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian platform feature configuration, not publishing business."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mythology/creative fiction unrelated to publishing business."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative planning, distinct from publishing infrastructure project."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal career retrospective, mentions AI books but not publishing business work."
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-77114c2b8f52#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative planning, distinct from publishing infrastructure project."
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing distribution strategy across multiple platforms."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing style guide, not publishing business/infrastructure."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon KDP publishing strategy with product multiplication and release timing."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-90cfb9d037ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship narrative, not publishing project work."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Memoir/manifesto publishing strategy with marketing and chapter planning."
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction universe planning, separate from publishing business/infrastructure."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary unrelated to publishing."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#15",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative planning, distinct from publishing infrastructure project."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-1058aae35cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative planning, distinct from publishing infrastructure project."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-1c3c2408583d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only, no publishing content."
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear connection to publishing business or infrastructure."
+    }
+  ]
+}

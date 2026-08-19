@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship advice"
+    },
+    {
+      "candidate_id": "historical-947060573768#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship advice"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal career/productivity reflection"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Prompt-based system"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Narrative development framework"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System capabilities"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI agent coordination framework"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Prompt optimization research"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG and skill design"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating/relationship advice"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Prompt pipeline architecture"
+    },
+    {
+      "candidate_id": "historical-e3d2e0bc70c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Prompt template evaluation"
+    },
+    {
+      "candidate_id": "historical-52dbaa8e220d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model accuracy/word count testing"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal career/productivity reflection"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-947060573768#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI agent coordination framework"
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-dedb80622f0e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No prompt engineering engagement"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output format preference"
+    }
+  ]
+}

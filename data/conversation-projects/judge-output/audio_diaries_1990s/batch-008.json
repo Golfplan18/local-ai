@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-74450e02b141#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development work, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-9c9373b7583c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development work, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/technical framework, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about concept for an ai-driven news feed that disin, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about ashley reconnects, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development work, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about obsidian heading promotion/demotion feature f, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development work, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/technical framework, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-eab5676e7468#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about transformative academic papers and white pape, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-60546fd856ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about playlists, the mind's addiction to problem-so, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about extended coaching of the ongoing text debate , not audio diaries"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about debating whether to personify ai, declining t, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about learning methodology and intuition theory con, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about continuous ai operation and personal producti, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-0d8896d1e3a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about trojan horse fiction strategy for fracturing , not audio diaries"
+    },
+    {
+      "candidate_id": "historical-07601188454d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about ai quality degradation, content filters, and , not audio diaries"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-44427aee95a1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#45",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about samantha, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about managing a huge book outline across notebookl, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about text output preference, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development work, not audio diary assessment"
+    },
+    {
+      "candidate_id": "historical-2932aa9c912e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about fictional concept of sum of human knowledge a, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-0a8344b0c7eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about enhancing paired development/evaluation/crite, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-e5ba15999b20#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about ai censorship concerns and long-term memory p, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about conceiving a dual-hemisphere ai brain and the, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/technical framework, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system or prompt work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about golf swing explosiveness training and smooth , not audio diaries"
+    },
+    {
+      "candidate_id": "historical-9715775ebaf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/technical framework, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about brief acknowledgment request, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about extension test response request, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6c9aec728ad4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about court jester ego management as character dept, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-bc566cacbd13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about surveying ai tools and platforms for mathemat, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about text output preference, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-804a4cd0180d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-783196af16ab#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about literary analysis of passage, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-74e9fb4c3835#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about mode verification checklist execution, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about text output preference, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-7175496febba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-a556ddf14f6b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about brief instruction acknowledgment, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship dynamics, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-3fa91717596e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about earworm phenomenon and convergence of life ca, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-433226858f03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/fiction narrative work, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about strategizing a secret pen-name publishing emp, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about verifier findings and revised argument about , not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about addressing preservation failures and executio, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about continuous discussion of cosmological theorie, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject about dog behavior (ella's coercion/agency, sibling, not audio diaries"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system design, not audio diaries"
+    }
+  ]
+}

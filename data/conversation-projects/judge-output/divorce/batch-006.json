@@ -1,0 +1,486 @@
+{
+  "nexus": "divorce",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-aa8b8215c01a#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-98262db26bac#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal divorce narrative: \"Divorce forced me to face myself\""
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussion of ex-wife and emotional emptiness in marriage"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-cfe553ca3104#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-58c99e01c25b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-7be62155fa6b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-7d8af9eab5be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-5b16fcd57981#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal attempt to forgive Michelle (ex-wife) after divorce"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hemingway-style narrative titles explicitly about marriage failure and self-discovery"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c54f2d61b992#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c24a80a07bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project entirely"
+    }
+  ]
+}

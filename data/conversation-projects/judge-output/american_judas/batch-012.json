@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-fc88a8e5d794#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-e12deb632496#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-daaad7fd620a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing American Jesus protagonist chapter"
+    },
+    {
+      "candidate_id": "historical-e55ad76bcce4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#58",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-43917af113ce#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-8d8cf54012e8#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-e78f7a40daf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-9139b2ce658d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing American Jesus protagonist chapter"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-d4b6e76be8b0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-791c95f13d2e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-44f72ed1685d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-ea91e7763650#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-a96beab4a6b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-1a491317e118#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-85797fd09a8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-178acc556d5a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-798f22f8ad7c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-cefa9d813001#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-f6b8ca987aa5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-d408acfa9e59#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ed5c1b20c128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-dca5f0ed1a10#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-b3b6a032d02e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-7b81cb5f4ab7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing American Jesus protagonist chapter"
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-225a3af8c9be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ed1d5236500a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-8a0501f3d8a0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-6f5669442ede#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-ed2807b9a6c9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No American Judas-specific work detected"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-96f69a8a2f35#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-630f6ececa81#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework or story bible work"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative work"
+    },
+    {
+      "candidate_id": "historical-3153873d0063#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loading American Jesus protagonist outline"
+    },
+    {
+      "candidate_id": "historical-09dbe2be4706#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing American Jesus protagonist chapter"
+    },
+    {
+      "candidate_id": "historical-bcd3eafbee93#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist Coalition subthread development"
+    }
+  ]
+}

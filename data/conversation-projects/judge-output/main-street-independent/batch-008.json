@@ -1,0 +1,486 @@
+{
+ "nexus": "main-street-independent",
+ "batch": 8,
+ "verdicts": [
+  {
+   "candidate_id": "historical-a6e17e754280#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Local car wash service lookup unrelated to publication work"
+  },
+  {
+   "candidate_id": "historical-150b631559ce#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "CSS styling for personal note-taking tool, not MSI"
+  },
+  {
+   "candidate_id": "historical-365ecfe5ca1d#1",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Generic economic/archetype discussion, not MSI-specific"
+  },
+  {
+   "candidate_id": "historical-8289661dbfce#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "GitHub connector setup for personal vault access"
+  },
+  {
+   "candidate_id": "historical-1f4f2a36f76d#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "New Communist Manifesto book project, distinct from MSI"
+  },
+  {
+   "candidate_id": "historical-075894682012#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Legal expert witness network for litigation work"
+  },
+  {
+   "candidate_id": "historical-32df11c88044#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Carla voice framework for political op-ed argument construction"
+  },
+  {
+   "candidate_id": "historical-892b074a9ea4#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Writing guidelines for separate book project"
+  },
+  {
+   "candidate_id": "historical-6fec99825434#33",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Passing reference to CalMatters article, no engagement"
+  },
+  {
+   "candidate_id": "historical-ff4be1e73995#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "New Communist Manifesto project, not MSI"
+  },
+  {
+   "candidate_id": "historical-9a0f1198cb44#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Diklis Chump satirical fiction framework, separate from MSI"
+  },
+  {
+   "candidate_id": "historical-b3b180b6a956#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Editorial review of book project chapters"
+  },
+  {
+   "candidate_id": "historical-cfefc60d9e45#3",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "AI framework evaluation for writing system, not MSI"
+  },
+  {
+   "candidate_id": "historical-dba985b3db89#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Diklis Chump satirical political content, separate project"
+  },
+  {
+   "candidate_id": "historical-d480b9b4fa9b#57",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Theme park pass information lookup"
+  },
+  {
+   "candidate_id": "historical-609e023654e0#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Markdown formatting for book project outline"
+  },
+  {
+   "candidate_id": "historical-620d871f161f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal dating app profile response"
+  },
+  {
+   "candidate_id": "historical-d9f6e0b8230b#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Local business phone number lookup"
+  },
+  {
+   "candidate_id": "historical-26dd4fc8b893#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book chapter framework updates, not MSI"
+  },
+  {
+   "candidate_id": "historical-9710c4742c87#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal dating app messaging"
+  },
+  {
+   "candidate_id": "historical-d0b7415bbaf6#5",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book project architecture simplification"
+  },
+  {
+   "candidate_id": "historical-cfefc60d9e45#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book chapter development evaluation frameworks"
+  },
+  {
+   "candidate_id": "historical-114f36c4e1fd#3",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Publishing syndication and distribution automation work"
+  },
+  {
+   "candidate_id": "historical-56370628b15b#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "AI agent commitment weight runtime architecture"
+  },
+  {
+   "candidate_id": "historical-29ca4848bbda#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "AI-assisted fiction writing methodology for book"
+  },
+  {
+   "candidate_id": "historical-d480b9b4fa9b#5",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Claude AI service outage status check"
+  },
+  {
+   "candidate_id": "historical-6c54e7d49b40#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "ServiceNow workforce architecture corporate tool"
+  },
+  {
+   "candidate_id": "historical-453028fe4a4b#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book narrative architecture and reflection"
+  },
+  {
+   "candidate_id": "historical-71957187b84f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal dating profile OCR and analysis"
+  },
+  {
+   "candidate_id": "historical-65b690c9d4b5#2",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Document reference updating, unclear context"
+  },
+  {
+   "candidate_id": "historical-722b08f58407#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Ideation framework criteria for book project"
+  },
+  {
+   "candidate_id": "historical-1052e6e66dc7#9",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal vault gift project for Cory Doctorow"
+  },
+  {
+   "candidate_id": "historical-83a46969fcd9#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Trump second-term political/economic news analysis for publication"
+  },
+  {
+   "candidate_id": "historical-1052e6e66dc7#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Creative work automation through coded intention"
+  },
+  {
+   "candidate_id": "historical-ed71142036c4#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Local AI model evaluation and adversarial testing"
+  },
+  {
+   "candidate_id": "historical-6edb60215b2f#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Diklis Chump satirical framework development"
+  },
+  {
+   "candidate_id": "historical-e47d24a349d3#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal family genealogy research"
+  },
+  {
+   "candidate_id": "historical-2c6ed7ae9641#2",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "AWS patent landscape technical analysis"
+  },
+  {
+   "candidate_id": "historical-98d65434993a#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Diklis Chump economic reframing satirical content"
+  },
+  {
+   "candidate_id": "historical-3e582eba8270#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Ora project book outline review, not MSI"
+  },
+  {
+   "candidate_id": "historical-1766f9a80145#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Knights of Human Nexus fiction narrative development"
+  },
+  {
+   "candidate_id": "historical-5ba9c1dd475a#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Cosmological theory framework scientific work"
+  },
+  {
+   "candidate_id": "historical-e31bd771e495#56",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Political figure biographical research, background only"
+  },
+  {
+   "candidate_id": "historical-491631da91ab#43",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Event venue lookup and personal message crafting"
+  },
+  {
+   "candidate_id": "historical-c59279e93cea#32",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Google Sheets formula technical spreadsheet work"
+  },
+  {
+   "candidate_id": "historical-191ff4bc89b8#17",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Federated library distribution system architecture"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#31",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Matrix template technical modification"
+  },
+  {
+   "candidate_id": "historical-14b9ceccf826#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Retail product stock search"
+  },
+  {
+   "candidate_id": "historical-978b0e23ba8f#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Main Street Independent article on military accountability"
+  },
+  {
+   "candidate_id": "historical-b59caf3a4523#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book Two preview chapter condensation"
+  },
+  {
+   "candidate_id": "historical-c80a033d4537#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Qwen AI model architecture exploration"
+  },
+  {
+   "candidate_id": "historical-9f6072889e54#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal dating app opening message crafting"
+  },
+  {
+   "candidate_id": "historical-3872c327f0f0#10",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Technical script code and model monitoring"
+  },
+  {
+   "candidate_id": "historical-bcece8c78dc4#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "AI teams as human subconscious philosophical framework"
+  },
+  {
+   "candidate_id": "historical-1d3e633d103c#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "AI-assisted novel writing methodology development"
+  },
+  {
+   "candidate_id": "historical-6fec99825434#10",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Gemini AI service status and throttling check"
+  },
+  {
+   "candidate_id": "historical-e615d59df9a2#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "General erotic fiction AI capability exploration"
+  },
+  {
+   "candidate_id": "historical-1da6b1c60ac6#0",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Framework inventory confirmation task review"
+  },
+  {
+   "candidate_id": "historical-f3763cca5056#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Technical document summary analysis"
+  },
+  {
+   "candidate_id": "historical-43a08dfa2a92#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Framework project overview and character initiation"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#6",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Vault properties technical system conversion"
+  },
+  {
+   "candidate_id": "historical-b9cb212c9e00#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Physics redshift-distance law research"
+  },
+  {
+   "candidate_id": "historical-6541ebfec54e#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Diklis Chump satirical press release creation"
+  },
+  {
+   "candidate_id": "historical-89985b95fdaa#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Claude subscription and usage limits inquiry"
+  },
+  {
+   "candidate_id": "historical-7204c53686df#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "GPTs and AI tool general integration work"
+  },
+  {
+   "candidate_id": "historical-2d439936e380#10",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Oracle anonymity architecture, unclear if MSI-related"
+  },
+  {
+   "candidate_id": "historical-a5ee26dc76a5#6",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book chapter strategy drafting and reflection"
+  },
+  {
+   "candidate_id": "historical-6fec99825434#37",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Google Sheets regex formula technical work"
+  },
+  {
+   "candidate_id": "historical-35f4a8c3bbe1#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Book character foundation framework review"
+  },
+  {
+   "candidate_id": "historical-491631da91ab#7",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Personal dating app profile interaction"
+  },
+  {
+   "candidate_id": "historical-3853dbe35160#19",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Technical embeddings and vault setup"
+  },
+  {
+   "candidate_id": "historical-2eabb5795390#7",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "Amazon product description framework"
+  },
+  {
+   "candidate_id": "historical-b720ebe7714a#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Claude app technical features inquiry"
+  },
+  {
+   "candidate_id": "historical-14301d84563d#0",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "AI philosophy argument analysis"
+  },
+  {
+   "candidate_id": "historical-b6501ff419f5#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "AI system design using de Bono frameworks"
+  },
+  {
+   "candidate_id": "historical-114f36c4e1fd#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Email system technical setup and migration"
+  },
+  {
+   "candidate_id": "historical-08f4033e880d#1",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "AI disruption economic analysis, unclear if news work"
+  },
+  {
+   "candidate_id": "historical-9c6c8dc73477#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "MVP design and natural language specification"
+  },
+  {
+   "candidate_id": "historical-22d64dfb3258#0",
+   "verdict": "no",
+   "confidence": "medium",
+   "reason": "ADA accessibility policy response work"
+  },
+  {
+   "candidate_id": "historical-d6572e058915#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Political cartoon generator tool design for publication"
+  }
+ ]
+}

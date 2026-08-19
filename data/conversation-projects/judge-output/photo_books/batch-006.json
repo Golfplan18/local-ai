@@ -1,0 +1,486 @@
+{
+  "nexus": "photo_books",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating HonnoldGPT and SynthesisGPT expert person"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical book outline review: innovations, struct"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discovering Claude Code and designing multi-model "
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building a dynamic Dataview-driven dropdown list f"
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm X as model for militant advocacy and non-r"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character foundation framework execution and size "
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire series planning: pricing strategy"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Releasing a paywall-free 'library of human knowled"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution and iterative size o"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GitHub repository setup and symlink workflow"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Debugging a Base filter to embed the effort dashbo"
+    },
+    {
+      "candidate_id": "historical-b742c311aea1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Application of refined prompt to generate book mat"
+    },
+    {
+      "candidate_id": "historical-244c8d2a396b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Power strategies and the 48 Laws of Power"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle evangelist-chorus and duplicate-manuscript "
+    },
+    {
+      "candidate_id": "historical-839583df5598#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Active engagement and real texting with Lili"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Configuring and implementing SynthesisGPT system"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "An 'events-first' AI news filter to strip propagan"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Exploring database technology options and video in"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Comparing Obsidian AI plugins for a Claude Code-ce"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Matter Framework development for Step 32"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing and iteratively refining Ora's 'executio"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Token efficiency optimization and streamlined styl"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical campaign platform: t"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parable refinement for James and Michael's storyli"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Placing parables in American Jesus chapters with A"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Do you have access to the complete library of writ"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing a tiered 7B/14B local-model escalation a"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Establishing expert database with hierarchical tie"
+    },
+    {
+      "candidate_id": "historical-0a1171467e35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "George Floyd as pen name: ethics, practicality, an"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical presidential campaig"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Framework Execution for Blohard Lootnick"
+    },
+    {
+      "candidate_id": "historical-8e8930372c3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "George Floyd as pen name: ethics, practicality, an"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character initiation framework execution and refin"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing Ora's analytical mode/framework architec"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Naming AI assistants with male nicknames (Chad, Ge"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflecting on AI-assisted writing productivity and"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Matter Framework planning and approach"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format negotiation and markdown preference"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementing tiered preservation across multiple f"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Debugging and redesigning the user's AI-assisted n"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test-running the framework on James 'Big Jim' Zebe"
+    },
+    {
+      "candidate_id": "historical-b020d492aa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmological analysis and theoretical physics"
+    },
+    {
+      "candidate_id": "historical-63a2688051d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Proposition-based indexing, semantic compression, "
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Post-publication marketing strategy on Amazon"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Sheets formulas for extracting and formatti"
+    },
+    {
+      "candidate_id": "historical-bc558102121a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reformatting document outline for Google Sheets sp"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google Sheets regex formulas to parse the book out"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing a master Project/Effort lookup table (Ex"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining the Character Framework Layer Twelve Outp"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal response request"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Request for text output"
+    },
+    {
+      "candidate_id": "historical-c89b1c2105cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Converting outline to structured format"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon Description Framework criteria and design r"
+    },
+    {
+      "candidate_id": "historical-150b631559ce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "CSS snippet troubleshooting for two-column propert"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vanessa Hinge outreach decision and opener craftin"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research on definition clarity and syntax for redu"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Learning Obsidian Bases basics: video transcript, "
+    },
+    {
+      "candidate_id": "historical-64f053f270f2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Drafting and revising Chapter 37, 'Romancing the R"
+    },
+    {
+      "candidate_id": "historical-990656ea8fee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter 14 revision: expanding acronym-heavy tool "
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Execution failure and repeated user requests to ap"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vignette structure showing human impact of knowled"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief text-only request"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building 'The Oracle': anti-empire/anti-rentier ec"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted writing meth"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Analysis of Google as a commoditized 'index compan"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter 20 - Meritocratic Disillusionment content "
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical implementation\u2014filters and formulas"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-2fefd61c9a80#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Phukher Tarlson character profile development usin"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Exact-reply test prompt"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Choosing a front-end (LM Studio/AnythingLLM) and h"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single acknowledgment of text-only request"
+    }
+  ]
+}

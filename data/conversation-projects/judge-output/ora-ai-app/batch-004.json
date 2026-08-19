@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Third brain architecture design with local LLM orchestration."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System connection status confirmation."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Ora AI App project identified."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Local LLM model selection and architecture evaluation."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technical documentation of natural language AI agent system."
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conversation processing and ChromaDB indexing pipeline."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases tutorial; different project."
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating decision, not project work."
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction narrative development."
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic AI safety argument discussion."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases filter debugging; different project."
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not project work."
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System resource orchestration and configuration for endpoints."
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Ora AI App project identified."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating prospect analysis and scammer detection."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, not project work."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline management across multiple platforms."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with Ora AI App project identified."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Summary of external articles about Claude Code and Obsidian."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document review for Ora Foundation design."
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Intellectual property and copyright policy framework."
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating platform data integrity issues."
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative elements framework enhancement."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative framework tooling redesign."
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic extension test acknowledgment."
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and personality analysis."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative elements framework organization tooling."
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and MBTI typing."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Interface transcript visibility feedback."
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story narrative organization and chapter outline."
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework inventory confirmation."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Classical mechanics and quantum phenomena evaluation."
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Initiation Framework project."
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and personality analysis."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gear 4 pipeline specifications review."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Knowledge database design; not Ora AI App project."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Agentic RAG architecture with token budgets and hardware tiers."
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and MBTI assessment."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Resource indexing architecture for RAG systems."
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Connection troubleshooting, not project work."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Templater template development."
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and messaging."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian and Smart Connections tutorial summary."
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Web search API comparison for agent/RAG integration."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story dialogue and character interaction expansion."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Remote AI agent teams and human-AI collaboration."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and relationship strategy."
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora tier system capabilities and gear architecture."
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Atomic note framework and documentation."
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt formatting and upload capabilities."
+    },
+    {
+      "candidate_id": "historical-150b631559ce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian CSS snippet for property layout."
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile crafting and messaging."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI agent curation from templates."
+    },
+    {
+      "candidate_id": "historical-7a94181f5723#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt formatting and file upload capabilities."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message tone adjustment."
+    },
+    {
+      "candidate_id": "historical-04fd85ef2913#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google design philosophy and dark patterns."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Style guide framework execution."
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fictional authoritarian policy."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault publishing with Eleventy and Obsidian Publish."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GitHub repository setup and symlink workflow for Ora."
+    }
+  ]
+}

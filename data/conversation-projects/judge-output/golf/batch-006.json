@@ -1,0 +1,426 @@
+{
+  "nexus": "golf",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c1c84a5a77e3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character development; no golf content."
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire about fictional dictator; no golf content."
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI journey and writing purpose; no golf content."
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Detailed golf swing mechanics discussion (hip turn, proactive lower body, classic swing technique)."
+    },
+    {
+      "candidate_id": "historical-a556ddf14f6b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and validation-seeking patterns; no golf content."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Monk mode solitude practice and focus; no golf content."
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapter drafting and character work; no golf content."
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wall Street regulation reference dossier; no golf content."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure for AI-assisted writing method; no golf content."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hacker mindset philosophy and constraint-breaking; no golf content."
+    },
+    {
+      "candidate_id": "historical-d603ba02ccd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hero's Journey and Heroine's Journey framework synthesis; no golf content."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual and RAG techniques for process library; no golf content."
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire press-release generation; no golf content."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic denial and populist voter themes; no golf content."
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Extended cognition white paper outline; no golf content."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual content tone and voice specifications; no golf content."
+    },
+    {
+      "candidate_id": "historical-544f37cebbec#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "URL access restrictions conversation; no golf content."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual-AI communication and visual thinking book; no golf content."
+    },
+    {
+      "candidate_id": "historical-fdfc6429d8d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Wikipedia integration plugin research; no golf content."
+    },
+    {
+      "candidate_id": "historical-cf87dd0bfbb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual practice non-attachment and meditation; no golf content."
+    },
+    {
+      "candidate_id": "historical-c326932c1b69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus thematic implementation; no golf content."
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md documentation learning; no golf content."
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political framework for monument replacement; no golf content."
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Arlington setting and romance arc development; no golf content."
+    },
+    {
+      "candidate_id": "historical-815c09ffd35b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and attraction assessment; no golf content."
+    },
+    {
+      "candidate_id": "historical-ed50481f05a0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "48 Laws of Power book discussion; no golf content."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American King trilogy development; no golf content."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "URL preservation and resilient content design; no golf content."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship processing; golf course design mentioned by girlfriend as passing example."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "File indexing architecture; golf course mentioned as example in file organization list."
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline restructuring; no golf content."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile expansion strategy; no golf content."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Documentation update checklist; no golf content."
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character development; no golf content."
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Paper citation request; no golf content."
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus plot choreography; no golf content."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI voice portraits and propaganda tools; no golf content."
+    },
+    {
+      "candidate_id": "historical-f9e9876d6cc5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message composition and LPGA acronym clarification in dating context."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marilyn Monroe photo caption and visual design; no golf content."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal spiritual transformation and narcissistic abuse processing; no golf content."
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message strategy for specific person; no golf content."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Craft theory on narrative tension; no golf content."
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus character profile; no golf content."
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message filtering strategy; no golf content."
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YouTube link delivery troubleshooting; no golf content."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Projects feature discussion; no golf content."
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing material back cover blurbs; no golf content."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Long-term writing accretion approach; no golf content."
+    },
+    {
+      "candidate_id": "historical-abacfe3e9dad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Edward de Bono thinking methodologies; no golf content."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Jo as author and narrative strategy; no golf content."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical outline restructuring; no golf content."
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI narrative-development frameworks revision; no golf content."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual practice book with middle path framework; no golf content."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; no golf content."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Preface and front matter development; no golf content."
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating strategy and relationship progression; no golf content."
+    },
+    {
+      "candidate_id": "historical-946bf7c0ae2f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physical and emotional aspects of spiritual awakening; no golf content."
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting; no golf content."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI swarm system overview alignment; no golf content."
+    },
+    {
+      "candidate_id": "historical-fa32fdd7ffed#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Professional golf tournament (Jon Rahm at PGA) reporting, not personal practice or spiritual engagement."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ed Zitron article on generative AI; no golf content."
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cannabis craving resistance diary; no golf content."
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting exchange; no golf content."
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal retreat, spiritual practice, and addiction management; no golf content."
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wimbledon line judge technology; no golf content."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System overview update; no golf content."
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM model selection; no golf content."
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting; no golf content."
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Physicist mathematics overreliance in cosmology; no golf content."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Jesus AI hypocrisy-mirror design; no golf content."
+    }
+  ]
+}

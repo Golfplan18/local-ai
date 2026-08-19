@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Foundation Framework analysis for the methodology"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating framework documents for AI-assisted fiction writing"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book Cover Concept Framework development (Phase VI, Step 36)"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book Cover Trend Analysis Framework (Steps 35-37)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book Cover Quality Evaluation Framework (Step 38)"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book Cover Quality Evaluation Framework specification"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework development (Step 31)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework and Evaluation Framework creation"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon Description Framework development (Step 40)"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon Description Framework and criteria documents"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework project overview and methodology discussion"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT configuration, different tool system"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing framework development"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing AI-Assisted Novel Writing Method and Chapter Concept Framework"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document structure improvements for the methodology"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-Assisted Writing Method and Ideation Framework development"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-Assisted fiction writing and Ideation Framework"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Enhancing paired Development/Evaluation frameworks with Character Archetype Library"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Matter Framework planning and approach"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework development for the methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Matter Framework development (Step 32)"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing and updating marketing evaluation frameworks"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book Cover Trend Analysis criteria and design"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Comparing NovelAI and AI Dungeon platforms, not methodology"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Updating marketing frameworks for alignment"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Handoff instructions for continuing methodology work"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Restructuring story-beat, ideation, and plot-refinement frameworks"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon Description Framework criteria development"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Master outline review and systematic enhancements"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic review of Character Foundation Framework pair"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Debugging and redesigning the AI-assisted writing methodology"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character profile refinement with Master Outline updates"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework validation and planning"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic review of Theme Foundation Framework pair"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT creation with writing tools, not methodology"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Phase V marketing frameworks for methodology"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework analysis and criteria"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack editor technical issues, not methodology"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fresh versions of plot chapter development framework"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deep dive into NovelAI features, not methodology"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework enhancement"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-Assisted Writing Method review and plot refinement solution"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-Assisted Novel Writing Method implementation review"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating evaluation frameworks for chapter development"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Code snippet, not methodology"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Incomplete dossier planning, not methodology"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating framework completeness and error correction protocols"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction exploitation instructions, not methodology"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing AI-Assisted Novel Writing Method and frameworks"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Implementing tiered preservation across frameworks"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical Economic Reality Report, not methodology"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project (Diklis Chump), not methodology"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Initial framework pair analysis and criteria alignment"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing reusable framework documents for methodology"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian decline articles, not methodology"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Style Guide Framework pair analysis and enhancement"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of writing AI tools, not methodology"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Concept Framework updates and evaluation alignment"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Expert Teams framework analysis, different framework"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework document updates and refinement"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Auditing outline for content fidelity"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output contract, not methodology"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output contract, not methodology"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Initial methodology document review and feedback"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deep dive into Kink.ai features, not methodology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework verification and preservation protocol identification"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Finalizing separated frameworks with text-based outputs"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT development, different tool system"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework introduction and scope"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper creation tools, not methodology"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Implementing framework recommendations with formatting"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Concept Framework pair review and criteria"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Novel writing draft evaluation and style guide frameworks"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT sub-goals and integrations, different system"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime pieces, not methodology"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Refining preservation system and chapter refinement framework"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Sudowrite + Claude collaboration, tool exploration not methodology"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework integrating plot foundation structure"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Swarm system overview, different system"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime framework, not methodology"
+    }
+  ]
+}

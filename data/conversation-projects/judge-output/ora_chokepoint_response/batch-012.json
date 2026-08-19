@@ -1,0 +1,420 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-52dbaa8e220d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-e66fbf91911a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mentions Chokepoint Capitalism but discusses Doctorow's ideas, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-68b112035b8f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-35fd4c71fd0e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-66684266af3d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-03792b0c388f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-1b48a214d2b6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c63ef13e4a6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-af023942af6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-291f309f9872#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d410ac8be976#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-52dbaa8e220d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-74af1412346c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-10a88ba1019a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b1125ef34aef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c1dad3e45daa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#46",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-9901381f3bfe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d09f187685a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses chokepoints concept in copyright/legal context, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-0b90f51e80c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mentions Chokepoint Capitalism but discusses Doctorow's ideas, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Uses 'stage' terminology but in narrative/book-structure context, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-edc8fdbf81cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with software candidate evaluation"
+    }
+  ]
+}

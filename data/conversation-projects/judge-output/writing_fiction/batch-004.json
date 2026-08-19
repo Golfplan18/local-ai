@@ -1,0 +1,486 @@
+{
+  "nexus": "writing_fiction",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction craft evaluation framework development."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Evaluating tools and platforms for fiction writing."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Knowledge management system, not direct fiction craft work."
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal life discussion with incidental fiction mention."
+    },
+    {
+      "candidate_id": "historical-9efc5b50aa68#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction outline completion and prose-generation preparation."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General output writing system, not fiction craft focus."
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient indicators of fiction writing engagement."
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient indicators of fiction writing engagement."
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-e1e35d5d5869#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient indicators of fiction writing engagement."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development for named fiction novel."
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Copyright implications of AI-assisted fiction writing."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-954a4056e697#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient indicators of fiction writing engagement."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing romantic fiction concept and scenes."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on named fiction novel project."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development for named fiction novel."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient indicators of fiction writing engagement."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework and profiles for fiction."
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction outline completion and prose-generation preparation."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character development framework and profiles for fiction."
+    },
+    {
+      "candidate_id": "historical-f709ec9ca909#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-68955b67ecda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-b3b02b0b77e6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-b2839f2e0ebc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction outline completion and prose-generation preparation."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Single-line formatting request, not fiction work."
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing frameworks for AI-assisted fiction process."
+    },
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named fiction novel with framework/chapter development."
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction craft evaluation framework development."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief formatting request, not fiction engagement."
+    },
+    {
+      "candidate_id": "historical-39e79b3401f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction outline completion and prose-generation preparation."
+    }
+  ]
+}

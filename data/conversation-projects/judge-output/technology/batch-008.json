@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sci-fi fiction worldbuilding, not tech evaluation"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Local AI system: Designing a local-LLM 'quarterback': hardware opti"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific tech tool engagement: Make.md's parallel/duplicated properties display i"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-a7bcabdde0ed#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI tool evaluation: Understanding PrivateGPT implementation and archit"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Long-running AI automation system"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DNS/hosting setup, not technology project"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Empty/template subject or malformed"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "LLM provider research"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model routing/architecture"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Analyzing plot chapter refinement framew"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication, not technology"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction writing process, not technology"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing methodology, not technology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book design workflow, not technology"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conversation corpus/RAG system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific tech tool engagement: Building a dynamic Dataview-driven dropdown list f"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Critique of current AI agent limitations"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Process reflection and dramatic timeline"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#24",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Ed Zitron article arguing generative AI "
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Evaluating and matching different AI mod"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Designing Ora's analytical mode/framewor"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book design workflow, not technology"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: White paper framework development: Big I"
+    },
+    {
+      "candidate_id": "historical-c4740cecb2c7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Philosophical foundations and Dijkstra's"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Orchestrator design and cross-evaluation"
+    },
+    {
+      "candidate_id": "historical-1c3c2408583d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Theme Foundation Framework development"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Continued framework implementation and c"
+    },
+    {
+      "candidate_id": "historical-c2416adced62#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific tech tool engagement: iCloud Drive setup and testing accessibility for O"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: AI Expert Teams concept analysis and web"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Developing The Human Nexus framework inc"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Creating HonnoldGPT and SynthesisGPT exp"
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-99df88574463#27",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model comparison: Comparing Perplexity, GPT-4o, and GPT-4.5 against "
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specific tech tool engagement: Make.md software features, documentation, and syst"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Debating whether an AI can be logically "
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Context gathering, verification of proje"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Discovering the Ideation Framework as th"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#40",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Shopping for a dedicated local-AI comput"
+    },
+    {
+      "candidate_id": "historical-c1ca57ae49c9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tool architecture design"
+    },
+    {
+      "candidate_id": "historical-6e1038e42d3c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Universal reviser output"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-153328554b28#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: AI autonomous agents and societal implic"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#38",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model comparison/selection"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tool building/development"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Auditing outline v4 for content fidelity"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-abb8672364ca#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: AI knowledge acquisition and organizing "
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing methodology, not technology"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Implementing and verifying persona/role-"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Back Cover Blurb criteria development an"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Discussion of a wheresyoured.at tech-ind"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Back Cover Blurb Framework development f"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI service architecture"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Persona implementation for character dev"
+    },
+    {
+      "candidate_id": "historical-941494451b48#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Sleep architecture, work process orchest"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#44",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Agent architecture design and Agent Iden"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology engagement"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technology focus: Personal knowledge architecture and phil"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tech framework: Creating and refining Plot Foundation Fr"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b6178076d6db#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-dca5f0ed1a10#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-56e4174c23ad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-96b46c4f91e2#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-a268d9ca74cb#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-d408acfa9e59#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-c80752c53d0f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-7d7333a1df18#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-66aebfe42a5d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-baea66480190#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-df5bda56cf69#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-b3b6a032d02e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-cb3121855c62#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-13fb05a6080f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus and Lincoln Memorial storyline discussed"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-93eec5509bef#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-205d92d079af#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-fede8f4d6849#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-d642b6acb2b0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-9ddb6d44297b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus manuscript narrative discussed substantively"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-e8e8d2047149#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-35e9a8cf7e55#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus narrative and story elements engaged"
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus character development work on manuscript"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#56",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No American Jesus project vocabulary or context found"
+    }
+  ]
+}

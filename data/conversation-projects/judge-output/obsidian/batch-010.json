@@ -1,0 +1,486 @@
+{
+ "nexus": "obsidian",
+ "batch": 10,
+ "verdicts": [
+  {
+   "candidate_id": "historical-cb6cc4c83f55#6",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-bb74b4ca9068#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-aefc0511b679#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-75e6fd9d83cb#7",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-1ed8e886de28#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-0712d876b1bd#7",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f1f766182695#0",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Engagement with vault/metadata/organization topics."
+  },
+  {
+   "candidate_id": "historical-26e2b454374e#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-a93650948b9f#4",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-3110e0650216#48",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-6f5397542b83#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f1f766182695#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-b87467a30d8c#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-c6bd96773834#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5b178a194e53#5",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-7aaef5d62c81#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-a7b44718e240#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-ccb3026bd90c#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Direct discussion of Obsidian project management methods."
+  },
+  {
+   "candidate_id": "historical-2b6e1ae0390a#4",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-aadf74c2bc1b#12",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-582799e50940#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-7aaef5d62c81#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-03e088f23cb7#6",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-3853dbe35160#2",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Engagement with vault/metadata/organization topics."
+  },
+  {
+   "candidate_id": "historical-43a08dfa2a92#3",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-cd4264dde1d4#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-e9edf7b3ed90#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-59ca8e3d5150#18",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-9db3c1364c88#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-cfefc60d9e45#9",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-ae0b2db41de5#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-8a86cd6d3ce5#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-cd35099a0dce#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-425c94f5aa3c#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-7204c53686df#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-84f0636ad786#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-a496cdef6e46#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-c61f58a6bdb1#7",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Engagement with vault/metadata/organization topics."
+  },
+  {
+   "candidate_id": "historical-d1185875f826#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-ff4be1e73995#2",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-b1b9171c3aed#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-8620bf8fbb65#17",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-bf8a8e2f3c4f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-2a38357288c1#8",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-8d23859fb55e#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-57fa8805da39#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5b178a194e53#6",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-b96238ab1500#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-db66e505a46a#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-3853dbe35160#36",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-73a854fb3bfe#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-9c6c8dc73477#4",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-5519b5c53088#3",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-4f08a2bd70e3#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-fabdc45ad85e#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-c63ef13e4a6a#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-a7057dd34fb0#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f214a9ef874f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-2795bbd667c2#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-de8417a90c21#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-c2416adced62#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-ae58078e56be#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-bee32e1e3497#16",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-7da3b7b5b4d6#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-495c6e662187#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f3afbb36669f#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-44b1884f98e9#0",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Engagement with vault/metadata/organization topics."
+  },
+  {
+   "candidate_id": "historical-5045e44dce6f#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-79de53da45cf#4",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-d834cd41798f#4",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Substantial engagement with Obsidian-related topics."
+  },
+  {
+   "candidate_id": "historical-ff4be1e73995#1",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Incidental mention in unrelated context."
+  },
+  {
+   "candidate_id": "historical-3110e0650216#11",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of Obsidian Bases publication feature."
+  },
+  {
+   "candidate_id": "historical-aee8464ccf84#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-e5140753776a#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-e11bca727453#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-a34f9052c5ec#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-1ec6501e9d57#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-6029893e7e51#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-14a33557c0bf#0",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": ""
+  },
+  {
+   "candidate_id": "historical-f1c0f4bfec5d#1",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Engagement with vault/metadata/organization topics."
+  }
+ ]
+}

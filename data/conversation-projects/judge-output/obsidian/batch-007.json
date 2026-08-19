@@ -1,0 +1,486 @@
+{
+  "nexus": "obsidian",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-65d50f7468a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8b22d98db872#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-41c4eb22ac98#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian homepage and vault organization design"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-3a0012ae92ba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-048e42db88b6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-150b631559ce#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "make.md plugin guide for Obsidian"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-4f52f428430a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-25565ad7fbfd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-c2416adced62#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault file retrieval framework for context"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building atomic notes in Obsidian vault"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing dual-feed indexing system for vault"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-433226858f03#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear Obsidian project engagement"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian transclusion for atomic assembly"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian transclusion for shared content"
+    }
+  ]
+}

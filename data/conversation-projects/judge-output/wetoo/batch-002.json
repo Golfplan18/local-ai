@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e8e8d2047149#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-b8bb1760bb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Main Street Independent production; separate project"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto writing aligned with We Too political framework mission"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King character project; separate adjacent project"
+    },
+    {
+      "candidate_id": "historical-d1e23ad9cacb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book development work: chapter, outline, or structure"
+    },
+    {
+      "candidate_id": "historical-76b55315be70#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct We Too engagement: book content"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#63",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-a7a7da5fe3e3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct We Too engagement: outline/structure"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#63",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-fc15f6db2316#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book development work: chapter, outline, or structure"
+    },
+    {
+      "candidate_id": "historical-35e6476fa681#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct We Too engagement: outline/structure"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-9185d1b6bdf0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6dd9abd5d7dd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct We Too engagement: outline/structure"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-ebf2e6268387#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book development work: chapter, outline, or structure"
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-752ca44d214d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto writing aligned with We Too political framework mission"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6aadb2eefd0b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct We Too engagement: book content"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto writing aligned with We Too political framework mission"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book development work: chapter, outline, or structure"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-6dd9abd5d7dd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    },
+    {
+      "candidate_id": "historical-b3b02b0b77e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-2aaa983b1dad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book development work: chapter, outline, or structure"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-3bddb955ade3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-a1c03710767f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-0c09a009208d#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#21",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-c1c84a5a77e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King character project; separate adjacent project"
+    },
+    {
+      "candidate_id": "historical-f2506d36e1b6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King character project; separate adjacent project"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#66",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-3bf9bd18eb7a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political strategy and narrative work aligned with We Too objectives"
+    },
+    {
+      "candidate_id": "historical-0a31d2b7f1c7#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient connection to We Too project engagement"
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-225a3af8c9be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development; separate project"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto writing aligned with We Too political framework mission"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manifesto writing aligned with We Too political framework mission"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political book chapter/outline/structure work aligned with We Too mission"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "golf_course_design",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Developing the Ideation Framework for Diklis ."
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Outlining Extending Human Cognition framework."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Extended cognition framework and SynthesisGPT."
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: DIKLIS CHUMP satirical framework applied to r."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Introduction to satirical fiction project and."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses decades of golf course design notes to turn into book."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: WritingGPT configuration: writing style and t."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Golf reference not substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Writing guidelines review and improvement."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Planning to write about golf as spiritual practice."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf used as dating/social topic, not project work."
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf technique/practice, not project engagement."
+    },
+    {
+      "candidate_id": "historical-9e75bc94aa5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf used as dating/social topic, not project work."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf technique/practice, not project engagement."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project matrix explicitly defines golf course design objectives."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf technique/practice, not project engagement."
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-b492ae6ade33#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf technique/practice, not project engagement."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Building SynthesisGPT framework and creating ."
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal golf technique/practice, not project engagement."
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Golf reference not substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Engagement with golf spirituality and writing about golf."
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Golf reference not substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Reorganizing foundation structure using meta-."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Generating satirical political parody article."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Generating satirical authoritarian regime con."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Golf reference not substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Developing 'The New Communist Manifesto' outl."
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Executing instructions to generate the Expand."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Framework improvements - enhancing Progressiv."
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Developing frameworks for story and character."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or topic: Document analysis and synthesis of AI Expert ."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf course design content."
+    }
+  ]
+}

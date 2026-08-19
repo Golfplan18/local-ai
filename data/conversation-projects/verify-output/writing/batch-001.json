@@ -1,0 +1,246 @@
+{
+  "nexus": "writing",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General writing tool development, not fiction methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Visual/emotional content creation for fiction"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluating existing writing tools, not methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Blogging mastery sub-goal, not fiction methodology"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reviewing AI-Assisted Novel Writing Method frameworks"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Methodology framework development"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not directly about fiction methodology"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creating handoff summary of fiction methodology"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluating existing writing tools, not methodology"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating chapter development evaluation frameworks"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multi-AI workflow for fiction project"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing general cognitive tool, not fiction methodology"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing framework for fiction methodology"
+    }
+  ]
+}

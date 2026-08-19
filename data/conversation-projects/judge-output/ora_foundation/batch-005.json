@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8b3dff26952a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-abd088eab110#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-941494451b48#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-fc4250471caa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-5ee063d04e40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-a3b201b32fc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit reference to Ora Knowledge Foundation; direct project engagement"
+    },
+    {
+      "candidate_id": "historical-c1c84a5a77e3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-7eb3419147b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-68955b67ecda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-c326932c1b69#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-90240744c3c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-c2e8f076a97b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-872bae7104b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-f709ec9ca909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-dd3f3774c641#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-13ef5c257426#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-81af61717782#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-6f76c035cc7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-1a491317e118#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-92d3704a8af4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-c6a63e6fcc33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-8d3c6d1a7326#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-f1a27856b26b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-3b660e0ad70a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No Ora Foundation project engagement; different subject matter"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation reference is to narrative/character concept, not Ora project"
+    }
+  ]
+}

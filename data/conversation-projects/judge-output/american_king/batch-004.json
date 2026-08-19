@@ -1,0 +1,486 @@
+{
+ "nexus": "american_king",
+ "batch": 4,
+ "verdicts": [
+  {
+   "candidate_id": "historical-fe7ecea4d45e#6",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-691590b40629#6",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantial engagement with campaign and King"
+  },
+  {
+   "candidate_id": "historical-662d0f3118bd#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-fe476c3aec70#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Policy and regime scenario development for manuscript"
+  },
+  {
+   "candidate_id": "historical-e89abf3ffcb5#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-96f69a8a2f35#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-b4f3b9b9a06d#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-89e667eccd46#3",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-56370628b15b#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-39bf3277dd9e#4",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-f4b4dd95d1ff#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-d7ece8fdb1c4#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-70aa02237058#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-d8067861c8b1#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-05306a125cea#2",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Strategic analysis of electoral campaign elements"
+  },
+  {
+   "candidate_id": "historical-e350d83c9756#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-52f70761fba2#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-a7b829d15ce0#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-6357ec9c2a55#2",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-f0d502a4bd13#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-4c75792e9193#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-df5bda56cf69#0",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Multiple route matches with substantive project concepts"
+  },
+  {
+   "candidate_id": "historical-8ac6e5e4c5f7#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-de5da6e19198#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-1f4f2a36f76d#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-9e96e6ba4900#8",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-c3f9daa6e005#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-e10f540a5630#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-d6749745bbe5#2",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-610f2c5b9318#48",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-da6c84d37931#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-1ed8e886de28#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-8d737dcf7ce1#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-ce317ce95a2a#12",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-66a94d441650#8",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-14b9ceccf826#7",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Policy and regime scenario development for manuscript"
+  },
+  {
+   "candidate_id": "historical-742e9b17900d#9",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Policy and regime scenario development for manuscript"
+  },
+  {
+   "candidate_id": "historical-42ccc7bc03fe#22",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Strategic analysis of electoral campaign elements"
+  },
+  {
+   "candidate_id": "historical-67af583186fa#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-906f6a24e833#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-d1185875f826#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-eb675ae17c49#22",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Strategic analysis of electoral campaign elements"
+  },
+  {
+   "candidate_id": "historical-5045e44dce6f#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-ce317ce95a2a#15",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-7c5769f58a2a#7",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-7d4b3c06a311#4",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-3110e0650216#4",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-67dcee300975#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-bed5555d1b9b#6",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-51e34e12686e#5",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-48c787947c58#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-408e770f67b0#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-fe7ecea4d45e#7",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantial engagement with Malcolm and King"
+  },
+  {
+   "candidate_id": "historical-14b9ceccf826#41",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-93eec5509bef#0",
+   "verdict": "yes",
+   "confidence": "medium",
+   "reason": "Multiple route matches with substantive project concepts"
+  },
+  {
+   "candidate_id": "historical-88711618073c#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-63b056b2555e#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-ff4be1e73995#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-408e770f67b0#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-d938dc8b47d7#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-3525cba4af50#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantial engagement with Malcolm and Hayzeus"
+  },
+  {
+   "candidate_id": "historical-19335610c764#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-355d2f7817d0#4",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-d561bd0e1bed#6",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Discussion of governing challenges and implementation"
+  },
+  {
+   "candidate_id": "historical-3e75a52e5898#7",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  },
+  {
+   "candidate_id": "historical-d1c71407f27e#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-fe35b9d77e73#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-313124f8e3ea#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-197f9bba79b6#2",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Entity/name routes present but minimal substantive content"
+  },
+  {
+   "candidate_id": "historical-e1a6fc7514a3#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Policy and regime scenario development for manuscript"
+  },
+  {
+   "candidate_id": "historical-f1c0f4bfec5d#1",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-2fefd61c9a80#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-54169f247bf0#1",
+   "verdict": "no",
+   "confidence": "low",
+   "reason": "Entity/name routes present but minimal substantive content"
+  },
+  {
+   "candidate_id": "historical-ca80040f1244#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-e12deb632496#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-589bf9777155#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Narrative structure and framework refinement for trilogy"
+  },
+  {
+   "candidate_id": "historical-a3b201b32fc5#0",
+   "verdict": "no",
+   "confidence": "high",
+   "reason": "Project name in index, list, or status roll-up"
+  },
+  {
+   "candidate_id": "historical-691590b40629#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-f1622449ddcd#0",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive discussion of Malcolm Little King character development"
+  },
+  {
+   "candidate_id": "historical-785a4bb90713#3",
+   "verdict": "yes",
+   "confidence": "high",
+   "reason": "Substantive engagement with project objectives and milestones"
+  }
+ ]
+}

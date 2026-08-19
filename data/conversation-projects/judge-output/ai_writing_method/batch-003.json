@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses paired frameworks for AI-assisted writing methodology directly."
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Format preference instruction only, no project engagement."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Writing task execution, not method development work."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Content creation task execution, not method development."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-7204c53686df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated personal topic."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Content creation task execution, not method development."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system research, not fiction writing method."
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system mode file verification, not AI-assisted fiction writing method."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iterating on writing methodology and style guide development."
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflecting on personal writing methodology and creative approach."
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflecting on AI-accelerated writing methodology and framework refinement."
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Implementing character frameworks for the writing method."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction content creation, not method development."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Implementing persona additions to character development frameworks."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing story-beat framework and scene-level methodology."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing methodology for separating scene what from how."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reviewing and improving writing guidelines that support the method."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Oura system work."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction content creation, not method development."
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing framework loops and ideation-framework for novel-writing system."
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of engagement with writing method."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction content creation, not method development."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system mode file verification, not AI-assisted fiction writing method."
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Executing structured method implementation threads."
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: economic forecasting analysis."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction content creation, not method development."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test message, not project work."
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical instructions, not project work."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "marketing",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing strategy for reaching meaningful audiences with writing"
+    },
+    {
+      "candidate_id": "historical-de20b1d76f4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing strategy for reaching meaningful audiences with writing"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-fac0edc87b4e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon book marketing campaign and channel strategy"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing strategy for reaching meaningful audiences with writing"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book cover trend analysis and branding concept framework"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book launch sales strategy and revenue planning"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book cover trend analysis and branding concept framework"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing craft guidance not marketing strategy"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publisher content pipeline and distribution strategy"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book narrative architecture with personal branding strategy"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-63eaedc497c9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Expert and influencer marketing outreach strategy"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-085d7ed782ef#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing strategy for reaching meaningful audiences with writing"
+    },
+    {
+      "candidate_id": "historical-d8f0a89d9518#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ideation framework as hub for cross-media marketing"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not marketing"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing strategy for reaching meaningful audiences with writing"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-a19aa7d0ffc5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction, not marketing reusable strategy"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon description marketing framework"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tools/capabilities discussion, not marketing"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No substantive marketing strategy engagement"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon description marketing framework"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative framework not tied to marketing strategy"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses digital sovereignty and persistent memory systems , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses document review and clarification before executing, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses personal ai coach concept - introducing memory-bas, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses dating profile analysis and romantic messaging str, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses architecture design decisions and final three-mode, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses reviewing library content and the inference report, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses executing an ideation/evaluation framework for the, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses authorship and copyright philosophy when ai execut, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses curating ai agents from aiagentslist.com with comp, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses executing ideation framework for diklis chump: hig, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses processing 39,000 archived ai conversations into a, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses creating stage-specific instructions for six stage, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses zoo-walk presence, masculine drive vs. rhythm/rest, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-d040426a4f37#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses character profile development for buford b. righte, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses re-evaluating output, diagnosing the framework's c, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses personal ai system architecture and persistent mem, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses dating conversation analysis and masculine framing, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses technical implementation and global accessibility , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses hinge/tinder match evaluation, message crafting, a, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses creating paired reality/propaganda bullet points a, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses virtual romantic partner design - creating photore, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses mindfulness practices and meditation techniques fo, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses long-term accretion approach to writing the projec, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses designing a real-time voice-to-screen ai interface, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses exact-reply test prompt, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses universal reviser output, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses documentation update requirements checklist, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses dating as marketing funnel; pipeline management, l, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses book metadata, description, keywords, and seo opti, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses spiritual practice as life integration: exchange s, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses dating profile analysis, polarity preference, and , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses developing a statistical/pattern-recognition theor, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses prior art repository concept, existing examples, i, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses dating profile ocr, polarity analysis, mbti typing, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses building a visceral-imagist word lexicon for writi, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses crafting and refining dating message to amanda, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses reviewing and refining the pas (parliamentary asse, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses thread d: book outline v4 restructuring and conten, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses thread e: system overview update for 17-mode syste, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses brainstorming a 'brand tax' propaganda/book concep, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses critique of evaluation draft quality/conformance a, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-7ad456394c24#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses poetic restatement of creative impulse and relatio, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses vault and old-chat management philosophy ('forward, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses creating and evaluating wade n. whatever character, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses hinge dating profiles, personality analysis, and r, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses assessing authenticity of dating prospect and scam, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses strategic vision for ai-enabled idea transmission , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses reflecting on expressing gratitude toward ai witho, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses starting a new general-purpose diary thread, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-b25ebfb53432#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses crafting messaging and understanding amanda's prof, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses cognitive load reduction and societal implications, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses universal reviser output, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-3c8f7bd0bf90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses personal relationship narrative and novel writing , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses drafting complaint letters to medical and nursing , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses building the case for reductionist scientists; bir, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses communication strategy, qualification through invi, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses discovery of unprecedented capabilities built into, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses thread b: boot file updates with 17-mode registry , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses ethics of quarantining dangerous knowledge, ai pus, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses bumble dating profile messaging and song selection, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses courting, arranging, and debriefing a bumble date , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses narrative and framework development - creating aur, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses oracle project vision and conceptual framing, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses responding to chatgpt challenge while maintaining , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses pattern recognition and intuition verification pro, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses test message verification, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses providing fresh versions of plot chapter developme, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses feminine personality types, relationship dynamics,, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses digital surveillance press release example establi, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses defining mary magdalena as a voice of moral indict, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses redesigning the ideation/evaluation/mapping framew, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses personal ai vault memory/knowledge-organization th, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses token efficiency optimization and streamlined styl, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses building 'the oracle': anti-empire/anti-rentier ec, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses running the ideation evaluation framework and clar, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses crafting dating profile messages with appropriate , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses executing character development framework on ameri, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses delete all memory request, not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses curating list of ai agents available from smythos , not 1990s audio diaries"
+    },
+    {
+      "candidate_id": "historical-1bdd76bc4d9f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discusses codifying craft intuition and designing a dual-fee, not 1990s audio diaries"
+    }
+  ]
+}

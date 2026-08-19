@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-87514730b617#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Lootnick Treasury Secretary character"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tech silos/hackers book"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump dystopian character"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-839583df5598#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel-writing methodology"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-e944872d1fdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marcus Johnson antagonist coalition"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-595b505ec749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-62820d6c10fc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gospel Revelation work"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-5dc4f6b6ef70#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gospel Revelation work"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-0aedbef3df0b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Harlan Byrd antagonist character"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-5fa55ff0ade2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic analytical framework"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing/proofreading tools"
+    },
+    {
+      "candidate_id": "historical-bfa31bcf2f1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical connectivity issue"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic chapter framework"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 3"
+    },
+    {
+      "candidate_id": "historical-add8a658b7b0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic chapter framework"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus thematic overview"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-43a46efcb580#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-f1b39378527f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Supreme Court book project"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-70c3d876ce20#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative"
+    },
+    {
+      "candidate_id": "historical-a6368f78ecaa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "O'Vannity antagonist narrative"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-e6d87dd73ee5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative"
+    },
+    {
+      "candidate_id": "historical-e8c01bd404a9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "O'Vannity antagonist narrative"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-request for text-only output"
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship content"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient context"
+    }
+  ]
+}

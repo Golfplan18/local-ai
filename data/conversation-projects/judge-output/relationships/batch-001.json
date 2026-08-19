@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ebcd97747ed9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story teaches emotional connection and shared understanding."
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge catalog work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge catalog work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-d72434e83719#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-1b3998cff711#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-d5f30b083dde#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses altruistic contribution framework aligned with relationships project objectives."
+    },
+    {
+      "candidate_id": "historical-cd3affb195a5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge catalog work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-efe8eb44ab79#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-27e3b263b325#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical or administrative work, not relationships."
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical or administrative work, not relationships."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-3b39f9501d71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO/metadata work, not relationships."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/tool development work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-a64dfbfca7d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO/metadata work, not relationships."
+    },
+    {
+      "candidate_id": "historical-0534973a8d42#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Family relationship and compassion practice engagement."
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI/tool development work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Buddhist practice topic, needs excerpt review to confirm relationship focus."
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-a53191731943#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Family topic but unclear focus on relationships."
+    },
+    {
+      "candidate_id": "historical-b029d4de4873#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO/metadata work, not relationships."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical or administrative work, not relationships."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-f67f2ebfd80c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Vague subject line provides insufficient basis for judgment."
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-150544113dee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist compassion and relationship practices."
+    },
+    {
+      "candidate_id": "historical-354d7910e48d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative exploration of relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-88240b584023#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO/metadata work, not relationships."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Policy/economic work, not relationships."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-5533e4b23002#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO/metadata work, not relationships."
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-ff05bf490f95#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Campaign/manipulation work, not relationships."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-35db0428f286#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dating and relationship strategy content."
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist compassion and relationship practices."
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-d3dc1edef3f7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-b268aebce446#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-b625dff005a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/satirical work, not relationship engagement."
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Political/satirical work, not relationships."
+    },
+    {
+      "candidate_id": "historical-194d3640c266#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-6f52f92c3c9b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Family relationship and compassion practice engagement."
+    },
+    {
+      "candidate_id": "historical-d2b87b3e69be#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Tool development but with relationship context."
+    },
+    {
+      "candidate_id": "historical-92f34728e9fa#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient excerpt content or unclear connection to relationships."
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Family topic but unclear focus on relationships."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-ac67a6505ac0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Buddhist content but unclear if about relationships."
+    },
+    {
+      "candidate_id": "historical-28c1f31866ba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject focuses on compassion and empathetic practice."
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly engages with relationship dynamics."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-52046b4b78e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-d23a0b236c5d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-90240744c3c0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-99df88574463#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing business model or distribution strategy"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book concept brainstorming for propaganda work"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Managing book outline across AI tools"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing business model or distribution strategy"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-54ab94725ead#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-5982ab19eb25#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Managing book outline across AI tools"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-b1557b8e3e3a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-cd3affb195a5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-0005570335ae#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing business model or distribution strategy"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-6f76c035cc7f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-5c39f6894381#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-8140ff4b921d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#66",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing business model or distribution strategy"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-6f52f92c3c9b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-3bddb955ade3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient publishing-specific signals"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-publishing project or activity"
+    },
+    {
+      "candidate_id": "historical-76f769b5834d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform/website/infrastructure discussion"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-4e0bbd37706e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-334e95d91d00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book/novel writing or character development work"
+    }
+  ]
+}

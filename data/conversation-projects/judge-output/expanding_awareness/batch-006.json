@@ -1,0 +1,486 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-e11704732e0f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Expanding Awareness cosmology project work"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7196bd3360ab#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Expanding Awareness cosmology project work"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-52f70761fba2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-e17e3306ef2f#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-59aef9bc777a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-c3cd36165661#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Science journalist outreach for Hubble's Law challenge"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-334ec862f185#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-c2c5553fd866#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-2f549ebc64a6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-ea41faee4ed7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Expanding Awareness cosmology project work"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-9b5fb91c1839#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Expanding Awareness cosmology project work"
+    },
+    {
+      "candidate_id": "historical-8e9ef2e746fd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database (generic, not specific to project)"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-8143581e5e52#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-05d6d23810e5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Insufficient direct cosmology project engagement"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Expanding Awareness cosmology project work"
+    },
+    {
+      "candidate_id": "historical-1a3a64a1d868#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology manuscript review and refinement"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient direct cosmology project engagement"
+    }
+  ]
+}

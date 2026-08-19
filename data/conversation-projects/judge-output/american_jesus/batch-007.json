@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0f4f562da046#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-5737480b9619#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-4290f073453d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework, not American Jesus project work"
+    },
+    {
+      "candidate_id": "historical-74af1412346c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-654129afa1bc#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework, not American Jesus project work"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic book-promotion framework, not specific to American Jesus"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-82be9c6052d4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-b2fb58333914#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-048e42db88b6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-5ecbb4a87af9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-00ad302f5f6c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-output preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-43a46efcb580#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-b4f3b9b9a06d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-9a573d71711e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-2428882d8db7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-d408acfa9e59#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-a6368f78ecaa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-f1afc989441b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-85797fd09a8f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework, not American Jesus project work"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-48bf9dfd1c5d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-c3f9daa6e005#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-445c67dbe76c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-e8c01bd404a9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-8d700d0ac8c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient evidence of direct American Jesus project engagement"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-8d8cf54012e8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-e7c6773928fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-ce729e45963a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-a0594972f5a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Low similarity and insufficient project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-66aebfe42a5d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character or chapter development for American Jesus narrative"
+    }
+  ]
+}

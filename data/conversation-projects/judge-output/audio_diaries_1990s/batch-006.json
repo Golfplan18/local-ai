@@ -1,0 +1,486 @@
+{
+  "nexus": "audio_diaries_1990s",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-735c5da9369b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-630f6ececa81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-68e33a231fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of audio diaries project with mission and objectives."
+    },
+    {
+      "candidate_id": "historical-4f4ff07403cb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-9d9664d2cde0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-735c5da9369b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-9d832990172b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-4f4ff07403cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-002cddbe8a40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-d6b5b624dd4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-947060573768#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-eceb8510d307#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-cf87dd0bfbb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-24fdd8cefea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-692180c164a8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    },
+    {
+      "candidate_id": "historical-61052e1487da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with audio diaries project."
+    }
+  ]
+}

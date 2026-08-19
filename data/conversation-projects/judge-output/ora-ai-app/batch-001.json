@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Empty code block error handling, no connection to ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic dossier planning unrelated to ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project framework distinct from ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire exploitation instructions unrelated to platform"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI Agents white paper on coordinated reasoning, NLP, and multi-agent systems"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire economic content not related to app"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI Swarm system overview aligning with updated book outline specifications"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Mistral NeMo evaluation for local AI platform deployment"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "LangFlow documentation for RAG and agent prototyping"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical press release templates for political content"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical articles about authoritarian decline unrelated"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI Expert Teams framework synthesis for multi-agent systems"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Ora project RAG pipeline, mode selector, natural language programming failures"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cooperative agreement working principles"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura development priorities (separate project)"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Microphone enablement unrelated"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Recursive Master Problem Solver framework with modular open-source AI architecture"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System overview v2 design review covering architecture updates"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum mechanics white paper using wobble model"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents curation from external sources"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MLX local AI framework installation and project dependencies"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Stage-specific instructions for authoritarian satire narrative"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Public-domain literature corpus for Pepper voice project"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction distinct from app development"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime documentation for political parody"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Authoritarian regime satirical fiction unrelated"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "System directory structure organization for conversational system"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Paired reality/propaganda points for political satire project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System Overview update for 17-mode system and boot file"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book outline v4 restructuring as part of Ora system updates"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting only"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Auditing outline v4 content fidelity for Ora documentation"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Smythos AI agents curation"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "LM Studio model format evaluation (GGUF vs MLX)"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "The Human Nexus framework unrelated"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop setup for Mac Studio"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT framework building unrelated to ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Expert systems belief documentation for structured reasoning"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy pieces unrelated"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy commentary unrelated"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MIT Supermind Ideator overview"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "MLX model error in /local-ai/ directory during system test"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Boot file updates with 17-mode registry and browser evaluation"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting exchange"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit Ora visual protocol research and specification development"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Completing Thread C deliverables for Ora system work"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliament of Self framework handoff"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework creation framework and Natural Language Programming book outline"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Template title replacement troubleshooting"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Python/Gradio tool for writing with APIs"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relevance AI template agent curation unrelated"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development framework personas"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora installer development, removing Claude Code dependency"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework persona recommendations"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transform outline into narrative prose"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora technical outline structural review and assessment"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents generic list compilation"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Markdown-based virtual memory system for AI context management"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT configuration and existing GPT review"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Standing rule for suppressing follow-ups"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test exchange only"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangChain template agents extraction"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Git and Obsidian vault synchronization"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Documentation update requirements unspecified"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political parody articles not app-related"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical narratives about regime collapse unrelated"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian content not related"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating advice unrelated"
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Engagement strip log for greeting"
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora public-domain release impact on competitive landscape"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Adding mental models and educational resources to knowledge catalog"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Adding mental models and resources for Ora's knowledge systems"
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-c2943d7513d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-b87467a30d8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "iCloud passwords and miscellaneous"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting only"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Document review before executing Ora system deliverables"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT style and tone configuration"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Recovering Kira conversation via OCR"
+    }
+  ]
+}

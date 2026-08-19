@@ -1,0 +1,78 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline restructuring; technical document management without AI-method engagement."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit authorship-vs-prose-production distinction; AI as prose delegate to human narrative architect."
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pen name generator tools; character-profile curation, not AI-assisted fiction method."
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative-elements framework restructuring; organizational tools absent AI-method depth."
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework comparison and verification; infrastructure update unrelated to method development."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Specific chapter outline; creative fiction application without AI-method discussion."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline creation and condensing; direct creative work, not method documentation."
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent architecture and NLP framework; different project unrelated to fiction-creation method."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Markdown heading hierarchy fixes; technical document formatting, not writing-method work."
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thread organization and context-window discussion; project logistics, not method engagement."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline additions and revisions; specific-project content work without method scope."
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Publishing automation and product generation pipeline; production efficiency, not method formalization."
+    }
+  ]
+}

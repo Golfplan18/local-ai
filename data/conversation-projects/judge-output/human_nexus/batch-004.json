@@ -1,0 +1,486 @@
+{
+  "nexus": "human_nexus",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: evaluating aria's dating profile and crafting"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: creating honnoldgpt and synthesisgpt expert p"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: reviewing and refining the pas (parliamentary"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: split framework design finalization and nomen"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: novel writing development: draft evaluation, "
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: various topics (conversation 13 - conten"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: core system architecture and mvp plannin"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI Agents in business/implementation context"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: create chapter 9 outline and condensed versio"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: theme refinement framework development"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: enhancing paired development/evaluation/crite"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: coaching on hinge match kira: profile analysi"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: back cover blurb framework introduction "
+    },
+    {
+      "candidate_id": "historical-c1ca57ae49c9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: defining and naming the personal 'effort"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: industry validation and competitive advantage"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: initial review of dating profile and compatib"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: task review and framework inventory conf"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: thread b: boot file updates with 17-mode"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: framework project overview and character"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: personal ai swarm architecture with rag "
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: act 3, chapter 13 betrayal outline creation"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: create chapter 13 outline and condensed versi"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: developing worldbuilding systems for redempti"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: applying satirical authoritarian framework to"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ocr profile extraction, polarity analysis, mb"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents research: agentic rag technical architecture: mani"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: providing fresh versions of plot chapter deve"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: designing a local-llm 'quarterback': har"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ideation framework development integrating pl"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: continuing discussion"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: developing 15-point outline for act 3, chapte"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ideation framework development integrating pl"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: dating profile analysis and mbti personality "
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: white paper framework development: big i"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: image refinements of angry man pressing "
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: restructuring the ai-assisted novel writing m"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: ideation framework validation and strate"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Productivity/workspace, not AI Agents research"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ai-assisted writing framework project overvie"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: touring the hugging face ecosystem (mode"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: condensing outline and establishing character"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ai-assisted fiction writing framework develop"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: character framework execution for blohar"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: character initiation framework execution"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: multi-ai collaboration strategy and creative "
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: developing and refining ai-assisted writ"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: expanding foundational vision section wi"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: polarity analysis and message development for"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: ocr transcription and polarity analysis of wo"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: architecting third brain ai system with "
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: workflow integration with google sheets "
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: session management and conversation summ"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: drafting, reviewing, and editing section"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: drafting, reviewing, and editing section"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: designing the project orchestration / pr"
+    },
+    {
+      "candidate_id": "historical-feddf97774e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct Human Nexus reference"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: dating profile messaging and mbti personality"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: generating first script and encountering"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: character initiation framework execution"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: ai safety argument consolidation and ref"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: claude code tooling and development exec"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: publishing platform features and proofre"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing work, not about AI Agents"
+    },
+    {
+      "candidate_id": "historical-14efb533fc94#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: hinge introduction for ati"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: rag and conversational-memory architectu"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: ai praise drafts for forging a new life "
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Productivity/workspace, not AI Agents research"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: review and update recommendations."
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Off-topic: reviewing the ai-assisted novel writing metho"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: framework creation framework capabilitie"
+    },
+    {
+      "candidate_id": "historical-d23a0b236c5d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents book outline"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: text capture verification and expansion "
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: image analysis and description"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No Human Nexus/AI Agents engagement: adding theoretical foundations and model"
+    }
+  ]
+}

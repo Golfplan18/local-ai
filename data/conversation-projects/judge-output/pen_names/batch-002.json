@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaints unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wellness practices unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System design unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-d7388c85a153#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle project delivery/anonymity, not pen names"
+    },
+    {
+      "candidate_id": "historical-0a1171467e35#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive pen names discussion"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-8e8930372c3c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive pen names discussion"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-e6b2424c255b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-6be9b11c926e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive pen names discussion"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-295d121c32f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-3f69df8f6f34#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-c5c1222a4eff#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-99de6fe6ce95#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-71e78fbe498f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive pen names discussion"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-769863476d32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pen names with public-facing infrastructure"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive pen names discussion"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on pen names project"
+    },
+    {
+      "candidate_id": "historical-2022e12b7a77#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault unrelated to pen names"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ac069c069250#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/story framework for American Jesus"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus project engagement (1 keywords)"
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project engagement (3 keywords)"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parable development for Hayzeus narrative"
+    },
+    {
+      "candidate_id": "historical-fbc7a2d3ec55#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parable development for Hayzeus narrative"
+    },
+    {
+      "candidate_id": "historical-85797fd09a8f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-f4afdfa9869f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-fc88a8e5d794#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-44f72ed1685d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-b9e6912c3609#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-cb1195a1877c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/story framework for American Jesus"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-d746a9b698ab#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-654129afa1bc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story documentation for American Jesus"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-b41a2b9f1ebe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/story framework for American Jesus"
+    },
+    {
+      "candidate_id": "historical-85797fd09a8f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-e55ad76bcce4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-197f9bba79b6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-5b9fe61435e7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-54169f247bf0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-c06249b8d52e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project engagement (11 keywords)"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-31e11cc8108e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/story framework for American Jesus"
+    },
+    {
+      "candidate_id": "historical-add8a658b7b0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus project engagement (1 keywords)"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-e55ad76bcce4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project engagement (13 keywords)"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-31e11cc8108e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel outline for American Jesus series"
+    },
+    {
+      "candidate_id": "historical-d9e75149f365#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-3e4ce1b645a3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project engagement (9 keywords)"
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-31e11cc8108e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-d9e75149f365#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-a52103361975#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-c06249b8d52e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus project engagement (2 keywords)"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-023f5e88bbc3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parable development for Hayzeus narrative"
+    },
+    {
+      "candidate_id": "historical-8a6f72c1245a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-4c52db0d3aa9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-83f6fd3f38d9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parable development for Hayzeus narrative"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to American Jesus project"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic (meta/system/technical work)"
+    },
+    {
+      "candidate_id": "historical-c80752c53d0f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-31e11cc8108e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter work for American Jesus trilogy"
+    }
+  ]
+}

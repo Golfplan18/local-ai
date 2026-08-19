@@ -1,0 +1,246 @@
+{
+  "nexus": "obsidian",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic belief system documentation, not Obsidian-specific"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Smart Connections blind spot, Excalibrain, property-based linking"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Properties schema design: toggle vs grouped properties"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book narrative and personal philosophy, not vault engineering"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical fiction project (Diklis Chump), not Obsidian"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "PDF analysis of AI system, not Obsidian vault"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Human Nexus framework development, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Jesus AI meme engine project, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Diklis Chump writing framework, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora mode file verification, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora visual output system, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian Base table property display and UI"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Long-term vault accretion and narrative storage"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Ora thread C mode updates, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#42",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian properties sidebar display with plugins"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Document outline auditing, not vault engineering"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian plugins for header-folding and navigation"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#36",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian embeds, callouts, and macro plugins"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian Bases feature overview and use cases"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "RAG/ChromaDB research architecture, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-317ba41c35f3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hierarchical tagging and navigation structure"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Self-correcting knowledge systems philosophy"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#52",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Dataview query fixes and properties panel"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Query filter security, connection to Obsidian unclear"
+    },
+    {
+      "candidate_id": "historical-a7bcabdde0ed#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "External tool integration (PrivateGPT/NotebookLM)"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Semantic structuring and vault flattening"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault restructuring from folders to flat"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building external knowledge system/Wikipedia in vault"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge architecture and vault design"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge-quality design in Obsidian system"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Prior art repository and white papers, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Chat extraction for book/news platform, not vault"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "System dynamics resources, not Obsidian vault"
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Obsidian navigation/UX design for information access"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vector vs links/properties architecture decision"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal philosophy (ego/override), not vault work"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI agent architecture (Claude Skills), not Obsidian"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Obsidian homepage property and priority ranking"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Framework updates for writing project, not Obsidian"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Chat extraction for book projects, not vault"
+    }
+  ]
+}

@@ -1,0 +1,264 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Plot Foundation Framework, versioning, and choice-driven plot structure for fiction."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applies framework to develop chapter outline for manuscript, showing method in practice."
+    },
+    {
+      "candidate_id": "historical-efebec279550#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical test request, unrelated to writing methodology."
+    },
+    {
+      "candidate_id": "historical-6c9aec728ad4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Extended discussion of two-engine writing method (outlining vs. embodiment/feeling)."
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework inventory review discussing AI-Assisted Novel Writing Method and initiation frameworks."
+    },
+    {
+      "candidate_id": "historical-b1125ef34aef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses separating architecture (outline) from prose rendering, core method principle."
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline applying framework including Loose End Analysis Framework."
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework overview discussing Character Initiation Framework and method structure."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep engagement with character framework at scale, narrative design system architecture."
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System metadata/processing output unrelated to writing methodology."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon Description Framework applied as extension of method to book marketing."
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating patterns analysis, completely unrelated topic."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System refinement discussing subplot mechanics, character psychology, narrative design."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter outline development showing framework application to fiction project."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile filtering preferences, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subplot integration mechanics, character role assignment, adaptive design loop discussion."
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework refinement adding tropes to ideation process."
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Editing and refining Chapter Refinement Framework documentation."
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and messaging strategy, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework application and adoption discussion, though excerpt is brief."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-assisted writing notes for book outlines using method/themes."
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Editorial Gap Analysis Framework review and execution instructions."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework as living document addressing solitary writer feedback problem."
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of general writer monetization methods, not about the method itself."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book project conceptualization brief lacks clear method engagement evidence."
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert network table, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Soul.md outline fragment too vague to confirm method engagement."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Foundation Framework discussion and choice-driven structure."
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OkCupid dating profile analysis, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system documentation, different project."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tool installation, not writing methodology."
+    },
+    {
+      "candidate_id": "historical-59aef9bc777a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline applying Character Development Framework."
+    },
+    {
+      "candidate_id": "historical-28cf2332707b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Development Framework document and novel application."
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character initiation framework execution for character development."
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Programming book framework documentation, different project."
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge dating profile crafting, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character initiation framework execution and refinement."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Media verification discussion, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Satirical policy framework excerpt too vague for method engagement confirmation."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Foundation Framework comparison and evaluation."
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Framework documentation refinement and output management."
+    },
+    {
+      "candidate_id": "historical-22d64dfb3258#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Customer service/ADA accessibility request, unrelated to writing method."
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "DIKLIS satire scenario processing output too vague for confirmation."
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "quantum_mechanics",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-663ccc8d8086#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-14cb9cf3ace0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Double-slit/Plinko simulation with code."
+    },
+    {
+      "candidate_id": "historical-124fb5fbfebb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0470ae9b609a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-ff319cffafe5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0c7c8bffec84#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Stochastic interpretation of quantum experiment."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-8d685686f8d0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-f07b62970622#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-73431c87c793#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-4104222d4e24#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0470ae9b609a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-99399e381a44#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0470ae9b609a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-99399e381a44#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-481b9fd5b7b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-44aa7d3f9f75#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wobble Model or wobble interpretation discussed."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-d0298b033f21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with Wobble Model or simulation."
+    }
+  ]
+}

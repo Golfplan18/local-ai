@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-5095ea2b9825#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2effcc23768e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-71e78fbe498f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6a8f8014b209#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-947060573768#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-e3ec2b4b5fcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f971afe5714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6e893b335342#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit cover design and phoenix imagery creation for visuals."
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Segment discusses writing frameworks, AI systems, or other topics unrelated to image generation."
+    }
+  ]
+}

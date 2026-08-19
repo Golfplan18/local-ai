@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/diagnostic message, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal learning or generic framework, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic LLM/API discussion, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal learning or generic framework, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system architecture (orchestrator), not ora-ai-app product"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-de2a6c4c1c31#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cloudflare deployment discussion explicitly mentions Ora autonomous operation"
+    },
+    {
+      "candidate_id": "historical-c4c42c47f588#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal learning or generic framework, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora-ai-app marketing website design discussion"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated tool/software setup"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic LLM/API discussion, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/diagnostic message, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-c48eea34025a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora product design brief and architectural analysis"
+    },
+    {
+      "candidate_id": "historical-5a82ff01db3e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test/diagnostic message, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-974539d89ba3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated tool/software setup"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Safety protocols and autonomous release criteria for deployment"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-59e6e750baa1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic LLM/API discussion, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing learning framework for the Ora system"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-44427aee95a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic LLM/API discussion, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora meta-layer architecture and autonomous operation discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated tool/software setup"
+    },
+    {
+      "candidate_id": "historical-90dfd8e4fcf3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-17e02da12090#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction content, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship advice, not ora-ai-app development"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing/fiction project, not ora-ai-app"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-4f4ff07403cb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to ora-ai-app development or design"
+    }
+  ]
+}

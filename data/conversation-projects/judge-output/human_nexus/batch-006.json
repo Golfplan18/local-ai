@@ -1,0 +1,486 @@
+{
+  "nexus": "human_nexus",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Main Street Independent"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus fiction"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus fiction"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Obsidian technical setup"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus fiction"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Ora technical book (not AI Agents)"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content: Politics/geography"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content: Politics/geography"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus fiction"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-947060573768#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents book work with outline/chapters"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Main Street Independent"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-99614d682408#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Main Street Independent"
+    },
+    {
+      "candidate_id": "historical-8a6f72c1245a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Main Street Independent"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents book work with outline/chapters"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content: Politics/geography"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-2effcc23768e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Ora technical book (not AI Agents)"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus fiction"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Ora technical book (not AI Agents)"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-d9e7ab3cb019#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Agents book work with outline/chapters"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-c89b1c2105cb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tooling configuration, not Human Nexus"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Ora technical book (not AI Agents)"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-7465dc28ab4e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear engagement with AI Agents consolidation project"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Ora technical book (not AI Agents)"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    }
+  ]
+}

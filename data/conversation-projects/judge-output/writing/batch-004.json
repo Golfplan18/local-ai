@@ -1,0 +1,486 @@
+{
+  "nexus": "writing",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User requesting framework-guided section drafting for book content using AI-assisted methodology"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Completing questioning framework that refines inputs to foundation writing framework systems"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Generating comprehensive prompt for AI-assisted writing methodology framework enhancement project"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing platform and proofreading tools discussion, not core methodology development"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Finalizing separated framework outputs and plot foundation framework refinement"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct editing of Chapter Refinement Framework with output-management layer rewrites"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter development using framework-based AI-assisted writing process"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative technique research (tropes/archetypes) and building trope library for fiction writing"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating stage-specific framework instructions for satirical fiction project development"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing framework pair completeness and criteria alignment in AI-assisted writing methodology"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Generating praise drafts for user's manuscript, applying writing process to real output"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical white paper writing; separate non-fiction project unrelated to fiction methodology"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technical framework enhancement for AI-assisted writing methodology self-improvement"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic outline restructuring without clear connection to fiction writing framework project"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Output Formalization Framework as extension of AI-assisted writing process"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary topic unrelated to writing methodology project"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Refining preservation system for chapter refinement framework in AI-assisted writing process"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Improving scene structure and updating plot chapter development framework"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Real-book application testing framework with subplot mechanics and character psychology"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing market and distribution channels discussion, not methodology development"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluating framework completeness and AI error correction protocols in writing system"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing AI prompt layering and persona suite for different writing methodology stages"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dialogue and character interaction expansion within framework-driven story development"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creative writing project using satirical framework for authoritarian regime fiction"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sequential development through stages using structured framework for satirical writing"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical fiction writing project applying systematic framework approach"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Introducing satirical fiction project with initial framework setup and methodology"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Industry paradigm shift discussion without engagement in core methodology development"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI tool techniques for managing pen names as characters within writing methodology"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and message drafting, unrelated to fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework as living document solving solitary-writer feedback in systematic process"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline implementation with character integration using framework"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic markdown formatting corrections without clear framework connection"
+    },
+    {
+      "candidate_id": "historical-954a4056e697#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Vague subject line with insufficient context for judgment"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Comprehensive style guide development framework update within writing methodology"
+    },
+    {
+      "candidate_id": "historical-8014061bcaab#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing craft techniques for emotion expression and voice development within methodology"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Establishing stylistic hierarchy in writing system frameworks"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Literary conventions and devices for descriptive writing framework development"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Literary conventions framework development for writing methodology"
+    },
+    {
+      "candidate_id": "historical-36363d37a833#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Paraphrasing and narrative refinement within writing project application"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System-level infrastructure design (Ora/agent system), not fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and personalized message composition, unrelated to fiction writing"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing structured framework for satirical writing with report/press-release format"
+    },
+    {
+      "candidate_id": "historical-d1a7a0f1b689#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear subject line insufficient for judgment"
+    },
+    {
+      "candidate_id": "historical-36363d37a833#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative paraphrasing and style refinement (Hemingway style) in writing work"
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative children's story development as writing project application"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Foundation Framework pair analysis and criteria development"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Abstract philosophical concepts without clear writing methodology engagement"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GPT tool usage and technical integrations, system-level not methodology-level"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflection on pacing in spiritual prose writing demonstrating craft awareness"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Commercializing AI-assisted writing framework as SaaS product development"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Concept Framework review and evaluation criteria creation"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Testing framework on real book project with quality-philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Self-improving prompt frameworks and strategic development approach for writing system"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Voice-interface UI design and neuroscience discussion, not fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Template review and outline expansion for creative writing project"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Separate technical book project (NLP) not related to systematic fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-802551fb3e3e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal essay writing, condensing, and revision as writing project application"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI tool comparison and specialization analysis for writing methodology optimization"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Matching AI models to writing tasks and logging tool effectiveness for methodology"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technical outline development and style guide creation for writing framework"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rewriting Sermon on Mount as applied writing exercise and character development project"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Activating Ideation Framework meta-system for story development methodology setup"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rewriting and character reworking for creative narrative writing project"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying adversarial AI methodology to fiction writing and pen-name publishing system"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iterative style guide prompt template refinement for writing methodology"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Series Continuity framework design for managing multi-book narrative outlines"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Philosophical traditions and narrative style framework development for writing"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Effectiveness appraisal of writing prompt template within methodology"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing template effectiveness evaluation for methodology refinement"
+    },
+    {
+      "candidate_id": "historical-2d5e762eb31b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Converting outline into narrative prose using writing methodology"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and message refinement, unrelated to fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app message composition unrelated to fiction writing methodology project"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Journalism/columnist research dossier, not systematic fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-53662eddc299#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User inquiry about writing erotic fiction demonstrates engagement with writing capability"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discovering Claude Code and multi-model orchestration, system infrastructure not methodology"
+    },
+    {
+      "candidate_id": "historical-36363d37a833#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Autism narrative paraphrasing and refinement as writing craft application"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing satirical content exploitation strategies within fiction framework"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Director approach and personal writing methodology discussion and refinement"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Abstract visual thinking and expertise development without clear writing methodology connection"
+    }
+  ]
+}

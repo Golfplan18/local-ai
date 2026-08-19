@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, unrelated to software monopoly evaluation"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, unrelated to software monopoly evaluation"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical setup/documentation, not chokepoint operation"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-13351458bb73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development framework for fiction, not software"
+    },
+    {
+      "candidate_id": "historical-604911397df5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "File system configuration, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction framework, not software monopoly project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction framework, not software monopoly project"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#84",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-573ae5dba278#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-58c99e01c25b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-947060573768#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Possible tool/software discussion but no clear monopoly/enclosure focus"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction, unrelated to software monopoly evaluation"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-070c2eef92b4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-861847909a3a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-92f9ced14f10#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of software monopoly or enclosure with proposed alternatives"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#36",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development framework for fiction, not software"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction framework, not software monopoly project"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical setup/documentation, not chokepoint operation"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction framework, not software monopoly project"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-2ce17fa39994#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/creative writing work, not software evaluation project"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction framework, not software monopoly project"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-433226858f03#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-433226858f03#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit chokepoint project terminology in excerpts"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No chokepoint project terminology or monopoly/enclosure discussion"
+    }
+  ]
+}

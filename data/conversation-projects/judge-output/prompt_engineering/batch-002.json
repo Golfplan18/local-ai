@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iterating on prompt templates for satirical content generation stages"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Testing 200 prompts across six pipeline configurations"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Calculating token consumption of instruction sets"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Theoretical critique of agent architecture paradigm, not prompt work"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating and evaluating prompts for satirical regime content"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Back Cover Blurb framework for novel-writing pipeline"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-model orchestration and routing architecture, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating and executing prompts for satirical propagandist content"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper content development with AI assistance, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating paired reality/propaganda bullet points and press release prompts"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing AI-assisted novel-writing framework suite with character/setting systems"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle project vision and system architecture, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI swarm architecture and MVP planning, system design not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework adoption implications and positioning, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical comparison of memory systems architecture, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Book Cover Concept framework and evaluation criteria"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing The Human Nexus framework with organizational structure"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document consolidation and formatting task, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis and comprehension, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Positioning frameworks for different audiences, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-287be733e0cf#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discussing bedrock principles of prompting and prompt refinement resources"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis of AI Expert Teams framework, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing book cover trend analysis and concept frameworks for steps 35-37"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System oversight layers and operational reliability architecture"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal AI system adoption and flow-state workflow, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Designing verification protocol to test AI honesty and hallucination"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing book cover quality evaluation framework"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book cover quality evaluation framework and document system"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discussion of multi-agent systems competitive advantage, not prompt work"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool discovery listing writing AI tools, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-9e1d83e7c23b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture for multi-AI validation, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Parliamentary Agent Specification theory development, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing Output Formalization Framework for expressive output"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Back Cover Blurb criteria development and formatting standards"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona registry architecture and system specification, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix cascade analysis economic forecasting execution"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Market transformation and game theory strategy discussion"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research execution on children's literature corpus"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document outline structure with metadata formatting"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing The Human Nexus framework with character and narrative structure"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative structure and character pacing refinement, story development not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Implementation planning with existing prompt frameworks"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reviewing Anthropic AI safety article, reading not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-ec8c972c086f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI swarm system architecture and infrastructure planning"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Architectural framework expansion and section formatting"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document summarization and analysis, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI swarm prompt refinement and evaluation strategy design"
+    },
+    {
+      "candidate_id": "historical-dbe5b4e08c48#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework-creation breakthrough for AI agent programming"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database population with biographical data formatting"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating comprehensive context documentation for AI systems"
+    },
+    {
+      "candidate_id": "historical-abb8672364ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge acquisition and LLM coordination architecture"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model selection deep dive and parameter analysis, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal AI swarm architecture with RAG system design"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Natural language as intelligent programming paradigm discussion"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dialogue and character expansion for story content"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-driven unemployment policy discussion, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing natural language programming framework for AI agents"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API limitation discovery and Poe platform exploration"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API stateless limitation and alternative platform exploration"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text capture verification and expansion document management"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Master outline review and formatting fixes, content outline not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project context gathering and reference material collection"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#74",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NotebookLM retrieval workflow for book outline management"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Specification-driven development methodology discussion"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creating meme template library for satirical generation"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Flow-state methodology using two-AI recursive cross-check for hallucination"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database technology and video integration tool exploration"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Specifying Agent Identity Framework and architecture for AI agents"
+    },
+    {
+      "candidate_id": "historical-b1b9171c3aed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NLP book outline review against style guide compliance"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System directory structure and file organization"
+    },
+    {
+      "candidate_id": "historical-5e6a6fffbe99#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Comprehensive research on natural language programming for AI agents"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document outline summarization task, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon Book Description framework development for step 40"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "WritingGPT configuration with writing style and tone parameters"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflecting on AI-augmented novel-writing system framework loops"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reflecting on AI writing system and teaching AI literacy to beginners"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents list curation from website, not prompt engineering"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection test message, not substantive work"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Reflecting on Claude Code workflow and AI career disruption"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sequential development of satirical articles through authoritarian stages"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-0cf46e5b790a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-84051caaa63f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-8aae5e6dfd71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-90d07e5957ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly defines the Project Matrix Image Generation framework"
+    },
+    {
+      "candidate_id": "historical-207667436174#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-5ee9ad619950#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-fe4bc2e198a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-2142a126b93a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-5c13cf92c0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-0cda7a809a7c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-35f0011b984a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-240558319c91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-d986446aa2a0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-3edebe14a9fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-610288c2b092#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-65208e4dc51d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-909770e19d9e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-46e8ac08d1da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-534f6a18ff81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-e2e536efbadf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-022dd0c9d3af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-08d57d74eb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-a4704a368d9e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-968866ab7dea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-0a5eac688c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-8edac610cf83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-b13a5d453d7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-ab2f28e5d491#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-2bb1c57ee308#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text cleanup tool utility, not image generation"
+    },
+    {
+      "candidate_id": "historical-52c51621a148#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-71957187b84f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-af315528f8ae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Uses DALL-E for iterative image generation; discusses rendering and composition"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No image generation practice or vocabulary in subject/excerpts"
+    }
+  ]
+}

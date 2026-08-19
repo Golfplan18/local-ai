@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building educational resources for project"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: naming the political right's bad-faith tactic"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle/anti-empire critique work"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: iterative satirical dystopian content generat"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: malcolm little king satirical presidential ca"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: malcolm little king satirical campaign platfo"
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: diklis chump dystopian policy brainstorming a"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building educational resources for project"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building educational resources for project"
+    },
+    {
+      "candidate_id": "historical-d561bd0e1bed#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Left-wing political work: political correctness and cancel culture chap"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: villain-archetype mythology development and i"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: outlining a book on right-wing manipulation a"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#57",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#25",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-2aaa983b1dad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-91c9b4284b02#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: interruption: an accidentally recorded dog-gr"
+    },
+    {
+      "candidate_id": "historical-5982ab19eb25#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-6f76c035cc7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-b4717aae8fed#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-3e6686f73aa7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-a1c03710767f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: killthebill hashtag strategy and amplificatio"
+    },
+    {
+      "candidate_id": "historical-211f14516d46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-92305a0aebc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-2ff6404c29c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-f1a27856b26b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-334e95d91d00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-f709ec9ca909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: faux news parody branding and satire craft, t"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-3bddb955ade3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-81af61717782#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-c6a63e6fcc33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: introduction to satirical fiction project and"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building educational resources for project"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-377cd8bae827#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: review and comparison of the real american co"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-752ca44d214d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: review of the real american communist manifes"
+    },
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: the oracle's hemingway-style rhetorical voice"
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project framework/planning work"
+    },
+    {
+      "candidate_id": "historical-e8e8d2047149#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient project-specific indicators"
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Satirical/political content: american king novel: malcolm little king, gen"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political strategy/analysis work"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core routes + political/moral keywords"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Core project route with political/moral content"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: American Jesus novel series"
+    }
+  ]
+}

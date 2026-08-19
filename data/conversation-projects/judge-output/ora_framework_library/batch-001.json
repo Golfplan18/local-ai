@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-46529efc6ca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-fa7b6d611b7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-1bbdf7f2be38#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-d89b097ab335#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-eaf5d37a9e26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No public-domain framework commons / library maintenance vocabulary found."
+    }
+  ]
+}

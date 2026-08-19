@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9d832990172b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-44b1884f98e9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-29c332a4bbd5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple monopoly-related keywords indicate Chokepoint relevance."
+    },
+    {
+      "candidate_id": "historical-e2debe88c5aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of software candidates or alternatives to monopolistic systems."
+    },
+    {
+      "candidate_id": "historical-f608fe6fc31b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-f8a975aedf60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple monopoly-related keywords indicate Chokepoint relevance."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-c6a63e6fcc33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-f8cef12a5cbe#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-d4b6e76be8b0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-f8881242807a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-f5db2ca01b8c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#45",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-f1a27856b26b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-33bb3cbd0b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of software candidates or alternatives to monopolistic systems."
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#120",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussion of software candidates or alternatives to monopolistic systems."
+    },
+    {
+      "candidate_id": "historical-df2979f4e876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-81af61717782#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#18",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-af00128bdcee#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple monopoly-related keywords indicate Chokepoint relevance."
+    },
+    {
+      "candidate_id": "historical-d0737e955983#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple monopoly-related keywords indicate Chokepoint relevance."
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-a39dc7dc0fa3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-7a3fc36c3909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-5b6a61e19e54#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-f805895531de#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Substantive engagement with Chokepoint project: architectural protection or monopoly disruption discussion."
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple monopoly-related keywords indicate Chokepoint relevance."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-b268aebce446#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not focused on Chokepoint Response scope (candidate evaluation or free alternatives)."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-1818636000dc#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Passing mention of monopoly-related topics, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No evidence of engagement with Chokepoint Response project."
+    }
+  ]
+}

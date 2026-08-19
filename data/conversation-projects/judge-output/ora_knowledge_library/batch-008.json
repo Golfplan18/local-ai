@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-89e667eccd46#54",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-7be62155fa6b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Memory/knowledge architecture with vault system design"
+    },
+    {
+      "candidate_id": "historical-6c19fd4f5325#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge governance and vault management"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#16",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Library as knowledge verification system"
+    },
+    {
+      "candidate_id": "historical-a80890a725c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-76f769b5834d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-7c5769f58a2a#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sum of Human Knowledge Database architecture"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sum of Human Knowledge Project naming/concepts"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Indexing and vault structure for knowledge system"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cross-collection knowledge pipeline application"
+    },
+    {
+      "candidate_id": "historical-eb123ad47251#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-4b24b7728f11#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Connecting vault to external knowledge sources"
+    },
+    {
+      "candidate_id": "historical-5d260b499f3e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building knowledge library vault for others"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-5faeb423fbbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-aef7035766c8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#85",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Engram/Wisdom Nexus knowledge architecture"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Open-domain public knowledge publishing mission"
+    },
+    {
+      "candidate_id": "historical-2628f7b3915e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-1bbdf7f2be38#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-de2a6c4c1c31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge pipeline with atomic notes and ChromaDB"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with knowledge library project"
+    }
+  ]
+}

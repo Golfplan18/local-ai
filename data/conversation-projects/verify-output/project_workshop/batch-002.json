@@ -1,0 +1,90 @@
+{
+  "nexus": "project_workshop",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Refining existing AI-writing methodology documentation, not evaluating new project viability."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Architectural comparison between Claude Skills and user's system, not project scoping."
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Producing manifesto deliverable for existing MSI project, execution not evaluation."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reflecting on active Aura project work (75 modes); describes execution, not viability assessment."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Documenting personal AI-assisted writing process methodology; no new project scoping."
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development and romance arcs for creative work in progress, not project workshop."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Planning 'Algorithms for Life' book project; discussing scope, philosophy, and audience accessibility."
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Strategic thinking about multiple book projects (AI critics, writing craft, tech builders, open-source); audience/platform evaluation."
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generating satirical political propaganda pairs; creative content execution."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Simplifying Ora orchestrator architecture; technical refinement of existing system."
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discussing design viability of personal AI reasoning system; confirming technical feasibility of project concept."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Planning urgent book project on prompting/meme creation for political activism; evaluating project necessity and scope."
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating propaganda/reality pairs for satirical framing; creative work production."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Producing satirical regime policy/propaganda content; creative execution, not project evaluation."
+    }
+  ]
+}

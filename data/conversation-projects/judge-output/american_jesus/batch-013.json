@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 13,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology framework unrelated to narrative project."
+    },
+    {
+      "candidate_id": "historical-06cc652a33a3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Parable integration into American Jesus."
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "PAS framework with American Jesus context."
+    },
+    {
+      "candidate_id": "historical-0d8896d1e3a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political messaging strategy, not manuscript work."
+    },
+    {
+      "candidate_id": "historical-70353f9cfedb#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "I Am statements theological integration."
+    },
+    {
+      "candidate_id": "historical-96b46c4f91e2#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "The Reflecting Pool and Crucifixion chapter."
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Environmental Justice subplot thread."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology for project."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal dating advice unrelated to project."
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation framework for American Jesus."
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evaluation framework for chapters."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Ideation Framework development."
+    },
+    {
+      "candidate_id": "historical-90540d87d222#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 story bible ingestion."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Elena Vasquez character development."
+    },
+    {
+      "candidate_id": "historical-487d66beb6e3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story structure and beat development."
+    },
+    {
+      "candidate_id": "historical-da84b5adc823#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marcus Johnson/Malcolm Little King merger."
+    },
+    {
+      "candidate_id": "historical-df4d45b9f8f3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 23 morning scene with parable."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing exercise for unrelated work."
+    },
+    {
+      "candidate_id": "historical-df2c430d9e3a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story beat outline for American Jesus."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political messaging unrelated to manuscript."
+    },
+    {
+      "candidate_id": "historical-696be87928fc#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Racial Justice subplot ideation."
+    },
+    {
+      "candidate_id": "historical-bf59b048d8c5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 25 Hidden Seed parable."
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thematic deepening with Peter/Matthew/Mary."
+    },
+    {
+      "candidate_id": "historical-cfee1ba18356#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus 3 story bible loading."
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus outline ingestion."
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile coaching unrelated to project."
+    },
+    {
+      "candidate_id": "historical-696be87928fc#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Healthcare Justice subplot ideation."
+    },
+    {
+      "candidate_id": "historical-7848123699da#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mathematical formalism unrelated to narrative."
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Autism parenting book, different project."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character/thematic framework for American Jesus."
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political messaging propaganda framework."
+    },
+    {
+      "candidate_id": "historical-f6b8ca987aa5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outlines for Acts 1-3."
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic writing methodology framework."
+    },
+    {
+      "candidate_id": "historical-ed5c1b20c128#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter-by-chapter outlines with arcs."
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Ideation Framework methodology."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marjorie Temple Redd character work."
+    },
+    {
+      "candidate_id": "historical-2428882d8db7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thematic and character implementation guide."
+    },
+    {
+      "candidate_id": "historical-3153873d0063#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible with themes and integration."
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Buddhist compassion essay without project link."
+    },
+    {
+      "candidate_id": "historical-735c5da9369b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Total Recall film discussion unrelated."
+    },
+    {
+      "candidate_id": "historical-66a94d441650#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thomas Reynolds character profile."
+    },
+    {
+      "candidate_id": "historical-bda27f265f55#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus thematic outline."
+    },
+    {
+      "candidate_id": "historical-ed1d5236500a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible ingestion for project."
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wolfram Language 3D visualizations."
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Profile analysis without American Jesus context."
+    },
+    {
+      "candidate_id": "historical-a496cdef6e46#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Plot Initiation Framework."
+    },
+    {
+      "candidate_id": "historical-a496cdef6e46#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Plot Foundation Framework development."
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Evidence manifesto without clear project."
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Narrative Elements Framework."
+    },
+    {
+      "candidate_id": "historical-66a94d441650#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mary Magdalena character profile."
+    },
+    {
+      "candidate_id": "historical-f4afdfa9869f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Master outline and Act 3 story beats."
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Series Continuity Distillation Framework."
+    },
+    {
+      "candidate_id": "historical-f7ffbfcedc70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Einstein bibliography unrelated."
+    },
+    {
+      "candidate_id": "historical-7f8101c82827#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thomas Reynolds newspaper headlines."
+    },
+    {
+      "candidate_id": "historical-4ac6b8c01dae#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible organized in memory."
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Plot Refinement Framework output."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Michael Angelus character development."
+    },
+    {
+      "candidate_id": "historical-7917fd3a7d98#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Matthew Tax character development."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LM Studio and orchestration tool discussion."
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system design methodology unrelated."
+    },
+    {
+      "candidate_id": "historical-91c9b4284b02#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real American Communist Manifesto book project."
+    },
+    {
+      "candidate_id": "historical-98d65434993a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Surveillance political strategy unrelated."
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapter 14 The Crossing."
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent Teams white paper unrelated."
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Public domain release on Ora/AI project."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Cultural guerrilla warfare chapter unclear."
+    },
+    {
+      "candidate_id": "historical-225a3af8c9be#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Joanna Rivera Blackwell character work."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 12 Vannity Angle Fox News segment."
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology framework unrelated to narrative."
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel writing frameworks for project."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Heinrich Mueller character development."
+    },
+    {
+      "candidate_id": "historical-ae58078e56be#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic Plot Initiation Framework."
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Story bible loaded for reference."
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book 3 craft: Hayzeus and march narrative."
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character profiles for apostles."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#66",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Friendship Wisconsin novel, different trilogy."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Satirical policy scenario unrelated."
+    },
+    {
+      "candidate_id": "historical-36363d37a833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hemingway style writing exercise."
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic trope framework methodology."
+    },
+    {
+      "candidate_id": "historical-1cc83d43bb6b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus outline review."
+    }
+  ]
+}

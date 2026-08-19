@@ -1,0 +1,486 @@
+{
+  "nexus": "main-street-independent",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-aa8b8215c01a#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of building MSI website and operational pipeline."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web research about economic theory (Varoufakis), not MSI work."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discussion of DMCA and AI code generation, not MSI."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Style sheet review; generic methodology not specific to MSI."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#84",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Factual lookup about governors, not substantive MSI engagement."
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test response, not substantive content."
+    },
+    {
+      "candidate_id": "historical-8f1a0834cf9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Source hierarchy guide; general framework without explicit MSI engagement."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Strategic mythology deployment for unspecified project, not MSI."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI model architecture design, not MSI."
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AWS AI agent research and disclosure strategy, not MSI."
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper composition framework, generic methodology."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Objectives framework for Passion Matrix Politics project, not MSI."
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gemini access lookup, not substantive engagement."
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Avatar video tools discussion; possible tools for MSI but no explicit engagement."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document automation for different organization/mission."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian basics tutorial, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Color printer and commercial printing options, not MSI."
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora meta-layer architecture discussion, not MSI."
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing project framework, not MSI."
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing story-structure framework, not MSI."
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault and framework positioning for book project, not MSI."
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Various topics without clear MSI engagement."
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Infrastructure and system requirements, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian template mechanics, not MSI."
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Draft evaluation and writing improvement, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal health and substance discussion, not MSI."
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Artist profile analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-c3cd36165661#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Identifying science journalists, possibly related to MSI but not evident."
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop and SSH setup, not MSI."
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Testing frameworks discussion, not MSI."
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/corporate reform discussion (PE, antitrust), not MSI."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Problem Evolution Framework discussion, not MSI."
+    },
+    {
+      "candidate_id": "historical-bcda83504e00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web retrieval tools and algorithms, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LM Studio model setup, not MSI."
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted novel writing review, not MSI."
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book chapter writing, not MSI."
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-8982bea6fb40#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malinvestment paper document structure, not MSI."
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Copyright implications of AI prose, general discussion not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "IP law and copyright policy framework, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Interface design feedback, not MSI."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model download and format details, not MSI."
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting/error response, not substantive."
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review, not MSI."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Events-first news filter design for stripping propaganda and verifying sources\u2014core MSI methodology."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Color printing cost comparison, not MSI."
+    },
+    {
+      "candidate_id": "historical-7d528f780ba2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing company brand naming for public domain works, not MSI."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy scenario, not MSI."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI authorship and copyright philosophy, general not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-f86c07d7e169#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Restaurant recommendations, not MSI."
+    },
+    {
+      "candidate_id": "historical-c24a80a07bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation library artifact revision, not MSI."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book project author's note, not MSI."
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework revision, not MSI."
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump lawsuit analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-2fd67dab4bda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Credit union search, not MSI."
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction writing framework, not MSI."
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Midjourney styles for image generation, not MSI."
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Style guide framework request, not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Photo caption and design refinement, not MSI."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Outline synthesis and Claude Code instructions, not MSI."
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Federated infrastructure and website ownership, general framework not MSI-specific."
+    },
+    {
+      "candidate_id": "historical-ad8b9c0aef31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical press releases, not MSI."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mental model library foundation, not MSI."
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code effort levels and pricing, not MSI."
+    },
+    {
+      "candidate_id": "historical-8a1bc5eb92cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WSJ opinion analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Screenshare troubleshooting, not MSI."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document taxonomy and nomenclature, general not MSI."
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engagement strip notation, not MSI."
+    },
+    {
+      "candidate_id": "historical-5831eb491c4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Restaurant recommendations, not MSI."
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter outline, not MSI."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon features review, not MSI."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engram schema discussion, not MSI."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection verification, not substantive."
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementation and content restoration, context unclear."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover trend analysis, not MSI."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship exchange, not MSI."
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of 15 voices developed for MSI and heteronym system productivity."
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Interface design and installation script, not MSI."
+    }
+  ]
+}

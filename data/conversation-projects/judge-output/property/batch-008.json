@@ -1,0 +1,474 @@
+{
+  "nexus": "property",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/fiction writing project, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development for non-real estate domain"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development for non-real estate domain"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Website header design for Vista Yucca Estate vacation rental"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Positioning himself as a minimal 'pointer' in'"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Setting ground rules for the documentation th'"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Authorship and copyright philosophy when AI e'"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/fiction writing project, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject disconnected from real estate: 'Brief acknowledgment request'"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Comprehensive content audit, restoration of l'"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/personal advice, not real estate"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: ''Cassandra dread' entry: excitement and dread'"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative/character work, not real estate"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian properties/metadata tool discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Pre-date emotional and tactical preparation'"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Back Matter Framework planning and approach'"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Continuous discussion of cosmological theorie'"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject disconnected from real estate: 'Brief instruction acknowledgment'"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development for non-real estate domain"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Web links and Varoufakis access - meta-discus'"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Thread A: Verification of 17 completed mode f'"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject disconnected from real estate: 'Text-only output request'"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Evaluating Poe's costs relative to direct Cla'"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development for non-real estate domain"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject disconnected from real estate: 'Request for plain-text-only replies'"
+    },
+    {
+      "candidate_id": "historical-7d4b3c06a311#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/policy content, not real estate"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference, matched on 'name' nominally"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Subject disconnected from real estate: 'Formatting instruction for text-only output'"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian properties/metadata tool discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-7d528f780ba2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing business startup, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Coaching on Hinge match Kira: profile analysi'"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Checking his own ego motives for going public'"
+    },
+    {
+      "candidate_id": "historical-ae6b2b1fbdd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/personal advice, not real estate"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Integrating military strategy and Sun Tzu exp'"
+    },
+    {
+      "candidate_id": "historical-24b6e44d8854#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/fiction writing project, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Drafting moving from understanding to action '"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Background joy as a virtuous circle through s'"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI systems/models discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/fiction writing project, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-b798480dc867#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Personal project impact, health struggles, di'"
+    },
+    {
+      "candidate_id": "historical-b8b6c63370fb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/policy content, not real estate"
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "FAQ development for Vista Yucca Estate vacation rental property"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Developing affordability myth as major sectio'"
+    },
+    {
+      "candidate_id": "historical-b25ebfb53432#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/personal advice, not real estate"
+    },
+    {
+      "candidate_id": "historical-cb04ecd15583#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book/fiction writing project, not real estate guides"
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Requesting citations for a paper (user seekin'"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Document review and clarification before exec'"
+    },
+    {
+      "candidate_id": "historical-f6a1e1cd5ad4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Publishing business professional profile crea'"
+    },
+    {
+      "candidate_id": "historical-b0094c7cc06b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Monopoly card imagery and Hoover symbolism'"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Epistemology of partial knowledge and preserv'"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Universal reviser output'"
+    },
+    {
+      "candidate_id": "historical-42c314205d1f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction narrative/character work, not real estate"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-e7ffb1ecc74d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Crown molding proportions and foam core soffi'"
+    },
+    {
+      "candidate_id": "historical-30e1d82e2aad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Publishing business professional profile crea'"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI systems/models discussion, not real estate"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system framework development, not real estate"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject disconnected from real estate: 'Session management and conversation summary'"
+    }
+  ]
+}

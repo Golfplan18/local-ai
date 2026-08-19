@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-6357ec9c2a55#71",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: appeals court"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#71",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: appeals court"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: pydantic"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: tariff"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: medicaid"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of resources, nominal only"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: bridge test ok"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#45",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-f805895531de#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal knowledge indexing system"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge library system project"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge library system project"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework evaluation"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: judge"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge library system project"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework evaluation"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-e4a018948eeb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: hospital"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework evaluation"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-ec8c972c086f#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework evaluation"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-7465dc28ab4e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-f1b3ced075dd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-ffeefb4a0e89#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-861847909a3a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge library system project"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#84",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: hospital"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-313084bad595#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-65b0b8059fb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Topic: inflation"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No KB engagement detected"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge system architecture"
+    }
+  ]
+}

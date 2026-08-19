@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing platform decision affecting content distribution/reach."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon book description/listing framework for publication."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book development with publishing business strategy."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#13",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Manuscript delivery and distribution strategy for published content."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology without publishing business/infrastructure focus."
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology without publishing business/infrastructure focus."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book marketing and audience reach strategy."
+    },
+    {
+      "candidate_id": "historical-02b6ab5422a2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "POSSE publishing model for content distribution."
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Amazon book description/listing framework for publication."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Research/white paper without publishing business context."
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "review and update recommendations."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-e66fbf91911a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "POSSE publishing model for content distribution."
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "troubleshooting formatting and copy-paste spacing issue"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book publishing and platform infrastructure."
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-a6c6c8d5b595#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover design for publication."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture without publishing engagement."
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology without publishing business/infrastructure focus."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Public-domain content corpus for content production/distribution."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named book project: 2026 production planning and sequencing "
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "user request for text-only format"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-4d731138d953#5",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-769863476d32#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named book project: malcolm little king trilogy strategy and"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing infrastructure: Amazon platform mechanics."
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference; no publishing engagement."
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named book project: developing and revising the 'american je"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book outline/structure work for publication project."
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "continuing discussion"
+    },
+    {
+      "candidate_id": "historical-31e0a98f4239#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Project management template without publishing focus."
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture without publishing engagement."
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "book publishing mechanics for wetoo series"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology without publishing business/infrastructure focus."
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture without publishing engagement."
+    },
+    {
+      "candidate_id": "historical-d1185875f826#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "high school/adult level section expansion"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Book structure work without publishing project context."
+    },
+    {
+      "candidate_id": "historical-1ed8e886de28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content generation without publishing project context."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing methodology without publishing business/infrastructure focus."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Matched route indicator for publishing objectives."
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Named book project: political satire series planning"
+    }
+  ]
+}

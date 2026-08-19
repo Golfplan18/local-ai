@@ -1,0 +1,486 @@
+{
+  "nexus": "property",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Economic/political theory, not real estate"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#20",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-941494451b48#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Economic/political theory, not real estate"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Different project topic"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Different project topic"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Research/knowledge system topic"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#9",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Economic/political theory, not real estate"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-a05cc74df14e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#33",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI system/software development, not real estate"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship discussion"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "UI/formatting preference, not property work"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No engagement with real estate/land development topic"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal life/philosophy discussion"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiction/book writing project"
+    }
+  ]
+}

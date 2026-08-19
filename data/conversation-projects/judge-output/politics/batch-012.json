@@ -1,0 +1,168 @@
+{
+  "nexus": "politics",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology framework, not political action or altruistic principles engagement."
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora visual protocol research; architectural system work unrelated to politics."
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic governance framework refinement; lacks political action or altruistic movement context."
+    },
+    {
+      "candidate_id": "historical-ff4e6f98eb8f#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "News article fragment; project name appears but minimal sustained engagement with altruistic political principles."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal text-only response request; no engagement with project."
+    },
+    {
+      "candidate_id": "historical-1b10269c8de5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thomas Reynolds article advancing universal healthcare as moral imperative; sustained argument for altruistic political action and movement building."
+    },
+    {
+      "candidate_id": "historical-e5ba15999b20#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Open letter strategizing Democratic leadership, emphasizing fighter/strongman archetype; direct political strategy for altruistic movement."
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character initiation framework for fiction; not about political principles or movement building."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Criminal case analysis; legal/procedural focus without altruistic political framework or movement work."
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story beat framework for narrative development; methodology unrelated to political action."
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response preference; no engagement with project substance."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database and persona setup; methodology work unrelated to politics."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#55",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus mythology building with Christ archetype embodying altruistic principles; creating narrative/mythic framework for movement inspiration."
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code workflow and AI career displacement; not about political action or altruistic principles."
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system architecture research; technical infrastructure unrelated to politics."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#43",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gaza ceasefire ethics discussion defining good as selflessness vs evil as selfishness; sustained engagement with moral framework for political positions."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response preference; no engagement with project."
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution; fictional character development unrelated to political work."
+    },
+    {
+      "candidate_id": "historical-95eff4a001be#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Immigration enforcement and sanctuary city policy analysis; detailed political-governance discussion about federal responsibility and resource allocation."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response preference; no engagement with project."
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Filibuster institutional analysis and Democratic strategy; sustained discussion of political power asymmetry and movement structural advantage."
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response preference; no engagement with project."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#50",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "News fragment about Trump funding threat; minimal substantive engagement beyond headline reference."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response request; no engagement with project."
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Rentier extraction vs public ownership framework; political-economy analysis of capital bias against public goods as altruistic principle."
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#30",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mail-voting policy fragment; news item reference with minimal sustained engagement on political principles."
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Democratic hardball politics redistricting strategy; sustained argument for aggressive political tactics to advance movement interests."
+    }
+  ]
+}

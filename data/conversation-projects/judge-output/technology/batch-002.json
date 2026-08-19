@@ -1,0 +1,486 @@
+{
+  "nexus": "technology",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Visual cognition research foundation for thinking tools."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Data curation task; extracting definitions not evaluating."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal narrative; AI adoption story not tech evaluation."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Model architecture analysis; selection strategy evaluation."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal narrative; AI adoption story not tech evaluation."
+    },
+    {
+      "candidate_id": "historical-f3aaeaa1d824#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Data curation task; extracting definitions not evaluating."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology infrastructure for knowledge systems."
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical/theoretical inquiry not technology eval."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal narrative; AI adoption story not tech evaluation."
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technology infrastructure for knowledge systems."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-150b631559ce#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-c77bdc217d34#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical/theoretical inquiry not technology eval."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-3b660e0ad70a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document structure or generic methodology; not tech eval."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Objective-aligned route with technology keywords."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal narrative; AI adoption story not tech evaluation."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear technology evaluation indicators."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Objective route but subject doesn't indicate technology."
+    }
+  ]
+}

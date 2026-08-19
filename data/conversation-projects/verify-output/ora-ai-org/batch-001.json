@@ -1,0 +1,72 @@
+{
+  "nexus": "ora-ai-org",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangFlow technical documentation; unrelated to ora-ai.org website or foundation."
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Email setup for ora-ai.org domain; discusses publishing contact address on site."
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Foundation mission components (public domain, framework library, governance) for Objective 2."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Publish URL mechanics; not about ora-ai.org Astro website."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Federated knowledge library architecture; addresses Objective 3 browsable library."
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Foundation's public applications (Dead Genius Library, guru.org vision) for website."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI model selection and architecture; not website building work."
+    },
+    {
+      "candidate_id": "historical-2dbf09e0c04c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fiverr distribution strategy for Ora; not ora-ai.org website publication."
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Early vision of Knower/Doer and public Internet library concept for foundation."
+    },
+    {
+      "candidate_id": "historical-9470f545463f#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora's launch positioning and public-domain value proposition for website messaging."
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora meta-layer system architecture; purely technical design, not website work."
+    }
+  ]
+}

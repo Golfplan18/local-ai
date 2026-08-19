@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "real-world examples from la times and washington p, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political policy analysis, not software"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation/tagging system, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "distribution strategy for white paper on ai-enable, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-0ba3c36c8027#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "book outline and file architecture restructuring, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "june 1 milestone testing and operational metrics, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-2c1ec751594d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/copyright research, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-ffeefb4a0e89#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "font strategy and consolidated theming specificati, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "preface and front matter development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "structuring the effort dashboard layout and a dikl, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "processing relevance ai platform agent listings wi, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "populating expert database with biographical data, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/creative writing, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "UI/design project, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "writing style guide development \u2014 iterative refine, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-f6000013c9e6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/copyright research, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "system test exchange, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal communication/dating strategy, not related"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "tariff economic evaluation and inflation mechanism, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "material review and draft revision, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-c32962c7953e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-35db0428f286#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "building a templater template to insert property/b, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation/tagging system, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "document verification for laws and regulations, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-d7ece8fdb1c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "parliament of self model: development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "model download, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical content generation depicting authoritari, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "deliverables, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "satirical narratives depicting authoritarian regim, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-642b3b3f462e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation/tagging system, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#48",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "objecting to claude's feedback-check and a/b-testi, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "long-term societal implications of automation and , not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "UI/design project, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "sequential development of satirical articles throu, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-075894682012#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "building and refining expert network with conflict, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-158c5efafa97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/creative writing, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "adding visualization, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "addressing ai reliability concerns and reverting i, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework development, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "debugging a base filter to embed the effort dashbo, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-e4a018948eeb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/copyright research, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "give me ten taglines based on selecting the first , not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "philosophical foundations and dijkstra's critique , not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation/tagging system, not software alternatives"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "generating headlines, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "formatting corrections for markdown bullet points , not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-c68f40565633#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing/ideation framework, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local AI system architecture, not commercial software evaluation"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "adding cooperative agreement principles to permane, not about software alternatives"
+    },
+    {
+      "candidate_id": "historical-eb9f047ad6ea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/creative writing, not software alternatives"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "writing_fiction",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-63b056b2555e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-35d3ce6bf332#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with draft and prose work"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Product/marketing concept, not fiction writing"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-8140ff4b921d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Long-term writing strategy and project approach"
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book concept development and audience bridging"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Verifying AI-assisted writing process and frameworks"
+    },
+    {
+      "candidate_id": "historical-f3629393c5ed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-efce1a4a8840#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writer monetization, not fiction craft/process"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with draft and prose work"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-260b8cc6d1e9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-334e95d91d00#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing framework/methodology development"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-4f52f428430a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with framework and prose work"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#29",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-499065142c34#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with framework and prose work"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-a0d4ea738b21#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with draft and prose work"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#21",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained discussion of fiction writing elements"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output formatting preference, not fiction craft"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Fiction prose writing and character/narrative development"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book project with draft and prose work"
+    },
+    {
+      "candidate_id": "historical-03792b0c388f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks/chapters"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear fiction writing craft engagement"
+    }
+  ]
+}

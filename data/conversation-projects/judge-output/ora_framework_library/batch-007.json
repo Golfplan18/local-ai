@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_framework_library",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-6e889ad63e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-947060573768#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d9e7ab3cb019#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3110e0650216#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e11bca727453#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-10209624ab8e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-487182d449ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8368edcc4d41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e80d02aad2db#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-68b112035b8f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9ddb6d44297b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-4222bdb5792d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-036079b001e1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework distribution strategy and public-domain commons curation discussed"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    }
+  ]
+}

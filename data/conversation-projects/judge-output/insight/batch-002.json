@@ -1,0 +1,486 @@
+{
+  "nexus": "insight",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-7ebd047651ee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-61e1be728b29#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-ca2f69763f47#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#16",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-36363d37a833#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Consciousness keyword in substantial discussion"
+    },
+    {
+      "candidate_id": "historical-16147ce14d32#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-91051b900f68#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single consciousness keyword + substantial insight writing"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Consciousness keyword in substantial discussion"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-28c1f31866ba#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-d2b87b3e69be#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Consciousness keyword in substantial discussion"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-6a05a3640fa9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-ac67a6505ac0#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Consciousness keyword in substantial discussion"
+    },
+    {
+      "candidate_id": "historical-bb52a617c269#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-8d5be1bb2d61#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-1f8a94efe3a5#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-516d61b8508d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-589ea4c096c0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-1a9081e98f99#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-5ee063d04e40#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-9fff32dddb2d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-81e73e5805d5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-0534973a8d42#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Single consciousness keyword + substantial insight writing"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-ed50481f05a0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with consciousness/insight topics"
+    },
+    {
+      "candidate_id": "historical-d642b6acb2b0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-ab6365646925#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness engagement + writing insights for publication"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    },
+    {
+      "candidate_id": "historical-a6f7d5dc1536#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual practice or consciousness topic + publishing"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple consciousness keywords (2) + substantial discussion"
+    }
+  ]
+}

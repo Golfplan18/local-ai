@@ -1,0 +1,486 @@
+{
+  "nexus": "insight",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a556ddf14f6b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Deep engagement: self, emptiness, consciousness, operating systems as metaphor for mind"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge management system, not personal insights on suffering"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire instructions, not personal insight project"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Relationship dynamics analysis with personal psychological understanding"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical architecture design for Ora system"
+    },
+    {
+      "candidate_id": "historical-5a0330124a0b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist philosophy on ordinary experience and suffering"
+    },
+    {
+      "candidate_id": "historical-4b3b8c83a74b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tibetan Buddhist Lamrim on karma, meditation, and spiritual practice"
+    },
+    {
+      "candidate_id": "historical-a6f7d5dc1536#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist Lamrim path with meditation practices"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice book planning on middle path framework"
+    },
+    {
+      "candidate_id": "historical-1a9081e98f99#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist karma and rebirth teachings on personal responsibility"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal spiritual journey and preserving Buddhist teacher's voice"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Building resonance framework for personal spiritual understanding"
+    },
+    {
+      "candidate_id": "historical-aabfc5567cb0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character profile for creative writing, not personal insight"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Theory of mind engagement on consciousness and self-awareness"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Buddhist practice in relationships and personal authenticity"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct personal spiritual transformation and emotional processing"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Philosophical exploration of mind, consciousness, and epistemology"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology paper title request, not personal insight"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political strategy campaign, not personal insight project"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Vision for AI-empowered society systems, not personal suffering/happiness insight"
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creative writing POV technique, not personal insight project"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal development and relationship confidence building"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#19",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Spiritual insight about compassion, love neighbor, emotional algorithm"
+    },
+    {
+      "candidate_id": "historical-e4338d23957f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist psychology on attachment, aversion, and emotional reactions"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal understanding of psychological distinctions and virtue assessment"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal reflection on ego, self-talk, and spiritual technique development"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist non-attachment teachings and practical meditation methods"
+    },
+    {
+      "candidate_id": "historical-22e3ce89db39#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist practice, nervous system training, conditional happiness"
+    },
+    {
+      "candidate_id": "historical-ff1d41c65aa3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mindfulness meditation practice and mental discipline"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Knowledge management and expert belief systems, not personal insight"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Novel writing framework methodology, not personal insight publishing"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creative writing ideation framework, not personal insight project"
+    },
+    {
+      "candidate_id": "historical-22a640441a22#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mindfulness meditation practice methods"
+    },
+    {
+      "candidate_id": "historical-7507e57581c6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mindfulness meditation practice and focal techniques"
+    },
+    {
+      "candidate_id": "historical-92f34728e9fa#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Understanding consciousness, mood, and subconscious thought patterns"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis using MBTI assessment"
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile MBTI personality typing"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and personality analysis"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover design framework for creative writing"
+    },
+    {
+      "candidate_id": "historical-af20502c9617#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meditation objects and imagery for practice"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophy of AI and statistics, not personal insight"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover design trend analysis"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal retreat setup, spiritual practice, addiction management"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Novel writing method review"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging strategy"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover quality evaluation framework"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Back cover blurb framework for book design"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book cover quality evaluation framework"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and analysis"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Back cover blurb criteria for book design"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent Teams white paper overview"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Dating profile analysis with relationship ethics discussion"
+    },
+    {
+      "candidate_id": "historical-fd4544ad9327#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mindfulness meditation headlines and key practices"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Three-volume book outlines on Parliament of Self/PAS"
+    },
+    {
+      "candidate_id": "historical-9faccda10fba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Feminine personality types and dating dynamics"
+    },
+    {
+      "candidate_id": "historical-2a8c45ec9149#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "SEO optimization for meditation article"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble match analysis and dating dynamics"
+    },
+    {
+      "candidate_id": "historical-cd3affb195a5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Mental health analysis and personal support framework"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character interaction expansion for fiction"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora technical territories and modes research"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix template technical development for Ora"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creative writing guidelines review"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Defining love as attunement-in-action: spiritual insight"
+    },
+    {
+      "candidate_id": "historical-06d8803c13a1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO article optimization"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Amazon book description framework"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted writing framework development"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project timeline and release strategy"
+    },
+    {
+      "candidate_id": "historical-cafcbaa9f5d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image generation task request"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Amazon description writing framework"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper with Mira fictional narrative"
+    },
+    {
+      "candidate_id": "historical-804a4cd0180d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Healing presence and personal transformation"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon game features analysis"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Reflection on accomplishment and publishing companion"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#24",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Semantic structuring and organizational progress"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Emotional depth, tears, empathy as trained skill"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack technical issue"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework document evaluation"
+    }
+  ]
+}

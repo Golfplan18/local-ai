@@ -1,0 +1,486 @@
+{
+  "nexus": "property",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Revisiting the decision to give Ora away for free, resolving...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-cf87dd0bfbb9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Personal spiritual practice, non-attachment, peaceful ordina...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Finalizing the Properties System document and fixing Linter-...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Book metadata, description, keywords, and SEO optimization) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Visual thinking systems, domain transfer insights, and exper...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Housing bubble book demonstrates real estate market expertise and mathematical valuation methodology"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#46",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Metadata Menu sidebar visibility and the Status/status case ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Amazon Book Description Framework development for Step 40) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Aura project breakthrough on consolidating 20 modes into 75 ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (OCR analysis and MBTI personality assessment from profile im...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Housing bubble book and patent parallel engagement with real estate IP"
+    },
+    {
+      "candidate_id": "historical-864404aa59ef#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Personal writing introduction) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#18",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Distinguishing genuine high ability from true genius, credit...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Ora meta-layer architecture for autonomous cognitive operati...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Amazon Description Framework criteria and design refinement) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Claiming to have solved the hard problem of consciousness an...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Designing Ora's analytical mode/framework architecture, from...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct work on luxury property amenity-specific marketing content"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Self-improving prompt frameworks, being far ahead of the fie...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Loneliness/isolation, the Amma comparison, and fear of losin...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-13ef5c257426#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Worldbuilding philosophy and resonance-based economy) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Heading-folding and outline navigation plugins) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Emotional depth and tears; empathy as a trained skill (Amma)...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Learning Obsidian Bases basics: video transcript, syntax, fi...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Framework transformation to integrate archetypal character c...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Long-term accretion approach to writing the project) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Reviewing the AI-Assisted Novel Writing Method overview and ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (The Buddha's historical precedent, the credibility and assas...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-caeb4aa539a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vacation rental property description improvement and marketing optimization"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Deploying and evaluating local AI models with adversarial ar...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Rewriting OkCupid bio and profile prompts) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Recap of properties-editor options and the Metadata Menu fro...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Scoping three book outlines built on the PAS/Parliament work...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic ('Boot-licker' meme framing and right-wing policy-failure cas...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c71d2f6fbdc1#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Property features clarification attempt (incomplete exchange...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-60546fd856ac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Drafting and revising individual Act 1 chapters (10, 13, 14,...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Google resources and markdown-based virtual memory system fo...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "References real estate blog from past outlines; cost-benefit of unlocking dormant real estate materials"
+    },
+    {
+      "candidate_id": "historical-286364b0dba0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Second-guessing message to woman (Lulu) and assessing her em...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (The intuition book and biographical foundation) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Crafting dating profile and message to Esther on Hinge) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Alternative cosmology theory - non-expansion universe, gravi...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Author's personal journey with AI, purpose alignment, and mo...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-839583df5598#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Profile analysis and early interaction with Lili) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Review and update recommendations.) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Embodied knowledge and nervous system integration) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Renewed urgency to publish, strategy for how the Oracle shou...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Fiverr distribution strategy: initial concept for stealth be...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Ashley re-establishes contact: crafting careful replies, the...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Extended, frustrating troubleshooting saga to make the templ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-b1557b8e3e3a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Accessing digital library resources and public book download...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Drafting when individual creation becomes collective movemen...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Exploring Metadata Menu's relational Lookup feature) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#11",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (External resource indexing architecture: AI-annotated index ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Developing a statistical/pattern-recognition theory of meani...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-ca99db225e8d#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Media propaganda, class consciousness, and anger at complici...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Media sycophants, red-state policy failures, and an Arkansas...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Dating conversation analysis and masculine framing) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Debugging and redesigning the user's AI-assisted novel-writi...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Nancy profile analysis and relationship dynamics) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#42",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Restoring the properties sidebar panel) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Obsidian Bases plugin: understanding/use cases, vault sync a...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Prior art repository concept, existing examples, integration...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (The white paper is the source document, and the writing guid...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Designing a real-time voice-to-screen AI interface and the n...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Deep work immersion phase; bandwidth consumption; serendipit...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Theme Refinement Framework development) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-4674814aa4bf#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Trauma-based loyalty systems and how suffering becomes weapo...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Revising multiple brief preview and overview chapters) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-51282862b903#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Book marketing strategy: versioning, expert outreach, promot...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-652cce2478d4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Developing the Output Formalization Framework for expressive...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Satirical contrast between working-class economic reality an...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Enhanced technical outline development and style guide creat...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Ashley relationship arc - message impact and closure) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Revising book section on Three-Part Awakening with new draft...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#13",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Vault digest/summary workflow and a pitch to get Elon Musk t...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (External book marketing strategies) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Dating profile analysis, polarity preference, and messaging ...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Malcolm Little King trilogy strategy and political narrative...) unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-7369792cf1fb#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Topic (Good-intentioned people doing terrible things; protagonist m...) unrelated to real estate"
+    }
+  ]
+}

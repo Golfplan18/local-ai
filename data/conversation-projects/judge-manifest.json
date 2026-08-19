@@ -1,0 +1,2516 @@
+[
+ {
+  "nexus": "ai_writing_method",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ai_writing_method",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ai_writing_method/batch-008.json",
+  "count": 43
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-012.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-013.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_jesus",
+  "batch": 14,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_jesus/batch-014.json",
+  "count": 25
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-012.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_judas",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_judas/batch-013.json",
+  "count": 25
+ },
+ {
+  "nexus": "american_king",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-012.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-013.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 14,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-014.json",
+  "count": 80
+ },
+ {
+  "nexus": "american_king",
+  "batch": 15,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/american_king/batch-015.json",
+  "count": 35
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "audio_diaries_1990s",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/audio_diaries_1990s/batch-009.json",
+  "count": 11
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "autism_acceptance",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/autism_acceptance/batch-009.json",
+  "count": 76
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "diklis_chump",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/diklis_chump/batch-008.json",
+  "count": 58
+ },
+ {
+  "nexus": "divorce",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "divorce",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/divorce/batch-010.json",
+  "count": 43
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "einstein_resonance",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/einstein_resonance/batch-008.json",
+  "count": 16
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "executor_instructions",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/executor_instructions/batch-009.json",
+  "count": 32
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "expanding_awareness",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/expanding_awareness/batch-009.json",
+  "count": 45
+ },
+ {
+  "nexus": "golf",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf/batch-006.json",
+  "count": 70
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "golf_course_design",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/golf_course_design/batch-011.json",
+  "count": 64
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "human_nexus",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/human_nexus/batch-011.json",
+  "count": 27
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "image_generation",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/image_generation/batch-010.json",
+  "count": 39
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "inception_and_incubation",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/inception_and_incubation/batch-011.json",
+  "count": 64
+ },
+ {
+  "nexus": "insight",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "insight",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/insight/batch-007.json",
+  "count": 58
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "main-street-independent",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/main-street-independent/batch-011.json",
+  "count": 16
+ },
+ {
+  "nexus": "marketing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "marketing",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/marketing/batch-008.json",
+  "count": 34
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "obsidian",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/obsidian/batch-012.json",
+  "count": 11
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-app",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-app/batch-010.json",
+  "count": 55
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora-ai-org",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora-ai-org/batch-008.json",
+  "count": 49
+ },
+ {
+  "nexus": "ora",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora/batch-011.json",
+  "count": 47
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_chokepoint_response",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_chokepoint_response/batch-012.json",
+  "count": 69
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_foundation",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_foundation/batch-011.json",
+  "count": 19
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_framework_library",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_framework_library/batch-008.json",
+  "count": 78
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-012.json",
+  "count": 80
+ },
+ {
+  "nexus": "ora_knowledge_library",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/ora_knowledge_library/batch-013.json",
+  "count": 52
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "pen_names",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/pen_names/batch-009.json",
+  "count": 52
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "photo_books",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/photo_books/batch-009.json",
+  "count": 65
+ },
+ {
+  "nexus": "politics",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "politics",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/politics/batch-012.json",
+  "count": 27
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "project_workshop",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/project_workshop/batch-010.json",
+  "count": 10
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "prompt_engineering",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/prompt_engineering/batch-008.json",
+  "count": 73
+ },
+ {
+  "nexus": "property",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "property",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/property/batch-008.json",
+  "count": 78
+ },
+ {
+  "nexus": "publishing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing/batch-011.json",
+  "count": 12
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "publishing_website",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/publishing_website/batch-009.json",
+  "count": 37
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "quantum_mechanics",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/quantum_mechanics/batch-008.json",
+  "count": 18
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "real_estate_book",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/real_estate_book/batch-010.json",
+  "count": 54
+ },
+ {
+  "nexus": "relationships",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "relationships",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/relationships/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "science",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/science/batch-008.json",
+  "count": 36
+ },
+ {
+  "nexus": "technology",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "technology",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/technology/batch-009.json",
+  "count": 62
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-006.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-007.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-008.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-009.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-010.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-011.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-012.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-013.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 14,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-014.json",
+  "count": 80
+ },
+ {
+  "nexus": "wetoo",
+  "batch": 15,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/wetoo/batch-015.json",
+  "count": 43
+ },
+ {
+  "nexus": "writing",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing/batch-006.json",
+  "count": 37
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-001.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-002.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-003.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-004.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-005.json",
+  "count": 80
+ },
+ {
+  "nexus": "writing_fiction",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/judge-input/writing_fiction/batch-006.json",
+  "count": 42
+ }
+]

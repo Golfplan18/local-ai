@@ -1,0 +1,138 @@
+{
+  "nexus": "american_jesus",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-bcd3eafbee93#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Main plot trilogy structure with three books defined by Hayzeus's escalating choices from individual to collective service."
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument audit revision, unrelated to narrative development."
+    },
+    {
+      "candidate_id": "historical-f7eba5bc07dd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Iterating Hayzeus story-beat roadmap format with 12-word narrative requirements per beat."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument audit revision, generic methodology unrelated to project."
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic dossier planning structure with no project-specific engagement visible."
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knights of Human Nexus organization development and Marcus Johnson integration throughout narrative."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book cover design framework analysis, generic methodology without project engagement."
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Immigration research for column writing, supporting external output rather than novel development."
+    },
+    {
+      "candidate_id": "historical-406a1ae80806#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Multi-AI fiction feedback framework design, generic editing methodology without project content."
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Adapting Biblical passages to Hayzeus dialogue and speeches with reference table."
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical and nursing board complaint letters, completely unrelated to narrative."
+    },
+    {
+      "candidate_id": "historical-66a94d441650#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Karen Love character profile with psychological architecture and moral injury theme."
+    },
+    {
+      "candidate_id": "historical-f9d923ab780c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 3 Chapters 33-34 foundation work (Allies and Kill Order) with universal pattern positioning."
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 Chapter 15 Healing Circle outline demonstrating movement evolution to prefigurative politics."
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Custom parables for Hayzeus addressing Michael's institutional abandonment fears."
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 2 Chapter 15 Healing Circle outline and universal pattern positioning work."
+    },
+    {
+      "candidate_id": "historical-035f53fa353c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 23 Poisoned Waters and Chapter 24 with Marcus Johnson and Knights environmental action."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Harlan Byrd antagonist character profile with psychological coalitions and story beat roadmap."
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Act 1 Chapter 4 breather chapter at New Hope with Michael and Jo interaction."
+    },
+    {
+      "candidate_id": "historical-ed1d5236500a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Initiation Framework ensuring choice-driven character architecture for trilogy development."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Wank R. Cox III antagonist character profile with psychological coalitions and beat roadmap."
+    },
+    {
+      "candidate_id": "historical-6e22abd84f17#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Loading Chapter Initiation Framework for choice-driven character architecture methodology."
+    }
+  ]
+}

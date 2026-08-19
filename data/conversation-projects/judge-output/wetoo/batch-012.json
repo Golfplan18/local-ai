@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 12,
+  "verdicts": [
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting preference only, no project engagement"
+    },
+    {
+      "candidate_id": "historical-f1b39378527f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing systemic power, elite corruption, collective action"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter refinement, different project"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 chapters, different project"
+    },
+    {
+      "candidate_id": "historical-c99dc6301508#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Samsung soundbar wiring instructions, unrelated"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project content"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#58",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing elite hypocrisy and minority rule maintenance"
+    },
+    {
+      "candidate_id": "historical-63297d343a27#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building framework on concentration of power dynamics"
+    },
+    {
+      "candidate_id": "historical-5d974b97f06d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Decoding elite narrative manipulation and propaganda"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Kindness Thread subplot development"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reprinting methodology framework, nominal reference"
+    },
+    {
+      "candidate_id": "historical-7c5769f58a2a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing counter-messaging strategies to expose elite"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project engagement"
+    },
+    {
+      "candidate_id": "historical-7369792cf1fb#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mapping psychological manipulation in right-wing media"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting instruction only, no substantive project"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Writing counter-narrative fiction about alternative governance"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 2 Chapter 20 content work"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#46",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-discussion about AI communication preferences"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system market positioning and architecture"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference, no project content"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal family trauma narrative, not project-related"
+    },
+    {
+      "candidate_id": "historical-3df3d9437636#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#129",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Developing hypocrisy-exposure framework for propaganda"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Judas project planning, different project"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI (Main Street Independent) publishing strategy"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework continuation, insufficient context"
+    },
+    {
+      "candidate_id": "historical-839583df5598#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship engagement, not project-related"
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Title generation request, minimal context"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora model architecture configuration"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic publishing platform features, not We Too"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character dialogue expansion, likely American Jesus"
+    },
+    {
+      "candidate_id": "historical-929009250a5e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Elon Musk analysis, event-specific not We Too work"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multi-book strategic publication and series structure"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#65",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Name lookup only, no substantive engagement"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Real-world examples of media verification failures"
+    },
+    {
+      "candidate_id": "historical-63a2688051d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical optimization (RAG), not We Too"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework implementation, insufficient specificity"
+    },
+    {
+      "candidate_id": "historical-5d9613ddf7d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus thematic implementation bible"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI character development (Phukher), different project"
+    },
+    {
+      "candidate_id": "historical-99614d682408#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Satirical fiction framework, too generic"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Specific news event, nominal We Too connection"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief acknowledgment only"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework for fiction writing methodology"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology, not We Too specific"
+    },
+    {
+      "candidate_id": "historical-1186804ac06f#0",
+      "verdict": "yes",
+      "confidence": "medium-high",
+      "reason": "Analyzing Trump administration policy failures"
+    },
+    {
+      "candidate_id": "historical-e2467aaeb52d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Critical analysis of inherited wealth and extraction"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora execution review architecture design"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "New separate book project distinct from We Too"
+    },
+    {
+      "candidate_id": "historical-c5e0cd7ba0a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI distributional honesty journalism methodology"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel writing framework review"
+    },
+    {
+      "candidate_id": "historical-b1e1108ce4ca#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework establishment, insufficient context"
+    },
+    {
+      "candidate_id": "historical-4674814aa4bf#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing how trauma/suffering weaponized by power"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference"
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#26",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI-generated partisan news and manipulation strategies"
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication strategy meta-discussion"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix analysis and forecasting, likely technical"
+    },
+    {
+      "candidate_id": "historical-fe8013652230#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework reception discussion, too generic"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus book project, different project"
+    },
+    {
+      "candidate_id": "historical-ce777a361d92#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic white paper/release strategy, insufficient"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#34",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Event-specific analysis, nominal We Too connection"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#134",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus ministry narrative, different project"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#3",
+      "verdict": "yes",
+      "confidence": "medium-high",
+      "reason": "Trump administration weaponization and failures"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus continuity framework development"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-discussion about satire political balance"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief instruction acknowledgment"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Rebuilding methodology framework, not We Too specific"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master outline and thematic framework"
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying parliament model to right-wing propaganda"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical debugging of Base filter, not We Too"
+    },
+    {
+      "candidate_id": "historical-ec233979c12e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapters 18-19 framework application"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation processing pipeline architecture, technical"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#39",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Current events polling, nominal We Too connection"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political clarity methodology and AI coordination"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship exploration"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted fiction writing framework evaluation"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story beat and character arc framework for fiction"
+    }
+  ]
+}

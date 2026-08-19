@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian publish - Library/Engrams is file path, not knowledge library project"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora Knowledge Foundation Design with encyclopedia/news/source library phases"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character archetype library for fiction - Library/Engrams is personal vault folder"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge atomization (engrams) with provenance_level and RAG protocol"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3bfa19d94676#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-1eee1672c32c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing frameworks - Library/Engrams is personal vault folder, not KL engram"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Federated library distribution and knowledge corpus with verification/indexing"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Internet library nonprofit with atomic notes, provenance standards, RAG pipeline"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "RAG system with provenance ratings for knowledge sources (AP News)"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge library and Internet Archive partnership for provenance-weighted RAG"
+    },
+    {
+      "candidate_id": "historical-16a082cf973b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal knowledge library with verified domains for fine-tuning and RAG"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal vault knowledge organization - not the public-domain knowledge library project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-89ea62959215#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Knowledge library in title, discussing foundation implementation"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-9dd48a433093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No knowledge-library-specific engagement"
+    }
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "nexus": "diklis_chump",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-798f22f8ad7c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting/narrative development for American Jesus project"
+    },
+    {
+      "candidate_id": "historical-dfde8a494748#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-e39162f6aea6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/dating profile work, unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Work on different project: Developing sections for Extending Human "
+    },
+    {
+      "candidate_id": "historical-13d94d4bc5b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting/narrative development for American Jesus project"
+    },
+    {
+      "candidate_id": "historical-aa9aec9b04ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-5d9c19b99bfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/dating profile work, unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-5fc6226e797b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly working on Diklis Chump satirical content generation"
+    },
+    {
+      "candidate_id": "historical-b0ba07d133e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-c4a83152e866#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-ad61398d03a2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-effebccbd384#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly working on Diklis Chump satirical content generation"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-c4740cecb2c7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-295d121c32f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Setting/narrative development for American Jesus project"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book design/publishing work, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/dating profile work, unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-7b4cb2e2ad4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicitly working on Diklis Chump satirical content generation"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-c4b2d96292f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-bef280e7b699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development for American Jesus novel, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal/dating profile work, unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Work on different project: Ora project development journey and dual"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-6ba3c2f80257#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication or formatting preference, not project work"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "General book/story development methodology, not Diklis Chump-specific"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-769863476d32#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book design/publishing work, not Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-ebcd97747ed9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject not clearly related to Diklis Chump project"
+    }
+  ]
+}

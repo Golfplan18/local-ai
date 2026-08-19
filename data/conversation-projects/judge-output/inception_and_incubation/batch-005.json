@@ -1,0 +1,486 @@
+{
+  "nexus": "inception_and_incubation",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-5fe4a2aec512#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Personal AI coach concept - Introducing memory-bas"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Thread C update execution with 17 modes and requir"
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Refining metrics and improving goodness of fit"
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Dating profile analysis and romantic messaging str"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Assessing authenticity of dating prospect and scam"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Philosophical discussion of cultural preservation; not about Incubator project"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Creating satirical political content across multip"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Analyzing Elle's profile and refining opening mess"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Persona registry architecture and specification"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Crafting and refining message to send to Ashley"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Building and iteratively refining the 'American Je"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Polarity assessments of Rita and other candidates;"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Foundational efforts and final schema implementati"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit discussion of vault incubator/staging system for candidate notes"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with Incubator concept: Conversation data storage architecture a"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Developing opening messages for Emily Alexis with "
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Creating and refining the conceptual framework for"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Application examples including Geshe Kalsang chatb"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Re-evaluating output, diagnosing the framework's c"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Claude app voice features, text-to-speech settings"
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Main discussion"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Iterative satirical dystopian content generation a"
+    },
+    {
+      "candidate_id": "historical-31fdb0b2ed82#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Extracting and cataloging thought experiments and "
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Article testing, sourcing standards, and cat thoug"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Satirical authoritarian narrative\u2014religious corrup"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Redrafting Chapter 27: counter-punch strategies an"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Running the ideation evaluation framework and clar"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Automated PDF-ingestion pipeline and fractal outli"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Regulatory systems and political structures in sub"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Stefani (creative writer) profile analysis, INFP m"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Request for text output"
+    },
+    {
+      "candidate_id": "historical-ea91e7763650#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Dating profile analysis and relationship compatibi"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: The 'World Library' concept: a curated, self-audit"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Output format preference"
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Analysis and development of new cosmological theor"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Updating for new models and workflow preferences"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Satirical authoritarian regime policy framework: S"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive engagement with Incubator concept: Reorganizing foundation structure using "
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Continued framework implementation and creative pr"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: White paper section development and brainstorming "
+    },
+    {
+      "candidate_id": "historical-313084bad595#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Mode System architecture and pipeline design"
+    },
+    {
+      "candidate_id": "historical-3c965bcb5fb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Dating profile OCR and personality analysis"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Writing style guide development \u2014 Iterative refine"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Analyzing Amy's dating profile and strategizing in"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Dating profile analysis comparing spiritual perfor"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Satirical political writing demonstrating authorit"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: AI swarm architecture and pattern library for prob"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Mapping Ora's tool and API capabilities (PDF conve"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: OCR analysis and MBTI personality assessment from "
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Requesting plain-text-only responses"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Atomization limits - when compound documents canno"
+    },
+    {
+      "candidate_id": "historical-4029c0c36a4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Satirical fiction legislative proposal titles"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Word count estimation accuracy and framework updat"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: User stylistic formatting request"
+    },
+    {
+      "candidate_id": "historical-9e2565e4b609#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: AI agent team coordination and third brain archite"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Establishing frameworks for story beat generation "
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Video summary: 'Getting Started with Obsidian, Sma"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Personal vision for AI-empowered society"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Brief greeting"
+    },
+    {
+      "candidate_id": "historical-0ce30aced475#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Analyzing specific women's profiles, implementing "
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Developing and assembling formal legal complaint f"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Drafting front-matter praise for divorce recovery "
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Archetypal Character Choice Fiction Project Overvi"
+    },
+    {
+      "candidate_id": "historical-5fe67c2c2190#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Political satire framework exposing authoritarian "
+    },
+    {
+      "candidate_id": "historical-cd7efc1da5ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Dating profile evaluation and message crafting for"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Framework pair structure and enhancement methodolo"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Creating formatted satirical fiction content depic"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Text output preference"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Designing a real-time voice-to-screen AI interface"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Reconstructing and analyzing the on-again/off-agai"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Designing a local-LLM 'quarterback': hardware opti"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Adversarial review checklist for distributional st"
+    },
+    {
+      "candidate_id": "historical-25565ad7fbfd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: Chinese woman dating profile OCR extraction and tr"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Visual Studio Code setup and browser auto-launch"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No specific Incubator engagement: Publishing platform features and proofreading tool"
+    }
+  ]
+}

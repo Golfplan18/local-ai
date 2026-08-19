@@ -1,0 +1,486 @@
+{
+  "nexus": "diklis_chump",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book outline work for Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic system documentation"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-52dbaa8e220d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic system documentation"
+    },
+    {
+      "candidate_id": "historical-52dbaa8e220d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Diklis Chump production workflow"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive narrative work on Diklis Chump story"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical test, not project work"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Content production for Diklis Chump distribution"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Personal dating, not Diklis Chump work"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-baea66480190#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: milena chump"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical test, not project work"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unrelated visual research (Ora system)"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive narrative work on Diklis Chump story"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character relationship development for Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#12",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: blohard lootnick"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: blohard lootnick"
+    },
+    {
+      "candidate_id": "historical-da088a4e229a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Technical test, not project work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Content production for Diklis Chump distribution"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: malcolm little king"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Develops Diklis Chump character: phukher"
+    },
+    {
+      "candidate_id": "historical-9d3913b3270f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#11",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive narrative work on Diklis Chump story"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive narrative work on Diklis Chump story"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject names Diklis Chump project directly"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Generic framework work, no Diklis Chump mention"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI prompt architecture for Diklis Chump production"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with Diklis Chump project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#18",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "AI infrastructure work unrelated to Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "General immigration research"
+    }
+  ]
+}

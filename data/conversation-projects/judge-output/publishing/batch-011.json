@@ -1,0 +1,78 @@
+{
+  "nexus": "publishing",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Digital sovereignty and knowledge system infrastructure, not publishing business operations."
+    },
+    {
+      "candidate_id": "historical-9b5fb91c1839#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal gratitude message with content forwarding request, not publishing business work."
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy content creation exercise without publication/distribution discussion."
+    },
+    {
+      "candidate_id": "historical-696be87928fc#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional narrative development for 'American Jesus,' not publishing operations infrastructure."
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Distribution strategy for books: giveaway specials, Overton window shift, reader reach planning."
+    },
+    {
+      "candidate_id": "historical-6c029bf5b524#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ingestion of 'American Jesus 3' story outline; pure creative content without publishing context."
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Building visual diagram tools and 'maps of content' for future explainer-book publication."
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Developing chapter-refinement framework with scene structure, character voice, emotional beats for prose."
+    },
+    {
+      "candidate_id": "historical-c9a3464f357e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ingestion of 'American Jesus 2' outline; story development without publishing operations engagement."
+    },
+    {
+      "candidate_id": "historical-872bae7104b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story bible for 'American Jesus' chapters: narrative war, themes, character arcs."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Product marketing strategy for 'Jesus AI' naming/positioning; ethics discussion tangential to publishing."
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document analysis summarizing AI agent teams' applications, pitfalls, benefits; unrelated to publishing."
+    }
+  ]
+}

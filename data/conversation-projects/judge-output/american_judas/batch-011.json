@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 11,
+  "verdicts": [
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character foundation work for narrative"
+    },
+    {
+      "candidate_id": "historical-75f6cada5169#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#32",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-2d427089da7e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#61",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-afadd067fe4b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Direct engagement with the narrative project"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character foundation work for narrative"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-587af854e46b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-bda27f265f55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework/methodology without project context"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#53",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-f214a9ef874f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-43917af113ce#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework/methodology without project context"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-8368edcc4d41#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-350ad5373215#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character foundation work for narrative"
+    },
+    {
+      "candidate_id": "historical-19b34b5b32dc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Direct engagement with the narrative project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework/methodology without project context"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Direct engagement with the narrative project"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-d9bf99fa9877#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-5ecbb4a87af9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-3bf9bd18eb7a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-573ae5dba278#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-90540d87d222#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-99df88574463#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic framework/methodology without project context"
+    },
+    {
+      "candidate_id": "historical-897c4830b27a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-1474d3037024#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-497d67010709#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Direct engagement with the narrative project"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-9a573d71711e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-0aedbef3df0b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-cfee1ba18356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-7f22583878d2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter refinement for the narrative project"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#13",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-fbc7a2d3ec55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unrelated personal content"
+    },
+    {
+      "candidate_id": "historical-9e593097d0b6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-da0de4d8ab3b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist/mirror perspective work for the project"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-654129afa1bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-aabfc5567cb0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-589bf9777155#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character foundation work for narrative"
+    },
+    {
+      "candidate_id": "historical-e1a6fc7514a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-6ebb0b8751d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-492a4972a10a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project work, not American Judas"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas engagement"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    },
+    {
+      "candidate_id": "historical-90dfd8e4fcf3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear connection to American Judas project"
+    }
+  ]
+}

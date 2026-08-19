@@ -184,3 +184,12 @@ data/custom-styles.json
 # Retention-sweeper archive of rotated runtime logs (regenerable; see
 # orchestrator/retention_sweeper.py — data/*.jsonl rotated here when oversized).
 data/archive/
+
+# Conversation-to-project association: derived retrieval artifacts. Both are
+# regenerable from data/conversation-segments/ plus the vector index, and
+# together they are ~80 MB. The judged verdicts under
+# data/conversation-projects/judge-output/ are NOT derived and are kept.
+data/conversation-projects/candidates.json
+data/conversation-projects/judge-input/
+data/conversation-projects/verify-input/
+data/conversation-projects/rerun-batches.json

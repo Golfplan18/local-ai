@@ -1,0 +1,486 @@
+{
+  "nexus": "ai_writing_method",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reader Engagement evaluation framework for novel"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sustained revision of AI narrative-development frameworks"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trash thread: tool comparison without method"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT system design (different project)"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework execution: Character/Setting/Plot development"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "De Bono frameworks applied to story/novel method"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Style guide creation for AI-assisted prose"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian narrative content"
+    },
+    {
+      "candidate_id": "historical-a0d4ea738b21#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "ACE system: AI-assisted writing method application"
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical content creation without methodology"
+    },
+    {
+      "candidate_id": "historical-f971afe5714a#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sudowrite tool evaluation for fiction drafting method"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship visioning (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/corporate policy (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-7ce0458b5372#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "White paper integration with fictional narrative method"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: style guide framework"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: safety argument audit"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: framework optimization"
+    },
+    {
+      "candidate_id": "historical-97ab949ea64d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: mode verification"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: framework verification checks"
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: argument verification"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: framework evaluation"
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: mode verification checklist"
+    },
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tech feature (not writing method)"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technical outline and style guide creation"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: AI safety argument"
+    },
+    {
+      "candidate_id": "historical-0093278348d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: AI safety consolidation"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: pipeline architecture"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#28",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Pulp fiction project using framework approach"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character foundation framework execution for fiction"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Commissioning evidence manifesto for book project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Self-improving prompt frameworks for writing"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: deliverables"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character framework initiation for novel project"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Copyright implications of AI-generated prose"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Masculine-feminine dynamics and paraphrasing for prose"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Updating evaluation and criteria frameworks for writing"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Refining Narrative Elements Framework categories"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora Foundation design (not fiction)"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Style guide conformance review and implementation"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing framework as multi-format IP business"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude app voice features (tech tool)"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Authorship and copyright when AI executes writer instructions"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Updating reader notes for abridged book version"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Adversarial-AI methodology applied to fiction writing"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Updating reader notes and formatting for book edition"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Paradigm shift in authorship (meta)"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework Creation Framework upload and verification"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PKM Architecture (knowledge management)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Template troubleshooting (technical)"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Pen-name publishing strategy and creative planning"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Markdown files request (context unclear)"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chapter outline creation and condensed version formatting"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tariff inflation analysis (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book outline review and updating"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Applying Continuity Distillation Framework to fiction"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project folder setup (tech)"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relational polarity and dating (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI impact on writing productivity and skill transformation"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Foundation Framework development and verification"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework condensation and structural decision-making"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump DEI policies (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-98d0ee408acc#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Copyright and authorship in AI-assisted writing"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient evidence of writing method engagement"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework implementation, review, and content restoration"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book outline restructuring and production"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Meta-discussion of pen-name strategy in context of writing"
+    },
+    {
+      "candidate_id": "historical-79f361b40c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Complaint letters (legal writing)"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book project with AI: author note on emotional intelligence"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Prompt layering and persona suites for writing phases"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework pair structure and enhancement methodology"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Connection status confirmation (meta)"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "White paper section development and brainstorming"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Digital sovereignty and aging (non-fiction)"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Naming AI assistants (meta)"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LM Studio setup/troubleshooting (tech)"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora project: framework assessment"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "American Jesus novel: character development"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "yes",
+      "confidence": "low",
+      "reason": "Library content review in framework context"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Creative character development and reinterpretation"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book metadata and SEO (publication)"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-9c44dafbadba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: external book marketing strategies"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (other)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (other)"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-f9df41e03158#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-46e38a0cdae8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: field manual structure and quick-referen"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (other)"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: evaluating and matching different ai mod"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-a0d4ea738b21#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Real estate mentioned but historical/background only"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-9d54ee10c6bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: ai safety argument audit and verifier fi"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: recovering and preserving the kira conve"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: building a dynamic dataview-driven dropd"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: legal complaint document development and"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: literary criticism request for edge obse"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: meme template breadth library for satiri"
+    },
+    {
+      "candidate_id": "historical-6f6869e6a2c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: developing and assembling formal legal c"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-27066ac7fc3c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: book outline v5 restructuring request an"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: identifying and replacing outdated refer"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: dsbs book project overview and structure"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: dating relationship visioning and chemis"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: system overview v2 design review concern"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: finding a mac file manager with tagging/"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: creating 3d sphere and spherical shell v"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: book classification under bowker bisac c"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: okcupid profile analysis and message dra"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: reflections on the ai writing system: sh"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: enabling technologies and adjacent possi"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: conversation data storage architecture a"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: science policy dossier scope and clarify"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: text output preference"
+    },
+    {
+      "candidate_id": "historical-a7bcabdde0ed#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: planning implementation for specific use"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (fiction)"
+    },
+    {
+      "candidate_id": "historical-e3e7f620bfb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: reviewing and refining philosophical ins"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: generating satirical religious deificati"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: formatting preference instruction"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: exploring database technology options an"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (other)"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: dinner invitation and final check-in mes"
+    },
+    {
+      "candidate_id": "historical-4fc9bd79e65a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-406faf7a91d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: extracting langchain template agents wit"
+    },
+    {
+      "candidate_id": "historical-51282862b903#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: reflections on ai-augmented creative wor"
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: i need a working title for this piece. p"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (political_economy)"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: thread b: boot file updates with 17-mode"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: satirical policy proposals for fictional"
+    },
+    {
+      "candidate_id": "historical-a495a6f11ee3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (ai_frameworks)"
+    },
+    {
+      "candidate_id": "historical-d641dabb67bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: building systematic critique through ind"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: searching model specifications by size a"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: ai response formatting: eliminating clos"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not about real estate book: book project conceptualization bridging "
+    }
+  ]
+}

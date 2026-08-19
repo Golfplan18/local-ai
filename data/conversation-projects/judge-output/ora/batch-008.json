@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-3110e0650216#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault effort/passion reorganization"
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Copyright/DMCA law policy"
+    },
+    {
+      "candidate_id": "historical-55f96fc476b8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel setting profile (Diner)"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Bases plugin tutorial"
+    },
+    {
+      "candidate_id": "historical-c4740cecb2c7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Coherence audit mode for Ora"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Philosophical implications of Ora system"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thunderbolt cable selection"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI assistant naming (Chad/Jimmi)"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel narrative element frameworks"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Paywall-free knowledge library"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault/agent system planning"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora sidebar engineering/architecture"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dual-hemisphere agent frameworks"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Flight tracking (personal)"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework comparison (general)"
+    },
+    {
+      "candidate_id": "historical-d743481d0ed7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gemini Mac app availability"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura analysis section revamp"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PDF document summarization"
+    },
+    {
+      "candidate_id": "historical-c948aae30ef3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document outline summarization"
+    },
+    {
+      "candidate_id": "historical-478c44f2eff6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline system update"
+    },
+    {
+      "candidate_id": "historical-0422bb789f8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adversarial review checklist"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text extractor plugin setup"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Objectives/Milestones framework"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code workflow usage"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research definition clarity"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI job displacement book"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle Buddhist archiving system"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel framework comparison"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI swarm system planning"
+    },
+    {
+      "candidate_id": "historical-bbffd146c708#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Grammar spec for prompting"
+    },
+    {
+      "candidate_id": "historical-b593344ab1c5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Grok AI access question"
+    },
+    {
+      "candidate_id": "historical-a06f9cc0a3da#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety verifier findings"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LangFlow/LangChain enhancement"
+    },
+    {
+      "candidate_id": "historical-f715d2e9d710#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character profile (Marco Polio)"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "ORA AI system book outline analysis"
+    },
+    {
+      "candidate_id": "historical-f79ca4d0a070#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deep research brief execution"
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google AI tools overview"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical policy proposals"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/sovereignty dynamics"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Governance framework outline"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora interface and installation script"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel narrative structure"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aura/MSI testing milestones"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel narrative development"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Heading hierarchy formatting"
+    },
+    {
+      "candidate_id": "historical-7a94181f5723#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Structured prompt formatting"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mercor AI disruption analysis"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing pipeline"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character introduction"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter planning"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Claude Code for Ora implementation"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora resource orchestration layer"
+    },
+    {
+      "candidate_id": "historical-7a112f2e463d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora App Store positioning strategy"
+    },
+    {
+      "candidate_id": "historical-eaa125565b31#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Email templates/publication"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework (novel)"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automation societal effects"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel chapter outline"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction narrative"
+    },
+    {
+      "candidate_id": "historical-5e0eef15c9b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Manifesto creation"
+    },
+    {
+      "candidate_id": "historical-b1b9171c3aed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NLP book outline review"
+    },
+    {
+      "candidate_id": "historical-1bbdf7f2be38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel setting framework"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI infrastructure/pen names"
+    },
+    {
+      "candidate_id": "historical-d5c8a938bcae#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "IP law/copyright policy"
+    },
+    {
+      "candidate_id": "historical-c1b44f8b0918#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PDF workflow Obsidian"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora action layer communications"
+    },
+    {
+      "candidate_id": "historical-cfaa18f18854#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Counter-propaganda strategy"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pydantic AI framework"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story beat framework"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical AI grounding"
+    },
+    {
+      "candidate_id": "historical-ba653f6c1aea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Propaganda audit research"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora soft launch/free release decision"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gradio installation setup"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Business model documentation"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual design/framework styling"
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Code debugging/execution"
+    },
+    {
+      "candidate_id": "historical-55f96fc476b8#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel setting (Country Club)"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical dictator scenarios"
+    },
+    {
+      "candidate_id": "historical-eaf5d37a9e26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character frameworks"
+    },
+    {
+      "candidate_id": "historical-32df11c88044#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character research"
+    }
+  ]
+}

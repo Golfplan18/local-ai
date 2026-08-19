@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Thread C execution with 17 modes and framework documents"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Verifier findings and argument audit with verification process"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document production queue for Ora system with mode specifications"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Database technology and webcam setup unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Document nomenclature and category taxonomy for Ora frameworks"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Divorce recovery book front matter unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Style guide framework development with critical preservation directives"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Templater template troubleshooting without Ora framework engagement"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conversation data architecture and RAG implementation for Ora"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Browser tab usage for reading, no Ora system engagement"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended Cognition Framework and Master Problem Solver architecture concepts"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chatbot tab display preference, no Ora system discussion"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Gear 4 pipeline specifications framework review"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction novel Knights character organization, not Ora system"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Mental model library content (ZigZag, design rationale concepts)"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Technical outline restructuring with content loss verification"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic AI safety team and organizational efforts unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Persona and role-shift implementation across character frameworks"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Outline review with analysis improvements"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Transform outline to prose, insufficient Ora context"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime content using DIKLIS framework, not Ora system"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Orchestrator design discussion too generic, insufficient specificity"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating conversation analysis unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Library content review with inference report and conceptual framework refinement"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test extension response unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political parody articles using DIKLIS framework, not Ora system"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI Expert Teams framework analysis and synthesis"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI Agent Teams white paper outline"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "System directory structure and file organization"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oura project technical development and harness architecture"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Verification and finalization process"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal effort taxonomy and Obsidian organization"
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bridge test confirmation unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Technical book outline with system innovations and structural gaps"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology debugging and framework redesign"
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Screenshare connection troubleshooting"
+    },
+    {
+      "candidate_id": "historical-56192eac6ea4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Framework design philosophy for transformation process reversal"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ideation Framework design for writing project"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora Foundation design document review and harmonization"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Atomic Note Coach framework review and system documentation"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Adversarial architecture and model selection finalization"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Novel framework revision removing archetypal language for prose focus"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Science policy dossier scope unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character Foundation Framework development and verification"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tiered preservation implementation across frameworks"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime policy documentation"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Persona implementation for character development"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI agents market transformation and game theory analysis"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "White paper section development through pitfalls analysis"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical contrasts between working-class reality and propaganda"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Literary criticism request"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Task review and framework inventory confirmation"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework project overview and character initiation framework"
+    },
+    {
+      "candidate_id": "historical-efebec279550#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Playwright test response"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing style guide template creation and refinement"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Trump administration DEI policies"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter Refinement Framework enhancement and criteria"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deliverables reference without content"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora analytical mode architecture with territories and disambiguation UX"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Conflict prioritization and stylistic rule hierarchy"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tier 0 development for minimal system hardware requirements"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test confirmation response"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault documentation and chat processing framework"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book framework documentation update"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting and error response"
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engagement strip log notation for null greeting"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI sycophancy testing and fact-verification protocol design"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Evidence manifesto commissioning and delivery"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Journalistic standards framework and research prompt"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-AI team with persistent vault memory and coordination"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating AI agents from Smythos platform"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating AI agents from Relevance AI templates"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project Orchestration and Problem Evolution Framework design"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora installer major build removing Claude Code dependency"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "GitHub connector and cloud storage for vault access"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Development/Evaluation/Criteria documents for writing methodology"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "VS Code setup and browser auto-launch configuration"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Python/Gradio tool for writing with APIs"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test OK response"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Safety protocols and autonomous release criteria for deployment"
+    }
+  ]
+}

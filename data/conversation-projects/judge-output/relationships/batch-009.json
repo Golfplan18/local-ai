@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d1c71407f27e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-92d3704a8af4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-ee5f0516ee8c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework work, not relationships"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona/character creation, not relationships"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-521277f5f7ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Love of neighbor principle"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework work, not relationships"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal presence, not relationship practice focus"
+    },
+    {
+      "candidate_id": "historical-5e4d765efc38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical issue (data integrity), not relationships"
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction, not relationships"
+    },
+    {
+      "candidate_id": "historical-82bc9a8cbe6b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework work, not relationships"
+    },
+    {
+      "candidate_id": "historical-4b7322e867b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework work, not relationships"
+    },
+    {
+      "candidate_id": "historical-692180c164a8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Formatting and styling the Larry-Kira co"
+    },
+    {
+      "candidate_id": "historical-99614d682408#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction, not relationships"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational boundary-setting practice"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona/character creation, not relationships"
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/framework work, not relationships"
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-68d4714e3f41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Continuing previous outline work and fra"
+    },
+    {
+      "candidate_id": "historical-804a4cd0180d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona/character creation, not relationships"
+    },
+    {
+      "candidate_id": "historical-d1c336bd8128#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-815c09ffd35b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-3286f0cfe3c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction, not relationships"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-863ee5762a7c#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Abstract philosophy, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-db86c4c02a88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Remote AI agent teams and human-AI colla"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction, not relationships"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-3bddb955ade3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-cb1195a1877c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-39bf3277dd9e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Chapter Initiation Framework and Chapter"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Chapter-level frameworks (Initiation and"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference, not relationships"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Abstract philosophy, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Unclear: Completing missing elements in Act 2 ove"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Romantic relationship practice and development"
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional subplot, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional subplot, not relationship practice"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/novel development, not relationships"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "divorce",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-71957187b84f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-433226858f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct content work on Forging a New Life After Divorce book"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-d95d99d06662#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-fca7f461fc09#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Analyzing marriage narrative essay related to divorce book"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-27e3b263b325#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Revising marriage/masculinity narrative section from draft"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-98262db26bac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-9d759c36efb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-26e2b454374e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-a6eac46e395c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-0a20c6684797#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c6ba773748cb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-5d39e1835fc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Male perspective analysis for divorce recovery book project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-478c44f2eff6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-e30ec0514f13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not substantive engagement with divorce book archiving project"
+    }
+  ]
+}

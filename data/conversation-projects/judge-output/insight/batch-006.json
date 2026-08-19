@@ -1,0 +1,486 @@
+{
+  "nexus": "insight",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a53191731943#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational dynamics and relationship psychology"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical document methodology"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational dynamics and relationship psychology"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-0a8344b0c7eb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational dynamics and relationship psychology"
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness observation"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-08f4033e880d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/policy analysis"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/policy analysis"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating strategy reflecting personal understanding"
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-a495a6f11ee3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical system/methodology"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relationship reflection"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness observation"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical document methodology"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational dynamics and relationship psychology"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice and consciousness"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness observation"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal emotional processing"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical document methodology"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-91c96158641b#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-f0cdd779506a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Emotional/spiritual insight"
+    },
+    {
+      "candidate_id": "historical-d977f5d39c6e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice and consciousness"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative/writing craft"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Self-observation and consciousness"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-77fc50a8f021#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice and consciousness"
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative/writing craft"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative/writing craft"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-1a9081e98f99#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Consciousness observation"
+    },
+    {
+      "candidate_id": "historical-52046b4b78e3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Relational dynamics and relationship psychology"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal dating/relationship experience"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#21",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice and consciousness"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Personal history and ethics"
+    },
+    {
+      "candidate_id": "historical-8fdedf1f31ff#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Personal fulfillment insight"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-235a30829941#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative/writing craft"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Emotional/spiritual insight"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#72",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with project subject matter"
+    },
+    {
+      "candidate_id": "historical-16147ce14d32#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice and consciousness"
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework/craft"
+    },
+    {
+      "candidate_id": "historical-194d3640c266#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Emotional/spiritual insight"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical document methodology"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-f8a975aedf60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework/process discussion"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical tool/workflow"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    },
+    {
+      "candidate_id": "historical-e8e8d2047149#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative/writing craft"
+    },
+    {
+      "candidate_id": "historical-7b0ed5dce33d#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Dating/relationship topic"
+    }
+  ]
+}

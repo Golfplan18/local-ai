@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_foundation",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework development for creative writing."
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book; unrelated to foundation."
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development and character profiles."
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book design project bridging audiences."
+    },
+    {
+      "candidate_id": "historical-3ef626d83e50#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development with frameworks."
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary on media figures and tariff policy."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses spiritual wisdom library as nonprofit public-domain commons."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework redesign for idea preservation (creative work)."
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Democratizing AI infrastructure to prevent enclosure and open to all."
+    },
+    {
+      "candidate_id": "historical-bf757aef1ceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel chapter development."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework recommendations for creative writing project."
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engram system for personal knowledge organization."
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Style guide conformance for chapter outline."
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible and character development."
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump story ideation and framework development."
+    },
+    {
+      "candidate_id": "historical-abb8672364ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Question about LLM knowledge acquisition (general AI)."
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing document finalization (not foundation mission)."
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Discusses public-facing AI agents vs personal systems (foundation infrastructure)."
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master story bible for novel."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework for story generation project."
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Airtable technical implementation question."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal spiritual/writing project philosophy (tangential)."
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Research on SoulSpec AI agent specification standard."
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discussion of private AI compute architecture."
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing frameworks update for product."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal transcription and rage rants (unrelated)."
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-ec021413d466#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Request for title suggestions for an article."
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Specification-driven development for coding."
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible for novel."
+    },
+    {
+      "candidate_id": "historical-cb06845f52f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack news article about corporate self-regulation."
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story beat generation and character arc frameworks."
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character archetype development for creative work."
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework creation framework architecture for projects."
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discussion of epistemology and Empire (philosophy)."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political commentary on media and policy failures."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing and narrative rewriting."
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master outline and frameworks."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Evaluation frameworks for chapter development."
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel development discussion."
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Future projects combining commons and Jesus themes."
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System directory structure and file organization."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book preface on Natural Language Programming (off-topic)."
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus master story bible for novel."
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model specification searches by size/bit-count."
+    },
+    {
+      "candidate_id": "historical-62b0385facb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel outline and frameworks."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot framework updates for creative writing."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News column and data center politics (unrelated)."
+    },
+    {
+      "candidate_id": "historical-0c2a8a5059be#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses Assisted Human Intelligence framework (core to foundation)."
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character (Pastor Gideon) development."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot Initiation Framework for creative projects."
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot chapter refinement framework analysis."
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible for novel."
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Project orchestration framework for multi-session work."
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses paywall-free knowledge library to break extractive models."
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character (Marcus Johnson) development."
+    },
+    {
+      "candidate_id": "historical-2c7afa3989f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus story bible for novel."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text formatting preference only."
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automation and education implications (general topic)."
+    }
+  ]
+}

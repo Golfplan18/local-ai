@@ -1,0 +1,486 @@
+{
+  "nexus": "photo_books",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-57fad41bc409#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pen name strategy for writing; not photo books"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message refinement; not photo books"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code task on analysis modes; not photo books"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-4f52f428430a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book outline for 3-book fiction series; not photo books"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book outline (WeToo); not photo books"
+    },
+    {
+      "candidate_id": "historical-10a88ba1019a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework preservation; not photo books"
+    },
+    {
+      "candidate_id": "historical-bbd6805fed8f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GitHub distribution strategy; not photo books"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliament of Self framework; not photo books"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mathematical chaos theory; not photo books"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DIKLIS CHUMP creative project; not photo books"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DIKLIS CHUMP ideation framework; not photo books"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spirituality word list; not photo books"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Corporate atrocities moral philosophy; not photo books"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic matrix analysis; not photo books"
+    },
+    {
+      "candidate_id": "historical-62e412a0fa55#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Divorce memoir title generation; not photo books"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to photo books project; discusses writing/tech/personal topics"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal strategy for Trump satire book; not photo books"
+    },
+    {
+      "candidate_id": "historical-5d28a2b1f7c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; not photo books"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference unrelated to project"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Documentation checklist; not photo books"
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Python display management; not photo books"
+    },
+    {
+      "candidate_id": "historical-40e692b2fc9d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-0041097f554d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book chapters; not photo books"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md software features; not photo books"
+    },
+    {
+      "candidate_id": "historical-3adbf345e8f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic acknowledgment; not project work"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical exhibits; not family photo books"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book on masculinity/chivalry; not photo books"
+    },
+    {
+      "candidate_id": "historical-b5859e5a4133#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI swarm architecture; not photo books"
+    },
+    {
+      "candidate_id": "historical-d0b7526c8356#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter on system; not photo books"
+    },
+    {
+      "candidate_id": "historical-fa706ce1d4c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic acknowledgment; not project work"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book distribution strategy; not photo books"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Midjourney image generation styles; not photo books"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to photo books project; discusses writing/tech/personal topics"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#41",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian callout design; not photo books"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tariff economic evaluation; not photo books"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#52",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Dataview sidebar; not photo books"
+    },
+    {
+      "candidate_id": "historical-15b5111e726b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-99df88574463#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal risk for Trump book; not photo books"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-augmented fiction writing; not photo books"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Objectives/milestones framework; not photo books"
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Base properties; not photo books"
+    },
+    {
+      "candidate_id": "historical-d91529b4b115#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political book review; not photo books"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-d7388c85a153#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus character analysis; not photo books"
+    },
+    {
+      "candidate_id": "historical-c5b789e9d6b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expanding Awareness Cosmology; not photo books"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault publishing solution; not photo books"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Base filtering; not photo books"
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to photo books project; discusses writing/tech/personal topics"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#49",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Clarence Thomas jurisprudence; not photo books"
+    },
+    {
+      "candidate_id": "historical-1f15db513f6a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text preference; no project content"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Taylor Sheridan productivity; not photo books"
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Foundation Framework; not photo books"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic foundations discussion; not photo books"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tags vs properties; not photo books"
+    },
+    {
+      "candidate_id": "historical-e033fe8ab472#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis; not photo books"
+    }
+  ]
+}

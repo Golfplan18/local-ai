@@ -1,0 +1,246 @@
+{
+  "nexus": "relationships",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-86c09712aaa3#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses empathy as a trained nervous-system skill; sitting with emotional depth is core relationship practice."
+    },
+    {
+      "candidate_id": "historical-929f8fa18297#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story structure critique (Act II pacing); framework is about narrative craft, not relational practice."
+    },
+    {
+      "candidate_id": "historical-3efd8542a62e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Identical to historical-929f8fa18297#3; narrative craft review."
+    },
+    {
+      "candidate_id": "historical-35db0428f286#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character psychology profile for fiction; relationships are within narrative, not user's relational work."
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Processing another's emotional journey; empathy for partner's lived experience with neurodiversity."
+    },
+    {
+      "candidate_id": "historical-c403b4a56b67#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character profile; same as historical-35db0428f286#0."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Sensitivity to partner's trauma history; discussing heightened awareness as empathetic practice."
+    },
+    {
+      "candidate_id": "historical-0aae1e8a45fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SEO tagline task; marketing copy for Buddhist content, not relational engagement."
+    },
+    {
+      "candidate_id": "historical-3698ac21577b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Buddhist practices (mudita, loving-kindness, sympathetic joy) directly cultivate compassion and interconnectedness."
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating visual/emotional content for fiction story; creative writing task, not relationship practice."
+    },
+    {
+      "candidate_id": "historical-d1a87e0c51cc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Heart chakra activation through compassion; cultivating emotional depth and interconnectedness as practice."
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app message optimization; tactical communication, not relational practice development."
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political advocacy persona design; empowerment framework for messaging, not interpersonal relationships."
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting for polarity; tactical dating strategy, not relationship practice."
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice of 'exchanging self with other'; meditation on compassion and interconnectedness with child."
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel character relationships (Jo, Elena, Hayzeus) in fictional narrative; narrative development, not user practice."
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and polarity signals; tactical dating interpretation, not relational engagement."
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Understanding partner's emotional pacing and nervous-system needs; masculine leadership through emotional containment."
+    },
+    {
+      "candidate_id": "historical-01adabd8e236#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile archetype analysis (Beth Dutton / egalitarian signals); tactical dating interpretation."
+    },
+    {
+      "candidate_id": "historical-c1c84a5a77e3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character (Elena Vasquez) psychology and relationships within narrative; not user's relational work."
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Self-reflection on what genuine polarity/complementarity means; exploring authentic relational desires."
+    },
+    {
+      "candidate_id": "historical-a676f140e14d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character (Karen Love) profile; narrative character development, not relational practice."
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting opening dating message; tactical communication optimization, not relational engagement."
+    },
+    {
+      "candidate_id": "historical-db4bf078f800#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Six Perfections (generosity, patience, concentration) with emphasis on compassion and selflessness practice."
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Hayzeus character development for novel; touches compassion themes but is fiction narrative work."
+    },
+    {
+      "candidate_id": "historical-c2b2aa4032f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MBTI and polarity signals in dating profile; tactical dating analysis, not relationship practice."
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Understanding INFP nervous-system needs; emotional pacing as masculine leadership practice."
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge library updates (pathfinder networks, diagrammatic reasoning); learning/systems work, not relationships."
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spiritual practice as nervous-system training; user framing compassion/altruism as systematic practice framework."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User's bodhisattva practice (compassion for others' potential); altruism as spiritual foundation."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app pipeline management and communication strategy; tactical dating approach."
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis and message crafting; tactical dating, not relational practice."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Jesus's teaching on welcoming the outsider; spiritual practice rooted in compassion for excluded/outgroup."
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis (Anya) and messaging strategy; tactical dating work."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Jo Blackwell narrative framing and authorship strategy; fiction narrative development."
+    },
+    {
+      "candidate_id": "historical-63691c0bdba8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating opening message crafting; tactical dating communication."
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge message under character limit; tactical dating app messaging."
+    },
+    {
+      "candidate_id": "historical-64c2cbbde14f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Markdown formatting troubleshooting; technical/mechanical work unrelated to relationships."
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hayzeus character development and Sermon on Mount reinterpretation; fiction narrative work."
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT creation based on writing guides; grammar and writing instruction, not relationships."
+    }
+  ]
+}

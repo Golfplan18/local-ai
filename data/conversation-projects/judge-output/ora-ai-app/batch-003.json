@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-453028fe4a4b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Public Ora service architecture with website and app download plan"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliament of Self framework review, unrelated to app project"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meme template library generation, not app-related"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code throttling issues, tooling troubleshooting"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hugging Face ecosystem exploration for local AI swarm"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal Obsidian vault publishing options"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Orchestrator logic simplification and module architecture design"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert biographical database population"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Model quantization and local implementation"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety and risk management frameworks"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault publishing solutions"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal vault publishing and cleanup"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper section development"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PDF ingestion pipeline for personal knowledge management"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "API key handling and script generation"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation and messaging"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and strategy"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md software features and integration"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political meme campaign strategy"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Narrative development and scene expansion"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Boot.md natural language design for Ora pipeline"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GitHub connector and cloud storage access"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Boot.md v3 development and Ora infrastructure"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Task-to-milestone conversion methodology"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora installation experience and getting started"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora installation documentation"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora application examples and use cases"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical religious content generation"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test prompt for exact reply"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora implementation decisions and mission grounding"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora mode development with 17 modes execution"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI platform features"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora mode file verification, 17 completed modes"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora project development and technical progress"
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude API pricing and context strategy"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta persona profile development"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora framework capabilities versus IFTTT"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic matrix cascade analysis"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora harness architecture and technical development"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic framework pair structure methodology"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Platform comparison and advanced features"
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime content"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tier 0 minimal hardware requirements for Ora"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output request"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora objectives and milestones framework rebuild"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic plain-text request"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#36",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code CLI installation"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian properties and snippets"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon platform features"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction content"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wolfram Language 3D visualization"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship and chemistry discussion"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic user formatting request"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gradio tool installation"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-463407bf9ca1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-7df9f9f04c2d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution for persona"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text-only format request"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text-only output request"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework execution"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text output preference"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora interface design and installation script"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md for Obsidian file organization"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-b4717aae8fed#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (milestone-1, objective-3)"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-a7b829d15ce0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-eb675ae17c49#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-77114c2b8f52#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-b4717aae8fed#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-e12deb632496#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-a39dc7dc0fa3#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (mission, objective-3)"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (milestone-1, objective-4)"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-d0737e955983#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (drivers, mission)"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-b1e1108ce4ca#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-9886a7fa3f9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-2e9b53c593f1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (mission, objective-1)"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (drivers, entities)"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (drivers, mission)"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-81af61717782#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-c6a63e6fcc33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#82",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-0b651a28f9c9#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-e085defd394e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-168ad2ccb5a7#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-b625dff005a5#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-99df88574463#42",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to We Too"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#69",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to We Too"
+    },
+    {
+      "candidate_id": "historical-74133d89df15#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-a8fcf4d875ec#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Routed to We Too (mission, objective-3)"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-72d4c6752005#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-b47331b43dbc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-5ed173d5318b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-201decc899b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "We Too theme engagement"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#21",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Formatting/preference message"
+    },
+    {
+      "candidate_id": "historical-1c673631d578#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "No clear We Too engagement"
+    }
+  ]
+}

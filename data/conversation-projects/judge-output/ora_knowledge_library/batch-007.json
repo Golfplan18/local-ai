@@ -1,0 +1,486 @@
+{
+  "nexus": "ora_knowledge_library",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing project"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework"
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing"
+    },
+    {
+      "candidate_id": "historical-fdfc6429d8d9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian plugin research, not knowledge library"
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing project"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cognitive extension framework, not Knowledge Library"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tool plugin, not knowledge library"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-7fc4513cfb46#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#74",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political news analysis"
+    },
+    {
+      "candidate_id": "historical-722b0457ce18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Email/infrastructure setup unrelated"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DEI/diversity policy analysis, unrelated"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing project"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System boot files"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing framework"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-4d9761aa47e1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dev tool workflow"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal PKM vault design, not Knowledge Library"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LLM feature query"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta-preference, not project engagement"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian wiki-linking"
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-6f31c0ceb5e7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judicial analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-source verification methodology for knowledge"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dev tool workflow"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judicial analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-ed32d9f01388#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dev tool workflow"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judicial analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-1c3c2408583d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-3af2ff465426#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-10edb0e597bd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judicial analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-a73ae9da13fd#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Knowledge system architecture discussion"
+    },
+    {
+      "candidate_id": "historical-40c83c600ab6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-83a46969fcd9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel project unrelated"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#26",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-a8c7ed3ffc19#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News feed concept, not Knowledge Library substrate"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#44",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-78e4364dc82b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-e529e458b0da#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-742e9b17900d#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Judicial analysis unrelated"
+    },
+    {
+      "candidate_id": "historical-44b1884f98e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI feed curation, not Knowledge Library"
+    },
+    {
+      "candidate_id": "historical-205b7dd27d73#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework creation framework, not Knowledge Library"
+    },
+    {
+      "candidate_id": "historical-3207afbd498a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-ef2749e6d5a9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#33",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#49",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#23",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#28",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-1a6d2d64f81e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#31",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#52",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement with knowledge library work"
+    }
+  ]
+}

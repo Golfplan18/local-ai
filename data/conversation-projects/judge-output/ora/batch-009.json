@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI tool features not Ora"
+    },
+    {
+      "candidate_id": "historical-d4fefa6a6af5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "MCP patterns for natural language agent programming"
+    },
+    {
+      "candidate_id": "historical-1b19f0b2cac2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fictional content"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gemini AI tool troubleshooting"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework for fiction"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot framework for American Jesus novel"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Pope Leo encyclical vs Ora verification architecture"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Claude Code configuration"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Loose end analysis for narrative"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hardware shopping for AI computer"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing platform tools"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character framework for fiction"
+    },
+    {
+      "candidate_id": "historical-3cdd1c9b5789#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mac hardware connectivity setup"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text messaging dating advice"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cognitive operating system architecture"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Document numbering consistency"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Nintendo Switch 2 stock search"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Mode system specification"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md file organization tool"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#38",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Replacing Claude Code with Python"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "PDF ingestion and Ora architecture"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LLM providers and leaderboards"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline for novel"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical propaganda fiction"
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code installation"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Venue lookup errand"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Math breakthrough claim"
+    },
+    {
+      "candidate_id": "historical-e237d94eb7c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gemini tool freezing issue"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#25",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Artifact conflict and instruction debate"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Masculine-feminine imagery"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#28",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Claude Code follow-up rule"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-model orchestration design"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora book outline"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Launcher app icon design"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline creation"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "GPT-5 viral article fact-check"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book narrative architecture"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "File organization with Obsidian"
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI agent team organization"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Complaint letters drafting"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative elements framework"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Persona registry architecture"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Email setup and Gmail migration"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Okta Verify authentication"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Discourse validation education"
+    },
+    {
+      "candidate_id": "historical-d981fbf536c6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Transition sections for novel"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline for novel"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter outline creation"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model availability monitoring"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "LM Studio setup"
+    },
+    {
+      "candidate_id": "historical-7cedd69d5820#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thematic architecture for novel"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Societal impact analysis"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Data storage architecture"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Oracle manifesto tone"
+    },
+    {
+      "candidate_id": "historical-8f3367437d36#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "White paper distribution"
+    },
+    {
+      "candidate_id": "historical-7458cadd71d0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Movie marquee and iCloud"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document verification laws"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AHI philosophy review"
+    },
+    {
+      "candidate_id": "historical-99df88574463#56",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Nintendo Switch dock article"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Regulatory systems analysis"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Architectural framework for narrative"
+    },
+    {
+      "candidate_id": "historical-6e103f54f449#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thematic guide for novel"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book style guide"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book projects including Ora"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework testing on character"
+    },
+    {
+      "candidate_id": "historical-d4303a5cbc59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consciousness literature research"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Step 8 reader engagement"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle concept establishment"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Ideation framework"
+    },
+    {
+      "candidate_id": "historical-973846d3298a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Various topics unclear"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Testing framework expansion"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "AI agent limitations vs Ora"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brand tax meme campaign"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Framework implementation"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Oracle communication style"
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Messaging tactics"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Claude Code removal impact"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction"
+    },
+    {
+      "candidate_id": "historical-b05297290686#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack autoposter login"
+    }
+  ]
+}

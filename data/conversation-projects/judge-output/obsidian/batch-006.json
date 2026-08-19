@@ -1,0 +1,486 @@
+{
+  "nexus": "obsidian",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-ed71142036c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault homepage property system"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#15",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Vault privacy compliance"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-9d759c36efb2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian feature learning"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developer setup, not vault project"
+    },
+    {
+      "candidate_id": "historical-433226858f03#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plugin lookup, not vault compliance"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-ed4a3d0e1508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-4db02bdd2e1b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian feature learning"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-317ba41c35f3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-cb1195a1877c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-9e1d83e7c23b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multi-AI chat indexing framework"
+    },
+    {
+      "candidate_id": "historical-b41a2b9f1ebe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-317ba41c35f3#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-72543b92ef0a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-3a0012ae92ba#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Chat archive workflow/indexing"
+    },
+    {
+      "candidate_id": "historical-a0b6327da9e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault Bases properties configuration"
+    },
+    {
+      "candidate_id": "historical-c16411189143#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-7194effe49b5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-2c8f076080f4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal reflection, not vault work"
+    },
+    {
+      "candidate_id": "historical-0470770f744f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-20c4891e4d85#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#81",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-e1e62ab18fe2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#71",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-95859a986401#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-150b631559ce#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-012841caabf0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault homepage property system"
+    },
+    {
+      "candidate_id": "historical-abacfe3e9dad#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-4b9053bd5352#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developer setup, not vault project"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-3390a7c75b83#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-f48d2b0a9bec#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-e6734be98fe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Vault file organization system"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#22",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-c2e8f076a97b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-801ebe92c228#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative project"
+    },
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated content"
+    },
+    {
+      "candidate_id": "historical-86caa40251f6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-da12664e6238#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    },
+    {
+      "candidate_id": "historical-6b6d9e90f09e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient vault project signals"
+    }
+  ]
+}

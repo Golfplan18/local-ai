@@ -1,0 +1,486 @@
+{
+  "nexus": "american_king",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d6b11c556ff1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: growing seed parable placement and iterative devel"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: act 3, chapter 7 outline creation and condens"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: generating satirical content about authoritarian g"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: parable placement: \"lost tool\"/widow's-mite-style "
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: growing seed parable placement and iterative devel"
+    },
+    {
+      "candidate_id": "historical-667cf28aa088#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: 25th amendment bill as political theater and const"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: harlan byrd character development (found"
+    },
+    {
+      "candidate_id": "historical-f79aa4503bc3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: 25th amendment bill as political theater and const"
+    },
+    {
+      "candidate_id": "historical-09a77fad48aa#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: debating narrative structure: chronologi"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: refining chapter 21 'the righteous smear' (an"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: planning the apostles' conversion order and the ph"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: user provides the chapter refinement framewor"
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: senate passes the megabill by circumventing the by"
+    },
+    {
+      "candidate_id": "historical-5200575d5e7f#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: comprehensive restatement of redistricting argumen"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: refining act 3 chapter 21 'the righteous smea"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: planning a three-year left-wing 'brand t"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: parable placement: \"the widow's mite\" for cha"
+    },
+    {
+      "candidate_id": "historical-18ced52e86ee#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: international analogs to asymmetric political warf"
+    },
+    {
+      "candidate_id": "historical-b4d98378df21#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: american jesus outline and parables placement over"
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#70",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: judge blocks beto o'rourke from funding texas demo"
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#70",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: texas ag paxton's injunction blocking beto o'rourk"
+    },
+    {
+      "candidate_id": "historical-ca4038d3ea82#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: american jesus outline review and scene developmen"
+    },
+    {
+      "candidate_id": "historical-99abc2602603#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: character foundation framework application to"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: polarity analysis and dating strategy on bumble: m"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: refining act 1 chapter 12 'judgment at sugar "
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: developing custom parable addressing michael'"
+    },
+    {
+      "candidate_id": "historical-0aedbef3df0b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: harlan byrd character profile and runnin"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: drafting the act 1, chapter 1 ('the commander"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: officer mark davis character profile"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: mary magdalena character profile"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: economic and corporate reform - private equity, an"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: act 1, chapter 6 outline: \"redefining strengt"
+    },
+    {
+      "candidate_id": "historical-9dd6631cd426#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: reviewing and iteratively redesigning the plot fou"
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: condensed conceptual-outline reformatting for"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: revising book section on three-part awak"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: running the ideation framework on the narrative wa"
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: matthew tax's character profile and thre"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#66",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: building a systematic framework to inver"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: applying the refinement framework to act 1, c"
+    },
+    {
+      "candidate_id": "historical-da3307796923#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: comprehensive evaluation and assessment of trilogy"
+    },
+    {
+      "candidate_id": "historical-086ba7ba9b08#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: chapter 7 'the skeptic's inquiry' outline developm"
+    },
+    {
+      "candidate_id": "historical-b62d56b97971#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: political tangent: trump's tax/tariff bill, defici"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: book cover trend analysis and book cover"
+    },
+    {
+      "candidate_id": "historical-17af7e3f41b3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: developing chapter 2.4 ('modern beatitudes sh"
+    },
+    {
+      "candidate_id": "historical-fe82500974ee#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: placing and drafting biblical parables (and custom"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: iteratively revising the american jesus ai story-d"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: book cover concept framework development"
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: validating and implementing prompt templates"
+    },
+    {
+      "candidate_id": "historical-350ad5373215#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: act 3, chapter 39 framework execution and dev"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: drafting act 1-2 chapters (8 'sacred labor', "
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: restructuring chapters 12-14 and develop"
+    },
+    {
+      "candidate_id": "historical-907b49a7a5f3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: propaganda dissemination techniques and "
+    },
+    {
+      "candidate_id": "historical-f4afdfa9869f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: american jesus 3 master outline and act 3 story be"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: executing instructions to generate the expanding a"
+    },
+    {
+      "candidate_id": "historical-6f6869e6a2c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: creating book descriptions and keywords for wetoo "
+    },
+    {
+      "candidate_id": "historical-341fd94b49c2#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus character development: matthew \"matty\" tax character architectu"
+    },
+    {
+      "candidate_id": "historical-589bf9777155#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: marcus johnson character development - psychologic"
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: placing and drafting the lost son / sinning b"
+    },
+    {
+      "candidate_id": "historical-90147737228c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: character initiation and foundation framework for "
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: drafting and evaluating polarized messag"
+    },
+    {
+      "candidate_id": "historical-e12deb632496#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: marcus johnson character development and transform"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: anthropic's small societal impacts team "
+    },
+    {
+      "candidate_id": "historical-355d2f7817d0#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: chapter 40 'the covenant' drafting brief and "
+    },
+    {
+      "candidate_id": "historical-6a8a2820ace3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: character development for diklis chump"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: developing and assembling formal legal complaint f"
+    },
+    {
+      "candidate_id": "historical-a53f95dbc95d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: satirical dystopian ideas about authoritarian gove"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: messaging strategy for woman (wida) from"
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#25",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: gop internal 'red lines' (medicaid work "
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: commissioning and delivering evidence ma"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Insufficient American King connection: continuing discussion"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: reviewing and refining the pas (parliamentary asse"
+    },
+    {
+      "candidate_id": "historical-f8a975aedf60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: oracle-based political framework: static-speech te"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: visual protocol research, specification developmen"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: building integrated narrative universe with americ"
+    },
+    {
+      "candidate_id": "historical-7c331489be05#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: trump's legal claims against harvard university"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus chapter/character work: test-running the character foundation framewo"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: critiquing wsj opinion pieces on tariffs, the prot"
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: democratic collapse and institutional analysis of "
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project: amazon self-publishing strategy: book descriptions"
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Work on American Jesus: american jesus novel development: reviewing the fu"
+    }
+  ]
+}

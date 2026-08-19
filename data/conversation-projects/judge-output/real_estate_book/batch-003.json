@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/scientific topic, not book project"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing framework for unspecified book"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical/scientific topic, not book project"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing framework for unspecified book"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Reference list/compilation, not book content"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project"
+    },
+    {
+      "candidate_id": "historical-ad602ce263ed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-235a30829941#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing framework for unspecified book"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-7c99d27e5503#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-6541ebfec54e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing framework for unspecified book"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-e7533f7534a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing methodology for unspecified book"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tech book (NLP/programming), not real estate guide"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-d4b6e76be8b0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/medical document, not book"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing/marketing advice, unspecified book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing methodology for unspecified book"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Policy analysis, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-effebccbd384#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing/marketing advice, unspecified book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious/military topic, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-7b4cb2e2ad4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction project"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consumer electronics, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge/research system, not real estate book"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-7d8af9eab5be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal/medical document, not book"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-496f4fe83ba1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-9f22577aad18#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-b1b9171c3aed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tech book (NLP/programming), not real estate guide"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction book project, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Religious/military topic, not real estate guide"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book writing framework for unspecified book"
+    },
+    {
+      "candidate_id": "historical-51282862b903#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing/marketing advice, unspecified book"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to real estate home purchase guide project"
+    }
+  ]
+}

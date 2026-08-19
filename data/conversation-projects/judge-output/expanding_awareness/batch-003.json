@@ -1,0 +1,486 @@
+{
+  "nexus": "expanding_awareness",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book description/Amazon publishing work"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter outline work"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter outline work"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology discussion or framework"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Alternative cosmology theory"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology discussion or framework"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-fe1a978268f6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#26",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter outline work"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-7b8129f45eb3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter outline work"
+    },
+    {
+      "candidate_id": "historical-c7eacc31d735#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter outline work on cosmology project"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-0a20c6684797#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-151105621c03#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-c5f1dd379ba4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-7848123699da#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-e5ba15999b20#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-07601188454d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-74c192b3ec2a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology research discussion"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology discussion or framework"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-99df88574463#22",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-023b00d14b1e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-6c9a4768cef4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-0924ddcce3bb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Alternative cosmology theory"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-6493716b1eb6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-3a79ab19d114#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2a3fa3d6e8a0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-fa950fcebcb3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-f6ca40d42bd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-cb6cc4c83f55#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology mentioned in passing"
+    },
+    {
+      "candidate_id": "historical-f01bd5a20171#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hubble cosmology discussion"
+    },
+    {
+      "candidate_id": "historical-ab7eb030ee0d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Cosmology discussion or framework"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-60b77e6daee7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-fa950fcebcb3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-1a5f5db20a1e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-da83dc17e0fd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Cosmology framework sections"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    }
+  ]
+}

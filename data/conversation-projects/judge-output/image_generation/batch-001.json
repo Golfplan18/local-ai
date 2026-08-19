@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "DALL-E integration for generating images"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR transcript preservation, not generation"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT text focus, no image generation"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging strategy"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database with biographical photos"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "WritingGPT configuration, text only"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Generating images based on story concepts"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NovelAI image generation tutorial"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message drafting"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Midjourney styles for image generation"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mathematical graph visualization tools"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political/mythology discussion"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile message crafting"
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OkCupid profile personality analysis"
+    },
+    {
+      "candidate_id": "historical-75f6cada5169#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating strategy messaging"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship messaging"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating messaging and timing"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating context and schedule concerns"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Code snippet/technical implementation"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "List of writing AI tools, not generation"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Dossier planning, unclear context"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NovelAI text generation tricks"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon text adventure game"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR and personality typing"
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "DALL-E cartoon headshot generation"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile optimization"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship and poetry"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona profile development"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating text messaging strategy"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meme campaign with image generation"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political press release structure"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Context window and OCR management"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework and brand development"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper outline"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating coaching and messaging"
+    },
+    {
+      "candidate_id": "historical-436f62522459#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI comic book creation tools"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship management"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Meme image-gen tools discussion"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI image tools for memes"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile photo caption"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mathematical visualization (3D)"
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating strategy with Rina"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political exploitation strategy"
+    },
+    {
+      "candidate_id": "historical-89b3373deb28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper creation tools"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "MSI article image sourcing/generation"
+    },
+    {
+      "candidate_id": "historical-6eb8af3e71db#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideogram image generation platform"
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Portrait image generation"
+    },
+    {
+      "candidate_id": "historical-bf5b1d4cb596#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideogram image generation"
+    },
+    {
+      "candidate_id": "historical-d1ebbbc5cd79#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic report structure"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover design framework"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover concept framework"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image analysis/description"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating date management"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "NovelAI platform evaluation"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message refinement"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political debate discussion"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message development"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Sudowrite prose generation"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Avatar video generation (not text-focused)"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile messaging"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover evaluation framework"
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app video format"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover quality framework"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents platform curation"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book cover framework"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back cover blurb (text, not images)"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile polarity analysis"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back cover blurb text framework"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT framework development"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI response formatting"
+    },
+    {
+      "candidate_id": "historical-c737bb8042b9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Image aspect ratio for book embedding"
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Image generation in publishing pipeline"
+    }
+  ]
+}

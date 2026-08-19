@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-org",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-35fd4c71fd0e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-50836d477f28#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-32b3c16e3584#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-1fc6742e04d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-dabd6d4f6e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-c608ebefd26e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-8d3c6d1a7326#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-9d832990172b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-947060573768#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-9fea42d90e1c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-d81ad7a18ca9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No substantive engagement with ora-ai.org website publication project"
+    }
+  ]
+}

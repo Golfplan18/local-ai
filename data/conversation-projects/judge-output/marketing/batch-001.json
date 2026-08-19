@@ -1,0 +1,486 @@
+{
+  "nexus": "marketing",
+  "batch": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing template/framework development"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing template/framework development"
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-51282862b903#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-5287fad52ae2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-a646193dcf54#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-51282862b903#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Marketing template/framework development"
+    },
+    {
+      "candidate_id": "historical-07eaa5763c30#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-0712d876b1bd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-0c0dea71bdfc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-25cf3c4ac313#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-9e6c701414b9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-fac0edc87b4e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-96f2a9714166#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-50a97463b4b0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Marketing-focused subject"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Reusable marketing strategy work"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-ade5ae751154#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-8855f2e4d6ca#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different project or framework"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient marketing strategy signals"
+    }
+  ]
+}

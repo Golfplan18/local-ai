@@ -1,0 +1,486 @@
+{
+  "nexus": "executor_instructions",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a04c8d290628#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal exhibits/documents, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-501992260e41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "HVAC system design, unrelated"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Scene/organization mapping framework, unrelated"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anonymous publication strategy, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-ce32f85d8e3f#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: oracle's persona and authority: embodying the"
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda analysis, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda analysis, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: conflict prioritization \u2014 establishing hierar"
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI phraseology research, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-4adc56efd7ba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development framework, unrelated"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda analysis, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-db8fa70e139c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge system design, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: title/alias properties and a custom snippet t"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: rage at dmca/copyright restrictions blocking "
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian plugin/vault work, unrelated"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character development framework, unrelated"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: knowledge library, fine-tuning, and session b"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: extended cognition framework: theory, impleme"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: processing relevance ai platform agent listin"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: flattening embeds to text and a mission/objec"
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship, unrelated"
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: chapter 20 - meritocratic disillusionment con"
+    },
+    {
+      "candidate_id": "historical-5ba9c1dd475a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: analysis and development of new cosmological "
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: smart connections' property blind spot, excal"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: planning document development strategy and ma"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: designing the project orchestration / problem"
+    },
+    {
+      "candidate_id": "historical-2fefd61c9a80#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: phukher tarlson character profile development"
+    },
+    {
+      "candidate_id": "historical-86caa40251f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: feedback on a missing feedback-loop edge in a"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: character framework execution for blohard loo"
+    },
+    {
+      "candidate_id": "historical-6b6d9e90f09e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: diagram feedback: identifying missing feedbac"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: character initiation framework execution and "
+    },
+    {
+      "candidate_id": "historical-da12664e6238#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: diagram feedback question"
+    },
+    {
+      "candidate_id": "historical-f59173748cf4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: life rhythm, self-narration habits, sleep dep"
+    },
+    {
+      "candidate_id": "historical-0f4f562da046#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: scene sequence formatting and documentation f"
+    },
+    {
+      "candidate_id": "historical-8b22d98db872#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: missing feedback loop in system diagram"
+    },
+    {
+      "candidate_id": "historical-7bc1138f8968#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: compiling and formatting spreadsheet of notab"
+    },
+    {
+      "candidate_id": "historical-5234fa4243fa#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: discovering api stateless limitation and expl"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: comparing collective intelligence project wit"
+    },
+    {
+      "candidate_id": "historical-9e1d83e7c23b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: building a multi-ai validation system to solv"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: architectural reassessment and split foundati"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: test ok response request"
+    },
+    {
+      "candidate_id": "historical-65d50f7468a7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: diagram feedback on missing feedback loop"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: llm providers and leaderboard rankings, model"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: business model documentation and development "
+    },
+    {
+      "candidate_id": "historical-664907e9e9e5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaint organization, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-41c4eb22ac98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: identifying missing elements in a diagram"
+    },
+    {
+      "candidate_id": "historical-4551e5cf43cc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: thread analysis and summary of digital garden"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: abandoning api approach and discovering poe p"
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: establishing and refining mimi wright-fubar a"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: philosophical foundations and dijkstra's crit"
+    },
+    {
+      "candidate_id": "historical-1406be3d3477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: thread analysis and summary of digital garden"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: extended coaching of the ongoing text debate "
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda analysis, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: rebuilding the objectives & milestones framew"
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: courting, arranging, and debriefing a bumble "
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: enhancing the framework with research instruc"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship, unrelated"
+    },
+    {
+      "candidate_id": "historical-8a2b13039b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: executing and evaluating character relationsh"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: stefani (creative writer) profile analysis, i"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian plugin/vault work, unrelated"
+    },
+    {
+      "candidate_id": "historical-5746870b28e5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: brief greeting exchange"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: context gathering, verification of project go"
+    },
+    {
+      "candidate_id": "historical-16df41df8c45#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: distributional reporting pitfalls and how to "
+    },
+    {
+      "candidate_id": "historical-2d439936e380#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: political messaging strategy and the oracle's"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: crafting opening message to fery - establishi"
+    },
+    {
+      "candidate_id": "historical-827f1b2d0344#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: continuing discussion"
+    },
+    {
+      "candidate_id": "historical-fa34caf13985#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: brief verification check of assistant connect"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: renewed transcription-rage spiral: plan to co"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian plugin/vault work, unrelated"
+    },
+    {
+      "candidate_id": "historical-0e86997ac782#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal complaint organization, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating/relationship, unrelated"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: act 3, chapter 11 redemption march vol iii ou"
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing style guide, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-8c03a4b8ec21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political propaganda analysis, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-977389185c3d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review, not executor instructions"
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated to executor instructions: analogies and metaphors for complementary kno"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "pen_names",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f8d8dedfad9b#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "User discussing pen-name dramatic reveal strategy with multiple bestselling author personas and publishing website infrastructure"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Curating AI agent tools from a website, unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal document verification for laws and regulations"
+    },
+    {
+      "candidate_id": "historical-f1468d58b18a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Narrative technique for erotic fiction, not pen name development"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic Netlify/Obsidian publishing setup screenshots without pen name context"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review unrelated to pen names"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI persona-based prompting frameworks, not pen name development"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple pen name identity management, genre separation, concealing true productivity"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical Netlify setup screenshots, generic infrastructure"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character voice and narrative persona for writing project, not pen names"
+    },
+    {
+      "candidate_id": "historical-09a7d3f35b97#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tariff inflation economic analysis"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI safety argument revision"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Book trilogy structure planning, not pen names"
+    },
+    {
+      "candidate_id": "historical-f8692cd02200#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Method writing with Malcolm Little King pen name, backstories, embodying authors"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Token efficiency and style guide optimization"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Parliamentary Assessment System framework review"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character framework execution, not pen names"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Universal reviser output for unrelated content"
+    },
+    {
+      "candidate_id": "historical-365ecfe5ca1d#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Authorship masks and pen names layering discussion"
+    },
+    {
+      "candidate_id": "historical-6f72c29334fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and analysis"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character initiation framework execution"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test response prompt"
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Internal Parliament theory and agent specification"
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persona effectiveness in AI prompting"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character framework execution for Blohard Lootnick"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test response prompt"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character initiation framework"
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-ea91e7763650#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile and relationship assessment"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test confirmation prompt"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Somatic and hypnotic writing techniques"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Matrix cascade analysis economic forecasting"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Phone selection and carrier financing"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message composition"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#34",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Publish URLs technical setup"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System test exchange"
+    },
+    {
+      "candidate_id": "historical-fac0edc87b4e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Amazon marketing and author profile setup"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political debate coaching"
+    },
+    {
+      "candidate_id": "historical-805c43ec7c93#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test confirmation prompt"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database with hierarchical tiers"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System overview design review"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating match analysis"
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document review and updates"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#14",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Personal AI system motivation and naming"
+    },
+    {
+      "candidate_id": "historical-c51f4fce9f81#11",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Satoshi Nakamoto anonymity blueprint and OPSEC"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Series Continuity Distillation Framework for trilogy"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test confirmation prompt"
+    },
+    {
+      "candidate_id": "historical-7e2832814beb#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt template validation"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System overview updates"
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI productivity gains and heteronym system"
+    },
+    {
+      "candidate_id": "historical-c611d3221ec1#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Product strategy and writing feedback"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Anonymity and operational-security architecture"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Main Street Independent and AI pen name agents"
+    },
+    {
+      "candidate_id": "historical-10209624ab8e#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character initiation framework execution"
+    },
+    {
+      "candidate_id": "historical-487182d449ad#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Character initiation framework"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book extraction and Main Street Independent pen name platform design"
+    },
+    {
+      "candidate_id": "historical-1d981ca3696f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Novel narrative development frameworks"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mary Magdalena voice character development"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Email setup and Gmail migration"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating conversation analysis"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Cover Trend Analysis"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian template H1 title troubleshooting"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Authorship and copyright philosophy"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical malpractice document review"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Public domain publishing and derivative works"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Political book chapter writing"
+    },
+    {
+      "candidate_id": "historical-02b6ab5422a2#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Cory Doctorow POSSE publishing model"
+    },
+    {
+      "candidate_id": "historical-5e1209f4750f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chapter redrafting counter-punch rhetoric"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#68",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Using real peoples names in fiction"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "External file indexing architecture"
+    },
+    {
+      "candidate_id": "historical-e66fbf91911a#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Cory Doctorow POSSE publishing"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian title/alias properties setup"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profiles and personality analysis"
+    },
+    {
+      "candidate_id": "historical-98d0ee408acc#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Copyright doctrine and AI-assisted writing"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mac file manager with tagging"
+    }
+  ]
+}

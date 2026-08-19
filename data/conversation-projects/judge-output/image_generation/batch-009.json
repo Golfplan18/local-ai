@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f8d8dedfad9b#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About detailed scene-level story beats (what vs. how); separating scene generation from refinement; the 'lazy author' risk not image generation"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About satirical authoritarian regime policy framework: stage 5 crackdown tactics across policy domains not image generation"
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About ai-augmented writing methodology for fiction: outlining scale, front-loaded design, and cognitive leverage not image generation"
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Establishing cartoonist character with visual device library and image-generation guidance"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-114f36c4e1fd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-c2416adced62#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-ad61398d03a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-8289661dbfce#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About claude code throttling, rate-limit stalls, and session-safety questions while editing the outline not image generation"
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About establishing frameworks for story beat generation and character arc development not image generation"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#45",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3c6c535cd4d3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About pas framework handoff setup: reviewing v0.2 deferred items, troubleshooting claude code's missing-vault-files blocker and the malcolm/larry naming mixup, and drafting a clean fresh-thread prompt not image generation"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About story beats as the narrative spine; housing-bubble patent parallel; nine-book omnibus launch plan and authorship philosophy not image generation"
+    },
+    {
+      "candidate_id": "historical-9558edd56799#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About plot foundation framework pair analysis and enhancement not image generation"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual/design work for app UI, not image generation"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Visual design work related to image generation"
+    },
+    {
+      "candidate_id": "historical-581dcf555145#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-c6ac4a6efada#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-5fd1a6086d57#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-32e537b7b635#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About reviewing and updating marketing evaluation frameworks not image generation"
+    },
+    {
+      "candidate_id": "historical-6a4ebf326a2d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f5566f6390f4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of image generation for book covers"
+    },
+    {
+      "candidate_id": "historical-a0864b90c02e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About story-beats spreadsheet system, chapter framework updates, and the risk of the 'lazy ai author' not image generation"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About the human nexus framework development - content, ethical directives, narrative structure, and writing guidance not image generation"
+    },
+    {
+      "candidate_id": "historical-4e6175d7abaf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct discussion of image generation for book covers"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f17efc88279c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-a93650948b9f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About comprehensive update to style guide development framework not image generation"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-00ed839adb3a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About character framework execution for blohard lootnick not image generation"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About ideation framework development and finalization not image generation"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About character initiation framework execution and refinement for blohard lootnick not image generation"
+    },
+    {
+      "candidate_id": "historical-9710c4742c87#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About implementing framework changes and finalizing the document not image generation"
+    },
+    {
+      "candidate_id": "historical-5923a8567feb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About star trek-inspired naming and thematic framework for document not image generation"
+    },
+    {
+      "candidate_id": "historical-19335610c764#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About self-improving prompt frameworks, being far ahead of the field, and the 'controlled wait' secrecy/reveal strategy not image generation"
+    },
+    {
+      "candidate_id": "historical-c854bdb07df2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About loading the 'american jesus' story bible and refining ai story-beat/character-arc generation frameworks for it not image generation"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-3b828e01a971#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About developing the internal parliament theory into the parliamentary agent specification (pas)  not image generation"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About framework pair structure and enhancement methodology not image generation"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-f783799741f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-501992260e41#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-df1234c14538#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-18492d3ba04d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-52fe125cd9ca#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-99597ccde936#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About framework expansion and conceptual document development not image generation"
+    },
+    {
+      "candidate_id": "historical-5cf3e2a29159#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About writing a book chapter on autism parenting not image generation"
+    },
+    {
+      "candidate_id": "historical-e72b96aad656#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-dbe5b4e08c48#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About framework-creation breakthrough for ai agent programming not image generation"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About project briefing and satirical framework acknowledgment not image generation"
+    },
+    {
+      "candidate_id": "historical-545ea3c68c56#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About updating marketing frameworks for alignment and completeness not image generation"
+    },
+    {
+      "candidate_id": "historical-1b7bd4582adb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Not related to image generation project"
+    },
+    {
+      "candidate_id": "historical-b1125ef34aef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": ""
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "About plot refinement framework analysis, criteria creation, and comprehensive updates not image generation"
+    }
+  ]
+}

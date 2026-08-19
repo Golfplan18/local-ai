@@ -1,0 +1,486 @@
+{
+  "nexus": "ora-ai-app",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c765ccb8fb38#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "screenshare topic"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "universal control topic"
+    },
+    {
+      "candidate_id": "historical-b707b6375688#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "phone topic"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora app demonstration architecture"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: ai agent architecture"
+    },
+    {
+      "candidate_id": "historical-b41a2b9f1ebe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "american jesus topic"
+    },
+    {
+      "candidate_id": "historical-72286847d79a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: pipeline"
+    },
+    {
+      "candidate_id": "historical-cb1195a1877c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "american jesus topic"
+    },
+    {
+      "candidate_id": "historical-c4c42c47f588#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "password topic"
+    },
+    {
+      "candidate_id": "historical-8aea5ea6dcfc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "apple device topic"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "storage topic"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "oracle group distribution topic"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "doctorow topic"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "bases use cases topic"
+    },
+    {
+      "candidate_id": "historical-f6ed8919ddd6#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "cosmology topic"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: context window"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#39",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "obsidian vault topic"
+    },
+    {
+      "candidate_id": "historical-280a3f493a4d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#34",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "obsidian vault topic"
+    },
+    {
+      "candidate_id": "historical-c4c42c47f588#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "icloud topic"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "relationship dynamics topic"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: pipeline"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "feminine topic"
+    },
+    {
+      "candidate_id": "historical-f805895531de#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-3335f32daa15#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-3920bee9ce49#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "american jesus topic"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-c7d5185a3d81#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-ca2179948226#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: system architecture"
+    },
+    {
+      "candidate_id": "historical-8620d493ac22#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: rag"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "american jesus topic"
+    },
+    {
+      "candidate_id": "historical-f9d66c60fd0a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-3dfab72c72fb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "mac mini topic"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "obsidian topic"
+    },
+    {
+      "candidate_id": "historical-436bf8a779fd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ledger therapy topic"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "three-part awakening topic"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "apple device topic"
+    },
+    {
+      "candidate_id": "historical-7458cadd71d0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "icloud topic"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-151105621c03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "ideation framework topic"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "american jesus topic"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "hinge profile topic"
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: module architecture"
+    },
+    {
+      "candidate_id": "historical-75e6fd9d83cb#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "phone topic"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "feminine topic"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: pipeline"
+    },
+    {
+      "candidate_id": "historical-e9edf7b3ed90#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "dossier topic"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "leash topic"
+    },
+    {
+      "candidate_id": "historical-3f21e4c2dd7c#20",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "label printer topic"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "obsidian topic"
+    },
+    {
+      "candidate_id": "historical-d834cd41798f#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "obsidian vault topic"
+    },
+    {
+      "candidate_id": "historical-da088a0c5dc3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "research on existing ora topic"
+    },
+    {
+      "candidate_id": "historical-bef280e7b699#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-8f3367437d36#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "white paper topic"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: ai agent architecture"
+    },
+    {
+      "candidate_id": "historical-2b6e1ae0390a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "chapter topic"
+    },
+    {
+      "candidate_id": "historical-769863476d32#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "phone topic"
+    },
+    {
+      "candidate_id": "historical-785a4bb90713#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "chapter topic"
+    },
+    {
+      "candidate_id": "historical-76df814b0b4a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-8c755b93292d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "character topic"
+    },
+    {
+      "candidate_id": "historical-e01617b5bdb9#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "white paper topic"
+    },
+    {
+      "candidate_id": "historical-41c4c42c0f6c#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "mitochondrial topic"
+    },
+    {
+      "candidate_id": "historical-a54b8808bcb4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Discussion of external tools"
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-bb35cfd9ccdc#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "apple music topic"
+    },
+    {
+      "candidate_id": "historical-c63196be1906#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "oracle project as personal info topic"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#15",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Platform architecture: pipeline"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Discussion of external tools"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Off-topic or insufficient engagement"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "wisdom nexus philosophy topic"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "airtable topic"
+    }
+  ]
+}

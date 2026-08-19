@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 7,
+  "verdicts": [
+    {
+      "candidate_id": "historical-08a28736bef7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian tool feature, not real estate book"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing framework refinement, not real estate book"
+    },
+    {
+      "candidate_id": "historical-7cde2e6f3a16#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project (Ora system), not real estate book"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump satirical book project"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto book project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communist Manifesto project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper methodology project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-42ba0b2ae23b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document formatting methodology, not real estate book"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-c3cfd13e02c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis, unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-c6bd96773834#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app strategy, unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic/political book project about private equity, not real estate book"
+    },
+    {
+      "candidate_id": "historical-ad8b9c0aef31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not real estate book"
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different writing project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-8074859b7244#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump writing framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book project restructuring, not real estate book"
+    },
+    {
+      "candidate_id": "historical-e0e00139c61a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "General prompt formatting discussion, not project-specific"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian configuration discussion, not real estate book"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI architecture comparison, not real estate book"
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character-focused writing work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Foundation mission planning, not real estate book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump multi-book architecture, not real estate book"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical documentation, not real estate book"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing infrastructure planning, not real estate book"
+    },
+    {
+      "candidate_id": "historical-7a94181f5723#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Prompt/file handling methodology, not real estate book"
+    },
+    {
+      "candidate_id": "historical-5d4e15328cde#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump character/chapter framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character relationship exploration, not real estate book"
+    },
+    {
+      "candidate_id": "historical-6c4557c46116#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Focus setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-be0d3c587c33#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King project revision, not real estate book"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King satirical project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-dcf3e8bf3e76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel revision for WeToo project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story structure methodology, not real estate book"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system technical documentation, not real estate book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tool comparison, not real estate book"
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework implementation work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-6401518bc9d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image generation task, not real estate book"
+    },
+    {
+      "candidate_id": "historical-425c94f5aa3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Status confirmation message, not project-specific"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-ec8c972c086f#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system architecture discussion, not real estate book"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "PAS (Parliament of Mind) framework project, not real estate book"
+    },
+    {
+      "candidate_id": "historical-6c6a4514720e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic evidence manifesto work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump omnibus story strategy, not real estate book"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app technical issue, not real estate book"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic text request, not project-specific"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Story structure framework progress, not real estate book"
+    },
+    {
+      "candidate_id": "historical-29bc2f84d962#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical DNS configuration, not real estate book"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI writing productivity reflection, not project-specific"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura system technical development, not real estate book"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile work, unrelated to real estate"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian embedding configuration, not real estate book"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Lucifer novel character framework, not real estate book"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel plot framework work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political debate coaching, not real estate book"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper project development, not real estate book"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Lucifer novel character work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-caeb4aa539a6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vacation rental marketing, not home purchase guide"
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Different book chapter work, not real estate book"
+    },
+    {
+      "candidate_id": "historical-8350d62ba5f0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-c7f0a6c2e905#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent system architecture, not real estate book"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent platform research, not real estate book"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference setting, not project-specific"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal writing methodology discussion, not project-specific"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Chatbot interface formatting, not real estate book"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character dialogue work, not real estate book"
+    }
+  ]
+}

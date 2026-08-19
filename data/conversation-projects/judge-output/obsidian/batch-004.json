@@ -1,0 +1,486 @@
+{
+  "nexus": "obsidian",
+  "batch": 4,
+  "verdicts": [
+    {
+      "candidate_id": "historical-191ff4bc89b8#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project objective addressed with mission-level route match"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#52",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-6848a64880d3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project objective addressed with mission-level route match"
+    },
+    {
+      "candidate_id": "historical-a7bcabdde0ed#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#39",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly names project topics: obsidian, vault"
+    },
+    {
+      "candidate_id": "historical-83c4903fef5e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#34",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly names project topics: obsidian, vault"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-0dcd4b74aa85#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#40",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#24",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-4cf5377c2c72#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-8a27fee54bb1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-99c59af0ec8a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#13",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly names project topics: obsidian, metadata"
+    },
+    {
+      "candidate_id": "historical-8ea31700742a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic discussion with minimal project connection"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#23",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic discussion with minimal project connection"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#25",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-84a611a6c4f9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject directly names project topics: obsidian, vault"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generic discussion with minimal project connection"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-fdfc6429d8d9#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mentions Obsidian but not project-specific topics"
+    },
+    {
+      "candidate_id": "historical-956f8e4e5f9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-7c587a8c52b2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-5aaeadff1df3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#34",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#13",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Project objective addressed with mission-level route match"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#45",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-433226858f03#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multiple project objectives discussed substantively"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No project vocabulary in excerpts"
+    }
+  ]
+}

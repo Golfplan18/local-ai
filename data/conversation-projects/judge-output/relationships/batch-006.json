@@ -1,0 +1,486 @@
+{
+  "nexus": "relationships",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-74d320d60d90#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "9 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-47881428f8e1#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-435ef30ad890#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "12 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "7 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-cc33fb0cd23b#12",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-c96673eae3da#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-84288abea9b8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-6c4557c46116#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-c3f9daa6e005#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-c31ec6e323b0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "5 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-9ab725f78144#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "10 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "6 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-01adabd8e236#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "8 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-c326932c1b69#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-8ac6e5e4c5f7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "8 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-286364b0dba0#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Relationship context but thin engagement"
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-c1c84a5a77e3#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-d95cdffadd37#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "12 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-a676f140e14d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "9 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "11 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "8 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-db4bf078f800#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#18",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "11 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "32 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject name suggests different project"
+    },
+    {
+      "candidate_id": "historical-5d9c19b99bfc#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "6 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-8222b9b9e6ea#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-c37f97dbdaae#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-c2b2aa4032f7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "9 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-a3b201b32fc5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "11 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-81b60d7522e1#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-27c218a9d1ef#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Direct relationship/dating context with engagement on compatibility"
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "13 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject name suggests different project"
+    },
+    {
+      "candidate_id": "historical-eccc94288d29#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "7 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#5",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#14",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "9 words in subject; deep content on personality/connection"
+    },
+    {
+      "candidate_id": "historical-68b112035b8f#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Multiple relationship themes despite different subject line"
+    },
+    {
+      "candidate_id": "historical-05a28545b05b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-5b75ed3cbab4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-fb9aa30e84ef#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-6f76c035cc7f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-5982ab19eb25#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    },
+    {
+      "candidate_id": "historical-5b8d6f73e792#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of relationship dynamics or personality understanding"
+    },
+    {
+      "candidate_id": "historical-f8a975aedf60#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Limited engagement with project subject"
+    }
+  ]
+}

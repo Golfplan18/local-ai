@@ -1,0 +1,486 @@
+{
+  "nexus": "photo_books",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Drafting chapters 12-14 on progressive agenda and "
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-51282862b903#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consolidating to a single iterative prompt framewo"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User request for text-only format"
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Messaging strategy for woman (Wida) from profile a"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Organizing Aura development priorities and accompl"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Designing the Oracle's visual identity: a circle-w"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "INFP vs ISFP personality types and relational phil"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Amazon book profile optimization and title/subtitl"
+    },
+    {
+      "candidate_id": "historical-334ec862f185#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Drafting condensed PREVIEW and RECAP sections, in "
+    },
+    {
+      "candidate_id": "historical-151c1cf4612d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Automated publishing pipeline: product generation,"
+    },
+    {
+      "candidate_id": "historical-02a0d4ab6823#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting Bumble opening messages to Mariana"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Auditing outline v4 for content fidelity and resto"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Developing and refining a white paper on quantum m"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb Framework development for Step 31"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Rationale and purity-check for the message sent to"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Identifying a Coachella Valley hospital from an el"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating satirical political content across multip"
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and cultural background as"
+    },
+    {
+      "candidate_id": "historical-6030efa80cc1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Assessing authenticity of dating prospect and scam"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Analyzing a new Hinge dating profile (wealthy Indi"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brainstorming front-matter page titles and clickba"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Anthropic's small societal impacts team and AI saf"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#47",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aida: new Bumble match compared to the Samantha pa"
+    },
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy framework: S"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating formatted satirical fiction content depic"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault/PKM deep architecture: RAG protocol document"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Working through caregiver terminology for custody "
+    },
+    {
+      "candidate_id": "historical-6be9b11c926e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Independent publishers, self-publishing platforms,"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian regime policy scenarios an"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Confirming book titles discussed in conversation"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Market positioning and Silicon Valley disruption t"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Document comprehension and provision of brief anal"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Back Cover Blurb criteria development and formatti"
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Confirming book titles discussed earlier"
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical propaganda content generation"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conversation data storage architecture and RAG imp"
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building a visceral-imagist word lexicon for writi"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Her withdrawal decision and broader pattern reflec"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing guidelines review and improvement"
+    },
+    {
+      "candidate_id": "historical-6a4ebf326a2d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Profile disappearance and ideological incompatibil"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Polarity assessments of Rita and other candidates;"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents list compilation"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Integratron venue lookup and 150-character date-in"
+    },
+    {
+      "candidate_id": "historical-8aae5e6dfd71#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-cleanup tool role clarification"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building SynthesisGPT framework and creating Anatt"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Remote desktop access and SSH connection setup for"
+    },
+    {
+      "candidate_id": "historical-436f62522459#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI comic book creation tools and online comic mark"
+    },
+    {
+      "candidate_id": "historical-7c27752c0969#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Image generation and refinement of disability them"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Final profile assessment and completion status"
+    },
+    {
+      "candidate_id": "historical-f7e855710a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Compiling a comprehensive bibliography of Albert E"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political framework: monument replacemen"
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Crafting opening message and messaging strategy to"
+    },
+    {
+      "candidate_id": "historical-a0951f5b61bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Profile OCR extraction, polarity analysis, and ope"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Executing instructions to generate the Expanding A"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Finding a Mac file manager with tagging/virtual fo"
+    },
+    {
+      "candidate_id": "historical-c2b2aa4032f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Profile analysis: OCR extraction, MBTI assessment,"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "INFP emotional and sexual polarity dynamics applie"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political fiction using contrastive real"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character ethical development and philosophy - Iry"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Implementation guidance: LangFlow documentation an"
+    },
+    {
+      "candidate_id": "historical-a6368f78ecaa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Act III Restructuring, Pacing Analysis, and Evalua"
+    },
+    {
+      "candidate_id": "historical-e8c01bd404a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book 3 Act III restructuring: character reintroduc"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding subtle foot fetish reference to user's own "
+    },
+    {
+      "candidate_id": "historical-6fec99825434#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating-profile polarity analysis and reply for Amb"
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book publishing mechanics for WeToo series"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Discovery of additional book projects and project "
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Building attraction through vibe and polarity"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Claude Code execution issues and CLAUDE.md improve"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble match analysis and dating dynamics"
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King project and production timelin"
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ashley re-establishes contact: crafting careful re"
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Alternative name spellings and biographical inform"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Continuous discussion of cosmological theories and"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thread E: System Overview update for 17-mode syste"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System directory structure and file organization"
+    }
+  ]
+}

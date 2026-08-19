@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f8d8dedfad9b#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-book publishing strategy or pen names discussion."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knowledge system architecture, not publishing content/business."
+    },
+    {
+      "candidate_id": "historical-0b90f51e80c7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Critical framework analysis, not publishing operations."
+    },
+    {
+      "candidate_id": "historical-36363d37a833#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial fiction novel development with thematic work."
+    },
+    {
+      "candidate_id": "historical-864404aa59ef#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime writing example, not publishing operations."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual practice and personal development, not publishing."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical project setup and AI infrastructure, not publishing."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing craft resources for fiction/novel development."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#30",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-235fcbc0d4e8#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-b3b180b6a956#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-74133d89df15#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-5641f96f70e8#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-07155fb1018f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-book publishing strategy or pen names discussion."
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-280a3f493a4d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-516d61b8508d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Systematic book writing with architecture or planning."
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-5263e9f93e9b#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-92d3704a8af4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-1127ad0541d7#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-9154f17e7583#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#33",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-3e75a52e5898#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-702f60f836c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-286364b0dba0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-0106fbc67947#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-d6c80d7d61b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#7",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-f1f766182695#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-0b233e91ca6e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-adef83162ce7#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-6f4fdf7345bc#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-413252470fca#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-609ef1aad58f#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-01b76b0145f0#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-d410ac8be976#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-f0d502a4bd13#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Publishing system, pipeline, or multi-format infrastructure."
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book chapter/preface development and revision work."
+    },
+    {
+      "candidate_id": "historical-b8b6c63370fb#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Multi-book publishing strategy or pen names discussion."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#25",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantial discussion of writing or authorship work."
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No clear publishing engagement in subject or excerpts."
+    }
+  ]
+}

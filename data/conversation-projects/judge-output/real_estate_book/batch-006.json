@@ -1,0 +1,486 @@
+{
+  "nexus": "real_estate_book",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-c611d3221ec1#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-3d07576dc077#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-4840bb844d12#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#50",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c65a6f8b7e25#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-47c7f5e5d907#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-5a9cc38d0a35#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-40f21d0c4fcb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#38",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-ed9e59575c5d#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-b8c743d97004#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-e7ffb1ecc74d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-3301f0d552af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#28",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-f20c4f4022b4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-a34f9052c5ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-d97b9260a4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-bc558102121a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-2532edddf63b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-57fad41bc409#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#24",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-19c76a6e27a2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-d602defbc892#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-3f28bda0a8f8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-63eaedc497c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-0b67d5d8dca7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-a3b1627d48ec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-44076822cbd7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-8a089102ab82#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-07ed7702d740#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-46c0d8ac7306#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-7486eb41c7f7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-41b689bec1d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c04f2118c1bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-d0737e955983#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-47e944364965#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-7e9a5761bf6a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    },
+    {
+      "candidate_id": "historical-c19d0eabfd43#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction/dating/publishing content, not home purchase guidance."
+    }
+  ]
+}

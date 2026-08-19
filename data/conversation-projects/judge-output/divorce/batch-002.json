@@ -1,0 +1,486 @@
+{
+  "nexus": "divorce",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-a8512678a5a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-93e45c07a3e6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oura/Ora AI project, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-2ecf75fe7c44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book title 'Forged in Divorce' explicitly mentioned"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Divorce book title development and subtitle refinement"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Divorce book Kindle pricing and word count planning"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault/project system architecture, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-fdd51f9513fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI formatting methodology, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI formatting methodology, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-065ab0eeae3c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-4c75792e9193#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-1a980667a66a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-802551fb3e3e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal essay writing, not the book archive project"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book title 'Forged in Divorce' explicitly mentioned"
+    },
+    {
+      "candidate_id": "historical-2d8e58e28474#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Book title 'Forged in Divorce' explicitly mentioned"
+    },
+    {
+      "candidate_id": "historical-19335610c764#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-96abbdcd40bc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-f1f766182695#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-31e0a98f4239#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-1507ba5a70d0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Divorce book Kindle pricing and word count planning"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-682d5c383876#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-6f04b89dcea3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-6f5397542b83#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-f3763cca5056#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-56370628b15b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-8088da1cc12e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-19335610c764#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-ea91e7763650#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-b97b218c2b60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-20352d0a3095#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#53",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-b152b185607d#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    },
+    {
+      "candidate_id": "historical-bc1f9b24a9e9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical political content, not Divorce book"
+    },
+    {
+      "candidate_id": "historical-79c8a5b80aac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No clear connection to Divorce book archive project"
+    }
+  ]
+}

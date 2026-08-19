@@ -1,0 +1,486 @@
+{
+  "nexus": "golf",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0712d876b1bd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No engagement with golf project"
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#21",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf-as-training subject indicates spiritual practice"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-8a168175f466#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Golf lifestyle and community integration"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-08dd1e7cafa0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-26cfa68c15a4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament lookup, not engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf central to personal identity"
+    },
+    {
+      "candidate_id": "historical-8721de3a16a9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-d22d3d4a36f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf as fiction setting element"
+    },
+    {
+      "candidate_id": "historical-472a976a2c9a#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Golf as testing ground for resilience practice"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#51",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament lookup, not engagement"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#79",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament lookup, not engagement"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-7867909d0e1d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-418204f4af38#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-e99085d9ca5f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-7ebd047651ee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-61e1be728b29#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-de73c76753cd#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-f8b9a289cf76#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-696be87928fc#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-892b074a9ea4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf technique rebuild or equipment analysis"
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-c72b1758b711#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#37",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-aa1f7455d3c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf as fiction setting element"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf as spiritual/emotional practice"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf technique rebuild or equipment analysis"
+    },
+    {
+      "candidate_id": "historical-624167eb81c4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0e254311bbd9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf as dating profile hobby"
+    },
+    {
+      "candidate_id": "historical-ce8198016fb2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament lookup, not engagement"
+    },
+    {
+      "candidate_id": "historical-78ed9b1d7cbc#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-7fa8af78d871#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-6edb60215b2f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-23a722f409dd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#69",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Golf tournament lookup, not engagement"
+    },
+    {
+      "candidate_id": "historical-0db7e777c45d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-0df9daa29e3d#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf technique rebuild or equipment analysis"
+    },
+    {
+      "candidate_id": "historical-d480b9b4fa9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-99df88574463#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-fe35b9d77e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-8c9f089978d8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-2488e3da5bc9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-9b94e5840983#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-4491887874ad#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No golf content"
+    }
+  ]
+}

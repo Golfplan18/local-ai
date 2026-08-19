@@ -1,0 +1,486 @@
+{
+  "nexus": "american_judas",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-f9d923ab780c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-2df41d9ba53e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-e9a0996facf7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-e9aa5827be42#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist coalition strategy and institutional planning"
+    },
+    {
+      "candidate_id": "historical-e9777f969e31#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-1cc83d43bb6b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-51444e9eb889#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Engages antagonist perspective or opposition viewpoint"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-8d700d0ac8c4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-1c673631d578#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-bef800fcbf38#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-0f744138366c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-82fad1e60212#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-1ab011d561b7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-0568a73d7317#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-d52cae2d9f0c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-82e190b01d75#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement markers"
+    },
+    {
+      "candidate_id": "historical-5441b4719c65#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-da17417741ac#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-095f2d74d6b4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-9af73cc8aac9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-5e38b0578a49#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-fdd6661ea7e2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-df4d45b9f8f3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "American Jesus outline/framework without chapter-specific development"
+    },
+    {
+      "candidate_id": "historical-bf59b048d8c5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-62820d6c10fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-609e023654e0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-5dc4f6b6ef70#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-b920e3ff5271#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-9a0f1198cb44#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-d5a9d51787ad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-a4f2f363d71b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated topic"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-3ef73b32af96#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist coalition strategy and institutional planning"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-c67313f9824a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist coalition strategy and institutional planning"
+    },
+    {
+      "candidate_id": "historical-99abc2602603#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-43a46efcb580#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-8a0501f3d8a0#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-7a3fc36c3909#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-74af1412346c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#9",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-a66f322e58f7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-93eec5509bef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus protagonist narrative only, no antagonist perspective"
+    },
+    {
+      "candidate_id": "historical-137276a7ae13#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-f4afdfa9869f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-6225feb1000b#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Antagonist character development (Harlan Byrd, Farwright, etc.)"
+    },
+    {
+      "candidate_id": "historical-b84fd0122e2a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Insufficient engagement markers"
+    },
+    {
+      "candidate_id": "historical-c50a029826ab#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    },
+    {
+      "candidate_id": "historical-0d6d7c210cec#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Unrelated work (non-project milestones)"
+    },
+    {
+      "candidate_id": "historical-d746a9b698ab#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Explicit American Judas or mirror narrative reference"
+    }
+  ]
+}

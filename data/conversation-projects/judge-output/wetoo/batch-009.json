@@ -1,0 +1,486 @@
+{
+  "nexus": "wetoo",
+  "batch": 9,
+  "verdicts": [
+    {
+      "candidate_id": "historical-114f36c4e1fd#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI-specific publication structure discussion"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project 2025/2030 counter-manifesto political framework"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI technical architecture, not We Too work"
+    },
+    {
+      "candidate_id": "historical-c296e5cb81dd#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political propaganda/corporate extraction tactics"
+    },
+    {
+      "candidate_id": "historical-e2cf9ebd2526#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Political discourse and logical reasoning analysis"
+    },
+    {
+      "candidate_id": "historical-e1a6fc7514a3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus trilogy fiction project"
+    },
+    {
+      "candidate_id": "historical-fe2d946bc796#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative framework development for story"
+    },
+    {
+      "candidate_id": "historical-76f769b5834d#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "News website infrastructure for content"
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile evaluation - off-topic"
+    },
+    {
+      "candidate_id": "historical-048eb03aefe5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing for unrelated book project"
+    },
+    {
+      "candidate_id": "historical-ea37182b3f69#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Character voice establishment for writing"
+    },
+    {
+      "candidate_id": "historical-854317d90860#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Interface design feedback - off-topic"
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Political scandal and institutional critique"
+    },
+    {
+      "candidate_id": "historical-6f5669442ede#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chamber of Commerce chapter with economic themes"
+    },
+    {
+      "candidate_id": "historical-c11a58a56aee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Marketing for unrelated book"
+    },
+    {
+      "candidate_id": "historical-9ab88505fcb1#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expanding Awareness book, not We Too"
+    },
+    {
+      "candidate_id": "historical-4e31d0a0860d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 18 on security state and extraction"
+    },
+    {
+      "candidate_id": "historical-26c119492fad#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ideation Framework for story development"
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Salvadoran Gulag fictional subplot"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "World Library knowledge concept for project"
+    },
+    {
+      "candidate_id": "historical-1d3e633d103c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Development/Evaluation framework updates"
+    },
+    {
+      "candidate_id": "historical-b1557b8e3e3a#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Library access research - tangential"
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Narrative War subplot"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Author branding and book front matter"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Tax policy austerity trap analysis"
+    },
+    {
+      "candidate_id": "historical-f799e7f1e6f7#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation Framework for Kindness Thread subplot"
+    },
+    {
+      "candidate_id": "historical-3d18a1e14096#2",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Publishing strategy and framework implementation"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 12 Four Horsemen Strategy redraft"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Malcolm Little King trilogy - different project"
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American King trilogy - different project"
+    },
+    {
+      "candidate_id": "historical-839583df5598#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal relationship advice"
+    },
+    {
+      "candidate_id": "historical-1eb2055e50a3#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message crafting - off-topic"
+    },
+    {
+      "candidate_id": "historical-b96238ab1500#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Diklis Chump dystopian policy brainstorming"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian/GitHub technical setup"
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ideation Framework finalization"
+    },
+    {
+      "candidate_id": "historical-6da5fa63ba7a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Corporate narrative control and media tactics"
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Test prompt - off-topic"
+    },
+    {
+      "candidate_id": "historical-cc173417417e#7",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Defending Nazi label against Godwin objection"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian/GitHub setup - duplicate technical"
+    },
+    {
+      "candidate_id": "historical-f970ba5f3dee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 2 story bible"
+    },
+    {
+      "candidate_id": "historical-7f3a13244077#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Satirical authoritarian policy framework"
+    },
+    {
+      "candidate_id": "historical-9237e49b749c#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Character profiles including Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-67af583186fa#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Setting and character development - unclear"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book on AI job destruction and social impact"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Mental model library - tangential"
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MBTI personality assessment - off-topic"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#19",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "China trade deal as capitulation analysis"
+    },
+    {
+      "candidate_id": "historical-0c09a009208d#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Left-wing critiques and counter-strategies"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#20",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "CSS property lowercase convention - off-topic"
+    },
+    {
+      "candidate_id": "historical-c7e08aec3e79#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 24 newspaper article on corporate pollution"
+    },
+    {
+      "candidate_id": "historical-138e8fd11e51#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Extended Cognition Framework implementation"
+    },
+    {
+      "candidate_id": "historical-c03375d4324e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Narrative Elements framework implementation"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble dating match analysis"
+    },
+    {
+      "candidate_id": "historical-9d3913b3270f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Diklis Chump character conceptual architecture"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile fetish reference - off-topic"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "YouTube video summary - off-topic"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#11",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "AI unemployment forecasting and political impact"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Framework analysis and confirmation"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Communication preference meta-instruction"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#15",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Project 2025/2030 counter-manifesto work"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta-instruction"
+    },
+    {
+      "candidate_id": "historical-ce95a415d7f6#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Chapter 10 Private Debt as Extraction"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump-era collapse of world order analysis"
+    },
+    {
+      "candidate_id": "historical-c38f505771f5#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Economics wicked problems and political obfuscation"
+    },
+    {
+      "candidate_id": "historical-41303cf3858d#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book release and publication strategy"
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Meta persona for knowledge enhancement"
+    },
+    {
+      "candidate_id": "historical-90b2a268bda8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agents list curation - off-topic"
+    },
+    {
+      "candidate_id": "historical-5ee063d04e40#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Special needs parenting book"
+    },
+    {
+      "candidate_id": "historical-d50227857f57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel-writing pipeline"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference - meta-instruction"
+    },
+    {
+      "candidate_id": "historical-332495c8d7ee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Shooting star significance - off-topic"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-as-statistics philosophical argument"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#4",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Pharmaceutical industry critique"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#9",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Book additions artifact request"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference - meta-instruction"
+    },
+    {
+      "candidate_id": "historical-ac6a8460e5af#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Epstein-Summers scandal media spin analysis"
+    },
+    {
+      "candidate_id": "historical-1d88a2980ba2#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "CBS/60 Minutes institutional capture"
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Judas Tito character build for new voice"
+    },
+    {
+      "candidate_id": "historical-c8c82f1a541c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SSH/remote desktop technical setup"
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#41",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Trump narrative strategy across books"
+    }
+  ]
+}

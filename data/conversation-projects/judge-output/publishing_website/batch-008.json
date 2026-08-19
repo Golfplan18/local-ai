@@ -1,0 +1,486 @@
+{
+  "nexus": "publishing_website",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d023ba1bd2df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora research architecture - unrelated"
+    },
+    {
+      "candidate_id": "historical-7ae98272b7d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Google resources/AI context - unrelated"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter on propaganda/politics - unrelated"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating relationship advice - unrelated"
+    },
+    {
+      "candidate_id": "historical-9710c4742c87#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating app messages - unrelated"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge profile photo and caption - unrelated"
+    },
+    {
+      "candidate_id": "historical-496d0b46ae29#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative character development for fiction - unrelated"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating frame analysis - unrelated"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge opener messaging - unrelated"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile OCR and messaging - unrelated"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora book outline review - unrelated"
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire content - unrelated"
+    },
+    {
+      "candidate_id": "historical-54a63562310e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "NLP book framework documentation - unrelated"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction character profile (Marcus Johnson) - unrelated"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "MSI content platform strategy - different project"
+    },
+    {
+      "candidate_id": "historical-ac83727ea9f1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meme template library - unrelated"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI agent system conceptual framework - unrelated"
+    },
+    {
+      "candidate_id": "historical-4b70c31f0dac#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel writing production system - unrelated"
+    },
+    {
+      "candidate_id": "historical-712898a5a79d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Git/Obsidian vault sync - unrelated"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "News verification methodology - unrelated"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI authorship copyright philosophy - unrelated"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating text strategy - unrelated"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional authoritarian satire - unrelated"
+    },
+    {
+      "candidate_id": "historical-915864d717d5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot framework redesign - unrelated"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Orchestrator pipeline refactoring - unrelated"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Verification/finalization (unclear context) - unrelated"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#39",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Task to milestone conversion - unrelated"
+    },
+    {
+      "candidate_id": "historical-f07bdbd64eec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and messaging - unrelated"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wolfram Language 3D visualization - unrelated"
+    },
+    {
+      "candidate_id": "historical-97dd495ab015#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief greeting - unrelated"
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Journalistic research framework - unrelated"
+    },
+    {
+      "candidate_id": "historical-085d7ed782ef#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Jim Carrey biography and public domain - possibly publishing but not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge algorithm and dating - unrelated"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expert database hierarchy - unrelated"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#29",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Profile analysis - unrelated"
+    },
+    {
+      "candidate_id": "historical-b5b565449718#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Atomic note framework documentation - unrelated"
+    },
+    {
+      "candidate_id": "historical-620d871f161f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge profile response - unrelated"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#17",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Federated library distribution business - unrelated to Old Cypress"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "White paper section development - unrelated"
+    },
+    {
+      "candidate_id": "historical-b4d97860cab4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile analysis and strategy - unrelated"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "boot.md file development - unrelated"
+    },
+    {
+      "candidate_id": "historical-b6d2216753f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Generic 'continuing discussion' - insufficient context"
+    },
+    {
+      "candidate_id": "historical-737ff7e92d6b#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Public domain publishing philosophy - general topic, not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-5e0732e85396#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Relationship correspondence - unrelated"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework naming and acronyms - unrelated"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "First-sales launch and Substack serialization - unrelated"
+    },
+    {
+      "candidate_id": "historical-99df88574463#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal risk Trump SLAPP suit - possibly book publishing but not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "LLM model quantization - unrelated"
+    },
+    {
+      "candidate_id": "historical-6a52b6b8b3d3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Expanding Awareness cosmology framework - unrelated"
+    },
+    {
+      "candidate_id": "historical-b6501ff419f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI system design with de Bono frameworks - unrelated"
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Deliverables (unclear context) - unrelated"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Kimi/Claude Code integration - unrelated"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Vault gift for Cory Doctorow - unrelated"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Video summary of Claude/Obsidian workflow - unrelated"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating profile review - unrelated"
+    },
+    {
+      "candidate_id": "historical-ae3d374f4b6c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical authoritarian narrative - unrelated"
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Testing framework expansion - unrelated"
+    },
+    {
+      "candidate_id": "historical-5c7e294a03ef#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Draft evaluation and pattern fixing - unrelated"
+    },
+    {
+      "candidate_id": "historical-60ba37a9e0bb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Various topics - no publishing_website content"
+    },
+    {
+      "candidate_id": "historical-1766f9a80145#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Knights organization development - unrelated"
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Substack/Bluesky/Notes strategy - MSI content, not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dual-hemisphere AI brain philosophy - unrelated"
+    },
+    {
+      "candidate_id": "historical-79268cb0d0cd#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal sovereignty and spirituality - unrelated"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Publishing philosophy rejection of ownership - general philosophy, not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Coherence/fallacy-detection mode - unrelated"
+    },
+    {
+      "candidate_id": "historical-e89596a74ab3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hinge profile analysis - unrelated"
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Greeting and engagement - unrelated"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "State-worship satire - unrelated"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Local LLM hardware design - unrelated"
+    },
+    {
+      "candidate_id": "historical-e237d94eb7c3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Gemini freezing bug - unrelated"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating message refinement - unrelated"
+    },
+    {
+      "candidate_id": "historical-f8d8dedfad9b#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation framework for cross-media - unrelated"
+    },
+    {
+      "candidate_id": "historical-c54ae0d8eb5b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmological theories - unrelated"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR and INFP profile - unrelated"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI fiction writing methodology - unrelated"
+    },
+    {
+      "candidate_id": "historical-3f69df8f6f34#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Banksy identity and anonymity - general publishing philosophy, not Old Cypress"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating polarity analysis - unrelated"
+    },
+    {
+      "candidate_id": "historical-18492d3ba04d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pippi Longstocking images - unrelated"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#62",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ChatGPT-5 availability - unrelated"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#21",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dataview dropdown list - unrelated"
+    }
+  ]
+}

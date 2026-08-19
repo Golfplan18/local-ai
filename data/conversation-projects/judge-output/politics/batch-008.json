@@ -1,0 +1,486 @@
+{
+  "nexus": "politics",
+  "batch": 8,
+  "verdicts": [
+    {
+      "candidate_id": "historical-4cf5377c2c72#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-86c09712aaa3#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-929009250a5e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-851645b9ee81#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "WSJ editorial lineage as political voice source."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-ec957c095277#27",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Supreme Court legitimacy crisis analysis."
+    },
+    {
+      "candidate_id": "historical-b8b6c63370fb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Federal education policy for political beat work."
+    },
+    {
+      "candidate_id": "historical-2fad0be83ca3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-90dfd8e4fcf3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-46f603d7f9af#1",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Partisan polarization article framework."
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-bc4393d8d059#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spinner project: political messaging & framework work."
+    },
+    {
+      "candidate_id": "historical-1976f19cc988#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-a6368f78ecaa#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-36d76fc71380#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-56e4174c23ad#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#35",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-7775127f0bb2#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-b8939c9fefd3#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#16",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#25",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-486829e14d21#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-09501c4cd2f6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus: moral political protagonist development."
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-194a0cbe751f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#40",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-e33888f7fe19#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-c61f58a6bdb1#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-126ca32dbbb7#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Spinner project: political messaging & framework work."
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-ad570a865bc6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-e8c01bd404a9#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-610f2c5b9318#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-09d439711b7c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-722b08f58407#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-8c03a4b8ec21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-2835b34c44c8#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-313124f8e3ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-db4f27b8b7f8#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-cc173417417e#13",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-334c63abdc28#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-2e437f287a9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-a2a308bff913#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-be0a3e2e00ee#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-e0e0d9901a32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-bd8cd0ff9eb7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-c5907e989a0f#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-1913a216cb54#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-8222b9b9e6ea#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-45dc25fbe1aa#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-9af46f6c531d#56",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-8aeae999aa4a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-d2e2151feaef#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-b0a6b8bdbe00#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-8a0501f3d8a0#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    },
+    {
+      "candidate_id": "historical-941494451b48#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-6c19fd4f5325#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#30",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-6357ec9c2a55#70",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-011e5295604a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#70",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No direct engagement with politics project."
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus novel: narrative, characters, or structure work."
+    }
+  ]
+}

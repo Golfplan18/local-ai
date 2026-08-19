@@ -1,0 +1,290 @@
+{
+  "nexus": "ora",
+  "batch": 11,
+  "judged": 47,
+  "accepted": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-0a01e7ce18b7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump political satire theme\u2014creative writing project, not Ora"
+    },
+    {
+      "candidate_id": "historical-bf0095a00594#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Game theory analysis of migration concept\u2014philosophical discussion unrelated to Ora"
+    },
+    {
+      "candidate_id": "historical-09527c9b7601#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian Tasks plugin workflow\u2014personal productivity tool, not Ora system"
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal boundaries with ex-wife\u2014relationship discussion, not Ora"
+    },
+    {
+      "candidate_id": "historical-a268d9ca74cb#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus Act 1 chapter outline\u2014creative writing project"
+    },
+    {
+      "candidate_id": "historical-5fe4a2aec512#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Aurora narrative for user's Wisdom-Passion-Nexus framework\u2014personal organizational project, distinct from Ora"
+    },
+    {
+      "candidate_id": "historical-937e38c94ab1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Mimi Wright-Fubar MSI cartoonist character\u2014MSI content development, not Ora system work"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Markdown viewer app selection\u2014Mac utility discussion, not Ora"
+    },
+    {
+      "candidate_id": "historical-77ee4b222d78#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Oracle's rhetorical voice design\u2014character/voice conceptualization, not Ora system"
+    },
+    {
+      "candidate_id": "historical-aefc0511b679#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User's editorial gap analysis and evaluation frameworks\u2014personal workflow, not Ora"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creating images and emotional content for stories\u2014creative writing support"
+    },
+    {
+      "candidate_id": "historical-04749862c4af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Diklis Chump theme framework execution\u2014creative writing project"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#32",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "DeepSeek pricing and AI bubble economics\u2014industry analysis, not Ora development"
+    },
+    {
+      "candidate_id": "historical-71957187b84f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "OCR extraction and dating profile reconstruction\u2014personal utility task"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Natural Language Programming book Chapter 6\u2014book writing project, not Ora"
+    },
+    {
+      "candidate_id": "historical-ed0d1bbb11b9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT system configuration\u2014different AI system, not Ora"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI reliability concerns and framework restructuring\u2014general AI discussion, not Ora-specific"
+    },
+    {
+      "candidate_id": "historical-9b7dad5ff3fe#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Adding system dynamics to mental model library\u2014knowledge collection for personal use"
+    },
+    {
+      "candidate_id": "historical-ae58078e56be#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot Foundation Framework for narrative\u2014story development framework"
+    },
+    {
+      "candidate_id": "historical-fabdc45ad85e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework condensation analysis\u2014user's own framework analysis work"
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "White paper framework (Big Idea/Why Now)\u2014insufficient evidence of Ora connection"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persistent AI memory and context window philosophy\u2014conceptual AI exploration"
+    },
+    {
+      "candidate_id": "historical-5e5d72fbd300#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Refining metrics and goodness of fit\u2014insufficient specificity for Ora determination"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Bootstrap architecture and ephemeral file management\u2014likely project setup, not Ora core"
+    },
+    {
+      "candidate_id": "historical-bebc2bcd3bc4#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Presidential ego-worship satire via currency\u2014creative fiction"
+    },
+    {
+      "candidate_id": "historical-a496cdef6e46#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plot Foundation Framework iteration\u2014narrative design"
+    },
+    {
+      "candidate_id": "historical-f7fc622f95fc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation Initiation Framework story beats\u2014narrative design framework"
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Designing Coherence Audit mode for Ora mode registry\u2014explicit Ora mode/framework design"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Cover Quality Evaluation Framework\u2014creative project evaluation"
+    },
+    {
+      "candidate_id": "historical-5131d762081a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Make.md software features and documentation\u2014unrelated software, not Ora"
+    },
+    {
+      "candidate_id": "historical-486829e14d21#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Meta Persona profile and empowerment style\u2014user persona development"
+    },
+    {
+      "candidate_id": "historical-1f4f2a36f76d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "New Communist Manifesto outline\u2014creative writing project"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI agents as subconscious extension\u2014exploratory AI philosophy, not Ora work"
+    },
+    {
+      "candidate_id": "historical-c99dc6301508#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "TV ambient-lighting camera technology\u2014hardware discussion, not Ora"
+    },
+    {
+      "candidate_id": "historical-ff4be1e73995#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "New Communist Manifesto template and outline\u2014creative writing project"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Visual design elements and aesthetics\u2014insufficient Ora-specificity"
+    },
+    {
+      "candidate_id": "historical-d0e179711e2b#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Technical implementation filters and formulas\u2014insufficient Ora-specificity"
+    },
+    {
+      "candidate_id": "historical-aa47bc25494f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bumble match analysis and dating dynamics\u2014personal dating analysis"
+    },
+    {
+      "candidate_id": "historical-86313a9dc9cd#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Identifying and correcting structural framework errors\u2014insufficient Ora-specificity"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "ChatGPT project limitations and recovery\u2014discussion of OpenAI's system, not Ora"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Engram/resource epistemic-status schema\u2014personal knowledge taxonomy design"
+    },
+    {
+      "candidate_id": "historical-1029b9a0b49d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction framework for propaganda\u2014creative writing"
+    },
+    {
+      "candidate_id": "historical-4967912a848c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating Aida and managing intensity\u2014personal relationship"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book Cover Quality Evaluation Framework\u2014creative/publishing project"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#7",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Persistent AI memory and context window philosophy\u2014conceptual AI exploration"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#22",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Recap request after project break\u2014asking for summary, not active Ora engagement"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Refinement Framework\u2014narrative character design"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "golf_course_design",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only output preference unrelated to golf"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output formatting request, no golf content"
+    },
+    {
+      "candidate_id": "historical-db66e505a46a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User text preference, no subject matter engagement"
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference only"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ora system testing and architecture, not golf"
+    },
+    {
+      "candidate_id": "historical-d09a2bd0b0d2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only request"
+    },
+    {
+      "candidate_id": "historical-14a33557c0bf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Brief text-only request"
+    },
+    {
+      "candidate_id": "historical-a88ec966a2d9#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus novel parables, not golf"
+    },
+    {
+      "candidate_id": "historical-b16f1b37f403#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "SynthesisGPT blogging goals, not golf"
+    },
+    {
+      "candidate_id": "historical-f3afbb36669f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "User formatting request"
+    },
+    {
+      "candidate_id": "historical-4e0bbd37706e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus narrative parables"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Ideation Framework for fiction, not golf"
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-4f08a2bd70e3#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output request"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Pre-Foundation Frameworks for fiction"
+    },
+    {
+      "candidate_id": "historical-97ca145483eb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-43a08dfa2a92#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Character Initiation Framework, not golf"
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Economic strategy chapter drafting, not golf"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Bedtime Creation Story, cosmic parable"
+    },
+    {
+      "candidate_id": "historical-f0fbd4efdfbd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmic creation parable, not golf"
+    },
+    {
+      "candidate_id": "historical-4f756ac05fdd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-29bbd815afed#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 2 novel development"
+    },
+    {
+      "candidate_id": "historical-3b1b5b476e96#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-b81b9da175d7#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-f4bb40725a72#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI tool comparison (NotebookLM vs Gemini)"
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal response request"
+    },
+    {
+      "candidate_id": "historical-bf8a8e2f3c4f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-6f8311f3597a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-4660a2dffa4b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-44842391d42c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-ae0b2db41de5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Plain-text-only response request"
+    },
+    {
+      "candidate_id": "historical-1ebd9b01369c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only response format request"
+    },
+    {
+      "candidate_id": "historical-fc88a8e5d794#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapter drafting"
+    },
+    {
+      "candidate_id": "historical-a1f5fe94b959#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political satire Diklis Chump"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Dungeon features discussion"
+    },
+    {
+      "candidate_id": "historical-dba985b3db89#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political fiction satire"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Consciousness hard problem, Buddhist practice"
+    },
+    {
+      "candidate_id": "historical-54dfe0b1d699#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI Agent Teams white paper"
+    },
+    {
+      "candidate_id": "historical-1ec6501e9d57#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only format request"
+    },
+    {
+      "candidate_id": "historical-08b12a7ba991#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Output format preference"
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime policy pieces"
+    },
+    {
+      "candidate_id": "historical-6fdead9da146#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-2a0a34470000#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Web research capabilities discussion"
+    },
+    {
+      "candidate_id": "historical-d0b329d5bcae#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-4fbd7f91725f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Wall Street regulation and monetary policy"
+    },
+    {
+      "candidate_id": "historical-f6ed8919ddd6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Cosmology and gravitational physics"
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Quantum wobble model appendix"
+    },
+    {
+      "candidate_id": "historical-02639883a691#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal text-only acknowledgment"
+    },
+    {
+      "candidate_id": "historical-060b54a54e06#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Minimal acknowledgment request"
+    },
+    {
+      "candidate_id": "historical-05cb3844ae30#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf swing mechanics: centrifugal force illusion"
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-eaa164ab20f5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-d9ebc7208c58#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-500bf3155fb2#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Golf grip configuration and wrist biomechanics"
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-1cdd547fe112#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text-only request"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-897c4830b27a#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapter framework"
+    },
+    {
+      "candidate_id": "historical-ed2807b9a6c9#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus chapter development"
+    },
+    {
+      "candidate_id": "historical-4046c55ee0e8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Text output preference"
+    },
+    {
+      "candidate_id": "historical-a96beab4a6b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus 2 chapter development"
+    },
+    {
+      "candidate_id": "historical-38b963d227fd#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical regime policies"
+    },
+    {
+      "candidate_id": "historical-7eee8d5f6189#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Political agenda chapters"
+    },
+    {
+      "candidate_id": "historical-c32962c7953e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "American Jesus auto shop scene"
+    },
+    {
+      "candidate_id": "historical-18417128cf8b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical malpractice document"
+    },
+    {
+      "candidate_id": "historical-7e589a3a71d1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "AI-assisted writing methodology"
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Medical malpractice complaint analysis"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#18",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Thinking as skill and genius distinction"
+    },
+    {
+      "candidate_id": "historical-34ae28cbd2a2#22",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Spiritual prose pacing reflection, not golf"
+    }
+  ]
+}

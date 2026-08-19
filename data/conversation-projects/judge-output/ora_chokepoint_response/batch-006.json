@@ -1,0 +1,488 @@
+{
+  "nexus": "ora_chokepoint_response",
+  "batch": 6,
+  "judged": 80,
+  "accepted": 1,
+  "verdicts": [
+    {
+      "candidate_id": "historical-990656ea8fee#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter or outline work"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter or outline work"
+    },
+    {
+      "candidate_id": "historical-04749862c4af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction or policy work"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt/architecture engineering work"
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hardware configuration for local AI setup"
+    },
+    {
+      "candidate_id": "historical-a206c3ea9e73#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction or policy work"
+    },
+    {
+      "candidate_id": "historical-ed71142036c4#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt/architecture engineering work"
+    },
+    {
+      "candidate_id": "historical-5b178a194e53#2",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Facebook access via circumvention - not principled alternative"
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework or methodology work unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework or methodology work unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-bfde21e29ac5#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal development topic"
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project work"
+    },
+    {
+      "candidate_id": "historical-69f4843a3457#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework execution for characters"
+    },
+    {
+      "candidate_id": "historical-1da6b1c60ac6#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework execution for characters"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Hardware configuration for local AI setup"
+    },
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction or policy work"
+    },
+    {
+      "candidate_id": "historical-aa46cecadfb9#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Personal development topic"
+    },
+    {
+      "candidate_id": "historical-2bae6072d35d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework execution for characters"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#23",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Framework or methodology work unrelated to chokepoint"
+    },
+    {
+      "candidate_id": "historical-59c4aaf96d60#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Unrelated project work"
+    },
+    {
+      "candidate_id": "historical-c428b872e17f#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-2355fd3b4328#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-95a2131aa6da#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted writing methodology, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-2aceb0e15474#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c52aefcbb43f#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-a36330ee0cf4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI-assisted writing methodology, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#66",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d3ab99d69b12#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt/architecture engineering work"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-94c43b32f181#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Book chapter or outline work"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Satirical fiction or policy work"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#64",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-6c54e7d49b40#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Prompt/architecture engineering work"
+    },
+    {
+      "candidate_id": "historical-5b8d6f73e792#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-e185d8eac61e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-99aa501ebc5f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-ef56277866b7#11",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c75f708ae4ac#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b9cb212c9e00#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-d0b7415bbaf6#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-6213ff3b565c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-eaf5d37a9e26#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fiction framework execution for characters"
+    },
+    {
+      "candidate_id": "historical-62e63d5d8e47#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-bcece8c78dc4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-5b6504fe1761#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-6e103f54f449#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-8368edcc4d41#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-7bd6cc535b05#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-cd35099a0dce#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Methodology documentation work"
+    },
+    {
+      "candidate_id": "historical-8f34cb7758b2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-2fa43b007548#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-70561a8a45b7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b720ebe7714a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-3e582eba8270#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-9470f545463f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c24a80a07bbd#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-4ea7e9b61eb7#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-b851f8ba357c#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-1eb26de645a6#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-61a4b7bd414c#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#15",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No engagement with software candidate evaluation"
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Pipeline architecture stages, not software evaluation"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Knowledge monopoly and open source alternatives discussion"
+    }
+  ]
+}

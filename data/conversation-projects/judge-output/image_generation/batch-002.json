@@ -1,0 +1,486 @@
+{
+  "nexus": "image_generation",
+  "batch": 2,
+  "verdicts": [
+    {
+      "candidate_id": "historical-313124f8e3ea#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-0c629e266ce2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-89cfc3827b11#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject/title + image generation tool"
+    },
+    {
+      "candidate_id": "historical-1c72a1977bbd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#7",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-a3572752481e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-9b8460ec4549#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-722b08f58407#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-3ba92617e0e1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-918edd0fe545#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-df1234c14538#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-ea91e7763650#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-c6064957adb5#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-27557c5769f4#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-393fdde31b58#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject/title + image generation tool"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-83afb81ff072#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-5889e950940e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-e6b2424c255b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-d1e29c1277ea#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-491631da91ab#43",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-b8a67b3cb7c2#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-002cddbe8a40#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-bb74b4ca9068#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-dc5b43b1cabb#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Creative image generation use"
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-12873aaa399e#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-33655ad00563#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7b267e5fe223#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-0a8344b0c7eb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#19",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Tool mention in technical context"
+    },
+    {
+      "candidate_id": "historical-26dd4fc8b893#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-57fa8805da39#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject/title + image generation tool"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-5bee58edc73b#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-29ca4848bbda#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-d70ec6c35bc4#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-c592313d5f78#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-5888bb242dc2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-0af59f6323b3#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7204c53686df#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#50",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-60089d3d4ccd#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7926610a4df7#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-8a6baff8c394#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject/title + image generation tool"
+    },
+    {
+      "candidate_id": "historical-6e893b335342#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-f59cdb6717db#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-adcd558d23f8#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-9fbcf9e679be#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-e3f17068bdfe#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-05306a125cea#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7d4136fc4b52#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-7ee6c8319749#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Subject/title + image generation tool"
+    },
+    {
+      "candidate_id": "historical-7ec3a9efedfe#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-a708a569e13d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Writing project"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    },
+    {
+      "candidate_id": "historical-f4dc0644bd9f#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "No image generation engagement"
+    }
+  ]
+}

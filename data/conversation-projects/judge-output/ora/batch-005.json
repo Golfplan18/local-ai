@@ -1,0 +1,486 @@
+{
+  "nexus": "ora",
+  "batch": 5,
+  "verdicts": [
+    {
+      "candidate_id": "historical-d0e179711e2b#6",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Tagging procedures and properties schema docu..."
+    },
+    {
+      "candidate_id": "historical-7da3b7b5b4d6#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-5dc82a664455#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative fiction storytelling"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/book writing framework (not Ora)"
+    },
+    {
+      "candidate_id": "historical-abe428b77cb4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Exploring fictional authoritarian religious p..."
+    },
+    {
+      "candidate_id": "historical-58d275baf1a9#26",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Local LLM routing and multi-model design"
+    },
+    {
+      "candidate_id": "historical-0b0494657a2c#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Legal document review"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-9e87c6313bd7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-8e6912848bec#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-150b631559ce#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault tool documentation"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#23",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora pipeline stages and framework"
+    },
+    {
+      "candidate_id": "historical-18ccdeb34361#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault tool documentation"
+    },
+    {
+      "candidate_id": "historical-91b1d517425f#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-acd25683a81d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Novel/book writing framework (not Ora)"
+    },
+    {
+      "candidate_id": "historical-727741399659#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-3110e0650216#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Debugging Base filter, sort, and group syntax..."
+    },
+    {
+      "candidate_id": "historical-3daf0b716faa#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#52",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Whether GPT-5 is available in new threads..."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault tool documentation"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Generating headlines, Midjourney image prompt..."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI coding agents enabling DMCA circumvention..."
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-a4ed35426f03#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-50a97463b4b0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-8a754010befc#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Obsidian vault tool documentation"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-fe0df72f4617#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-de8417a90c21#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Request for markdown files produced in sessio..."
+    },
+    {
+      "candidate_id": "historical-6c54e7d49b40#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-909f80402c03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-3fd601f64417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-6dfb6345cb18#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Immigration research dossier creation for col..."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-4216a7b38dba#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AI response formatting: eliminating closing-p..."
+    },
+    {
+      "candidate_id": "historical-7741d5307c15#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora pipeline stages and framework"
+    },
+    {
+      "candidate_id": "historical-1e9d61bf11a7#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Image refinements of angry man pressing kill..."
+    },
+    {
+      "candidate_id": "historical-6377e2fe1a7f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Evaluation of classical mechanics explanation..."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#36",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Installing Claude Code CLI and documenting su..."
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Standalone coding packages and their pricing..."
+    },
+    {
+      "candidate_id": "historical-5045e44dce6f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Fictional political satire"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#8",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Amazon Description Framework and Criteria doc..."
+    },
+    {
+      "candidate_id": "historical-773cee66112b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-e615d59df9a2#4",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Comparing platforms and discussing advanced f..."
+    },
+    {
+      "candidate_id": "historical-e458a350d765#17",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "9B-model test results \u2014 RAG substituting for..."
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Competitiveness, book documentation value, an..."
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Oura project development progress and technic..."
+    },
+    {
+      "candidate_id": "historical-4474111f5bdf#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Analyzing collective intelligence documents a..."
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#3",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Creating comprehensive context documentation..."
+    },
+    {
+      "candidate_id": "historical-8a754010befc#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Dating and personal coaching"
+    },
+    {
+      "candidate_id": "historical-5ebeeb6de5b0#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Fixing Mac Stage Manager window grouping..."
+    },
+    {
+      "candidate_id": "historical-489119a0a53a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-14301d84563d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Analyzing flaws in argument that AI is merely..."
+    },
+    {
+      "candidate_id": "historical-7e18bd0a54f1#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Simple greeting exchange..."
+    },
+    {
+      "candidate_id": "historical-512d6136d093#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Delivering research as markdown file on Buddh..."
+    },
+    {
+      "candidate_id": "historical-2405657d2aa4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-947060573768#5",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "AHI (Assisted Human Intelligence) reframe and..."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#10",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Ora execution review subsystem"
+    },
+    {
+      "candidate_id": "historical-e458a350d765#12",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Drafting AHI audience-specific launch briefin..."
+    },
+    {
+      "candidate_id": "historical-7f4910e736ac#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Ora system architecture and pipeline"
+    },
+    {
+      "candidate_id": "historical-500cee10dc76#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Minimal response request..."
+    },
+    {
+      "candidate_id": "historical-6c56d83951c4#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Reviewing and improving extended cognition wh..."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-d745d446ffc8#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-04cde087e05d#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Formatting preference instruction..."
+    },
+    {
+      "candidate_id": "historical-84f0636ad786#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-582799e50940#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "Text output preference..."
+    }
+  ]
+}

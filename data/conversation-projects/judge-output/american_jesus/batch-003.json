@@ -1,0 +1,486 @@
+{
+  "nexus": "american_jesus",
+  "batch": 3,
+  "verdicts": [
+    {
+      "candidate_id": "historical-da6c84d37931#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus protagonist development"
+    },
+    {
+      "candidate_id": "historical-d6b11c556ff1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "growing seed parable placement and iterative development"
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "introducing the chapter refinement framework (instructions o"
+    },
+    {
+      "candidate_id": "historical-f1622449ddcd#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the chapter refinement framework (process for turnin"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-ab943c39408e#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "iteratively developing act 3 chapter 33 'allies' by running "
+    },
+    {
+      "candidate_id": "historical-b1b20eca8bc1#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "user provides the 'chapter foundation framework' template an"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-a44f292cac16#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "growing seed parable placement and iterative development"
+    },
+    {
+      "candidate_id": "historical-d70d96ebd5f9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "pasting the full 'american jesus' themes, character, and plo"
+    },
+    {
+      "candidate_id": "historical-f1c0f4bfec5d#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-1a491317e118#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "reviewing the full american jesus story bible/outline"
+    },
+    {
+      "candidate_id": "historical-8191016f7c59#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the full american jesus outline (universal themes, c"
+    },
+    {
+      "candidate_id": "historical-f680ff3f41e9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus 3 story bible review: universal themes, chara"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the chapter refinement framework (chapter-drafting e"
+    },
+    {
+      "candidate_id": "historical-b8404e9f548a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "user pastes an expanded version of the 'american jesus 3' ma"
+    },
+    {
+      "candidate_id": "historical-5c536a9c7e32#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter refinement framework specification (process, evaluat"
+    },
+    {
+      "candidate_id": "historical-2ff6fd984809#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-c7e08aec3e79#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter 23 'the poisoned waters' choice-driven development v"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "defining the chapter refinement framework (universal chapter"
+    },
+    {
+      "candidate_id": "historical-094c6034bf7d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter refinement framework loaded and applied to refine ac"
+    },
+    {
+      "candidate_id": "historical-ce317ce95a2a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "re-pasting story-bible reference material: themes overview a"
+    },
+    {
+      "candidate_id": "historical-17af7e3f41b3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus protagonist development"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "ingesting the full 'american jesus 2' story bible (themes, c"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter refinement framework setup instructions"
+    },
+    {
+      "candidate_id": "historical-61e810e4bf18#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus act 1 outline development and act ii planning"
+    },
+    {
+      "candidate_id": "historical-d938dc8b47d7#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the chapter refinement framework (universal chapter "
+    },
+    {
+      "candidate_id": "historical-c65fd2e2e1a1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus master outline review"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus 3 \u2014 master thematic/story outline pasted and "
+    },
+    {
+      "candidate_id": "historical-321f0cd207a9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "framework transformation to integrate archetypal character c"
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "thematic foundation and character architecture for american "
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "refining act 3 chapter 23 'fredericksburg' healthcare-justic"
+    },
+    {
+      "candidate_id": "historical-559b9b58c9cf#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Hayzeus protagonist development"
+    },
+    {
+      "candidate_id": "historical-d1c71407f27e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus 3 story bible: universal themes, character pr"
+    },
+    {
+      "candidate_id": "historical-ef0088cff234#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "developing act 3 chapter 25 'the seduction' (clarence thomps"
+    },
+    {
+      "candidate_id": "historical-63b056b2555e#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus 3 master story bible presented for review (th"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter refinement framework restated, then applied to act 2"
+    },
+    {
+      "candidate_id": "historical-405186b256f0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "user submits and ai ingests the full american jesus master o"
+    },
+    {
+      "candidate_id": "historical-285dcba65070#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "building the american jesus 2 story bible and chapter-develo"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the chapter refinement framework (process document f"
+    },
+    {
+      "candidate_id": "historical-8e863d8bc985#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus story bible: universal themes, character prof"
+    },
+    {
+      "candidate_id": "historical-f7b5bba06bed#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-e49580a92685#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "full 'american jesus 3' story bible (universal themes, chara"
+    },
+    {
+      "candidate_id": "historical-5281cdac73e9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "reviewing and memorizing the 'american jesus' novel outline "
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "American Jesus arc framework"
+    },
+    {
+      "candidate_id": "historical-bed5555d1b9b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "uploading the 'american jesus' themes and concepts story bib"
+    },
+    {
+      "candidate_id": "historical-3c03c9c2c92b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus master outline \u2014 themes, thematic arcs, and a"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "master themes/outline upload for american jesus 1 novel bibl"
+    },
+    {
+      "candidate_id": "historical-39bbb9392fbb#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus novel development and character choice archit"
+    },
+    {
+      "candidate_id": "historical-0db7539ce5a4#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "review of american jesus 3 master outline, character/setting"
+    },
+    {
+      "candidate_id": "historical-87505b41503c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "review and memorization of american jesus novel outline and "
+    },
+    {
+      "candidate_id": "historical-f19d846341d7#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus outline review and memory organization"
+    },
+    {
+      "candidate_id": "historical-897c4830b27a#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "applying the chapter initiation and chapter foundation frame"
+    },
+    {
+      "candidate_id": "historical-78e27b5f14ef#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "submitting the full american jesus 1 story bible (themes, ch"
+    },
+    {
+      "candidate_id": "historical-a778a84a3b24#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "applying the framework to chapter 7: \"the skeptic's inquiry\""
+    },
+    {
+      "candidate_id": "historical-6ef4bfce607d#5",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "refining act 3 chapter 24 'the economics of mercy' (thomas's"
+    },
+    {
+      "candidate_id": "historical-a48cefe76016#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the american jesus 2 master thematic/character/narra"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "executing the enhanced loose end analysis framework on the a"
+    },
+    {
+      "candidate_id": "historical-17e0e9328038#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "developing 'american jesus 2': the full thematic/character/p"
+    },
+    {
+      "candidate_id": "historical-90a82b53caf9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the american jesus master outline into memory (theme"
+    },
+    {
+      "candidate_id": "historical-d6749745bbe5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus 2 master story bible: universal themes, chara"
+    },
+    {
+      "candidate_id": "historical-63cf18d39cba#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus book: thematic framework, chapter architectur"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus master outline: universal themes, character p"
+    },
+    {
+      "candidate_id": "historical-d7b2f971fcd3#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter 12 \"judgment at sugar pines\" outline and refinement"
+    },
+    {
+      "candidate_id": "historical-44f72ed1685d#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "chapter 2.8 'a single body' developed via chapter initiation"
+    },
+    {
+      "candidate_id": "historical-3525cba4af50#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "building and iterating the character refinement framework's "
+    },
+    {
+      "candidate_id": "historical-fbc7a2d3ec55#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "collaboratively developing act 3, chapter 10 'the unholy tri"
+    },
+    {
+      "candidate_id": "historical-fc88a8e5d794#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "drafting chapter b2c9 'brotherhood rising' via the chapter i"
+    },
+    {
+      "candidate_id": "historical-96f69a8a2f35#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "reviewing and confirming the 'american jesus' master outline"
+    },
+    {
+      "candidate_id": "historical-b4f3b9b9a06d#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "user pastes the full 'american jesus' (book 1) story bible -"
+    },
+    {
+      "candidate_id": "historical-ee8e95e5d356#3",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "act 3, chapter 15 (\"petersburg: the devoured land\") \u2014 outlin"
+    },
+    {
+      "candidate_id": "historical-4132e765d88c#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No American Jesus engagement"
+    },
+    {
+      "candidate_id": "historical-61e2662d1dc1#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "act 2 chapter 22 'pilate's chamber' drafted (antagonist coal"
+    },
+    {
+      "candidate_id": "historical-e748d965cbd5#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus master thematic outline submission (themes, c"
+    },
+    {
+      "candidate_id": "historical-557140e622d9#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "loading the 'american jesus' story bible (themes, characters"
+    },
+    {
+      "candidate_id": "historical-66a94d441650#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "american jesus story bible: themes, settings & structure fra"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+{
+  "nexus": "quantum_mechanics",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-2a032b64ceb4#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-f79ca4d0a070#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-f79ca4d0a070#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-d3162259aceb#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Quantum experiment discussion."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-a854dc679527#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-8efeb99dce31#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-085f3d9ecc5a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-71962aa5c397#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5858c9bb8f0d#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#14",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-b9fc907c77af#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-9a2769ad45c6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Quantum experiment discussion."
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-7848123699da#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-9c44dafbadba#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-ca80040f1244#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5edcf8cabf03#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Quantum experiment discussion."
+    },
+    {
+      "candidate_id": "historical-ca2179948226#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#31",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-130c5b751f97#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-8d4665565e71#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-e31bd771e495#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-60fa526ae0c0#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-2a38357288c1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-387c9f31e4df#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#12",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5b91da2ba187#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-03a8eeb27c13#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-9391f433d65b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#6",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Sustained quantum mechanics discussion."
+    },
+    {
+      "candidate_id": "historical-050aa9ace223#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-87bb61f2188a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-8bc75e5e3835#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-730472456dde#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-236431a8a801#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-a5ee26dc76a5#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#43",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-af966f125328#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Classical-to-quantum bridge discussion (Planck scale, etc)."
+    },
+    {
+      "candidate_id": "historical-7c72303a869b#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Classical-to-quantum bridge discussion (Planck scale, etc)."
+    },
+    {
+      "candidate_id": "historical-1ade8625ca91#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-334ec862f185#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#5",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#4",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Quantum experiment discussion."
+    },
+    {
+      "candidate_id": "historical-cfefc60d9e45#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-b59caf3a4523#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5d191dfef79a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-2eabb5795390#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#3",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-1016f152b4c9#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-7702427f70dd#8",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-d7add735b1c4#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-ae59a367dd41#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Classical-to-quantum bridge discussion (Planck scale, etc)."
+    },
+    {
+      "candidate_id": "historical-c85b794f7836#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-86a412483c9f#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-e576b6a45d44#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#9",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-03cd093cc60a#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Classical-to-quantum bridge discussion (Planck scale, etc)."
+    },
+    {
+      "candidate_id": "historical-9ac0a92a7546#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Substantive quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-6fec99825434#33",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-916bb4bd494b#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-d9e7ab3cb019#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-75d522ac98a6#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-99399e381a44#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Discusses double-slit experiment."
+    },
+    {
+      "candidate_id": "historical-ac7e0157434d#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-3110e0650216#27",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-730472456dde#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    },
+    {
+      "candidate_id": "historical-5530be4362c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "No quantum mechanics content."
+    }
+  ]
+}

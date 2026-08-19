@@ -1,0 +1,486 @@
+{
+  "nexus": "prompt_engineering",
+  "batch": 6,
+  "verdicts": [
+    {
+      "candidate_id": "historical-eb675ae17c49#46",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic procedures for AI instruction design"
+    },
+    {
+      "candidate_id": "historical-bee32e1e3497#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#6",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Philosophical reflection, not systematic procedure"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conceptual framework, not AI communication strategy"
+    },
+    {
+      "candidate_id": "historical-fdcfef39ca44#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Technical implementation unrelated to prompting"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#1",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Adversarial AI methodology for systematic writing workflow"
+    },
+    {
+      "candidate_id": "historical-9e96e6ba4900#8",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Systematic procedures for AI-assisted document workflow"
+    },
+    {
+      "candidate_id": "historical-d8067861c8b1#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-08e82d0cf0c8#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Conceptual framework, not AI communication strategy"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-f9d99fcf9f4e#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b105491bf04#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Context engineering core to AI communication strategy"
+    },
+    {
+      "candidate_id": "historical-35f4a8c3bbe1#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-ec957c095277#16",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-589750fdcf88#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5519b5c53088#2",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-51282862b903#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-e350d83c9756#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-544f37cebbec#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-b323df2b49f4#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c80a033d4537#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-38762cddc166#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-347f8c27943e#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "System architecture, not AI communication strategy"
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-64858129e590#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-d41a3e13a513#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Specification standard research, not prompting"
+    },
+    {
+      "candidate_id": "historical-01ed8046b6a5#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing project, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-6487ae41f01e#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5e0ff6c98569#10",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of prompting: Prompt layering, persona suites for each"
+    },
+    {
+      "candidate_id": "historical-b4cf29dae88c#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "System instruction design and protocol specification"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#3",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject matter domain, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-44427aee95a1#1",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject matter domain, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-2e8711ab2afb#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-6029893e7e51#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c2c29998231a#8",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#1",
+      "verdict": "no",
+      "confidence": "medium",
+      "reason": "System architecture, unclear if related to prompting"
+    },
+    {
+      "candidate_id": "historical-2d439936e380#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-453028fe4a4b#4",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative writing project, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-c05ec0ef7431#3",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-38bb71da3532#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-6b7e75b14db3#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-544f37cebbec#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-ce0f55850a4a#6",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Complex prompt system with recursive optimization"
+    },
+    {
+      "candidate_id": "historical-e514ae27aa6a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8b3dff26952a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-specific or test content"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#10",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-ddb0dde38a59#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Data analysis tool, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-51282862b903#2",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Direct mention of prompting: Developing a two-stage prompt system for"
+    },
+    {
+      "candidate_id": "historical-9c99a2111483#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Model information and comparison, not prompting"
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#6",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-941494451b48#0",
+      "verdict": "yes",
+      "confidence": "medium",
+      "reason": "Consolidating analysis modes into prompt frameworks"
+    },
+    {
+      "candidate_id": "historical-e10f540a5630#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-191ff4bc89b8#14",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#29",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-23c3bf40876a#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Visual system specification, not prompting"
+    },
+    {
+      "candidate_id": "historical-9c6c8dc73477#9",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Non-specific or test content"
+    },
+    {
+      "candidate_id": "historical-cf3015de4303#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-7aaef5d62c81#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-fa0e71e22201#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-c936ac585875#1",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-4d6f9f65baeb#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-418a144c2e10#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-63a76fec66c6#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Persona design for prompt engineering expertise"
+    },
+    {
+      "candidate_id": "historical-1a0edf490c95#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-79de53da45cf#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-5414123f33f6#5",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-906f6a24e833#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Creative content generation, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#15",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Subject matter domain, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-8620bf8fbb65#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-66684266af3d#0",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-a7824073ae63#2",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-dd18fef81e4e#4",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-44dc08c1c8f2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Service implementation using personas, not prompting design"
+    },
+    {
+      "candidate_id": "historical-ddd3263d91c2#0",
+      "verdict": "no",
+      "confidence": "high",
+      "reason": "Data analysis tool, not prompting methodology"
+    },
+    {
+      "candidate_id": "historical-6fec99825434#17",
+      "verdict": "no",
+      "confidence": "low",
+      "reason": "Subject does not clearly relate to prompt engineering"
+    },
+    {
+      "candidate_id": "historical-12009fc26ed0#0",
+      "verdict": "yes",
+      "confidence": "high",
+      "reason": "Writing style guide for output instructions"
+    }
+  ]
+}
