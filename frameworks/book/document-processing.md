@@ -380,16 +380,15 @@ A note is auto-rejected if ANY of the following are true:
 
 A note is routed to human review if ANY of the following are true:
 
-1. **Potential contradiction** — note's claim appears to contradict an existing vault note (detected via relationship graph or semantic search)
-2. **Uncertain subtype** — Pass A confidence was "low" on the proposed subtype
-3. **Cross-domain analogy** — analogy subtype with domains the pipeline hasn't seen before
-4. **Compound note** — all compound notes require human confirmation of emergent complexity
-5. **Borderline self-containedness** — some bullets pass, some are ambiguous
-6. **Potential duplicate** — title similarity 0.85-0.95 with existing note (needs human judgment)
-7. **Missing glossary dependency** — note uses a term that appears load-bearing but has no glossary entry
-8. **Position note** — all position notes require human confirmation (they represent the user's intellectual stance)
-9. **Borderline substance** — exactly 1 substantive proposition remains; 0 rejects, 1 reviews, and 2 or more becomes eligible for auto-approval if every other criterion passes
-10. **Degraded Pass B generation** — any source-grounded deterministic fallback candidate requires human review, regardless of its other checks
+1. **Uncertain subtype** — Pass A confidence was "low" on the proposed subtype. A signal whose type fell through the classifier's pattern cascade is recorded low: the subtype it carries is a default, not a match, and is not evidence of anything
+2. **Compound note** — all compound notes require human confirmation of emergent complexity
+3. **Borderline self-containedness** — some bullets pass, some are ambiguous
+4. **Potential duplicate** — title similarity 0.85-0.95 with existing note (needs human judgment)
+5. **Position note** — all position notes require human confirmation (they represent the user's intellectual stance)
+6. **Borderline substance** — exactly 1 substantive proposition remains; 0 rejects, 1 reviews, and 2 or more becomes eligible for auto-approval if every other criterion passes
+7. **Degraded Pass B generation** — any source-grounded deterministic fallback candidate requires human review, regardless of its other checks
+
+Three further criteria were described here until 2026-08-19 and were never implemented: potential contradiction, cross-domain analogy, and missing glossary dependency. They were aspirational from the file's creation, no commit ever built them, and `Specification — Note Quality Gate.md` — the canonical contract for this gate, written against the code — has never listed them. They are removed rather than built: contradiction detection needs a model call inside a component whose contract forbids one and is already served by the post-hoc cleaning sweep; cross-domain analogy needs a persistent domain registry and would flag every analogy on a cold start; and the glossary check cannot be useful against a vault with effectively no glossary. The glossary code still exists at `runtime_pipeline.py::_step9_glossary_check` if a real glossary ever accumulates.
 
 ---
 

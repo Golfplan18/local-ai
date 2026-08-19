@@ -24,7 +24,10 @@ Auto-reject criteria (any 1 triggers):
   6. Exact duplicate title
 
 Human-review criteria (any 1 triggers):
-  1-8 as defined in Specification — Note Quality Gate.md (vault canonical)
+  As defined in Specification — Note Quality Gate.md (vault canonical).
+  Deliberately not enumerated here: a hand-copied list drifts from the
+  code beside it, which is exactly what happened — this line said "1-8"
+  while the spec listed 9 and the framework listed 10.
 
 Usage:
     from orchestrator.tools.quality_gate import QualityGate
@@ -738,33 +741,10 @@ def evaluate_batch(screened_notes: list, vault_title_search=None,
 
 
 if __name__ == "__main__":
-    print("Quality Gate — Rule-based note evaluation")
-    print()
-    print("Auto-approve criteria (all 9 must pass):")
-    print("  1. Grammar scan (named actors, resolved pronouns, concrete verbs)")
-    print("  2. Schema conformance")
-    print("  3. Declarative title")
-    print("  4. Single claim (atomic)")
-    print("  5. YAML frontmatter complete")
-    print("  6. Limits/boundary section (causal_claim, analogy, process_principle)")
-    print("  7. Self-containedness")
-    print("  8. Minimum length (2+ substantive proposition bullets)")
-    print("  9. No duplicate title")
-    print()
-    print("Auto-reject criteria (any 1 triggers):")
-    print("  1. Empty body")
-    print("  2. Topic-label title")
-    print("  3. Re-education content")
-    print("  4. Fragment (no complete proposition or <2 sentences)")
-    print("  5. Zero substantive propositions (atomic/molecular)")
-    print("  6. Exact duplicate (>0.95 similarity)")
-    print()
-    print("Human-review criteria (any 1 triggers):")
-    print("  1. Potential contradiction")
-    print("  2. Uncertain subtype")
-    print("  3. Cross-domain analogy")
-    print("  4. Compound note (always)")
-    print("  5. Borderline self-containedness")
-    print("  6. Potential duplicate (0.85-0.95)")
-    print("  7. Missing glossary dependency")
-    print("  8. Position note (always)")
+    # Deliberately not a criteria listing. This block previously printed a
+    # hand-maintained copy of the criteria that under-reported the real set
+    # and drifted from both the code above and the canonical spec — a third
+    # place for the same list to be wrong. The spec is the single source.
+    print("Quality Gate — rule-based note evaluation.")
+    print("Criteria are defined in the vault canonical:")
+    print("  Projects/Ora/Specification — Note Quality Gate.md")
