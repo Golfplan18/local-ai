@@ -231,6 +231,95 @@ class TestFailClosed(unittest.TestCase):
                          "irreversible")
 
 
+class TestEnvAssignmentPrefix(unittest.TestCase):
+    """A leading NAME=VALUE prefix decides what the shell actually runs.
+
+    Profiling on the verb alone let `PATH=<attacker-dir> ls` classify as a
+    known read while the shell executed the attacker's binary.  The prefix is
+    not denylistable: beyond PATH and the loader variables, every interpreter
+    and tool ships its own helper-program variable, so any prefix before a
+    utility must fail closed.
+    """
+
+    def test_verb_substitution_fails_closed(self):
+        self.assertTrue(resolve_shell_profile("PATH=/tmp/evil ls")["unknown"])
+
+    def test_library_injection_fails_closed(self):
+        for cmd in (
+            "LD_PRELOAD=/tmp/evil.so git status",
+            "LD_LIBRARY_PATH=/tmp/evil git status",
+            "DYLD_INSERT_LIBRARIES=/tmp/evil.dylib cat f.txt",
+        ):
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
+
+    def test_helper_program_injection_through_allowlisted_verb(self):
+        # The class a denylist of PATH/LD_*/DYLD_* would miss entirely: the
+        # verb is allowlisted and the operands are benign, so no path-based
+        # escalation fires — only the prefix itself is the effect.
+        for cmd in (
+            "GIT_SSH_COMMAND=/tmp/evil git fetch",
+            "GIT_EXTERNAL_DIFF=/tmp/evil git diff",
+            "PAGER=/tmp/evil git log",
+            "EDITOR=/tmp/evil git commit",
+            "GIT_DIR=/tmp/evil git status",
+        ):
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
+
+    def test_multiple_assignments_fail_closed(self):
+        self.assertTrue(
+            resolve_shell_profile("IFS=x PATH=/tmp/evil ls")["unknown"])
+
+    def test_assignment_in_any_compound_segment_fails_closed(self):
+        # The segmenter splits on && || ; | and newlines and every segment is
+        # profiled independently, so a benign leading verb cannot launder a
+        # prefixed later segment.
+        for cmd in (
+            "ls && PATH=/tmp/evil ls",
+            "cd /tmp && PATH=/tmp/evil ls",
+            "git status; LD_PRELOAD=/tmp/evil.so cat f.txt",
+            "true && GIT_SSH_COMMAND=/tmp/evil git fetch",
+            "ls | PATH=/tmp/evil grep foo",
+            "ls\nPATH=/tmp/evil ls",
+        ):
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
+
+    def test_env_utility_with_a_utility_operand_fails_closed(self):
+        # `env PATH=/x ls` is the same effect spelled through the env utility.
+        # Closed by _env_is_inspection_only; locked here so the two spellings
+        # cannot diverge.
+        for cmd in (
+            "env PATH=/tmp/evil ls",
+            "env FOO=bar ls",
+            "env -i PATH=/tmp/evil ls",
+        ):
+            self.assertTrue(resolve_shell_profile(cmd)["unknown"], cmd)
+
+    def test_profile_name_is_the_verb_not_the_assignment(self):
+        # dispatcher records action = "bash:<profile>". Before the fix,
+        # basename("PATH=/tmp/attacker") made that "bash:attacker" — an
+        # attacker-controlled string in the audit trail.
+        self.assertEqual(
+            resolve_shell_profile("PATH=/tmp/attacker ls")["profile"], "ls")
+        self.assertEqual(
+            resolve_shell_profile("GIT_SSH_COMMAND=/tmp/evil git fetch")[
+                "profile"], "git")
+        # A quoted assignment value must not leak a fragment of itself into
+        # the name either (whitespace splitting used to yield 'b"').
+        self.assertEqual(
+            resolve_shell_profile('PATH="/tmp/a b" ls')["profile"], "ls")
+        self.assertEqual(
+            resolve_shell_profile("PATH='/tmp/x y' ls")["profile"], "ls")
+
+    def test_assignment_shapes_that_are_not_a_prefix_are_unaffected(self):
+        # Quoted text, post-verb operands, and a bare export keep their
+        # existing profiles — the gate is the leading-prefix shape only.
+        self.assertFalse(resolve_shell_profile('echo "PATH=/tmp/evil ls"')
+                         ["unknown"])
+        self.assertFalse(resolve_shell_profile("grep FOO=1 file.txt")
+                         ["unknown"])
+        self.assertFalse(resolve_shell_profile("export FOO=bar")["unknown"])
+
+
 class TestCompoundComposition(unittest.TestCase):
     def test_compound_takes_most_severe(self):
         r = resolve_shell_profile("ls && git push origin main")
@@ -361,10 +450,14 @@ class TestRedirectsAndTargets(unittest.TestCase):
         r = resolve_shell_profile("git status 2>/dev/null")
         self.assertFalse(r["unknown"])
 
-    def test_env_prefix_stripped(self):
+    def test_env_prefix_fails_closed_for_axes(self):
+        # Superseded expectation: this shape used to profile as a known read,
+        # which IS the bypass TestEnvAssignmentPrefix now covers. Stripping
+        # still governs operand resolution (the test below), but the verb is
+        # no longer a sound description of the effect once a leading prefix
+        # can redirect which executable runs.
         r = resolve_shell_profile("FOO=1 git status")
-        self.assertEqual(r["mutability"], "read")
-        self.assertFalse(r["unknown"])
+        self.assertTrue(r["unknown"])
 
     def test_env_prefix_read_operand_surfaced(self):
         # 'FOO=1 cat id_rsa' must still surface id_rsa (env prefix stripped
