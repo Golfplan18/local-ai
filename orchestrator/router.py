@@ -196,7 +196,7 @@ class Router:
         }
 
         try:
-            models_path = rp.overlay_path("config", "models.json")
+            models_path = rp.models_json_path()
             if not models_path.exists():
                 raise FileNotFoundError(models_path)
             with open(models_path) as f:
@@ -928,7 +928,7 @@ class Router:
             return cached
 
         cache: dict = {}
-        models_path = CONFIG_DIR / "models.json"
+        models_path = rp.models_json_path()
         try:
             with open(models_path) as f:
                 data = json.load(f)

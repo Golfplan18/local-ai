@@ -41,6 +41,7 @@ sys.path.insert(0, str(ORCHESTRATOR))
 sys.path.insert(0, str(WORKSPACE / "server"))
 
 
+import runtime_paths  # noqa: E402
 from oversight_sandbox import redirect_sessions_root  # noqa: E402
 
 
@@ -477,7 +478,7 @@ class ModelsJsonSchemaTests(unittest.TestCase):
     """Every model in models.json carries a ``vision_capable`` field."""
 
     def test_models_json_has_vision_capable_on_every_entry(self) -> None:
-        models_path = WORKSPACE / "config" / "models.json"
+        models_path = runtime_paths.models_json_path()
         with open(models_path) as f:
             cfg = json.load(f)
         all_models = cfg.get("local_models", []) + cfg.get("commercial_models", [])
@@ -498,7 +499,7 @@ class ModelsJsonSchemaTests(unittest.TestCase):
         — a valid boolean flag the routing gate can read — rather than a
         fixed value that would be brittle across machines.
         """
-        models_path = WORKSPACE / "config" / "models.json"
+        models_path = runtime_paths.models_json_path()
         if not models_path.exists():
             self.skipTest("models.json not present")
         with open(models_path) as f:
@@ -520,7 +521,7 @@ class ModelsJsonSchemaTests(unittest.TestCase):
         emit images, they don't consume them. The vision-extraction
         routing path (`vision_capable`) is for models that can read an
         image and produce text, which is a different capability."""
-        models_path = WORKSPACE / "config" / "models.json"
+        models_path = runtime_paths.models_json_path()
         with open(models_path) as f:
             cfg = json.load(f)
         for m in cfg.get("commercial_models", []):

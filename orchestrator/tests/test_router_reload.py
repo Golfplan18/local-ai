@@ -241,7 +241,7 @@ class RouterReloadFromFileTests(unittest.TestCase):
             config_path.write_text(json.dumps(cfg))
 
             with mock.patch.object(
-                router_module.rp, "overlay_path", return_value=models_json
+                router_module.rp, "models_json_path", return_value=models_json
             ):
                 router = Router(config_path=config_path)
 
@@ -287,7 +287,7 @@ class RouterReloadFromFileTests(unittest.TestCase):
                 if content is not None:
                     models_json.write_text(content)
                 with self.subTest(name=name), mock.patch.object(
-                    router_module.rp, "overlay_path", return_value=models_json
+                    router_module.rp, "models_json_path", return_value=models_json
                 ):
                     router = Router(config_path=config_path)
                 self.assertNotIn("configured-local", router._endpoints)
@@ -332,7 +332,7 @@ class RouterReloadFromFileTests(unittest.TestCase):
             config_path.write_text(json.dumps(cfg))
 
             with mock.patch.object(
-                router_module.rp, "overlay_path", return_value=models_json
+                router_module.rp, "models_json_path", return_value=models_json
             ):
                 router = Router(config_path=config_path)
                 self.assertIn("stable-local", router._endpoints)
@@ -365,7 +365,7 @@ class RouterReloadFromFileTests(unittest.TestCase):
             config_path.write_text(json.dumps(cfg))
 
             with mock.patch.object(
-                router_module.rp, "overlay_path", return_value=models_json
+                router_module.rp, "models_json_path", return_value=models_json
             ):
                 router = Router(config_path=config_path)
                 self.assertNotIn("stable-local", router._endpoints)

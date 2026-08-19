@@ -35,10 +35,16 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-# Default models directory — overridable by tests.
-DEFAULT_MODELS_DIR = Path.home() / "ora" / "models"
-DEFAULT_MODELS_JSON = Path.home() / "ora" / "config" / "models.json"
-DEFAULT_ROUTING_CONFIG = Path.home() / "ora" / "config" / "routing-config.json"
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as _rp  # type: ignore
+
+# Defaults come from the path layer, so an ORA_HOME (or a worktree) is honored
+# instead of always scanning and rewriting the ~/ora checkout.
+DEFAULT_MODELS_DIR = _rp.local_models_dir()
+DEFAULT_MODELS_JSON = _rp.models_json_path()
+DEFAULT_ROUTING_CONFIG = _rp.routing_config_path()
 TRASH_BIN = "/usr/bin/trash"
 
 

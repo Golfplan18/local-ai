@@ -35,7 +35,6 @@ def _resolve_server_workspace(environ=None, server_file=None) -> str:
 # WORKSPACE must be established before runtime_paths can be imported because it
 # lives under orchestrator/, which the sys.path bootstrap below has to add first.
 WORKSPACE = _resolve_server_workspace()
-MODELS_JSON  = os.path.join(WORKSPACE, "config/models.json")
 MENTAL_MODELS_DIR = os.path.join(WORKSPACE, "lenses/")
 MAX_ITERATIONS = 10
 
@@ -54,6 +53,9 @@ import runtime_paths as rp
 # used only below this point, so sourcing them post-import is safe.
 CONVERSATIONS_DIR = os.path.join(rp.CONVERSATIONS_STR, "")
 CONVERSATIONS_RAW = os.path.join(rp.CONVERSATIONS_STR, "raw", "")
+# Same rule for the local-model inventory: the path layer owns it (and honors
+# ORA_MODELS_JSON_PATH), so it has to be read after runtime_paths is importable.
+MODELS_JSON = str(rp.models_json_path())
 
 
 def _routing_config_path() -> str:
@@ -18492,7 +18494,7 @@ def capability_style_trains():
 
 # ── model switcher ───────────────────────────────────────────────────────────
 
-LOCAL_MODELS_DIR = Path.home() / "ora" / "models"
+LOCAL_MODELS_DIR = rp.local_models_dir()
 _local_model_inventory_lock = threading.RLock()
 
 

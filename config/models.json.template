@@ -10,7 +10,8 @@
       "type": "moe",
       "architecture_note": "Description of model architecture and strengths",
       "recommended_roles": ["breadth", "step1_cleanup", "consolidator"],
-      "active_params_per_token": null
+      "active_params_per_token": null,
+      "vision_capable": false
     }
   ],
   "commercial_models": [
@@ -21,7 +22,8 @@
       "transport": "api",
       "ram_gb": 0,
       "tier": "standard",
-      "recommended_roles": ["evaluator", "breadth", "consolidator"]
+      "recommended_roles": ["evaluator", "breadth", "consolidator"],
+      "vision_capable": true
     },
     {
       "id": "openai-api",
@@ -30,7 +32,8 @@
       "transport": "api",
       "ram_gb": 0,
       "tier": "standard",
-      "recommended_roles": ["evaluator", "breadth", "consolidator"]
+      "recommended_roles": ["evaluator", "breadth", "consolidator"],
+      "vision_capable": true
     },
     {
       "id": "anthropic-api",
@@ -39,7 +42,8 @@
       "transport": "api",
       "ram_gb": 0,
       "tier": "flagship",
-      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"]
+      "recommended_roles": ["depth", "evaluator", "breadth", "consolidator"],
+      "vision_capable": true
     }
   ]
 }

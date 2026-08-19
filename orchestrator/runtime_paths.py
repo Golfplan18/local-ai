@@ -382,21 +382,90 @@ SCRATCH_DIR = _env_dir("ORA_SCRATCH", str(ORA_HOME), "scratch")
 DOCUMENTS = _INITIAL_ROOTS.documents
 VAULT = _INITIAL_ROOTS.vault
 VAULT_ORA = VAULT / "Projects" / "Ora"
-CONVERSATIONS = _INITIAL_ROOTS.conversations
 HISTORICAL_ARCHIVE_DIR = _INITIAL_ROOTS.historical_archive
-CHROMADB_DIR = _INITIAL_ROOTS.chromadb
 
 # String forms for the many os.path-based consumers (dispatcher, tool_events).
 WORKSPACE = str(ORA_HOME)
 VAULT_STR = str(VAULT)
 VAULT_ORA_STR = str(VAULT_ORA)
-CONVERSATIONS_STR = str(CONVERSATIONS)
 DATA_DIR_STR = str(DATA_DIR)
 CONFIG_DIR_STR = str(CONFIG_DIR)
 SCRATCH_DIR_STR = str(SCRATCH_DIR)
 DOCUMENTS_STR = str(DOCUMENTS)
 HISTORICAL_ARCHIVE_DIR_STR = str(HISTORICAL_ARCHIVE_DIR)
-CHROMADB_DIR_STR = str(CHROMADB_DIR)
+
+# ── Quarantine-armable roots resolve at ACCESS time ───────────────────────
+# CONVERSATIONS and CHROMADB_DIR are the two roots the test quarantine arms
+# (orchestrator/tests/live_guard.py sets ORA_CONVERSATIONS and
+# ORA_CHROMADB_PATH). Baking them here defeats that guard under
+# ``unittest discover -s orchestrator/tests``: discovery loads this module
+# FIRST — before any test file's header runs, and the guard only fourth — so a
+# baked constant pins the LIVE conversation corpus and the LIVE vector store
+# for the whole run no matter what the guard sets afterwards. Measured
+# 2026-08-19: ``runtime_paths.CONVERSATIONS`` came out as
+# ~/Documents/conversations while ORA_CONVERSATIONS pointed at a sandbox.
+#
+# Resolving through module ``__getattr__`` closes that: every consumer reads
+# these names as attributes (no module in the tree uses
+# ``from runtime_paths import ...``), and every module that copies one into a
+# constant of its own — server.app, dispatcher, file_ops, conversation_closeout,
+# vault_export, daily_note — is imported AFTER the guard arms.
+#
+# The remaining roots stay baked deliberately. ORA_HOME in particular is
+# rewritten in os.environ by a dozen test modules; making it follow the
+# environment mid-run would let the five sessions-root writers drift apart from
+# runtime_paths, which is the invariant test_portability's purge test exists to
+# police.
+_ROOT_ENV_VARS = (
+    "ORA_HOME",
+    "ORA_DOCUMENTS",
+    "ORA_VAULT",
+    "ORA_VAULT_PATH",
+    "ORA_CONVERSATIONS",
+    "ORA_HISTORICAL_ARCHIVE",
+    "ORA_CHROMADB_PATH",
+    "HOME",
+    "USERPROFILE",
+)
+
+_ROOTS_CACHE: tuple[tuple, RuntimeRoots] | None = None
+
+
+def current_roots() -> RuntimeRoots:
+    """``resolve_runtime_roots()`` memoized on the environment that feeds it.
+
+    Re-resolving on every attribute read would put ``Path.home()`` and a
+    handful of ``expanduser`` calls in hot paths; caching on the env tuple
+    keeps a read at a few dict lookups while still following an override the
+    moment one is set.
+    """
+    global _ROOTS_CACHE
+    key = tuple(os.environ.get(name) for name in _ROOT_ENV_VARS)
+    cached = _ROOTS_CACHE
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    roots = resolve_runtime_roots()
+    _ROOTS_CACHE = (key, roots)
+    return roots
+
+
+_LAZY_ROOTS = {
+    "CONVERSATIONS": lambda roots: roots.conversations,
+    "CONVERSATIONS_STR": lambda roots: str(roots.conversations),
+    "CHROMADB_DIR": lambda roots: roots.chromadb,
+    "CHROMADB_DIR_STR": lambda roots: str(roots.chromadb),
+}
+
+
+def __getattr__(name: str):
+    resolver = _LAZY_ROOTS.get(name)
+    if resolver is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return resolver(current_roots())
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_LAZY_ROOTS))
 
 # ── Oversight/telemetry write sandbox (test harness hook) ───────────────────
 # When ORA_OVERSIGHT_SANDBOX names a directory, every durable oversight and
@@ -771,6 +840,34 @@ def model_catalog_path() -> Path:
     if value:
         return Path(value)
     return overlay_path("config", "model-catalog.json")
+
+
+def models_json_path() -> Path:
+    """Resolve the local-model inventory (``config/models.json``).
+
+    Machine-local and gitignored, like the registry and catalog beside it, so
+    it gets the same env-first accessor they already have. Tests point
+    ORA_MODELS_JSON_PATH at a provisioned inventory instead of inheriting
+    whichever models the developer happens to have downloaded.
+    """
+    value = os.environ.get("ORA_MODELS_JSON_PATH")
+    if value:
+        return Path(value)
+    return overlay_path("config", "models.json")
+
+
+def local_models_dir() -> Path:
+    """Resolve the installed local-model directory (``<ORA_HOME>/models``).
+
+    Hardcoded as ``~/ora/models`` in two places before this, which meant a
+    server or a test run launched from a worktree scanned the LIVE checkout's
+    weights. The suite arms ORA_LOCAL_MODELS_DIR so a test run never rescans
+    the developer's downloads — see orchestrator/tests/live_guard.py.
+    """
+    value = os.environ.get("ORA_LOCAL_MODELS_DIR")
+    if value:
+        return Path(value)
+    return seed_path("models")
 
 
 def vendor_authoritative_registry_path() -> Path:
