@@ -383,7 +383,7 @@ A note is routed to human review if ANY of the following are true:
 1. **Uncertain subtype** — Pass A confidence was "low" on the proposed subtype. A signal whose type fell through the classifier's pattern cascade is recorded low: the subtype it carries is a default, not a match, and is not evidence of anything
 2. **Compound note** — all compound notes require human confirmation of emergent complexity
 3. **Borderline self-containedness** — some bullets pass, some are ambiguous
-4. **Potential duplicate** — title similarity 0.85-0.95 with existing note (needs human judgment)
+4. **Potential duplicate** — title similarity 0.85-0.95 with an existing engram title (needs human judgment). Title-text similarity, not semantic: whole-note semantic duplication is caught separately at promotion, immediately before the vault write. This check ran for the first time on 2026-08-19 — it had been dormant since the gate was written because neither caller supplied the search callback
 5. **Position note** — all position notes require human confirmation (they represent the user's intellectual stance)
 6. **Borderline substance** — exactly 1 substantive proposition remains; 0 rejects, 1 reviews, and 2 or more becomes eligible for auto-approval if every other criterion passes
 7. **Degraded Pass B generation** — any source-grounded deterministic fallback candidate requires human review, regardless of its other checks
