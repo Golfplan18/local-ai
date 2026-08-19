@@ -233,7 +233,63 @@ def build_profiles() -> dict[str, dict]:
     for entry in profiles.values():
         entry["distinctive_entities"] = _entities(entry, doc_freq, len(profiles))
         entry["routes"] = _routes(entry, doc_freq, len(profiles))
+        entry["vocabulary"] = _vocabulary(entry, doc_freq, len(profiles))
     return profiles
+
+
+def _word_variants(word: str) -> set[str]:
+    """The word plus its obvious singular/plural forms.
+
+    The project is "Audio Diaries 1990s"; the conversation says "audio diary
+    entries". Without this the name match is lost on the one word that
+    identifies the subject.
+    """
+    forms = {word}
+    if word.endswith("ies") and len(word) > 4:
+        forms.add(word[:-3] + "y")
+    elif word.endswith("es") and len(word) > 4:
+        forms.add(word[:-2])
+    elif word.endswith("s") and len(word) > 3:
+        forms.add(word[:-1])
+    else:
+        forms.add(word + "s")
+    return forms
+
+
+def _vocabulary(entry: dict, doc_freq: dict[str, int], total: int) -> dict[str, float]:
+    """Terms that mark a passage as this project's, weighted by origin.
+
+    Used to aim the excerpt window at the part of a long exchange that made
+    it match. Weighting by cross-project frequency alone does not work: with
+    only 43 matrices, generic mission language such as "creative", "based"
+    and "potential" clears the rarity gate, and four such words outvote the
+    one occurrence of "audio diaries" that is the whole point. What a project
+    is *about* lives in its name and its distinctive entities; the mission
+    prose around them is shared drafting vocabulary.
+    """
+    weights: dict[str, float] = {}
+
+    name = (entry["name"] or "").strip().lower()
+    if len(name.split()) > 1:
+        weights[name] = 8.0
+    for word in _content_words(name):
+        if len(word) >= 4:
+            for form in _word_variants(word):
+                weights[form] = max(weights.get(form, 0.0), 5.0)
+
+    for phrase in entry.get("distinctive_entities", []):
+        cleaned = phrase.strip().lower()
+        if len(cleaned) >= 5 and cleaned not in weights:
+            weights[cleaned] = 3.0
+
+    # Mission prose contributes only its rarest words, and only as a tiebreak.
+    pool = " ".join([entry["core_essence"], entry["resolution"]] + entry["objectives"])
+    ceiling = max(1, int(total * 0.12))
+    for word in _content_words(pool):
+        if len(word) < 5 or doc_freq.get(word, 0) > ceiling:
+            continue
+        weights.setdefault(word, 1.0)
+    return weights
 
 
 _WORD = re.compile(r"[a-z][a-z0-9'-]{2,}")
@@ -505,8 +561,12 @@ def retrieve(provider: str, per_route: int, out_path: Path, only: list[str] | No
 # judge-input
 # ---------------------------------------------------------------------------
 
-_EXCERPT_CHARS = 700
-_TURNS_PER_CANDIDATE = 3
+_HEAD_CHARS = 250
+_WINDOW_CHARS = 900
+_WINDOW_STRIDE = 300
+_WHOLE_IF_UNDER = 1200
+_EXCERPTS_PER_CANDIDATE = 3
+_TURNS_PER_CANDIDATE = 5
 
 
 def _turn_documents(needed: set[tuple[str, int]]) -> dict[tuple[str, int], str]:
@@ -534,11 +594,52 @@ def _turn_documents(needed: set[tuple[str, int]]) -> dict[tuple[str, int], str]:
     return {key: texts.get(doc_id, "") for key, doc_id in locator.items()}
 
 
-def _excerpt(document: str) -> str:
+def _body(document: str) -> str:
     """The exchange itself, without the boilerplate context header."""
     body = document.split("## Exchange", 1)[-1].strip()
-    body = re.sub(r"\s+", " ", body)
-    return body[:_EXCERPT_CHARS]
+    return re.sub(r"\s+", " ", body)
+
+
+def _score_window(window: str, vocabulary: dict[str, float]) -> float:
+    """Weighted count of distinct project terms present, on word boundaries."""
+    lowered = window.lower()
+    tokens = set(_WORD.findall(lowered))
+    score = 0.0
+    for term, weight in vocabulary.items():
+        if not term.isalpha():
+            if term in lowered:
+                score += weight
+        elif term in tokens:
+            score += weight
+    return score
+
+
+def _windows(body: str, vocabulary: dict[str, float]) -> list[tuple[float, int, str]]:
+    """Every candidate window of one exchange, scored, best first.
+
+    93% of pair bodies are longer than a usable excerpt and the median is
+    3,300 characters, so a head-anchored excerpt shows the judge the opening
+    of the exchange rather than whatever made it match. One conversation
+    matched on a passage about transcribing 1990s audio diaries and the judge
+    was shown its opening paragraph about AutoCAD toolbars instead, then
+    correctly rejected what it had been given. The window has to follow the
+    words.
+    """
+    if len(body) <= _WHOLE_IF_UNDER:
+        return [(_score_window(body, vocabulary), 0, body)]
+    scored = []
+    for start in range(0, max(1, len(body) - _WINDOW_CHARS + 1), _WINDOW_STRIDE):
+        window = body[start : start + _WINDOW_CHARS]
+        scored.append((_score_window(window, vocabulary), start, window))
+    scored.sort(key=lambda w: (-w[0], w[1]))
+    return scored
+
+
+def _candidate_turns(entry: dict) -> list[int]:
+    turns = list(entry["matched_turns"])[: _TURNS_PER_CANDIDATE - 1]
+    if entry["start_turn"] not in turns:
+        turns.append(entry["start_turn"])
+    return sorted(set(turns))[:_TURNS_PER_CANDIDATE]
 
 
 def build_judge_input(batch_size: int, only: list[str] | None) -> None:
@@ -551,10 +652,7 @@ def build_judge_input(batch_size: int, only: list[str] | None) -> None:
         if only and nexus not in only:
             continue
         for entry in payload["candidates"]:
-            turns = list(entry["matched_turns"])[: _TURNS_PER_CANDIDATE - 1]
-            if entry["start_turn"] not in turns:
-                turns.append(entry["start_turn"])
-            for turn in turns[:_TURNS_PER_CANDIDATE]:
+            for turn in _candidate_turns(entry):
                 needed.add((entry["conversation_id"], turn))
     print(f"fetching {len(needed)} pair documents ...", flush=True)
     documents = _turn_documents(needed)
@@ -576,16 +674,44 @@ def build_judge_input(batch_size: int, only: list[str] | None) -> None:
             "excluded_outcomes": profile["excluded"],
             "distinctive_entities": profile.get("distinctive_entities", []),
         }
+        vocabulary = profile.get("vocabulary") or {}
         rows = []
         for entry in payload["candidates"]:
-            turns = list(entry["matched_turns"])[: _TURNS_PER_CANDIDATE - 1]
-            if entry["start_turn"] not in turns:
-                turns.append(entry["start_turn"])
+            pool: list[tuple[float, int, int, str]] = []
+            heads: dict[int, str] = {}
+            for turn in _candidate_turns(entry):
+                body = _body(documents.get((entry["conversation_id"], turn), ""))
+                if not body:
+                    continue
+                heads[turn] = body[:_HEAD_CHARS]
+                for score, offset, window in _windows(body, vocabulary)[:12]:
+                    pool.append((score, turn, offset, window))
+            pool.sort(key=lambda w: (-w[0], w[1], w[2]))
+
+            picked: list[tuple[float, int, int, str]] = []
+            for entry_window in pool:
+                if len(picked) >= _EXCERPTS_PER_CANDIDATE:
+                    break
+                score, turn, offset, _ = entry_window
+                # Beyond the first window, only carry passages that actually
+                # contain project vocabulary; a zero-scoring third window is
+                # an arbitrary slice of the exchange and costs the judge
+                # tokens it can do nothing with.
+                if picked and score <= 0:
+                    break
+                if any(
+                    other_turn == turn and abs(other_offset - offset) < _WINDOW_CHARS
+                    for _, other_turn, other_offset, _ in picked
+                ):
+                    continue
+                picked.append(entry_window)
+
+            picked.sort(key=lambda w: (w[1], w[2]))
             excerpts = []
-            for turn in sorted(set(turns))[:_TURNS_PER_CANDIDATE]:
-                text = documents.get((entry["conversation_id"], turn), "")
-                if text:
-                    excerpts.append({"turn": turn, "text": _excerpt(text)})
+            for score, turn, offset, window in picked:
+                head = heads.get(turn, "")
+                text = window if offset == 0 else f"{head} [...] {window}"
+                excerpts.append({"turn": turn, "offset": offset, "text": text})
             rows.append(
                 {
                     "candidate_id": f"{entry['conversation_id']}#{entry['segment_index']}",
@@ -852,7 +978,7 @@ def main() -> int:
     p_ret.add_argument("--only", nargs="*", help="re-run just these nexuses")
 
     p_judge = sub.add_parser("judge-input", help="write per-batch agent input files")
-    p_judge.add_argument("--batch-size", type=int, default=120)
+    p_judge.add_argument("--batch-size", type=int, default=80)
     p_judge.add_argument("--only", nargs="*")
 
     p_collect = sub.add_parser("collect", help="validate judge output and assemble accepted set")
