@@ -596,6 +596,185 @@ body.ora-auto-hide-controls .sidebar-collapsed-dashboard:not(:hover):not(:focus-
   border-color: var(--interactive-accent);
 }
 
+/* ── Scheduled (Triggers) ────────────────────────────────────────────── */
+
+.oversight-empty,
+.oversight-footnote {
+  color: var(--text-faint, var(--text-muted));
+  font-size: 11px;
+  font-style: italic;
+  padding: 2px 6px;
+}
+
+.oversight-footnote {
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Lane health sits in the list, not behind a detail view: a Scheduled panel
+   whose firing lane is down is making a promise it cannot keep. */
+.oversight-lane-warning {
+  margin: 0 0 4px;
+  padding: 5px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--text-error, #b3261e);
+  background: var(--background-modifier-error, rgba(179, 38, 30, 0.08));
+  color: var(--text-error, #b3261e);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.oversight-new-trigger {
+  appearance: none;
+  margin-left: auto;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary, transparent);
+  color: var(--text-muted);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 1px 5px;
+}
+
+.oversight-new-trigger:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.trigger-status--active { background: var(--interactive-accent); color: var(--text-on-accent, white); }
+.trigger-status--paused { background: var(--background-modifier-border); font-style: italic; }
+.trigger-status--draft  { background: transparent; border: 1px dashed var(--background-modifier-border); }
+
+.trigger-outcome--failed { color: var(--text-error, #b3261e); }
+.trigger-outcome--skipped { font-style: italic; }
+
+.trigger-intermittency,
+.trigger-history {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.trigger-review {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 4px;
+}
+
+.trigger-review-heading {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.trigger-review-line {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-bottom: 3px;
+}
+
+/* ── Trigger authoring form ──────────────────────────────────────────── */
+
+.trigger-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px 0;
+  background: rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+}
+
+.trigger-form {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.trigger-form-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.trigger-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trigger-form-field[hidden] { display: none; }
+
+.trigger-form-field > span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.trigger-form-field small {
+  font-size: 11px;
+  color: var(--text-faint, var(--text-muted));
+  line-height: 1.35;
+}
+
+.trigger-form input,
+.trigger-form select,
+.trigger-form textarea {
+  width: 100%;
+  padding: 5px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary, var(--background-primary));
+  color: var(--text-normal);
+  font: inherit;
+}
+
+.trigger-form-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.trigger-form-error {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--text-error, #b3261e);
+  color: var(--text-error, #b3261e);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.trigger-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.trigger-form-actions button {
+  appearance: none;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary, transparent);
+  color: var(--text-normal);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.trigger-form-actions .primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, white);
+  border-color: var(--interactive-accent);
+}
+
 /* ── Review Queue modal ──────────────────────────────────────────────── */
 
 .ora-review-backdrop {

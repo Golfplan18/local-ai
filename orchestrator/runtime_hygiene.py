@@ -334,6 +334,20 @@ class EventLedger:
             value = self._state()["events"].get(event_id)
             return dict(value) if value else None
 
+    def list_events(self, *, event_type: str | None = None) -> list[dict]:
+        """Current event records, optionally of one type.
+
+        This reads the live state map, which is bounded by
+        ``LEDGER_TERMINAL_RETENTION`` — it is the recent window, not the whole
+        history. The complete record stays in the append-only audit log.
+        """
+        with _PROCESS_LOCK, _exclusive(self.lock_file):
+            events = self._state().get("events", {})
+            return [
+                dict(record) for record in events.values()
+                if event_type is None or record.get("event_type") == event_type
+            ]
+
     def append_evidence(self, event_id: str, kind: str, **fields) -> None:
         with _PROCESS_LOCK, _exclusive(self.lock_file):
             if event_id not in self._state()["events"]:
@@ -618,6 +632,22 @@ class DeadlineQueue:
         with _PROCESS_LOCK, _exclusive(self.lock_path):
             value = self._load()["deadlines"].get(key)
             return dict(value) if value is not None else None
+
+    def pending_counts(self) -> dict[str, int]:
+        """Pending contracts per event type.
+
+        A count, deliberately, not a listing: the queue holds thousands of
+        internal maintenance contracts, and an inspection surface has to be
+        able to say how much is scheduled without rendering all of it.
+        """
+        counts: dict[str, int] = {}
+        with _PROCESS_LOCK, _exclusive(self.lock_path):
+            for record in self._load()["deadlines"].values():
+                if record.get("status") != "pending":
+                    continue
+                event_type = str(record.get("event_type") or "unknown")
+                counts[event_type] = counts.get(event_type, 0) + 1
+        return counts
 
     def cancel(self, key: str, *, reason: str) -> dict | None:
         """Cancel one pending contract under queue lock, preserving evidence."""

@@ -20858,6 +20858,181 @@ def api_oversight_discuss(entry_id):
     return json.dumps(result), 200, {"Content-Type": "application/json"}
 
 
+# ---------- Triggers ----------
+#
+# The Scheduled panel's read and control surface. Authoring validation,
+# lifecycle, and firing all live in orchestrator/triggers.py; these routes
+# only carry JSON across the boundary.
+
+
+def _trigger_service():
+    from orchestrator import triggers
+    return triggers, triggers.service()
+
+
+def _trigger_error(exc) -> tuple:
+    from orchestrator import triggers
+    status = 400 if isinstance(exc, triggers.TriggerInputRequired) else 409
+    return json.dumps({"error": str(exc)}), status, {
+        "Content-Type": "application/json"}
+
+
+def _trigger_lane_health() -> dict:
+    """Whether the lane that fires calendar Triggers is actually running.
+
+    A Scheduled panel that cannot say this is making a promise it has no way
+    to keep: a lane the watchdog keeps resurrecting passes every liveness
+    check while dropping the work in between.
+    """
+    try:
+        import oversight_daemon
+        health = oversight_daemon.runtime_health()
+    except Exception:
+        return {"available": False}
+    restarts = health.get("lane_restarts") or {}
+    return {
+        "available": True,
+        "running": bool(health.get("running")),
+        "deadline_lane": bool(health.get("deadline_lane")),
+        "event_lane": bool(health.get("event_lane")),
+        "deadline_lane_restarts": int(restarts.get("deadline_lane", 0)),
+        "event_lane_restarts": int(restarts.get("event_lane", 0)),
+    }
+
+
+@app.route("/api/triggers", methods=["GET"])
+def api_triggers_list():
+    """Every non-retired Trigger, plus what else the runtime has scheduled."""
+    try:
+        _triggers, service = _trigger_service()
+    except ImportError:
+        return json.dumps({"triggers": []}), 200, {
+            "Content-Type": "application/json"}
+    payload = {
+        "triggers": service.list_triggers(
+            include_retired=request.args.get("include_retired") == "1"),
+        "internal_deadlines": service.internal_deadline_summary(),
+        "lane_health": _trigger_lane_health(),
+    }
+    return json.dumps(payload), 200, {"Content-Type": "application/json"}
+
+
+@app.route("/api/triggers/actions", methods=["GET"])
+def api_triggers_actions():
+    """What a Trigger may be pointed at — for the authoring form's pickers."""
+    try:
+        from orchestrator import triggers
+    except ImportError:
+        return json.dumps({"project_tools": [], "frameworks": []}), 200, {
+            "Content-Type": "application/json"}
+    return json.dumps(triggers.available_actions()), 200, {
+        "Content-Type": "application/json"}
+
+
+@app.route("/api/triggers", methods=["POST"])
+def api_triggers_create():
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.create(request.json or {})), 201, {
+            "Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>", methods=["GET"])
+def api_triggers_get(trigger_id):
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.get(trigger_id)), 200, {
+            "Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>", methods=["PATCH"])
+def api_triggers_update(trigger_id):
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.update(trigger_id, request.json or {})), 200, {
+            "Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>/review", methods=["GET"])
+def api_triggers_review(trigger_id):
+    """The exact rendered request a human approves before deployment."""
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.activation_review(trigger_id)), 200, {
+            "Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>/activate", methods=["POST"])
+def api_triggers_activate(trigger_id):
+    """Deploy a draft Trigger. Body: ``{"spec_digest": "sha256:…"}``.
+
+    The digest is the review: approving anything other than the exact
+    specification that was shown is refused.
+    """
+    data = request.json or {}
+    digest = str(data.get("spec_digest") or "")
+    if not digest:
+        return json.dumps({
+            "error": "spec_digest is required — activation approves one exact "
+                     "specification, not a name",
+        }), 400, {"Content-Type": "application/json"}
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(
+            service.activate(trigger_id, expected_spec_digest=digest)
+        ), 200, {"Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>/lifecycle", methods=["POST"])
+def api_triggers_lifecycle(trigger_id):
+    """Body: ``{"action": "pause"|"resume"|"retire"}``."""
+    data = request.json or {}
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(
+            service.lifecycle(trigger_id, str(data.get("action") or ""))
+        ), 200, {"Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>/run", methods=["POST"])
+def api_triggers_run(trigger_id):
+    """Fire one Trigger now, on an explicit human request."""
+    data = request.json or {}
+    try:
+        _triggers, service = _trigger_service()
+        firing = service.run_manual(
+            trigger_id, request_id=data.get("request_id") or None)
+        return json.dumps(firing), 202, {"Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
 _SERVER_HOST = "localhost"
 _DEFAULT_SERVER_PORTS = range(5000, 5011)
 

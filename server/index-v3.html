@@ -772,6 +772,25 @@
                 <div class="oversight-list" id="oversightOperatingList"
                      aria-label="Operating items"></div>
               </div>
+              <div class="sidebar-group" data-group="scheduled">
+                <div class="sidebar-group-label">
+                  Scheduled
+                  <span class="sidebar-group-count" id="sidebarScheduledCount"
+                        data-count="0">0</span>
+                  <button class="oversight-new-trigger" type="button"
+                          id="triggerNewButton"
+                          title="Declare a new Trigger"
+                          aria-label="New Trigger">+</button>
+                </div>
+                <!-- Lane health is part of this list, not a detail: a panel
+                     that says "scheduled" while the lane that fires it is
+                     down is making a promise it cannot keep. -->
+                <div class="oversight-lane-warning" id="triggerLaneWarning"
+                     role="status" hidden></div>
+                <div class="oversight-list" id="triggerList"
+                     aria-label="Scheduled Triggers"></div>
+                <div class="oversight-footnote" id="triggerInternalNote"></div>
+              </div>
             </div>
           </div>
         </div>

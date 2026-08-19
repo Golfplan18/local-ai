@@ -43,10 +43,12 @@ Deferred (Next Session)" item 1.
 """
 from __future__ import annotations
 
+import datetime as _dt
+import json
 import os
 import re
 import shlex
-from typing import Optional
+from typing import Any, Optional
 
 # Repo root (…/ora), derived from THIS file's location so the historical-tool
 # import fallbacks below resolve wherever Ora is installed — never a hardcoded
@@ -158,6 +160,8 @@ def run_runtime_command(
         "/project-register": _cmd_project_register,
         "/project-unregister": _cmd_project_unregister,
         "/projects": _cmd_projects,
+        "/trigger": _cmd_trigger,
+        "/triggers": _cmd_trigger,
     }
     handler = handlers.get(cmd)
     if handler is None:
@@ -1314,6 +1318,254 @@ def _cmd_news(args: list[str]) -> str:
         "Use `/news help` for usage.]"
     )
 
+
+# ---------- Triggers ----------
+
+_WEEKDAY_NAMES = {
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
+}
+
+_TRIGGER_USAGE = """\
+Usage:
+  /trigger list
+  /trigger show <id>
+  /trigger create --id <id> --name "<name>"
+                  (--tool <nexus>:<tool> [--arg <value>]... | --framework <id> --input "<text>")
+                  (--manual | --on-file <path>... | --daily HH:MM
+                   | --weekly mon,thu HH:MM | --after <trigger-id>)
+                  [--tz <IANA zone>] [--missed run_once|skip] [--grace <seconds>]
+                  [--because "<why time is the cause>"]
+  /trigger activate <id> [--approve <spec-digest>]
+  /trigger pause|resume|retire|run <id>
+
+A Trigger activates an already-registered project tool or framework. It never
+carries a command string: declare the script once in an ora-project.json
+manifest, then name it here."""
+
+
+def _trigger_flags(args: list[str]) -> dict:
+    """Parse repeated --flag value pairs into a dict of str | list[str]."""
+    repeatable = {"--arg", "--on-file"}
+    flags: dict[str, Any] = {}
+    index = 0
+    while index < len(args):
+        token = args[index]
+        if not token.startswith("--"):
+            raise ValueError(f"unexpected argument {token!r}")
+        if token == "--manual":
+            flags[token] = True
+            index += 1
+            continue
+        if index + 1 >= len(args):
+            raise ValueError(f"{token} needs a value")
+        value = args[index + 1]
+        if token in repeatable:
+            flags.setdefault(token, []).append(value)
+        else:
+            flags[token] = value
+        index += 2
+    return flags
+
+
+def _trigger_spec_from_flags(flags: dict) -> dict:
+    """Build one Trigger specification from parsed command flags."""
+    action: dict[str, Any]
+    if "--tool" in flags:
+        target = str(flags["--tool"])
+        if ":" not in target:
+            raise ValueError("--tool takes <nexus>:<tool>")
+        nexus, tool = target.split(":", 1)
+        action = {"kind": "project_tool", "nexus": nexus, "tool": tool,
+                  "args": list(flags.get("--arg") or [])}
+    elif "--framework" in flags:
+        action = {"kind": "framework", "framework": str(flags["--framework"]),
+                  "input": str(flags.get("--input") or "")}
+    else:
+        raise ValueError("a Trigger needs --tool or --framework")
+
+    spec: dict[str, Any] = {
+        "trigger_id": str(flags.get("--id") or ""),
+        "name": str(flags.get("--name") or flags.get("--id") or ""),
+        "action": action,
+    }
+    if "--on-file" in flags:
+        spec["cause"] = "file_change"
+        spec["condition"] = {"path_selectors": list(flags["--on-file"])}
+    elif "--after" in flags:
+        spec["cause"] = "trigger_completion"
+        spec["condition"] = {"source_trigger_id": str(flags["--after"])}
+    elif "--daily" in flags or "--weekly" in flags:
+        weekdays: list[int] = []
+        if "--weekly" in flags:
+            cadence = "weekly"
+            raw = str(flags["--weekly"]).split()
+            if len(raw) != 2:
+                raise ValueError("--weekly takes '<days> HH:MM', e.g. 'mon,thu 07:30'")
+            for name in raw[0].split(","):
+                key = name.strip().lower()[:3]
+                if key not in _WEEKDAY_NAMES:
+                    raise ValueError(f"unknown weekday {name!r}")
+                weekdays.append(_WEEKDAY_NAMES[key])
+            local_time = raw[1]
+        else:
+            cadence = "daily"
+            local_time = str(flags["--daily"])
+        schedule = {
+            "timezone": str(flags.get("--tz") or _local_zone_name()),
+            "local_time": local_time, "cadence": cadence,
+            "weekdays": sorted(set(weekdays)),
+            "start_date": _dt.date.today().isoformat(),
+            "missed_policy": str(flags.get("--missed") or "run_once"),
+            "grace_seconds": int(flags.get("--grace") or 300),
+        }
+        spec["cause"] = "calendar"
+        spec["condition"] = {"schedule": schedule}
+        spec["runtime_justification"] = str(flags.get("--because") or "")
+    else:
+        spec["cause"] = "manual"
+        spec["condition"] = {}
+    return spec
+
+
+def _local_zone_name() -> str:
+    try:
+        from oversight_daemon import _local_timezone_name
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator.oversight_daemon import _local_timezone_name
+    return _local_timezone_name()
+
+
+def _trigger_line(view: dict) -> str:
+    spec = view["spec"]
+    bits = [f"**{spec['name']}** (`{spec['trigger_id']}`)",
+            f"— {spec['cause']} · {view['status']}"]
+    if view.get("next_due_at"):
+        bits.append(f"· next {view['next_due_at']}")
+    firings = view.get("firings") or []
+    if firings:
+        last = firings[0]
+        outcome = last.get("outcome") or last.get("status")
+        bits.append(f"· last {outcome} at {last.get('finished_at') or '—'}")
+    return " ".join(bits)
+
+
+def _cmd_trigger(args: list[str]) -> str:
+    try:
+        from orchestrator import triggers as _tr
+    except ImportError:  # pragma: no cover
+        return "[/trigger: the Trigger surface is unavailable]"
+    if not args or args[0] in {"help", "--help", "-h"}:
+        return _TRIGGER_USAGE
+    sub, rest = args[0].lower(), args[1:]
+    service = _tr.service()
+    try:
+        if sub in {"list", "ls"}:
+            views = service.list_triggers()
+            if not views:
+                return ("No Triggers yet. `/trigger create --help` shows how to "
+                        "declare one.")
+            lines = [_trigger_line(view) for view in views]
+            internal = service.internal_deadline_summary()
+            if internal["total"]:
+                lines.append("")
+                lines.append(
+                    f"_Plus {internal['total']} internal maintenance deadlines "
+                    f"({', '.join(internal['by_event_type'])}) that Ora arms for "
+                    "itself._")
+            return "\n".join(f"- {line}" if line else line for line in lines)
+
+        if sub == "show":
+            if not rest:
+                return "Usage: /trigger show <id>"
+            view = service.get(rest[0])
+            spec = view["spec"]
+            lines = [
+                f"### {spec['name']} (`{spec['trigger_id']}`)",
+                f"- Status: **{view['status']}**",
+                f"- Cause: {spec['cause']} — `{json.dumps(spec['condition'])}`",
+                f"- Runs: {_tr._resolution_note(spec)}",
+                f"- Specification digest: `{view['spec_digest']}`",
+            ]
+            if spec.get("runtime_justification"):
+                lines.append(f"- Why time is the cause: {spec['runtime_justification']}")
+            if view.get("intermittency"):
+                lines.append(f"- {view['intermittency']}")
+            if view.get("next_due_at"):
+                lines.append(f"- Next occurrence: {view['next_due_at']}")
+            firings = view.get("firings") or []
+            lines.append("")
+            lines.append(f"**Firings ({len(firings)} most recent)**")
+            if not firings:
+                lines.append("- none yet")
+            for firing in firings:
+                outcome = firing.get("outcome") or firing.get("status")
+                detail = firing.get("error") or ""
+                lines.append(
+                    f"- {firing.get('claimed_at')} — {firing.get('cause')} → "
+                    f"**{outcome}**{(' — ' + detail) if detail else ''}")
+            return "\n".join(lines)
+
+        if sub == "create":
+            try:
+                flags = _trigger_flags(rest)
+                spec = _trigger_spec_from_flags(flags)
+            except ValueError as exc:
+                return f"[/trigger create: {exc}]\n\n{_TRIGGER_USAGE}"
+            view = service.create(spec)
+            return (
+                f"Created draft Trigger `{view['spec']['trigger_id']}`.\n\n"
+                f"Review it with `/trigger show {view['spec']['trigger_id']}`, "
+                f"then deploy it with "
+                f"`/trigger activate {view['spec']['trigger_id']}`."
+            )
+
+        if sub == "activate":
+            if not rest:
+                return "Usage: /trigger activate <id> [--approve <digest>]"
+            trigger_id = rest[0]
+            flags = _trigger_flags(rest[1:])
+            approved = flags.get("--approve")
+            review = service.activation_review(trigger_id)
+            if not approved:
+                lines = [
+                    f"### Review before activating `{trigger_id}`",
+                    f"- Name: {review['name']}",
+                    f"- Cause: {review['cause']} — `{json.dumps(review['condition'])}`",
+                    f"- Will run: {review['will_run']}",
+                    f"- Bound identity: `{review['action_binding']['command_digest']}`",
+                ]
+                if review.get("runtime_justification"):
+                    lines.append(
+                        f"- Why time is the cause: {review['runtime_justification']}")
+                if review.get("intermittency"):
+                    lines.append(f"- {review['intermittency']}")
+                lines += [
+                    "",
+                    "Approve exactly this specification with:",
+                    f"`/trigger activate {trigger_id} --approve {review['spec_digest']}`",
+                ]
+                return "\n".join(lines)
+            view = service.activate(trigger_id, expected_spec_digest=str(approved))
+            return f"Activated `{trigger_id}`. {_trigger_line(view)}"
+
+        if sub in {"pause", "resume", "retire"}:
+            if not rest:
+                return f"Usage: /trigger {sub} <id>"
+            view = service.lifecycle(rest[0], sub)
+            return f"{sub.capitalize()}d `{rest[0]}`. {_trigger_line(view)}"
+
+        if sub == "run":
+            if not rest:
+                return "Usage: /trigger run <id>"
+            firing = service.run_manual(rest[0])
+            if firing.get("duplicate"):
+                return (f"`{rest[0]}` already has an identical firing "
+                        f"(`{firing['event_id']}`); nothing new was started.")
+            return (f"Started `{rest[0]}` (firing `{firing['event_id']}`). "
+                    f"Check it with `/trigger show {rest[0]}`.")
+    except _tr.TriggerError as exc:
+        return f"[/trigger {sub}: {exc}]"
+    return f"[Unknown subcommand `{sub}`.]\n\n{_TRIGGER_USAGE}"
 
 
 # ---------- CLI smoke test ----------

@@ -7,6 +7,13 @@
  * Data:
  *   GET /api/oversight/paused    — Paused entries for resolution
  *   GET /api/oversight/operating — Operating items (read-only in v1)
+ *   GET /api/triggers            — Scheduled Triggers + lane health + the
+ *                                  count of deadlines Ora arms for itself
+ *
+ * Scheduled is the third list rather than a screen of its own because it
+ * answers the same question as the other two — what is Ora doing that is not
+ * this conversation — and because it shares this file's single poll loop and
+ * accordion owner.
  *
  * Actions on a Paused card:
  *   - Click name → enter rename mode
@@ -38,11 +45,22 @@
   const pausedCount    = sidebar.querySelector('#sidebarPausedCount');
   const operatingCount = sidebar.querySelector('#sidebarOperatingCount');
   const processesCount = sidebar.querySelector('#sidebarProcessesCount');
+  const triggerList    = sidebar.querySelector('#triggerList');
+  const triggerCount   = sidebar.querySelector('#sidebarScheduledCount');
+  const triggerNote    = sidebar.querySelector('#triggerInternalNote');
+  const triggerWarning = sidebar.querySelector('#triggerLaneWarning');
+  const triggerNewBtn  = sidebar.querySelector('#triggerNewButton');
 
   const state = {
     paused:    [],
     operating: [],
     expanded:  null, // detail-expanded entry id within Paused
+    triggers:  [],
+    triggerExpanded: null,
+    triggerReview:   null, // {trigger_id, …} while an activation is pending
+    internalDeadlines: null,
+    laneHealth: null,
+    actions: null,         // cached /api/triggers/actions for the form
   };
 
   // ── Accordion behavior ────────────────────────────────────────────────
@@ -97,8 +115,21 @@
     } catch (e) {}
   };
 
+  const fetchTriggers = async () => {
+    try {
+      const r = await fetch('/api/triggers');
+      if (!r.ok) return;
+      const data = await r.json();
+      state.triggers = data.triggers || [];
+      state.internalDeadlines = data.internal_deadlines || null;
+      state.laneHealth = data.lane_health || null;
+      renderTriggers();
+      updateTriggerCount();
+    } catch (e) {}
+  };
+
   const refreshAll = async () => {
-    await Promise.all([fetchPaused(), fetchOperating()]);
+    await Promise.all([fetchPaused(), fetchOperating(), fetchTriggers()]);
   };
 
   // ── Counts ────────────────────────────────────────────────────────────
@@ -121,9 +152,21 @@
     updateProcessesCount();
   };
 
+  const updateTriggerCount = () => {
+    if (triggerCount) {
+      // Active Triggers, not every draft: the count answers "how much is
+      // armed right now", which a draft is not.
+      const n = state.triggers.filter(t => t.status === 'active').length;
+      triggerCount.textContent = String(n);
+      triggerCount.dataset.count = String(n);
+    }
+    updateProcessesCount();
+  };
+
   const updateProcessesCount = () => {
     if (!processesCount) return;
-    const total = state.paused.length + state.operating.length;
+    const armed = state.triggers.filter(t => t.status === 'active').length;
+    const total = state.paused.length + state.operating.length + armed;
     processesCount.textContent = String(total);
     processesCount.dataset.count = String(total);
   };
@@ -487,6 +530,582 @@
     }
     return card;
   };
+
+  // ── Render: Scheduled ─────────────────────────────────────────────────
+
+  const CAUSE_LABEL = {
+    manual: 'manual only',
+    file_change: 'on file change',
+    calendar: 'on a schedule',
+    trigger_completion: 'after another Trigger',
+  };
+
+  const whenOf = (isoTimestamp) => {
+    if (!isoTimestamp) return '';
+    try {
+      const d = new Date(isoTimestamp);
+      return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+    } catch (e) { return ''; }
+  };
+
+  const conditionSummary = (spec) => {
+    const c = spec.condition || {};
+    if (spec.cause === 'calendar') {
+      const s = c.schedule || {};
+      const days = (s.cadence === 'weekly' && (s.weekdays || []).length)
+        ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            .filter((_, i) => s.weekdays.includes(i)).join(', ')
+        : 'every day';
+      return `${days} at ${s.local_time} ${s.timezone} · missed windows: ${s.missed_policy}`;
+    }
+    if (spec.cause === 'file_change') {
+      const paths = c.path_selectors || [];
+      return paths.length === 1 ? paths[0] : `${paths.length} watched paths`;
+    }
+    if (spec.cause === 'trigger_completion') {
+      return `when ${c.source_trigger_id} finishes successfully`;
+    }
+    return 'runs only when you run it';
+  };
+
+  const actionSummary = (spec) => {
+    const a = spec.action || {};
+    if (a.kind === 'project_tool') {
+      const args = (a.args || []).join(' ');
+      return `${a.nexus}:${a.tool}${args ? ' ' + args : ''}`;
+    }
+    return `framework ${a.framework}`;
+  };
+
+  const renderTriggers = () => {
+    renderLaneWarning();
+    renderInternalNote();
+    if (!triggerList) return;
+    triggerList.innerHTML = '';
+    if (!state.triggers.length) {
+      const empty = document.createElement('div');
+      empty.className = 'oversight-empty';
+      empty.textContent = 'Nothing scheduled. Use + to declare a Trigger.';
+      triggerList.appendChild(empty);
+      return;
+    }
+    for (const t of state.triggers) triggerList.appendChild(buildTriggerCard(t));
+  };
+
+  const renderLaneWarning = () => {
+    if (!triggerWarning) return;
+    const health = state.laneHealth;
+    const armed = state.triggers.some(t => t.status === 'active');
+    let message = '';
+    if (health && health.available && armed) {
+      if (!health.running || !health.deadline_lane) {
+        message = 'The lane that fires scheduled Triggers is not running. '
+                + 'Nothing here will fire until Ora is restarted.';
+      } else if (health.deadline_lane_restarts >= 3) {
+        message = `The deadline lane has restarted `
+                + `${health.deadline_lane_restarts} times. It is running, but `
+                + `work arriving during each outage was lost.`;
+      } else if (health.event_lane_restarts >= 3
+                 && state.triggers.some(t => t.spec.cause === 'file_change')) {
+        message = `The file-event lane has restarted `
+                + `${health.event_lane_restarts} times. File changes during `
+                + `each outage raised no Trigger.`;
+      }
+    }
+    triggerWarning.textContent = message;
+    triggerWarning.hidden = !message;
+  };
+
+  const renderInternalNote = () => {
+    if (!triggerNote) return;
+    const summary = state.internalDeadlines;
+    if (!summary || !summary.total) { triggerNote.textContent = ''; return; }
+    const kinds = Object.keys(summary.by_event_type || {}).join(', ');
+    triggerNote.textContent =
+      `Plus ${summary.total.toLocaleString()} maintenance deadlines Ora arms `
+      + `for itself${kinds ? ' (' + kinds + ')' : ''}.`;
+  };
+
+  const buildTriggerCard = (t) => {
+    const spec = t.spec || {};
+    const card = document.createElement('div');
+    card.className = 'oversight-card trigger-card';
+    card.dataset.triggerId = spec.trigger_id;
+    card.dataset.status = t.status;
+
+    const name = document.createElement('div');
+    name.className = 'oversight-card-name';
+    name.textContent = spec.name || spec.trigger_id;
+    card.appendChild(name);
+
+    const meta = document.createElement('div');
+    meta.className = 'oversight-card-meta';
+    const status = document.createElement('span');
+    status.className = `badge trigger-status trigger-status--${t.status}`;
+    status.textContent = t.status;
+    meta.appendChild(status);
+    const cause = document.createElement('span');
+    cause.className = 'badge';
+    cause.textContent = CAUSE_LABEL[spec.cause] || spec.cause;
+    meta.appendChild(cause);
+    if (t.next_due_at) {
+      const due = document.createElement('span');
+      due.textContent = `next ${whenOf(t.next_due_at)}`;
+      meta.appendChild(due);
+    }
+    const last = (t.firings || [])[0];
+    if (last) {
+      const outcome = document.createElement('span');
+      outcome.className = `badge trigger-outcome trigger-outcome--${last.outcome || last.status}`;
+      outcome.textContent = `last ${last.outcome || last.status}`;
+      outcome.title = last.error || '';
+      meta.appendChild(outcome);
+      const when = document.createElement('span');
+      when.textContent = ageOf(last.finished_at || last.claimed_at);
+      meta.appendChild(when);
+    }
+    card.appendChild(meta);
+
+    if (state.triggerExpanded === spec.trigger_id) {
+      card.appendChild(buildTriggerDetail(t));
+    }
+
+    card.addEventListener('click', (ev) => {
+      if (ev.target.closest('.oversight-detail-actions')) return;
+      if (ev.target.closest('.trigger-review')) return;
+      state.triggerExpanded =
+        state.triggerExpanded === spec.trigger_id ? null : spec.trigger_id;
+      state.triggerReview = null;
+      renderTriggers();
+    });
+    return card;
+  };
+
+  const buildTriggerDetail = (t) => {
+    const spec = t.spec || {};
+    const det = document.createElement('div');
+    det.className = 'oversight-detail';
+
+    const rows = [
+      ['Runs', actionSummary(spec)],
+      ['Fires', conditionSummary(spec)],
+    ];
+    if (spec.runtime_justification) {
+      rows.push(['Why time is the cause', spec.runtime_justification]);
+    }
+    for (const [label, value] of rows) {
+      const row = document.createElement('div');
+      row.className = 'oversight-detail-reasoning';
+      row.textContent = `${label}: ${value}`;
+      det.appendChild(row);
+    }
+    if (t.intermittency) {
+      const note = document.createElement('div');
+      note.className = 'oversight-detail-reasoning trigger-intermittency';
+      note.textContent = t.intermittency;
+      det.appendChild(note);
+    }
+
+    const firings = t.firings || [];
+    const history = document.createElement('div');
+    history.className = 'oversight-detail-reasoning trigger-history';
+    history.textContent = firings.length
+      ? `Last firing: ${whenOf(firings[0].finished_at || firings[0].claimed_at)} `
+        + `— ${firings[0].outcome || firings[0].status}`
+        + (firings[0].error ? ` — ${firings[0].error}` : '')
+      : 'Has never fired.';
+    det.appendChild(history);
+
+    if (state.triggerReview
+        && state.triggerReview.trigger_id === spec.trigger_id) {
+      det.appendChild(buildActivationReview(state.triggerReview));
+      return det;
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'oversight-detail-actions';
+    const button = (label, handler, primary) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      if (primary) b.className = 'primary';
+      b.textContent = label;
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); handler(b); });
+      actions.appendChild(b);
+      return b;
+    };
+
+    if (t.status !== 'retired') {
+      button('Run now', (b) => runTrigger(spec.trigger_id, b));
+    }
+    if (t.status === 'draft') {
+      button('Review and activate…', () => openReview(spec.trigger_id), true);
+    }
+    if (t.status === 'active') button('Pause', () => lifecycle(spec.trigger_id, 'pause'));
+    if (t.status === 'paused') button('Resume', () => lifecycle(spec.trigger_id, 'resume'));
+    if (t.status !== 'retired') {
+      button('Retire', () => {
+        if (window.confirm(`Retire "${spec.name}"? It stops firing and leaves this list.`)) {
+          lifecycle(spec.trigger_id, 'retire');
+        }
+      });
+    }
+    det.appendChild(actions);
+    return det;
+  };
+
+  // Activation shows the exact server-derived request and approves its exact
+  // digest. Approving a name rather than a specification is what would let an
+  // edit slip past the review.
+  const buildActivationReview = (review) => {
+    const box = document.createElement('div');
+    box.className = 'trigger-review';
+
+    const heading = document.createElement('div');
+    heading.className = 'trigger-review-heading';
+    heading.textContent = 'Approve exactly this before it is deployed';
+    box.appendChild(heading);
+
+    const lines = [
+      `Will run: ${review.will_run}`,
+      `Bound identity: ${review.action_binding && review.action_binding.command_digest}`,
+      `Specification: ${review.spec_digest}`,
+    ];
+    if (review.runtime_justification) {
+      lines.push(`Why time is the cause: ${review.runtime_justification}`);
+    }
+    if (review.intermittency) lines.push(review.intermittency);
+    for (const line of lines) {
+      const row = document.createElement('div');
+      row.className = 'trigger-review-line';
+      row.textContent = line;
+      box.appendChild(row);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'oversight-detail-actions';
+    const approve = document.createElement('button');
+    approve.type = 'button';
+    approve.className = 'primary';
+    approve.textContent = 'Approve and activate';
+    approve.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      approve.disabled = true;
+      await postTrigger(
+        `/api/triggers/${encodeURIComponent(review.trigger_id)}/activate`,
+        { spec_digest: review.spec_digest }, approve);
+      state.triggerReview = null;
+      await fetchTriggers();
+    });
+    actions.appendChild(approve);
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      state.triggerReview = null;
+      renderTriggers();
+    });
+    actions.appendChild(cancel);
+    box.appendChild(actions);
+    return box;
+  };
+
+  const openReview = async (triggerId) => {
+    try {
+      const r = await fetch(`/api/triggers/${encodeURIComponent(triggerId)}/review`);
+      const data = await r.json();
+      if (!r.ok) { window.alert(data.error || 'Could not read the Trigger.'); return; }
+      state.triggerReview = data;
+      renderTriggers();
+    } catch (e) {
+      window.alert('Could not read the Trigger.');
+    }
+  };
+
+  const postTrigger = async (url, body, button) => {
+    const original = button ? button.textContent : '';
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (button) {
+          button.textContent = 'Refused';
+          button.disabled = false;
+          window.setTimeout(() => { button.textContent = original; }, 2500);
+        }
+        window.alert(data.error || 'The request was refused.');
+        return null;
+      }
+      return data;
+    } catch (e) {
+      if (button) { button.textContent = original; button.disabled = false; }
+      return null;
+    }
+  };
+
+  const lifecycle = async (triggerId, action) => {
+    await postTrigger(
+      `/api/triggers/${encodeURIComponent(triggerId)}/lifecycle`, { action });
+    await fetchTriggers();
+  };
+
+  const runTrigger = async (triggerId, button) => {
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Starting…';
+    const result = await postTrigger(
+      `/api/triggers/${encodeURIComponent(triggerId)}/run`, {}, button);
+    button.disabled = false;
+    button.textContent = result && result.duplicate ? 'Already running' : original;
+    await fetchTriggers();
+  };
+
+  // ── The authoring form ────────────────────────────────────────────────
+
+  const loadActions = async () => {
+    if (state.actions) return state.actions;
+    try {
+      const r = await fetch('/api/triggers/actions');
+      state.actions = r.ok ? await r.json() : { project_tools: [], frameworks: [] };
+    } catch (e) {
+      state.actions = { project_tools: [], frameworks: [] };
+    }
+    return state.actions;
+  };
+
+  const openTriggerForm = async () => {
+    const actions = await loadActions();
+    const existing = document.getElementById('triggerFormOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'trigger-form-overlay';
+    overlay.id = 'triggerFormOverlay';
+    const form = document.createElement('form');
+    form.className = 'trigger-form';
+    overlay.appendChild(form);
+
+    const field = (labelText, control, hint) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'trigger-form-field';
+      const span = document.createElement('span');
+      span.textContent = labelText;
+      wrap.appendChild(span);
+      wrap.appendChild(control);
+      if (hint) {
+        const small = document.createElement('small');
+        small.textContent = hint;
+        wrap.appendChild(small);
+      }
+      form.appendChild(wrap);
+      return wrap;
+    };
+    const input = (name, placeholder) => {
+      const el = document.createElement('input');
+      el.type = 'text';
+      el.name = name;
+      if (placeholder) el.placeholder = placeholder;
+      return el;
+    };
+    const select = (name, options) => {
+      const el = document.createElement('select');
+      el.name = name;
+      for (const [value, label] of options) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        el.appendChild(opt);
+      }
+      return el;
+    };
+
+    const title = document.createElement('div');
+    title.className = 'trigger-form-title';
+    title.textContent = 'New Trigger';
+    form.appendChild(title);
+
+    const nameInput = input('name', 'Nightly export');
+    field('Name', nameInput);
+    const idInput = input('trigger_id', 'nightly-export');
+    field('Identifier', idInput, 'Lowercase letters, digits, and - _ . :');
+
+    const toolOptions = actions.project_tools.map(t => [
+      `tool:${t.nexus}:${t.tool}`,
+      `${t.nexus}:${t.tool}${t.description ? ' — ' + t.description : ''}`,
+    ]);
+    const frameworkOptions = actions.frameworks.map(f => [`framework:${f}`, f]);
+    const actionSelect = select('action', toolOptions.concat(frameworkOptions));
+    field('Runs', actionSelect,
+          toolOptions.length ? '' :
+          'No project tools are registered. Declare the script in an '
+          + 'ora-project.json manifest, then register it with /project-register.');
+
+    const argsInput = input('args', 'optional arguments or framework input');
+    field('Input', argsInput);
+
+    const causeSelect = select('cause', [
+      ['manual', 'Only when I run it'],
+      ['calendar', 'On a schedule'],
+      ['file_change', 'When a watched file changes'],
+      ['trigger_completion', 'After another Trigger succeeds'],
+    ]);
+    field('Fires', causeSelect);
+
+    const timeInput = input('local_time', '07:30');
+    const timeField = field('Local time', timeInput);
+    const cadenceSelect = select('cadence', [['daily', 'Every day'], ['weekly', 'Chosen weekdays']]);
+    const cadenceField = field('Cadence', cadenceSelect);
+    const weekdaysInput = input('weekdays', 'mon,thu');
+    const weekdaysField = field('Weekdays', weekdaysInput);
+    const tzInput = input('timezone', 'America/New_York');
+    const tzField = field('Timezone', tzInput, 'A named IANA zone, so DST is handled.');
+    const missedSelect = select('missed_policy', [
+      ['run_once', 'Run once when Ora comes back'],
+      ['skip', 'Skip the missed window'],
+    ]);
+    const missedField = field('If Ora was not running', missedSelect);
+    const becauseInput = document.createElement('textarea');
+    becauseInput.name = 'runtime_justification';
+    becauseInput.rows = 3;
+    becauseInput.placeholder =
+      'Why can no runtime event represent this cause? If one can, use it instead.';
+    const becauseField = field('Why time is the cause', becauseInput,
+                               'Required before a scheduled Trigger can be activated.');
+
+    const pathInput = input('path_selectors', '');
+    const pathField = field('Watched path', pathInput,
+      `Must be inside: ${(actions.watch_roots || []).join(' · ') || '(no watched root)'}`);
+
+    const sourceSelect = select('source_trigger_id',
+      state.triggers.map(t => [t.spec.trigger_id, t.spec.name || t.spec.trigger_id]));
+    const sourceField = field('After this Trigger', sourceSelect);
+
+    const calendarFields = [timeField, cadenceField, weekdaysField, tzField,
+                            missedField, becauseField];
+    const syncCause = () => {
+      const cause = causeSelect.value;
+      for (const el of calendarFields) el.hidden = cause !== 'calendar';
+      weekdaysField.hidden = cause !== 'calendar' || cadenceSelect.value !== 'weekly';
+      pathField.hidden = cause !== 'file_change';
+      sourceField.hidden = cause !== 'trigger_completion';
+    };
+    causeSelect.addEventListener('change', syncCause);
+    cadenceSelect.addEventListener('change', syncCause);
+    syncCause();
+
+    const note = document.createElement('div');
+    note.className = 'trigger-form-note';
+    note.textContent = actions.intermittency || '';
+    form.appendChild(note);
+
+    const errorBox = document.createElement('div');
+    errorBox.className = 'trigger-form-error';
+    errorBox.hidden = true;
+    form.appendChild(errorBox);
+
+    const buttons = document.createElement('div');
+    buttons.className = 'trigger-form-actions';
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'primary';
+    submit.textContent = 'Create as draft';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => overlay.remove());
+    buttons.appendChild(submit);
+    buttons.appendChild(cancel);
+    form.appendChild(buttons);
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      errorBox.hidden = true;
+      submit.disabled = true;
+      try {
+        const r = await fetch('/api/triggers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildSpecFromForm({
+            nameInput, idInput, actionSelect, argsInput, causeSelect,
+            timeInput, cadenceSelect, weekdaysInput, tzInput, missedSelect,
+            becauseInput, pathInput, sourceSelect,
+          })),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          errorBox.textContent = data.error || 'The Trigger was refused.';
+          errorBox.hidden = false;
+          submit.disabled = false;
+          return;
+        }
+        overlay.remove();
+        state.triggerExpanded = data.spec && data.spec.trigger_id;
+        await fetchTriggers();
+      } catch (e) {
+        errorBox.textContent = 'Could not reach Ora.';
+        errorBox.hidden = false;
+        submit.disabled = false;
+      }
+    });
+
+    overlay.addEventListener('click', (ev) => {
+      if (ev.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+    nameInput.focus();
+  };
+
+  const WEEKDAY_INDEX = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+
+  const buildSpecFromForm = (f) => {
+    const [kind, ...rest] = f.actionSelect.value.split(':');
+    const action = kind === 'tool'
+      ? { kind: 'project_tool', nexus: rest[0], tool: rest[1],
+          args: f.argsInput.value.trim() ? f.argsInput.value.trim().split(/\s+/) : [] }
+      : { kind: 'framework', framework: rest.join(':'),
+          input: f.argsInput.value.trim() };
+
+    const spec = {
+      trigger_id: f.idInput.value.trim(),
+      name: f.nameInput.value.trim(),
+      cause: f.causeSelect.value,
+      action,
+      condition: {},
+    };
+    if (spec.cause === 'calendar') {
+      const weekdays = f.cadenceSelect.value === 'weekly'
+        ? f.weekdaysInput.value.split(',')
+            .map(s => WEEKDAY_INDEX[s.trim().toLowerCase().slice(0, 3)])
+            .filter(n => Number.isInteger(n))
+        : [];
+      spec.condition = { schedule: {
+        timezone: f.tzInput.value.trim(),
+        local_time: f.timeInput.value.trim(),
+        cadence: f.cadenceSelect.value,
+        weekdays,
+        start_date: new Date().toISOString().slice(0, 10),
+        missed_policy: f.missedSelect.value,
+        grace_seconds: 300,
+      } };
+      spec.runtime_justification = f.becauseInput.value.trim();
+    } else if (spec.cause === 'file_change') {
+      spec.condition = { path_selectors: [f.pathInput.value.trim()] };
+    } else if (spec.cause === 'trigger_completion') {
+      spec.condition = { source_trigger_id: f.sourceSelect.value };
+    }
+    return spec;
+  };
+
+  if (triggerNewBtn) {
+    triggerNewBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      openTriggerForm();
+    });
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
