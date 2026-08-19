@@ -3,13 +3,24 @@
 
 One script, four subcommands, run in order:
 
-    profiles    matrices + project records -> one retrieval profile per project
-    retrieve    multi-route vector retrieval -> segment-level candidates
-    bind        judged verdicts -> conversation project membership
+    profiles     matrices + project records -> one retrieval profile per project
+    retrieve     multi-route vector retrieval -> segment-level candidates
+    judge-input  candidate batches + aimed excerpts -> agent input files
+    collect      validate agent verdict files -> the accepted set
+    bind         accepted segments -> conversation project membership
 
-The judgment pass between ``retrieve`` and ``bind`` runs as Claude Code
-subagents (the user's subscription), not through Ora's model dispatch; this
-script writes the agent input files and reads the agent verdict files back.
+The judgment pass between ``judge-input`` and ``collect`` runs as Claude Code
+subagents (the user's subscription), not through Ora's model dispatch. Its
+prompt lives in ``scripts/judge-conversation-projects.workflow.js``, which is
+the operative artifact for that stage; this script writes the input files the
+prompt names and reads the verdict files back.
+
+The judgment criteria that prompt encodes turn on "would someone researching
+this project want to read this segment", not "is this project the segment's
+headline topic". The narrower reading rejects a conversation in which the
+user spends several paragraphs describing a project, merely because the
+segment around it is filed under something else -- which is how one project
+first came back with zero accepted segments out of 651.
 
 Every stage persists to ``data/conversation-projects/`` so a run interrupted
 by a session limit resumes where it stopped.
