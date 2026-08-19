@@ -64,9 +64,14 @@ class QualityGate:
         skip_signals: Set of signal_ids flagged as re-education by Pass A.
     """
 
-    def __init__(self, vault_title_search=None, skip_signals: set = None):
+    def __init__(self, vault_title_search=None, skip_signals: set = None,
+                 signal_confidence: dict | None = None):
         self.vault_title_search = vault_title_search
         self.skip_signals = skip_signals or set()
+        # signal_id -> confidence recorded by Pass A. A signal whose type
+        # fell through the classifier's cascade is recorded "low"; without
+        # this the gate cannot tell a matched classification from a guess.
+        self.signal_confidence = signal_confidence or {}
 
     def evaluate(self, note) -> GateResult:
         """
@@ -290,6 +295,20 @@ class QualityGate:
                 review_reasons.append(
                     "Borderline substance: "
                     f"{len(substantive_bullets)} substantive proposition(s)"
+                )
+
+            # Uncertain subtype — the signal's type was a fallthrough guess
+            # rather than a pattern match, so the subtype it carries is not
+            # evidence of anything. Route to human judgement.
+            signal_id = getattr(note, "signal_id", None)
+            if signal_id and self.signal_confidence.get(signal_id) == "low":
+                checks["subtype_confidence"] = {
+                    "pass": False,
+                    "detail": "signal type was a classifier fallthrough, not a match",
+                }
+                review_reasons.append(
+                    "Uncertain subtype: signal type was assigned by fallthrough, "
+                    "not matched by any classifier pattern"
                 )
 
             # 9. No duplicate (already checked above in reject section)
@@ -687,7 +706,8 @@ class QualityGate:
 # ---------------------------------------------------------------------------
 
 def evaluate_batch(screened_notes: list, vault_title_search=None,
-                   skip_signals: set = None) -> dict:
+                   skip_signals: set = None,
+                   signal_confidence: dict | None = None) -> dict:
     """
     Run quality gate on a batch of screened notes.
 
@@ -698,6 +718,7 @@ def evaluate_batch(screened_notes: list, vault_title_search=None,
     gate = QualityGate(
         vault_title_search=vault_title_search,
         skip_signals=skip_signals or set(),
+        signal_confidence=signal_confidence or {},
     )
 
     results = {"approved": [], "rejected": [], "review": []}

@@ -49,6 +49,7 @@ except ImportError:  # pragma: no cover - legacy top-level import context
 
 VAULT_PATH = _rp.VAULT_STR
 STAGING_DIR = os.path.join(_rp.DATA_DIR_STR, "extraction-staging")
+REVIEW_DIR = os.path.join(_rp.DATA_DIR_STR, "review-queue")
 SESSION_LOG_DIR = os.path.join(_rp.DATA_DIR_STR, "session-logs")
 CONTINUITY_DIR = os.path.join(_rp.DATA_DIR_STR, "continuity")
 
@@ -402,7 +403,16 @@ class RuntimePipeline:
                         "staged_paths": []}
 
             # Quality gate
-            gate_results = evaluate_batch(extraction.screened)
+            from orchestrator.tools.batch_processor import write_review_note
+
+            signal_confidence = {
+                sig.id: sig.confidence
+                for sig in (getattr(extraction, "signals", None) or [])
+                if getattr(sig, "id", None)
+            }
+            gate_results = evaluate_batch(
+                extraction.screened, signal_confidence=signal_confidence
+            )
 
             approved = gate_results.get("approved", [])
             review = gate_results.get("review", [])
@@ -416,11 +426,31 @@ class RuntimePipeline:
                     private=data.conversation_tag == "private",
                 ))
 
+            # Persist the notes the gate routed to human judgement. This
+            # path used to count them and drop them, so anything the gate
+            # flagged in a chat session was lost with no trace. Failing to
+            # write one must not lose the approved notes, so it degrades
+            # loudly rather than raising.
+            review_paths: list[str] = []
+            for note, gate_result in review:
+                try:
+                    review_paths.append(
+                        write_review_note(note, gate_result, REVIEW_DIR)
+                    )
+                except OSError as exc:
+                    print(
+                        "[runtime_pipeline] could not persist review note "
+                        f"{getattr(note, 'title', 'Untitled')!r}: "
+                        f"{type(exc).__name__}: {exc}",
+                        file=sys.stderr,
+                    )
+
             return {
                 "extracted": len(extraction.screened),
                 "approved": len(approved),
                 "review": len(review),
                 "staged_paths": staged_paths,
+                "review_paths": review_paths,
             }
         except ImportError:
             return {"extracted": 0, "approved": 0, "review": 0,
