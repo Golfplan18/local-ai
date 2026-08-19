@@ -1,0 +1,16 @@
+{"batch": 174, "works": [
+  {
+    "title": "Political Critique and Strategy Book",
+    "kind": "book",
+    "description": "A comprehensive political analysis and critique examining systemic failures of institutional power, propaganda mechanisms, and pathways to effective resistance. Structured in chapters covering nationalism's economic masquerade, evolution of propaganda tactics, progressive media failures, and a fourth part on implementation of systemic change through strategic action.",
+    "development": "moderate",
+    "evidence_ids": [
+      "historical-d641dabb67bd#0",
+      "historical-d641dabb67bd#1",
+      "historical-d641dabb67bd#2",
+      "historical-d641dabb67bd#3"
+    ],
+    "quote": "We are writing a book. The outline is pasted for context. I will feed you chapter outlines and previous drafts, and you will redraft them according to the new instructions.",
+    "possible_duplicate_of": "We Too"
+  }
+]}

@@ -1,0 +1,245 @@
+{
+  "batch": 26,
+  "placements": [
+    {
+      "candidate_id": "historical-42ccc7bc03fe#40",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump's Nvidia chip export deal and constitutional export-tax violation analysis"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#41",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Republican gerrymandering hypocrisy and redistricting war analysis"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#42",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tariff impact on American importers and supply chain disruption"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#44",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Trump's FBI raid on John Bolton and media/career boost effect"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#45",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Gavin Newsom's Trump-mocking social media parody strategy"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#48",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Russian deepfake disinformation and Trump dismantling counter-measures"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#49",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "National Guard weapons in DC and Insurrection Act legal implications"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#50",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Remittance tax on poor families as Stephen Miller intentional cruelty policy"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#52",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Democratic party 40-year strategic failure and counter-strategy discussion"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#53",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump's Fed governor firing attempt and Goldilocks zone political psychology"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#55",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Legal mechanics for firing Federal Reserve governor and defiant resistance"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#56",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Historical parallels to reward-by-attempt political strategy and counter-tactics"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#57",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-instruction about conversation behavior, not project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-42ccc7bc03fe#58",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Right-wing media spin disaster and why tariff policy may be unspinnable"
+    },
+    {
+      "candidate_id": "historical-4352eb94d7ba#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "3D rotational mathematics using matrices and quaternions"
+    },
+    {
+      "candidate_id": "historical-4352eb94d7ba#1",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "3D particle rotation and dot-tracing motion visualization thought experiment"
+    },
+    {
+      "candidate_id": "historical-4352eb94d7ba#2",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Rotational forces creating predictable vs chaotic motion patterns"
+    },
+    {
+      "candidate_id": "historical-435ef30ad890#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "INFP personality messaging strategy and emotional framework for dating"
+    },
+    {
+      "candidate_id": "historical-435ef30ad890#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app signals interpretation and emotional resonance vs account deletion"
+    },
+    {
+      "candidate_id": "historical-438ccf3ba347#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Disney Plus bundle pricing psychology, not core project engagement"
+    },
+    {
+      "candidate_id": "historical-43da5e8a0467#0",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Research phase on USB-powered fan sizes and modular array systems"
+    },
+    {
+      "candidate_id": "historical-43da5e8a0467#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "DIY air cleaner design with layered filter mounting and fan configuration"
+    },
+    {
+      "candidate_id": "historical-43da5e8a0467#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "AC-powered exhaust fan sourcing and scaling modular air filtration units"
+    },
+    {
+      "candidate_id": "historical-43f57986639f#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Ken Paxton Senate candidacy and electoral polling analysis"
+    },
+    {
+      "candidate_id": "historical-44138f541f80#0",
+      "nexuses": ["politics"],
+      "confidence": "medium",
+      "reason": "Trump's Board of Peace plan and Gaza economic restructuring scheme"
+    },
+    {
+      "candidate_id": "historical-443afbac99c1#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Political correctness definition, history, cancel culture, and social impact analysis"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Car odometer discrepancy troubleshooting, general vehicle tech question"
+    },
+    {
+      "candidate_id": "historical-4445e6e40546#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bathroom scale accuracy and humidity effects on weight readings"
+    },
+    {
+      "candidate_id": "historical-444b7228488f#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app messaging strategy and scam detection with match"
+    },
+    {
+      "candidate_id": "historical-4481b2718c23#0",
+      "nexuses": ["insight"],
+      "confidence": "medium",
+      "reason": "Buddhist masters and Myers-Briggs personality type speculation"
+    },
+    {
+      "candidate_id": "historical-4506a5fd1c17#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "American Jesus Book 1 Chapter 5 archetypal framework and character development"
+    },
+    {
+      "candidate_id": "historical-4516d049a2ea#0",
+      "nexuses": ["writing_fiction", "ai_writing_method"],
+      "confidence": "high",
+      "reason": "Fine-tuning AI models for romance novel writing style and genre"
+    },
+    {
+      "candidate_id": "historical-45219e737040#0",
+      "nexuses": ["science", "expanding_awareness"],
+      "confidence": "high",
+      "reason": "Cosmology theories on BBN and universe flatness with alternative hypotheses"
+    },
+    {
+      "candidate_id": "historical-4543c20d9eea#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Shopping for lightweight sleepwear and undershirts, consumer product search"
+    },
+    {
+      "candidate_id": "historical-4543c20d9eea#1",
+      "nexuses": ["technology", "ora_chokepoint_response"],
+      "confidence": "high",
+      "reason": "Amazon search limitations and need for decentralized product index networks"
+    },
+    {
+      "candidate_id": "historical-4543c20d9eea#2",
+      "nexuses": ["technology", "ora_chokepoint_response"],
+      "confidence": "high",
+      "reason": "Federated peer-to-peer product index architecture design as monopoly alternative"
+    },
+    {
+      "candidate_id": "historical-4543c20d9eea#3",
+      "nexuses": ["technology", "ora_chokepoint_response"],
+      "confidence": "high",
+      "reason": "Legal and political feasibility of decentralized P2P networks against enclosure"
+    },
+    {
+      "candidate_id": "historical-45871e41bd86#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analysis of personal dating type and attraction patterns across age/ethnicity"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "MTG psychological profile and authoritarian follower dynamics with Trump"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Epstein victim ages and rhetorical strategy for confronting MAGA supporters"
+    }
+  ]
+}

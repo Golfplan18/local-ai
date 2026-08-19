@@ -1,0 +1,34 @@
+{
+  "batch": 169,
+  "works": [
+    {
+      "title": "Local AI First Boot Framework and Book",
+      "kind": "book",
+      "description": "An instructional book teaching users to build and use local AI systems from scratch, spanning five capability tiers (v1 through v5-C). Includes staged boot.md files that progressively add infrastructure, along with supporting frameworks for browser evaluation, Obsidian vault setup, and API key acquisition. The architecture abstracts the transport layer so users can choose between local models or commercial APIs without changing core workflows.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-d0b7415bbaf6#0",
+        "historical-d0b7415bbaf6#1",
+        "historical-d0b7415bbaf6#2",
+        "historical-d0b7415bbaf6#3",
+        "historical-d0b7415bbaf6#4",
+        "historical-d0b7415bbaf6#5",
+        "historical-d0b7415bbaf6#6"
+      ],
+      "quote": "Our task is to develop the boot.md files necessary to complete the book as outlined.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Political Correctness: Analysis Essay",
+      "kind": "essay-series",
+      "description": "A structured analytical essay examining political correctness as a phenomenon, including its definition, recent historical development through movements like Me Too and Occupy, the relationship to cancel culture, and the gender dynamics underlying resistance to PC enforcement. The piece explores how coercion and persuasion strategies differ in effectiveness and legitimacy across political divides.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-d0a99d36377e#0",
+        "historical-d0a99d36377e#1"
+      ],
+      "quote": "Provide a clear definition of political correctness. Provide the recent history of its use, particularly by the political left, the Me Too movement, the 99% movement, and other manifestations.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

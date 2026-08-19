@@ -1,0 +1,48 @@
+{
+  "batch": 207,
+  "works": [
+    {
+      "title": "The New Communist Manifesto",
+      "kind": "book",
+      "description": "A contemporary reframing of communist political theory grounded in Modern Monetary Theory and demand-side economics. Structured with sections on MMT foundations, the conservative hierarchy, economic tools of liberation (four horsemen), vulnerable foundations, private debt as taxation, and the affordability myth. Presents a comprehensive left-wing economic and political framework.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-ff4be1e73995#0",
+        "historical-ff4be1e73995#1",
+        "historical-ff4be1e73995#2",
+        "historical-ff4be1e73995#3"
+      ],
+      "quote": "I want to provide you with more background information so we can create a draft outline of this new project.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Conservative Coalition Weaknesses Framework",
+      "kind": "framework",
+      "description": "A systematic framework documenting structural vulnerabilities and contradictions within the conservative political coalition. Organized by specific weakness categories (Capitalist Instability, Clashes Between Religion and Wealth, Faith Repression, Generational Shifts, Meritocratic Disillusionment, Workers Serving Elite, Nationalism vs. Globalization, Democracy Containment), each with sections on education, affected constituencies, and exploitation strategies. Appears designed for propaganda and political messaging.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-fe8013652230#0",
+        "historical-fe8013652230#1",
+        "historical-fe8013652230#2",
+        "historical-fe8013652230#3",
+        "historical-fe8013652230#4",
+        "historical-fe8013652230#5",
+        "historical-fe8013652230#6",
+        "historical-fe8013652230#7"
+      ],
+      "quote": "Let's start with the first weakness and come up with additions needed to address our three areas: Education on the problem, Identification of affected constituencies, and detailing voter expectations versus reality.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Human Nexus Thematic Universe Outline",
+      "kind": "framework",
+      "description": "A foundational outline establishing the thematic universe parameters for the Human Nexus concept universe. Includes unifying thematic elements such as technology levels and progression, message of hope and optimism grounded in human collaboration, importance of both emotion and action, self-improvement and incremental growth, participation and innovation. Functions as the conceptual backbone for a larger Human Nexus project.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-feddf97774e3#0"
+      ],
+      "quote": "I want to develop an outline for establishing the thematic universe of the Human Nexus. I like this format and the ideas you are exploring. I would like to add a list with explanations of unifying thematic elements.",
+      "possible_duplicate_of": "Human Nexus White Paper / Extending Human Cognition"
+    }
+  ]
+}

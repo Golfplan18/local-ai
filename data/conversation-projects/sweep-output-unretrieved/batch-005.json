@@ -1,0 +1,245 @@
+{
+  "batch": 5,
+  "placements": [
+    {
+      "candidate_id": "historical-0d727bf83968#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Substantive analysis of Trump's Gaza peace plan structural failures and power asymmetries"
+    },
+    {
+      "candidate_id": "historical-0d727bf83968#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political analysis comparing Israel's conflict doctrine to Rome's imperial behavior; power dynamics"
+    },
+    {
+      "candidate_id": "historical-0d93fd7fc49a#0",
+      "nexuses": ["quantum_mechanics"],
+      "confidence": "high",
+      "reason": "Direct engagement with Bell's inequality, quantum entanglement theory, challenging standard interpretation"
+    },
+    {
+      "candidate_id": "historical-0da275c9ae73#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Labor rights and worker economic protection; delivery worker wages and exploitation"
+    },
+    {
+      "candidate_id": "historical-0dbdf89dd9ab#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Government accountability analysis; DOJ politicization and stonewalling on Epstein files"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#3",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Character naming and narrative positioning for apostles; direct novel development work"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#4",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Antagonist characterization and choice architecture; main character development for trilogy"
+    },
+    {
+      "candidate_id": "historical-0dfc7b83d061#5",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Apostle conversion arcs and Matthew character profile; core narrative and psychological development"
+    },
+    {
+      "candidate_id": "historical-0e3f622e9b5d#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Federal civil service policy analysis; Trump's at-will employment reclassification and legal implications"
+    },
+    {
+      "candidate_id": "historical-0e838fb3030e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic image generation prompt for manipulation tactics; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-0edc3ca94408#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating strategy and communication; relationship patterns and romantic escalation"
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Biblical character research on Peter; foundational research for American Jesus apostle characterization"
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#2",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Peter Stone's transformation arc and spiritual conversion; core character development for trilogy"
+    },
+    {
+      "candidate_id": "historical-0ef3ed667459#4",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Matthew's presence at crucifixion; biblical research informing American Jesus narrative"
+    },
+    {
+      "candidate_id": "historical-0f1f0f3f2699#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Infrastructure system crisis and institutional failure; systemic analysis of overextended systems"
+    },
+    {
+      "candidate_id": "historical-0f3cf4a9837b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Home electrical DIY advice; no substantive project work"
+    },
+    {
+      "candidate_id": "historical-0f649a1dfcb7#4",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Codependency patterns and relationship dynamics self-reflection; personal insight into attachment"
+    },
+    {
+      "candidate_id": "historical-0f9b2f78b461#0",
+      "nexuses": ["politics", "wetoo", "insight"],
+      "confidence": "high",
+      "reason": "Nordic vs American systems comparison; welfare state economics and quality-of-life structures"
+    },
+    {
+      "candidate_id": "historical-0f9b2f78b461#1",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Media false balance critique; evidence-based journalism vs neutral-platform distortion"
+    },
+    {
+      "candidate_id": "historical-0fae4077d3a9#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Political theory analysis of Machiavelli on hereditary vs conquered rule; power dynamics study"
+    },
+    {
+      "candidate_id": "historical-0fae4077d3a9#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic headline generation exercise; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-0ff28c35fe1f#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "DOJ politicization analysis; government accountability and Epstein file cover-up"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#1",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Noncompete policy and wage theft; worker economic exploitation and labor protection"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#2",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Hierarchy and power dynamics analysis; conservative ideology and Christian nationalism critique"
+    },
+    {
+      "candidate_id": "historical-1052e6e66dc7#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-discussion of response formatting preferences; no substantive project work"
+    },
+    {
+      "candidate_id": "historical-106eb6904065#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Economic data and midterm election analysis; job market weakness and political implications"
+    },
+    {
+      "candidate_id": "historical-10773864e38e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Incomplete news article excerpt without analysis or engagement"
+    },
+    {
+      "candidate_id": "historical-107e808a3bf8#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Pet health DIY advice; no substantive project work"
+    },
+    {
+      "candidate_id": "historical-10898648ce26#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic philosophical concept discussion; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-108ff9b387b9#0",
+      "nexuses": ["obsidian"],
+      "confidence": "high",
+      "reason": "Obsidian inline fields capabilities research; direct vault tool engineering study"
+    },
+    {
+      "candidate_id": "historical-10907550b9cb#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "ICE warrantless raids and Fourth Amendment civil rights; immigration policy analysis"
+    },
+    {
+      "candidate_id": "historical-10c5f445aecc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic financial market commentary; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-10c74e49ce39#0",
+      "nexuses": ["publishing", "marketing"],
+      "confidence": "high",
+      "reason": "Book series release strategy and Amazon promotion; publishing pipeline and marketing tactics"
+    },
+    {
+      "candidate_id": "historical-10c810df04af#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "American Jesus chapter 16 draft; direct novel composition and character development"
+    },
+    {
+      "candidate_id": "historical-10db9df41c14#0",
+      "nexuses": ["american_jesus", "writing_fiction", "insight"],
+      "confidence": "high",
+      "reason": "Biblical gender separation references; theological research for religious themes and cultural critique"
+    },
+    {
+      "candidate_id": "historical-10ea4e9efe12#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Home improvement DIY (spring hinges); no substantive project work"
+    },
+    {
+      "candidate_id": "historical-10ea4e9efe12#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Home interior design (paint finishes and trim); no substantive project work"
+    },
+    {
+      "candidate_id": "historical-112246dbccb6#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "American Jesus scene draft with character consistency and romantic tension; direct novel work"
+    },
+    {
+      "candidate_id": "historical-112246dbccb6#1",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "American Jesus scene revision for narrative consistency; iterative fiction composition"
+    },
+    {
+      "candidate_id": "historical-112a03d65342#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Tariff-driven recession forecast and GOP credibility; economic policy analysis and political implications"
+    }
+  ]
+}

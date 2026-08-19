@@ -1,0 +1,20 @@
+{"batch": 23, "works": [
+  {
+    "title": "Universal Basic Income — Evidence Base Report",
+    "kind": "paper",
+    "description": "Comprehensive reference report on empirical evidence for Universal Basic Income and unconditional cash transfer programs. Covers completed pilots (Finland, Stockton SEED, Y Combinator, GiveDirectly Kenya, Manitoba Mincome, Alaska Permanent Fund, Eastern Band of Cherokee casino dividend, Iran's cash transfers) with outcome data, policy variations, and implementation models including carbon dividends and fee-and-dividend proposals.",
+    "development": "early",
+    "evidence_ids": ["historical-1a79b7ed3c29#0"],
+    "quote": "Produce a comprehensive reference report on the empirical evidence on Universal Basic Income and cash transfer programs",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Setting Development Framework",
+    "kind": "framework",
+    "description": "Methodology framework for developing and tracking fictional settings, parallel to existing character development and universal theme frameworks. Includes layer-based architecture, progressive development protocols (initial/comprehensive/chapter-specific), and setting evolution tracking to monitor changes as characters develop or plot unfolds. Designed to integrate into AI-assisted writing workflow.",
+    "development": "moderate",
+    "evidence_ids": ["historical-1bbdf7f2be38#0", "historical-1bbdf7f2be38#1"],
+    "quote": "I want to create the same thing for the setting development framework. My current project is American Jesus 3, so I'll need something that tracks the evolution of multiple locations",
+    "possible_duplicate_of": ""
+  }
+]}

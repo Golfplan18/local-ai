@@ -1,0 +1,29 @@
+{"batch": 76, "works": [
+  {
+    "title": "Industrial Policy Synthesis Report",
+    "kind": "paper",
+    "description": "A research synthesis document comparing three major U.S. legislative acts (CHIPS and Science Act, Inflation Reduction Act, Bipartisan Infrastructure Law) as a coherent industrial policy package. Part of a larger industrial policy series with multiple standalone reference documents. Examines domestic-content architectures, Buy America provisions, and cross-statute policy implications.",
+    "development": "moderate",
+    "evidence_ids": ["historical-5f4f7c4b79a5#0"],
+    "quote": "Produce a synthesis report comparing the CHIPS and Science Act (2022), the Inflation Reduction Act (2022), and the Bipartisan Infrastructure Law (2021) as a coherent industrial policy package.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Personal AI Coach",
+    "kind": "product",
+    "description": "An AI system designed to provide personalized motivation, self-improvement guidance, and decision-forcing for users. Features personality-driven interaction with memory of user history, progress tracking, and adaptive communication styles. Explores technical implementation using accessible tools (Google Sheets for storage, LLM APIs for reasoning).",
+    "development": "early",
+    "evidence_ids": ["historical-5fe4a2aec512#2", "historical-5fe4a2aec512#3"],
+    "quote": "I would like to brainstorm an idea I have for personal use... You didn't hear a word I was saying, did you? I want to design a personality profile that could be programmed into an AI assistant for personal motivation and self-improvement.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Virtual Romantic Partner / AI Intimate Companion",
+    "kind": "product",
+    "description": "An AI system designed to function as a romantic/intimate companion with personality-driven interaction, relationship memory, and emotional attunement. Includes VR interface for immersive interaction, video generation for avatar presence, and physical interaction simulation. Technical architecture explored using affordable hardware (Meta Quest 2, open-source video tools). Extends personal AI coach architecture with romance/intimacy focus.",
+    "development": "early",
+    "evidence_ids": ["historical-5fe4a2aec512#4", "historical-5fe4a2aec512#5"],
+    "quote": "I would like you to take all of those ideas, put them together into a personality profile, and make it a characteristic that you could program into a virtual boyfriend or girlfriend. Then give me the scenarios with that personality.",
+    "possible_duplicate_of": ""
+  }
+]}

@@ -1,0 +1,29 @@
+{"batch": 42, "works": [
+  {
+    "title": "Constitutional Amendment Satire: Originalist Misinterpretation",
+    "kind": "essay-series",
+    "description": "A satirical political piece examining how the contemporary right strategically reinterprets plainly worded constitutional amendments through false originalism. Focuses on the 13th Amendment and its 'punishment clause' as a mechanism for legal slavery reinstatement, contrasting stated originalist principles with actual practice of constitutional manipulation.",
+    "development": "early",
+    "evidence_ids": ["historical-34f074a310df#0"],
+    "quote": "I'm working on a satirical piece examining how the political right manages to reinterpret plainly worded constitutional amendments through originalist frameworks that contradict the actual original intent.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Romance: Heir and Professor",
+    "kind": "novel",
+    "description": "A romance novel centered on a young heir to a substantial family fortune who enrolls in graduate-level negotiation and finance coursework to prepare for managing the family empire. The story opens with a first kiss between the teenage heir and his college professor. Features power dynamics across age and status differences.",
+    "development": "early",
+    "evidence_ids": ["historical-354d7910e48d#0"],
+    "quote": "As a young heir to a huge family fortune... I was impatient and didn't want to waste time in college... While still a teenager, I encountered my professor. To my surprise and delight, she replied, 'I would love to have lunch with you.'",
+    "possible_duplicate_of": "Angel Fallon Romance|Ashley Romance"
+  },
+  {
+    "title": "Christian Nationalism Research Dossier",
+    "kind": "research",
+    "description": "A comprehensive research dossier on Christian Nationalism structured in three parts: Part 1 is a Bible-fluency substrate grounding the theological claims of Christian nationalism (with scriptural citations and translations); Part 3 examines diagnostic literature (SBC resolutions, FRC statements, mega-church histories) to trace how the movement coordinates institutional capture. Includes deep research on prior theological traditions (Abraham Joshua Heschel, Jeremiah, etc.) that stand in opposition.",
+    "development": "moderate",
+    "evidence_ids": ["historical-3612379e0659#0"],
+    "quote": "For the Bible-fluency substrate (Part 1), which translation should anchor the full-text quotations? A: NIV (most-cited in modern Evangelicalism). For the diagnostic literature (Part 3), how deep should the documentary substrate go — SBC resolutions, FRC statements, Liberty/BJU histories, mega-church landscape?",
+    "possible_duplicate_of": ""
+  }
+]}

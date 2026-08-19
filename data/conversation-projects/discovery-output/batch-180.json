@@ -1,0 +1,20 @@
+{"batch": 180, "works": [
+  {
+    "title": "Bridge Book: Woo and Reductionist Audiences Unified",
+    "kind": "book",
+    "description": "A book bridging woo/spiritual and reductionist/technical audiences, exploring personal operating systems, moral defaults, and individual psychology at societal scale. Uses dual cover design (family silhouette + Matrix-style code) to signal both human and systems focus.",
+    "development": "moderate",
+    "evidence_ids": ["historical-dc5b43b1cabb#3", "historical-dc5b43b1cabb#4"],
+    "quote": "A bridge book has an obvious job: 'Here's what's happening in your system, in plain language, with a way to test it.'",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Chinese Room and Large Language Models Appendix",
+    "kind": "paper",
+    "description": "A written appendix examining whether LLMs are subject to the Chinese Room argument, analyzing whether they actually 'know' anything or merely mimic human reasoning indistinguishably. Includes discussion of how meaning requires human interpretation using Hitchhiker's Guide reference.",
+    "development": "early",
+    "evidence_ids": ["historical-dcd97cd3ce99#0"],
+    "quote": "Prepare written work labeled as an appendix establishing that large language models are subject to the Chinese Room argument and that LLMs do not actually 'know' anything",
+    "possible_duplicate_of": ""
+  }
+]}

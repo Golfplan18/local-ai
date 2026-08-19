@@ -1,0 +1,29 @@
+{"batch": 60, "works": [
+{
+  "title": "Meme Warfare Project",
+  "kind": "essay-series",
+  "description": "An ongoing political project combining emotionally resonant narratives and meme-based propaganda designed to reach Trump's base by weaponizing foresight and economic pain. The user plans to launch this after May vacation, starting with fabricated-yet-emotionally-truthful posts about small-business collapse and rural economic devastation, scaling into books or distributed media.",
+  "development": "early",
+  "evidence_ids": ["historical-4a31127c437c#7", "historical-4a31127c437c#23"],
+  "quote": "I'm going to start working on what I'm calling \"me warfare posts\" or books—whatever that grows into—and I could see even fabricating them. These would be powerful because you don't have to wait for the real story if you fabricate them.",
+  "possible_duplicate_of": ""
+},
+{
+  "title": "How China's Xi Will Behead Donald Trump",
+  "kind": "essay-series",
+  "description": "A Substack blog post analyzing China's strategic economic position and Xi's bond-market divestment strategy as a counter-move to Trump's tariff aggression. The post outlines China's Treasury holdings (~$760B), the mechanics of gradual liquidation, and how this creates a liquidity crisis that Trump cannot counter—presenting Xi's restraint and patience as the ultimate checkmate.",
+  "development": "moderate",
+  "evidence_ids": ["historical-4a31127c437c#29"],
+  "quote": "Xi will liquidate $50 billion to $75 billion worth of US treasuries per month to reduce his exposure... Xi's Checkmate: The Bond Market Strategy... China currently holds approximately $760 billion in US Treasury securities.",
+  "possible_duplicate_of": ""
+},
+{
+  "title": "Love Your Neighbor as Yourself: A Call to Radical Equality and Compassion",
+  "kind": "essay-series",
+  "description": "An essay synthesizing biblical and Tibetan Buddhist interpretations of \"love thy neighbor,\" arguing that the deeper teaching is radical equality where one prioritizes others' needs and freedom from suffering as highly as one's own. The piece challenges natural self-centeredness through practices like equalizing self with others and exchange-of-self meditation.",
+  "development": "moderate",
+  "evidence_ids": ["historical-49f69a8b7320#0"],
+  "quote": "Love Your Neighbor as Yourself: A Call to Radical Equality and Compassion... a deeper reading suggests we should value others' needs and goals as equally important as our own... This radical reframing, supported by Buddhist practices like equalizing self with others, challenges our natural self-centeredness",
+  "possible_duplicate_of": ""
+}
+]}

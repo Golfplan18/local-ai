@@ -1,0 +1,48 @@
+{
+  "batch": 83,
+  "works": [
+    {
+      "title": "Cultural Infiltration Through Media: Strategic Handbook for Progressive Activism",
+      "kind": "book",
+      "description": "A comprehensive strategic guide using chapters on different media forms (romance fiction, action films, visual media, audio/podcasts, gaming, and open-source distributed models) as vehicles for reaching and persuading conservative audiences toward progressive economic positions. Covers content factory operations, genre infiltration tactics, visual storytelling for politics, audio intimacy, game mechanics for activism, and distributed organizing models.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-64f053f270f2#0",
+        "historical-64f053f270f2#1",
+        "historical-64f053f270f2#2",
+        "historical-64f053f270f2#3",
+        "historical-64f053f270f2#4",
+        "historical-64f053f270f2#5",
+        "historical-64f053f270f2#6",
+        "historical-64f053f270f2#7",
+        "historical-64f053f270f2#8"
+      ],
+      "quote": "We don't care about preaching to the choir. We're looking for specific emotional triggers that break through to normies. Anger, fear, and humor are the holy trinity.",
+      "possible_duplicate_of": "We Too"
+    },
+    {
+      "title": "Agricultural Research Article on Food Systems and Nutrition in Nigeria",
+      "kind": "paper",
+      "description": "An academic paper under development for submission to the Agricultural Extension Society of Nigeria (AESON) journal, focusing on local beverages, indigenous foods, agricultural practices, nutrition, and dietary patterns in rural Nigeria. The author is actively managing citations, page limits compliance, and APA formatting requirements for journal submission.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-65b690c9d4b5#0",
+        "historical-65b690c9d4b5#1",
+        "historical-65b690c9d4b5#2"
+      ],
+      "quote": "I have a strict page limit for the article. Aim for a maximum of three lines, but use your judgment to give me your best version.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Chat Conversation Summarization Framework",
+      "kind": "framework",
+      "description": "A systematic methodology for summarizing long AI conversations into concise formats that preserve key information, decisions, and reasoning without consuming excessive memory. The user is developing consistent analysis and summarization protocols with specific structural sections for different types of information preservation across conversations.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-654cf8f91d67#0"
+      ],
+      "quote": "I want to create summaries of long AI chats so I can carry important information from one chat to another without consuming much memory or processing time.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

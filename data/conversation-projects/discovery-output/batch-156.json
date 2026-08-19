@@ -1,0 +1,20 @@
+{"batch": 156, "works": [
+{
+  "title": "Depression and Dissatisfaction of Beauty, Fame, and Wealth: The Illusion of Happiness in Worldly Attainments",
+  "kind": "paper",
+  "description": "Essay exploring why beauty, fame, and wealth fail to bring lasting happiness and fulfillment. Grounded in Buddhist framework of Eight Worldly Winds as organizing principle, examining material success as a path to contentment and why it systematically fails.",
+  "development": "early",
+  "evidence_ids": ["historical-c39bb3c95c38#0"],
+  "quote": "Ten Headlines for \"Depression and Dissatisfaction of Beauty, Fame, and Wealth: The Illusion of Happiness and Fulfillment in Worldly Attainments\"",
+  "possible_duplicate_of": "Insight"
+},
+{
+  "title": "Trump's Foreign Policy Strategy and the Collapse of Post-WWII Order",
+  "kind": "essay-series",
+  "description": "Systematic analysis of Trump administration's foreign policy approach examining Greenland negotiations, Brazil interference, trade strategy, and capital flows. Explores the disconnect between stated objectives and actual outcomes, analyzes systemic implications for US credibility and world order, and traces how allies are routing around US leverage.",
+  "development": "moderate",
+  "evidence_ids": ["historical-c438798da83d#0", "historical-c438798da83d#1", "historical-c438798da83d#2", "historical-c438798da83d#3", "historical-c438798da83d#4", "historical-c438798da83d#5", "historical-c438798da83d#6", "historical-c489eabc1b0d#0", "historical-c489eabc1b0d#1", "historical-c489eabc1b0d#2"],
+  "quote": "The notion that the U.S. could not have secured additional basing and commercial licensing rights in Greenland absent the threat of invasion and occupation is nonsensical",
+  "possible_duplicate_of": "Politics"
+}
+]}

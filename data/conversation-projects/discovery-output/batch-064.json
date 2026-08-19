@@ -1,0 +1,29 @@
+{"batch": 64, "works": [
+{
+  "title": "Bot Detection Business",
+  "kind": "business",
+  "description": "A business model for detecting automated bot traffic on the internet. The user is researching behavioral metrics (time on page, scrolling patterns, click timing) that distinguish human users from bots, and analyzing the technical feasibility given modern evasion frameworks (Playwright/Puppeteer variants with 44-52% evasion rates against commercial solutions).",
+  "development": "moderate",
+  "evidence_ids": ["historical-4eded76990ff#0"],
+  "quote": "I'm considering creating a business to detect bots on the internet...I need to distinguish bot traffic from human traffic.",
+  "possible_duplicate_of": ""
+},
+{
+  "title": "Trump Credit Card / Housing Market Strategy Article",
+  "kind": "essay-series",
+  "description": "A Substack article analyzing Trump's housing market strategy through the lens of credit card lending caps. The user is drafting analysis showing how the 10% credit card cap (unsecured consumer lending) reduces back-end debt-to-income ratios, freeing debt service capacity for mortgages—framed as a coordinated two-front housing strategy alongside FHFA MBS purchases.",
+  "development": "moderate",
+  "evidence_ids": ["historical-4f458c177fb9#0"],
+  "quote": "I need to solve a problem with the size of this outline...Drafting Substack article on Trump's credit card cap policy and housing market strategy",
+  "possible_duplicate_of": ""
+},
+{
+  "title": "AI Swarm / Semantic Extraction Framework",
+  "kind": "framework",
+  "description": "A systematic methodology for prompt engineering in AI swarm architectures. The user is developing approaches to semantic extraction (converting natural language prompts to AI-optimal syntax), criteria establishment for judgment-mapping, and prompt reconstruction frameworks. Includes work on question evaluation, scope declaration, and RAG constraint specification.",
+  "development": "moderate",
+  "evidence_ids": ["historical-4ea7e9b61eb7#0", "historical-4ea7e9b61eb7#1", "historical-4ea7e9b61eb7#2"],
+  "quote": "I'm working on prompt engineering for my AI swarm...semantic extraction as criteria generator and prompt reconstruction framework",
+  "possible_duplicate_of": ""
+}
+]}

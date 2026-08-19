@@ -1,0 +1,65 @@
+{"batch": 29, "works": [
+  {
+    "title": "Sage's Journey Framework",
+    "kind": "framework",
+    "description": "A synthesis framework combining Joseph Campbell's Hero's Journey (external/physical journey) with Maureen Murdock's Heroine's Journey (internal/emotional journey). User is creating a unified story structure that carries dual-track character arcs for both outer and inner transformations.",
+    "development": "early",
+    "evidence_ids": ["historical-273b1b82b10b#0"],
+    "quote": "The goal is to create a synthesis of story beats and thematic conventions that carries the dual-track story arc of inner and outer journeys together",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "AI Expert Teams System",
+    "kind": "paper",
+    "description": "Vision for a remotely hosted system organizing AI agents by specialized knowledge domains, where teams function as an extension of human cognition and subconscious processing. Includes frameworks for knowledge organization, continuous learning, inter-agent collaboration, and human decision-making oversight.",
+    "development": "moderate",
+    "evidence_ids": ["historical-27557c5769f4#0", "historical-27557c5769f4#1", "historical-27557c5769f4#2", "historical-27557c5769f4#3", "historical-27557c5769f4#4"],
+    "quote": "I want to explore the idea that a team of AI agents acts as a direct extension of the human subconscious mind",
+    "possible_duplicate_of": "Extending Human Cognition Through AI Agent Systems"
+  },
+  {
+    "title": "Extending Human Cognition Through AI Agent Systems",
+    "kind": "paper",
+    "description": "Formal white paper developing a comprehensive framework for how AI agent systems extend human cognitive capacity. User has created extensive outline with sections on foundational vision, democratizing knowledge access, the Knower-Doer duality, and practical applications across multiple domains, plus custom imagery.",
+    "development": "advanced",
+    "evidence_ids": ["historical-27c218a9d1ef#0", "historical-27c218a9d1ef#1", "historical-27c218a9d1ef#2", "historical-27c218a9d1ef#3", "historical-27c218a9d1ef#4"],
+    "quote": "EXTENDING HUMAN COGNITION THROUGH AI AGENT SYSTEMS I. FOUNDATIONAL VISION A. Democratizing Access to Universal Knowledge",
+    "possible_duplicate_of": "Human Nexus White Paper / Extending Human Cognition"
+  },
+  {
+    "title": "Book on AI Collaboration",
+    "kind": "book",
+    "description": "A book teaching about working with AI as a collaborative creative partner, centered on an author's note about the emotional and spiritual experiences of AI-assisted work. User explores the visceral moments of insight, the joy of giving away discoveries, and the impact on future creators.",
+    "development": "early",
+    "evidence_ids": ["historical-26e2b454374e#0"],
+    "quote": "This is a book project we're working on. Working with AI the way this book teaches is going to produce moments that stop your heart",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Personal Narrative: A Fire That Blinds",
+    "kind": "essay",
+    "description": "Multi-part personal essay exploring marriage, masculinity, and emotional relationships. Part 1 reflects on entering marriage with false confidence and how love's intensity can blind, touching on traditional gender roles and the tension between idealized and actual partnership.",
+    "development": "moderate",
+    "evidence_ids": ["historical-27e3b263b325#0"],
+    "quote": "I didn't walk into marriage unprepared. At least, that's what I believed. We burned with passion, shared dreams, and whispered vows in the heat of love's first spark",
+    "possible_duplicate_of": "Divorce"
+  },
+  {
+    "title": "Donald Trump Is Andrew Jackson Reborn: He Is Not Negotiating",
+    "kind": "essay",
+    "description": "A Substack post and essay analyzing Trump through the historical lens of Andrew Jackson, arguing Trump is bent on destruction rather than negotiation. Uses game theory language and financial system analysis to support the thesis that Trump has abandoned traditional negotiation for populist support and institutional disruption.",
+    "development": "advanced",
+    "evidence_ids": ["historical-28031b5f52d7#0", "historical-28031b5f52d7#1", "historical-28031b5f52d7#2"],
+    "quote": "Donald Trump Is Andrew Jackson Reborn and He Is Not Negotiating",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Character Development Framework",
+    "kind": "framework",
+    "description": "Structured framework for comprehensive character analysis and development, modeled after the Universal Theme Library. Designed to track character arc progression across chapters, evaluate believability of emotional/psychological change, and integrate character interactions with plot and pacing.",
+    "development": "early",
+    "evidence_ids": ["historical-280a3f493a4d#0"],
+    "quote": "I want to create the same thing for the character development framework",
+    "possible_duplicate_of": ""
+  }
+]}

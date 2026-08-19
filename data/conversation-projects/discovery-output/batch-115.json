@@ -1,0 +1,34 @@
+{"batch": 115, "works": [
+  {
+    "title": "Barb McGowan (Fury Voice for MSI)",
+    "kind": "essay-series",
+    "description": "A new persona/voice for Main Street Independent embodying the Fury archetype—a hypocrisy-hunter from Friendship, Wisconsin who writes passionate advocacy journalism on economic justice. Combines short analytical essays with cartoon commentary featuring a sardonic cat, using direct language and evidence-based policy analysis. Character fully specified with visual identity, sourcing standards, and multiple published articles.",
+    "development": "advanced",
+    "evidence_ids": [
+      "historical-8aeae999aa4a#1",
+      "historical-8aeae999aa4a#2",
+      "historical-8aeae999aa4a#3",
+      "historical-8aeae999aa4a#4",
+      "historical-8aeae999aa4a#5",
+      "historical-8aeae999aa4a#6",
+      "historical-8aeae999aa4a#7",
+      "historical-8aeae999aa4a#8",
+      "historical-8aeae999aa4a#9",
+      "historical-8aeae999aa4a#10",
+      "historical-8aeae999aa4a#11"
+    ],
+    "quote": "The function you're designing — hunt the ones who violate their own professed code, punish the arrogant who've grown too big — *is* the Fury.",
+    "possible_duplicate_of": "Main Street Independent"
+  },
+  {
+    "title": "After the Fire",
+    "kind": "essay-series",
+    "description": "A poem or song with a specific musical and emotional structure centered on intimacy, closure, and peaceful connection. Built on a refrain pattern with 'Sleep now my mountain' repeated three times in shifting positions within three distinct stanzas, creating a melodic progression from disorientation to complete peace. Soft rhythmic pacing, gentle imagery, and emphasis on wordless connection.",
+    "development": "moderate",
+    "evidence_ids": [
+      "historical-8af011e3bcf3#0"
+    ],
+    "quote": "Sleep now my mountain. That phrase should be repeated three times. The first time she does it, she sings that three times, then adds something, then pauses.",
+    "possible_duplicate_of": ""
+  }
+]}

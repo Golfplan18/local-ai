@@ -1,0 +1,16 @@
+{
+  "batch": 67,
+  "works": [
+    {
+      "title": "Natural Language Programming Book",
+      "kind": "book",
+      "description": "A practical guide to natural language programming methodology and framework setup. The user is preparing framework documentation and configuration files for publication to GitHub, including Boot Framework edits, directory structure reorganization, and removal of version numbers for open-source release.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-54a63562310e#0"
+      ],
+      "quote": "We have been collaborating on the natural language programming book project. I need to make a few changes before I start fresh on my home computer.",
+      "possible_duplicate_of": "Ora Installed-System Docs"
+    }
+  ]
+}

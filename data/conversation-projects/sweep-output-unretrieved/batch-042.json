@@ -1,0 +1,245 @@
+{
+  "batch": 42,
+  "placements": [
+    {
+      "candidate_id": "historical-6ab4042a8572#10",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Contact gathering for political figure; no substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-6ad9899de056#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Passive news article sharing without discussion or analysis."
+    },
+    {
+      "candidate_id": "historical-6b5de6463ced#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Earthquake information query and AI protocol discussion; not project-related."
+    },
+    {
+      "candidate_id": "historical-6b6687a65dcd#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Exploring word synonyms for ongoing effort; substantive writing craft language work."
+    },
+    {
+      "candidate_id": "historical-6b6b662b03ad#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Troubleshooting transcription tool modifications affecting writing; technology tool optimization."
+    },
+    {
+      "candidate_id": "historical-6b6b662b03ad#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Phone screen playback and battery settings; technology device optimization."
+    },
+    {
+      "candidate_id": "historical-6b6b662b03ad#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Do Not Disturb configuration and notification management; technology settings."
+    },
+    {
+      "candidate_id": "historical-6b6b662b03ad#3",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Attention economy and notification management strategy; technology for daily life."
+    },
+    {
+      "candidate_id": "historical-6b6b662b03ad#4",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Cloud storage silos and photo library organization strategy; technology solution."
+    },
+    {
+      "candidate_id": "historical-6ba1855e94c7#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "BYD battery technology and EV adoption acceleration; substantive technology discussion."
+    },
+    {
+      "candidate_id": "historical-6ba29f64a75f#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Organizing American Jesus character scenes; integrating optimization framework into novel methodology."
+    },
+    {
+      "candidate_id": "historical-6bae25382808#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Primary source citation library documentation; reference work without project context."
+    },
+    {
+      "candidate_id": "historical-6bd7208cc2f3#0",
+      "nexuses": ["autism_acceptance"],
+      "confidence": "high",
+      "reason": "Transforming autism-parenting outline into narrative prose; direct book project work."
+    },
+    {
+      "candidate_id": "historical-6c05aadfdc14#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Act 1 Chapter 12 outline: Hayzeus intervenes in debt collection; substantive novel chapter development."
+    },
+    {
+      "candidate_id": "historical-6c05aadfdc14#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Theological reinterpretation of Jesus's stance on violence for Hayzeus character framework."
+    },
+    {
+      "candidate_id": "historical-6c05aadfdc14#2",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Naming and defining Hayzeus's protection group 'The Shepherds'; character development."
+    },
+    {
+      "candidate_id": "historical-6c19fd4f5325#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump economic policy analysis; general news commentary without project engagement."
+    },
+    {
+      "candidate_id": "historical-6c4557c46116#4",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Philosophical reflection on parenthood and maternal choice; personal insight about life."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greenland crisis news sharing; passive article consumption."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Historical parallels of territorial seizure; general political-historical discussion."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-commentary on narrative implausibility; not substantive engagement with any project."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Financial warfare and Treasury analysis; economic commentary without project context."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#4",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump imperial power CNN article analysis; general political commentary."
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#5",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Supreme Court and Unitary Executive discussion; political analysis without project engagement."
+    },
+    {
+      "candidate_id": "historical-6cc2f62d94a8#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Transforming outline into flowing narrative prose; writing craft and prose technique work."
+    },
+    {
+      "candidate_id": "historical-6cdb84e313d8#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Milena Chump character profile development for fictional character; character work."
+    },
+    {
+      "candidate_id": "historical-6d018540cf73#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Personal relationship notes about Jamie; not related to any registered project."
+    },
+    {
+      "candidate_id": "historical-6d0cdd5485f4#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Character foundation framework execution on Marcus Johnson; substantive character development."
+    },
+    {
+      "candidate_id": "historical-6dd9abd5d7dd#2",
+      "nexuses": ["wetoo"],
+      "confidence": "high",
+      "reason": "We Too book cover design critique; substantive work on project deliverable."
+    },
+    {
+      "candidate_id": "historical-6dfec9a36bc9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Antitrust law and conglomerate economics discussion; general business analysis."
+    },
+    {
+      "candidate_id": "historical-6e1692a239cc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Synergy definition and general word explanation; reference material only."
+    },
+    {
+      "candidate_id": "historical-6e241555f2ed#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump election policy news article; passive news sharing."
+    },
+    {
+      "candidate_id": "historical-6e274706920a#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Hayzeus Salvador character profile refinement with character interactions; novel development."
+    },
+    {
+      "candidate_id": "historical-6e4ad23d9035#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "iPhone to Pixel conversion guide; technology migration and tool evaluation."
+    },
+    {
+      "candidate_id": "historical-6ea44d2410ec#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical treatment research for myopic degeneration; personal health inquiry."
+    },
+    {
+      "candidate_id": "historical-6eb6c25cf3b2#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "T-Mobile carrier and home internet research; technology solution evaluation for daily needs."
+    },
+    {
+      "candidate_id": "historical-6eb6c25cf3b2#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Technical process for switching carriers and testing; technology implementation."
+    },
+    {
+      "candidate_id": "historical-6eb6c25cf3b2#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "T-Mobile performance assessment for family video and streaming; technology evaluation."
+    },
+    {
+      "candidate_id": "historical-6eb8af3e71db#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Ideogram definition; general reference material."
+    },
+    {
+      "candidate_id": "historical-6ec0bef2fc98#0",
+      "nexuses": ["golf"],
+      "confidence": "high",
+      "reason": "Golf swing mechanics and grip technique; substantive engagement with golf practice."
+    }
+  ]
+}

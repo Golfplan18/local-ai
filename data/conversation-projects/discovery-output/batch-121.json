@@ -1,0 +1,16 @@
+{
+  "batch": 121,
+  "works": [
+    {
+      "title": "AHI Briefing for AI Agent Early Adopters",
+      "kind": "paper",
+      "description": "A focused briefing paper addressing AI agent early adopters, validating their instincts while reframing misconceptions about current AI systems. The paper argues that mainstream AI agents tackle only mundane tasks and misunderstand the actual problem AI can solve. It includes empirical validation from a 200-prompt study comparing six different model configurations (9B standalone, Opus 4.8 standalone, 9B in harness, optimized configuration, and combinations).",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-9470f545463f#3"
+      ],
+      "quote": "Our discussion needs to be another one of these papers: the AHI Briefing for AI Agent Early Adopters.",
+      "possible_duplicate_of": "Human Nexus White Paper / Extending Human Cognition"
+    }
+  ]
+}

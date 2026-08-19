@@ -1,0 +1,20 @@
+{"batch": 46, "works": [
+  {
+    "title": "Propaganda Collapse / Bullshit Media Irrelevance",
+    "kind": "book",
+    "description": "A series of books exploring how propaganda media and misinformation outlets don't disappear when publicly recognized as false, but instead become irrelevant—like professional wrestling or tabloid journalism—losing audience attention while persisting structurally. Examines status loss, redemption paths for collapsed believers, and political rebranding strategies. Uses historical parallels: 1960s civil rights movements, Reconstruction and the Confederate Lost Cause mythology, and media backlash dynamics.",
+    "development": "early",
+    "evidence_ids": ["historical-3a3ac013ebfa#2", "historical-3a3ac013ebfa#6"],
+    "quote": "I'm about to write some books about the collapse of bullshit media, and one of those books is gonna look into the future",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Parliamentary Agent Specification (PAS)",
+    "kind": "framework",
+    "description": "Formalizing the Internal Parliament theory—a methodology for modeling evolving personalities in AI agents and fiction characters through representative coalitions, commitment libraries, near-enemy pairs, and assessment tiers. Grounded in Gelug Buddhist philosophy and featuring an incompatibility mechanism to detect constitutional governance failures. Includes detailed specification of representational weights, motivation routing, character growth modeling, and practical Ora implementation architecture. Development spans extensive 73-turn conversation with systematic framework design, book outline, and system architecture planning.",
+    "development": "advanced",
+    "evidence_ids": ["historical-3b828e01a971#0"],
+    "quote": "I want to turn this into a methodology for coding evolving personalities for AI agents and fiction characters",
+    "possible_duplicate_of": "Internal Parliament Model"
+  }
+]}

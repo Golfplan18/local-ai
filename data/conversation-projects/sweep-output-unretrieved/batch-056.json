@@ -1,0 +1,245 @@
+{
+  "batch": 56,
+  "placements": [
+    {
+      "candidate_id": "historical-89e667eccd46#37",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Substantive critique of 'rich will flee' tax propaganda as elite blackmail narrative."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#38",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Tariffs as hidden regressive tax disguised, GOP's refusal to acknowledge hypocrisy."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#39",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Trump's $10B lawsuit against WSJ as narrative-control theater, not legal strategy."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#42",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Critique of 'rich fleeing' propaganda presupposing elite indispensability as blackmail."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#43",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "WSJ economist survey interpreted as bet on Trump backing off tariffs; economic policy analysis."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#44",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump deflecting Epstein via Obama investigations; SCOTUS immunity irony; probability estimates."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#45",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump-Powell Fed conflict; Trump blaming Powell for recession to deflect personal responsibility."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#46",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "CNN KFILE Trump-Epstein evidence, burial probability, Republican base reaction scenario."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#47",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "New Republic podcast on Trump prosecuting Obama as authoritarian-breakdown marker."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#48",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Green-card deportation legality; risk Trump abuses FTO designations to bypass due process."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#49",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump's frantic posting amid Epstein scandal; visible cognitive-decline symptoms analysis."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#50",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "US citizen teen's violent immigration arrest; civil rights lawsuit likelihood and legal grounds."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#51",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Krugman's enshittification theory applied to platform decay under shareholder capitalism."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#52",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Critiquing NBER minimum-wage study as right-wing statistical spin; labor economics."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#53",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Elon Musk stoking Trump-Epstein scandal as structural power-play over Trump via X."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#55",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump forced-hospitalization order echoes pre-deinstitutionalization abuses; reactionary policy revival."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#57",
+      "nexuses": ["property"],
+      "confidence": "high",
+      "reason": "California real-estate boom favoring industrial/distribution over office; CEQA reform impact."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#58",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Bloomberg tariff global demand shock; delayed economic consequences of Trump trade policy."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#59",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Democrats' 2024 messaging failure despite Trump's objectively bad policies; strategic analysis."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#60",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Biographical summary of Rex Tillerson's post-Trump career; no substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#61",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Bloomberg universities coverage critique; legal resistance to Trump's policies downplayed."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#62",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Netanyahu firing attorney general as global authoritarian pattern; subverting legal norms."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#64",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump fires BLS commissioner over weak jobs report; weaponizing statistics agencies."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#65",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "GOP town halls backlash over 'big beautiful bill'; gerrymandering structural GOP advantage."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#67",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "China keeping fentanyl exports as diplomatic leverage; rational supply-side policy critique."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#68",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump marijuana rescheduling under donor pressure; cannabis companies' access-buying."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#69",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "DOJ investigating James/Schiff as retaliation; well-insulated critics backfiring strategy."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#72",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Switzerland tariffs; Bretton Woods post-WWII origins and Trump's erosion via transactional coercion."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#73",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Newsom redistricting trigger; modeling Dem gerrymandering retaliation to offset GOP advantage."
+    },
+    {
+      "candidate_id": "historical-89e667eccd46#74",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Market snapshot data request; no substantive engagement with a project."
+    },
+    {
+      "candidate_id": "historical-89f418c2b9e6#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Post-pandemic hospitality booking trends observation; no project engagement."
+    },
+    {
+      "candidate_id": "historical-89f59671e1c4#0",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Defining self-centered rationalization vs valid conflict reasons; relational psychology."
+    },
+    {
+      "candidate_id": "historical-8a168175f466#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Drafting follow-up message to Juliana after no response; romantic outreach."
+    },
+    {
+      "candidate_id": "historical-8a27f5192175#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile filtering and partner-selection advice; stopped wasting time."
+    },
+    {
+      "candidate_id": "historical-8a9001eb680c#0",
+      "nexuses": ["prompt_engineering", "insight"],
+      "confidence": "high",
+      "reason": "Deep observation on sycophancy/instruction-following tradeoff in AI models."
+    },
+    {
+      "candidate_id": "historical-8a9001eb680c#1",
+      "nexuses": ["prompt_engineering", "insight"],
+      "confidence": "high",
+      "reason": "Claude Opus 4.7 confabulation diagnosis as 'functional arrogance' when confidence exceeds competence."
+    },
+    {
+      "candidate_id": "historical-8a9001eb680c#2",
+      "nexuses": ["prompt_engineering", "insight"],
+      "confidence": "high",
+      "reason": "Three-question relational calibration framework for AI interactions; set as context instructions."
+    },
+    {
+      "candidate_id": "historical-8ab99bb672bd#0",
+      "nexuses": ["american_judas", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Heinrich Meuller character profile development across psychological dimensions; antagonist work."
+    },
+    {
+      "candidate_id": "historical-8ab99bb672bd#1",
+      "nexuses": ["american_judas", "insight"],
+      "confidence": "high",
+      "reason": "Mediocre white male resentment as radicalization catalyst; Heinrich case study sociology."
+    },
+    {
+      "candidate_id": "historical-8ae3b90d34bc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Iran war economic impact article pasted; no substantive engagement or analysis visible."
+    }
+  ]
+}

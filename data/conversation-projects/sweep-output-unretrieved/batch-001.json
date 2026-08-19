@@ -1,0 +1,245 @@
+{
+  "batch": 1,
+  "placements": [
+    {
+      "candidate_id": "historical-0020438fc082#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Trump-Epstein media narrative analysis with focus on selective document treatment"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#0",
+      "nexuses": ["science", "technology"],
+      "confidence": "high",
+      "reason": "Artificial Swarm Intelligence research overview and paywalled source identification"
+    },
+    {
+      "candidate_id": "historical-0029731de6f3#2",
+      "nexuses": ["property"],
+      "confidence": "high",
+      "reason": "Bay Area university land holdings and undeveloped property assessment for development potential"
+    },
+    {
+      "candidate_id": "historical-0038cc754a4c#0",
+      "nexuses": ["image_generation"],
+      "confidence": "medium",
+      "reason": "Rooster silhouette visual creation request"
+    },
+    {
+      "candidate_id": "historical-006829ae07a0#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Gallup polling discontinuation and political pressure analysis"
+    },
+    {
+      "candidate_id": "historical-006829ae07a0#1",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Trump administration approval rating trends and demographic erosion"
+    },
+    {
+      "candidate_id": "historical-007f8dc85ee2#0",
+      "nexuses": ["politics"],
+      "confidence": "medium",
+      "reason": "Election law constraints on dual-ticket candidacy"
+    },
+    {
+      "candidate_id": "historical-00c3dfab837d#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Defense secretary character analysis and performative strength in MAGA ideology"
+    },
+    {
+      "candidate_id": "historical-00c9b43c13e9#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Comprehensive audit of Trump campaign promise failures and policy reversals"
+    },
+    {
+      "candidate_id": "historical-00cff7b8cef6#0",
+      "nexuses": ["autism_acceptance", "insight"],
+      "confidence": "high",
+      "reason": "Narrative prose transformation on acceptance and special-needs parenting journey"
+    },
+    {
+      "candidate_id": "historical-00d94eb33360#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Standalone financial market query with no substantive engagement to tracked projects"
+    },
+    {
+      "candidate_id": "historical-013b9ef5bd91#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile strategy and romantic partnership communication guidance"
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#0",
+      "nexuses": ["ora", "science", "technology"],
+      "confidence": "high",
+      "reason": "AI capability scaling limits and risk gate discussions; LLM architectural constraints"
+    },
+    {
+      "candidate_id": "historical-013ce55fb77f#4",
+      "nexuses": ["prompt_engineering", "insight"],
+      "confidence": "high",
+      "reason": "Expertise epistemology: mastery of failure modes as marker of competence"
+    },
+    {
+      "candidate_id": "historical-01765b2bcf54#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Electoral College distortion mechanism and voter-power inequity essay"
+    },
+    {
+      "candidate_id": "historical-0191b971a0e6#0",
+      "nexuses": ["american_jesus", "american_king", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Historical chivalry sources and virtue-code literature for character moral framework"
+    },
+    {
+      "candidate_id": "historical-01ac5996ac00#0",
+      "nexuses": ["property"],
+      "confidence": "high",
+      "reason": "Property owner rights against utility company easement abuse and vegetation removal"
+    },
+    {
+      "candidate_id": "historical-01adabd8e236#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Personal theme park pass benefits query with no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-01f1fc666e60#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Trump psychology analysis and institutional breakdown through denial patterns"
+    },
+    {
+      "candidate_id": "historical-01f1fc666e60#1",
+      "nexuses": ["politics", "american_king"],
+      "confidence": "high",
+      "reason": "Caligula historical parallel to autocratic collapse and accountability insulation"
+    },
+    {
+      "candidate_id": "historical-01f1fc666e60#2",
+      "nexuses": ["politics", "american_king"],
+      "confidence": "high",
+      "reason": "Post-autocratic reconstruction lessons from Germany and Iraq regime change"
+    },
+    {
+      "candidate_id": "historical-01f1fc666e60#3",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Judicial capture by partisan judges and institutional threats to democracy"
+    },
+    {
+      "candidate_id": "historical-02594ee29f08#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Virginia redistricting gerrymander analysis and Democratic seat gain assessment"
+    },
+    {
+      "candidate_id": "historical-02a67bad563d#0",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Relationship conflict: self-serving rationalization versus objective fairness"
+    },
+    {
+      "candidate_id": "historical-02b6ab5422a2#0",
+      "nexuses": ["main-street-independent"],
+      "confidence": "high",
+      "reason": "Delta Airlines AI surveillance pricing and corporate deception mechanisms"
+    },
+    {
+      "candidate_id": "historical-02d28805ec39#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Trump negotiation tells and threat escalation patterns as weakness indicators"
+    },
+    {
+      "candidate_id": "historical-02f0572023f5#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Sanctuary cities policy and federal-local resource diversion in immigration enforcement"
+    },
+    {
+      "candidate_id": "historical-030bc73a07c9#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General dental health Q&A with no substantive engagement to tracked projects"
+    },
+    {
+      "candidate_id": "historical-032d329b9e40#0",
+      "nexuses": ["technology", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "ChatGPT thread degradation and iPhone voice-dictation friction in AI workflow"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#2",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Group interaction dynamics in character matrix; Hayzeus and disciples scenes"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#7",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Character-theme integration evaluation framework for thematic alignment"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#9",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Character refinement evaluation framework for prose generation readiness"
+    },
+    {
+      "candidate_id": "historical-0348c750a65a#11",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Framework consolidation: thematic tracking integration decision and system design"
+    },
+    {
+      "candidate_id": "historical-034a8846c3e6#0",
+      "nexuses": ["politics", "we_too", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Consumer supply-chain harms and economic injustice in labor/environmental violations"
+    },
+    {
+      "candidate_id": "historical-036079b001e1#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Matthew Tax character arc and Pastor Gideon Ruleman antagonist introduction"
+    },
+    {
+      "candidate_id": "historical-036079b001e1#1",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Character Initiation Framework applied to Pastor Ruleman development"
+    },
+    {
+      "candidate_id": "historical-038b553ff683#0",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Tesla Model Y navigation voice assistant feature documentation"
+    },
+    {
+      "candidate_id": "historical-03e088f23cb7#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Gospel parable placement in narrative; Two Blind Men for Matthew-Thomas conversion"
+    },
+    {
+      "candidate_id": "historical-04140666edd9#0",
+      "nexuses": ["autism_acceptance", "insight", "relationships"],
+      "confidence": "high",
+      "reason": "Narrative transformation on anger in special-needs parenting and acceptance"
+    },
+    {
+      "candidate_id": "historical-0480b626e223#0",
+      "nexuses": ["politics", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Extrajudicial killings and national security accountability circumvention"
+    }
+  ]
+}

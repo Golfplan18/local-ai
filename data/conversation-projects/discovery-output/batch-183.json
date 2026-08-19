@@ -1,0 +1,11 @@
+{"batch": 183, "segments_read": 48, "works_found": 1, "works": [
+  {
+    "title": "The Year of Logical Thinking",
+    "kind": "essay-series",
+    "description": "An essay by L.E. Nápoles about the necessity of connecting dots and logical thinking in political discourse. Explores cognitive dissonance, the cost of not identifying enemies correctly, and the armor needed for survival in chaotic political/social environments.",
+    "development": "early",
+    "evidence_ids": ["historical-e2cf9ebd2526#0"],
+    "quote": "To survive this place—for your sanity to survive it anyway—is to play connect the dots. Too many dots, most say. I don't know which dots are real, many say.",
+    "possible_duplicate_of": ""
+  }
+]}

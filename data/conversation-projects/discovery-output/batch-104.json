@@ -1,0 +1,29 @@
+{"batch": 104, "works": [
+  {
+    "title": "Selling the Poor on Spending Like They're Rich: Plutonomy, Premiumization, and Social Media",
+    "kind": "essay-series",
+    "description": "Opinion essay analyzing wealth concentration, premiumization of consumer goods, and how social media pressure drives middle-class spending patterns through luxury consumption signals. Develops argument about the modern Gilded Age and distributional inequality.",
+    "development": "early",
+    "evidence_ids": ["historical-7ca503139e39#0"],
+    "quote": "We are living in a new Gilded Age... wealthy monopolists like bank tycoons and railroad barons saw their fortunes boom as the country industrialized, while the poor... [continue to be squeezed]",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Book Outline Restructuring Project: Knowledge Architecture Chapters",
+    "kind": "book",
+    "description": "Major restructuring of a multi-chapter book manuscript (40+ chapters) involving reorganization of chapters on knowledge architecture and Obsidian systems (Ch 39-40). Executing substantial surgical edits including chapter consolidation, renumbering, and cross-reference corrections throughout the manuscript.",
+    "development": "moderate",
+    "evidence_ids": ["historical-7cde2e6f3a16#0"],
+    "quote": "I'll build this as a complete restructured document. Given the size (~3,200 lines with extensive surgical changes throughout), I'll copy the original and work through systematic edits.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Public Domain Publishing Venture: Business Naming and Strategy",
+    "kind": "business",
+    "description": "Development of a publishing company focused on public-domain works with no rights reserved. User is creating naming strategy, exploring search keywords, and designing a gift-economy business model with optional donations and minimal markups, targeting users seeking freely available cultural content.",
+    "development": "early",
+    "evidence_ids": ["historical-7d528f780ba2#0"],
+    "quote": "I'm looking for a name for a publishing company I'm starting. It's going to be my brand. I plan to publish everything in the public domain with no rights reserved on any of it.",
+    "possible_duplicate_of": "Old Cypress Publishing"
+  }
+]}

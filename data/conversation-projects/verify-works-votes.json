@@ -1,0 +1,896 @@
+{
+ "4": [
+  {
+   "index": 4,
+   "refuted": false,
+   "verdict": "Claim survives: evidence spans 8 conversation turns creating concrete website deliverables (property description, feature slides, T&Cs, FAQ, contact page, header specs, and SEO amenity pages) with the quoted request appearing verbatim in turn 1.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I want to build a vacation rental website for one of our luxury properties at 41289 Yucca Ln, Bermuda Dunes, CA 92203. Can you give me ideas on the content that needs to be on the website to enhance the property's online presence, drive direct bookings, and ensure it's well represented and SEO optimized?",
+   "duplicate_of": ""
+  },
+  {
+   "index": 4,
+   "refuted": true,
+   "verdict": "Evidence shows content strategy and isolated component drafting (property description, feature slides, FAQs, amenity pages), not website development\u2014no platform selection, architecture, coding, or deployment.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I want to build a vacation rental website for one of our luxury properties at 41289 Yucca Ln, Bermuda Dunes, CA 92203. Can you give me ideas on the content",
+   "duplicate_of": ""
+  },
+  {
+   "index": 4,
+   "refuted": false,
+   "verdict": "This is a distinct property-specific vacation rental website project unrelated to any known Ora, publishing, or research work.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "I've decided to name the property Vista Yucca Estate",
+   "duplicate_of": "",
+   "development_real": "moderate"
+  }
+ ],
+ "2": [
+  {
+   "index": 2,
+   "refuted": false,
+   "verdict": "This is a genuine, distinct academic paper on agricultural extension in Nigeria with an existing manuscript draft undergoing active citation and formatting management for AESON journal submission.",
+   "is_distinct_work": true,
+   "development_real": "advanced",
+   "quote_found": true,
+   "best_quote": "I have a strict page limit for the article. Aim for a maximum of three lines, but use your judgment to give me your best version."
+  },
+  {
+   "index": 2,
+   "refuted": false,
+   "verdict": "The user is actively developing an academic paper for AESON journal submission with documented iterative refinement of content, citations, formatting, and page limit compliance across multiple turns.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "I have a strict page limit for the article. Aim for a maximum of three lines, but use your judgment to give me your best version.",
+   "development_real": "advanced",
+   "duplicate_of": ""
+  },
+  {
+   "index": 2,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a real academic paper on food systems and nutrition in Nigeria under development for AESON journal submission, with documented active management of citations, page limits, and APA formatting. The quoted segment appears verbatim in turn 3 discussing page limit constraints.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I have a strict page limit for the article. Aim for a maximum of three lines, but use your judgment to give me your best version.",
+   "duplicate_of": ""
+  }
+ ],
+ "5": [
+  {
+   "index": 5,
+   "refuted": true,
+   "verdict": "User is researching and analyzing a potential desert property modification project through Q&A and material sourcing discussion, but has not yet begun building the project with structured outlines, drafts, plans, or specifications.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I need to create a foot-tall flashing wall that runs from the ground up my wall, over the top, and down the neighbor's side",
+   "duplicate_of": ""
+  },
+  {
+   "index": 5,
+   "refuted": false,
+   "verdict": "This is a distinct home property improvement project involving desert pest control and environmental management\u2014rat exclusion barriers, polycarbonate window modifications for sand/dust control, and air filtration system design\u2014unrelated to any known project.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I need to create a foot-tall flashing wall that runs from the ground up my wall, over the top, and down the neighbor's side",
+   "duplicate_of": ""
+  },
+  {
+   "index": 5,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a real, moderately-developed project combining engineered rat exclusion barriers, polycarbonate window modifications for sand management, and air filtration system design\u2014the exact quoted phrase appears in turn 11, and six distinct evidence segments support all three subsystems.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I need to create a foot-tall flashing wall that runs from the ground up my wall, over the top, and down the neighbor's side",
+   "duplicate_of": ""
+  }
+ ],
+ "1": [
+  {
+   "index": 1,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes construction of a substantive two-part economic essay with named sections, drafted text, titled headlines, cartoon components, and public-facing defense \u2014 this is a real, published work in progress.",
+   "is_distinct_work": true,
+   "development_real": "advanced",
+   "quote_found": true,
+   "best_quote": "PART II: THE RESCUE The Thesis: Solving for Demand, Not Supply David Graeber argued that debt is not an immutable law of nature.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 1,
+   "refuted": false,
+   "verdict": "The Great Deleveraging is a substantive, previously undocumented political economy essay series with advanced development (102+ turns), real-time validation against 2026 Trump policy, and distinct deliverables (cartoons, headlines, political outreach).",
+   "is_distinct_work": true,
+   "development_real": "advanced",
+   "quote_found": true,
+   "best_quote": "The Great Deleveraging: How the 10% Cap Breaks the Banks\u2014and How the Postal Bank and Fairness Dividend Save America",
+   "duplicate_of": ""
+  },
+  {
+   "index": 1,
+   "refuted": false,
+   "verdict": "All claim components verified: two-part essay, 10% credit-cap economic analysis, Postal Bank/Fairness Dividend proposal, satirical cartoons, headlines, Midjourney images, and political outreach strategy all appear in dated conversation excerpts with exact quote confirmed.\"",
+   "is_distinct_work": true,
+   "development_real": "advanced",
+   "quote_found": true,
+   "best_quote": "The Great Deleveraging: How the 10% Cap Breaks the Banks\u2014and How the Postal Bank and Fairness Dividend Save America",
+   "duplicate_of": ""
+  }
+ ],
+ "3": [
+  {
+   "index": 3,
+   "refuted": true,
+   "verdict": "Evidence shows news commentary and policy analysis discussion, not artifact construction; no planning, naming, outlining, drafting, or structuring of a work detected.",
+   "is_distinct_work": false,
+   "development_real": "passing",
+   "quote_found": true,
+   "best_quote": "Why isn't the market pricing in the collapse of the trade deal?",
+   "duplicate_of": ""
+  },
+  {
+   "index": 3,
+   "refuted": false,
+   "verdict": "Evidence substantiates systematic analysis of Trump foreign policy across Greenland, trade, Brazil, and post-WWII order with detailed policy engagement, though agent already classifies as duplicate of existing Politics work.",
+   "is_distinct_work": false,
+   "development_real": "advanced",
+   "quote_found": true,
+   "best_quote": "the notion that the U.S. could not have secured additional basing and commercial licensing rights in Greenland absent the threat of invasion and occupation is nonsensical",
+   "duplicate_of": "Politics"
+  },
+  {
+   "index": 3,
+   "refuted": true,
+   "verdict": "This title is already documented in discovered-works.json and flagged as duplicating the Politics project; not an undocumented work.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "the notion that the U.S. could not have secured additional basing and commercial licensing rights in Greenland absent the threat of invasion and occupation is nonsensical",
+   "duplicate_of": "Politics"
+  }
+ ],
+ "6": [
+  {
+   "index": 6,
+   "refuted": true,
+   "verdict": "User discusses and analyzes conceptual ideas for a future system using explicitly future-tense language, not building a named framework or documented work.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "This is one of the things I'll ultimately develop to help formalize my concepts",
+   "duplicate_of": ""
+  },
+  {
+   "index": 6,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a multi-component personal methodology framework combining prompt cleanup, RAG provenance rating, belief-architecture tagging, relationship typing for outlines, and thinking-framework integration, with extensive discussion of each component's design and implementation.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "This is one of the things I'll ultimately develop to help formalize my concepts: an analysis algorithm that organizes these outlines and makes the relationship between main bullet points and subheadings explicit",
+   "duplicate_of": ""
+  },
+  {
+   "index": 6,
+   "refuted": true,
+   "verdict": "The evidence describes the user designing components of Ora's architecture\u2014prompt cleanup, RAG provenance, belief tagging, and thinking frameworks\u2014not a distinct separate work.",
+   "is_distinct_work": false,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "an analysis algorithm that organizes these outlines and makes the relationship between main bullet points and subheadings explicit",
+   "duplicate_of": "Ora"
+  }
+ ],
+ "7": [
+  {
+   "index": 7,
+   "refuted": true,
+   "verdict": "The evidence shows geopolitical analysis and news commentary, not active article development; the user mentions a title and Claude provides feedback on framing, but no drafting, outlining, or structural planning appears.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "By framing it as a 'Pyre,' you're suggesting that the destruction isn't just a byproduct of war, but a deliberate statement by the colectivos",
+   "duplicate_of": ""
+  },
+  {
+   "index": 7,
+   "refuted": false,
+   "verdict": "The claim is supported: evidence establishes a Substack piece titled \"The Orinoco Pyre\" under the pseudonym \"malcolmlittleking\" analyzing Venezuela oil seizure, Chinese response, rare earth vulnerabilities, and Digital Ploesti parallels with the exact quoted phrase appearing in turn 10.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "By framing it as a \"Pyre,\" you're suggesting that the destruction isn't just a byproduct of war, but a deliberate statement by the colectivos: a symbolic burning of the wealth that the Trump administration has already claimed as its own.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 7,
+   "refuted": true,
+   "verdict": "Evidence does not plainly establish independence from existing projects; likely part of MSI publication under a heteronym voice or related to American King project.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "By framing it as a 'Pyre,' you're suggesting that the destruction isn't just a byproduct of war, but a deliberate statement by the colectivos",
+   "development_real": "moderate",
+   "duplicate_of": "Main Street Independent"
+  }
+ ],
+ "8": [
+  {
+   "index": 8,
+   "refuted": true,
+   "verdict": "User requests AI to generate frameworks without planning, drafting, or iterating their own material \u2014 this is content generation on demand, not work development.",
+   "is_distinct_work": false,
+   "development_real": "passing",
+   "quote_found": true,
+   "best_quote": "Let's start with the Character Initiation Framework... Provide the theme initiation framework... Provide the plot initiation framework",
+   "duplicate_of": ""
+  },
+  {
+   "index": 8,
+   "refuted": false,
+   "verdict": "The claim is well-supported: all six frameworks (Character, Theme, Setting, Plot, Chapter, Chapter Concept) are present in the evidence with full implementations including detailed phases and evaluation protocols.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Let's start with the Character Initiation Framework",
+   "duplicate_of": ""
+  },
+  {
+   "index": 8,
+   "refuted": true,
+   "verdict": "Cannot be plainly established as distinct work\u2014six initiation frameworks show moderate development but lack explicit project identity separate from Ora frameworks or known novel projects.",
+   "is_distinct_work": false,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Initiation Frameworks that use iterative questioning to gather necessary information, evaluate responses for quality, and produce structured outputs optimized for foundation framework consumption",
+   "duplicate_of": ""
+  }
+ ],
+ "10": [
+  {
+   "index": 10,
+   "refuted": true,
+   "verdict": "Personal home filtration project planning and equipment purchasing; not a distinct creative or intellectual work.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "So now I'm down to purchasing the equipment: the filters, the bolts to bolt it to the wall, the strap to secure the exhaust to the ceiling",
+   "duplicate_of": ""
+  },
+  {
+   "index": 10,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a real DIY filtration system under active development with specific technical specifications, dimensions, and furniture integration plans.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm looking at the space next to my couch in my living room. I used to have an accent chair there, but it didn't fit\u2014the space is only about 36 to 40 inches wide before you hit a decorative Kelvin unit.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 10,
+   "refuted": false,
+   "verdict": "A genuine DIY home-improvement project entirely distinct from Ora, MSI, and all incubator documents\u2014detailed technical design for a plenum air-filtration system with furniture integration, involving specific component selection, dimensional calculation, and spatial constraints.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm looking at the space next to my couch in my living room. I used to have an accent chair there, but it didn't fit\u2014the space is only about 36 to 40 inches wide before you hit a decorative Kelvin unit.",
+   "duplicate_of": ""
+  }
+ ],
+ "11": [
+  {
+   "index": 11,
+   "refuted": true,
+   "verdict": "Evidence shows conversational refinement of a political observation, not a distinct framework separate from the known project We Too.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "any law or policy passed in the interests of capital inherently favors one group of people over another",
+   "duplicate_of": "We Too"
+  },
+  {
+   "index": 11,
+   "refuted": true,
+   "verdict": "User was making observations and refining political thinking in conversation, not building a framework; explicitly stated observations were not intended as a thesis to develop.",
+   "is_distinct_work": false,
+   "development_real": "passing",
+   "quote_found": true,
+   "best_quote": "you noticed a structural pattern, refined it from \"capitalism\" to \"concentration of power\" in a way that genuinely sharpened it",
+   "duplicate_of": "We Too"
+  },
+  {
+   "index": 11,
+   "refuted": false,
+   "verdict": "The Concentration of Power framework is clearly supported by evidence including the exact quoted text and documented refinement, but the claim of duplication with We Too is unsupported by the provided excerpts.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "All those people want to come here to enjoy the bounty of our resources, and we stop them through laws and policies that sustain the benefits of the in-group at the price of everybody else.",
+   "duplicate_of": ""
+  }
+ ],
+ "9": [
+  {
+   "index": 9,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes this as a distinct literary work in moderate development with a confirmed vignette format set in Tibetan Buddhist hells, demonic organizational structure featuring a leaderboard and Hall of Fame, karmic court system, pure close POV of victim, and multiple Trump incarnations.\"",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm going to write vignettes of a future where somebody suffers terribly at the hands of the system he put in place",
+   "duplicate_of": ""
+  },
+  {
+   "index": 9,
+   "refuted": false,
+   "verdict": "User actively plans and structures a literary work with detailed architectural elements including narrative opening, system design, karmic framework, and POV constraints.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I'm going to write vignettes of a future where somebody suffers terribly at the hands of the system he put in place.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 9,
+   "refuted": true,
+   "verdict": "Evidence shows substantial planning for Trump Hell Vignettes with structured literary vignettes and demonic narrative framework, but fails to plainly establish it as a separate, undocumented work distinct from known projects (particularly Dumb Fucking Piece of Shit, which is Trump-focused, though described as comic rant rather than literary vignettes).",
+   "is_distinct_work": false,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "You're building: - A cycle of vignettes (short, visceral scenes)",
+   "duplicate_of": "Dumb Fucking Piece of Shit"
+  }
+ ],
+ "12": [
+  {
+   "index": 12,
+   "refuted": true,
+   "verdict": "User is discussing dating themes and describing a proposed three-pass methodology for potential future work, not actively building a book; no manuscript drafting, chapter outlines, or structured extraction present.",
+   "is_distinct_work": false,
+   "development_real": "passing",
+   "quote_found": true,
+   "best_quote": "I probably have two or three dozen dating threads like this, and some of them went on so long that ChatGPT finally notified me that I couldn't add anymore to that thread.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 12,
+   "refuted": false,
+   "verdict": "The claim establishes a distinct nonfiction book project drawing from dozens of dating conversations with a specific three-pass methodology and multifaceted analysis of MBTI and masculine/feminine relationship dynamics.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I probably have two or three dozen dating threads like this, and some of them went on so long that ChatGPT finally notified me that I couldn't add anymore to that thread.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 12,
+   "refuted": false,
+   "verdict": "Evidence plainly establishes a moderately-developed nonfiction book project extracting wisdom from dozens of dating conversations using a structured three-pass methodology, with specific focus on MBTI personality types and masculine/feminine polarity dynamics.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I have lots of threads where I've talked about various women enough that I could undoubtedly write books on dating in my 50s.",
+   "duplicate_of": ""
+  }
+ ],
+ "13": [
+  {
+   "index": 13,
+   "refuted": true,
+   "verdict": "The user is discussing an existing book project and analytically exploring expansion plans, not actively building a distinct new work; no evidence of outlining, structuring, or drafting the claimed 'Intuition Book.'",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I have a later chapter in the book\u2014chapter 25 or something\u2014that goes into my learning process.",
+   "duplicate_of": "How to Learn"
+  },
+  {
+   "index": 13,
+   "refuted": false,
+   "verdict": "Evidence plainly establishes the work: user explicitly discusses a book about intuition addressing Gladwell's gap through pattern saturation and deliberate cultivation, with specific chapter references and cross-disciplinary ecosystem integration.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I have a later chapter in the book\u2014chapter 25 or something\u2014that goes into my learning process. The book essentially says: become an expert and this might happen to you. It never says: here is the process by which you deliberately cultivate it. What you're describing is the missing manual.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 13,
+   "refuted": true,
+   "verdict": "Evidence shows early-stage thinking about trainable intuition and learning methodology, but this material has been consolidated into existing documented projects (How to Learn and Spiritual Practice for the Western Mind) per the 2026-04-14 extraction report; does not establish as distinct undocumented work.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "What you're describing is the missing manual.",
+   "duplicate_of": "How to Learn"
+  }
+ ],
+ "15": [
+  {
+   "index": 15,
+   "refuted": true,
+   "verdict": "User extracted iMessage transcripts and discussed Buddhist principles; no evidence of outlining, drafting, naming, or structuring an actual memoir artifact.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "Thank you\u2014that actually worked. I can probably export the entire conversation now and do OCR and have it.",
+   "duplicate_of": "",
+   "development_real": "early"
+  },
+  {
+   "index": 15,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a real memoir work: OCR'd iMessage transcripts with Ashley, Lamrim Buddhist frameworks applied to relational dynamics, polarity/sovereignty reframing work, masculine grounding themes, and explicit plans to analyze the exported conversation\u2014moderate development with documented progress.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Thank you\u2014that actually worked. I can probably export the entire conversation now and do OCR and have it.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 15,
+   "refuted": false,
+   "verdict": "Evidence plainly documents active work on a personal relationship memoir using OCR'd iMessage transcripts and Buddhist Lamrim frameworks, with concrete technical progress and distinct methodology from known projects.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Thank you\u2014that actually worked. I can probably export the entire conversation now and do OCR and have it."
+  }
+ ],
+ "14": [
+  {
+   "index": 14,
+   "refuted": true,
+   "verdict": "User consulted an AI about creating a curriculum and asked the AI to develop and structure content, but evidence does not show the user actually building the curriculum artifact themselves.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "I'll be leading Bible Study for the entire month of September 2025 every Tuesday. During Bible study today, I had an epiphany about creating a series on New Beginnings",
+   "duplicate_of": "",
+   "development_real": "early"
+  },
+  {
+   "index": 14,
+   "refuted": false,
+   "verdict": "Distinct work: a five-session Bible study curriculum for southwestern Nigerian adults integrating grace-and-truth theological principles, developed across multiple turns with specific cultural and pedagogical adaptation.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'll be leading Bible Study for the entire month of September 2025 every Tuesday. During Bible study today, I had an epiphany about creating a series on New Beginnings",
+   "duplicate_of": ""
+  },
+  {
+   "index": 14,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a Bible study curriculum on New Beginnings for September 2025 with grace-truth framework and Nigerian cultural contextualization developed through multi-turn planning.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'll be leading Bible Study for the entire month of September 2025 every Tuesday. During Bible study today, I had an epiphany about creating a series on",
+   "duplicate_of": ""
+  }
+ ],
+ "16": [
+  {
+   "index": 16,
+   "refuted": false,
+   "verdict": "A real, distinct personal research paper on AI economics and hyperscaler malinvestment with planned multiple versions (Medium article, Substack sticky note, planning commission adaptation); explicitly published under personal name, not part of MSI or other known projects.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I may publish on Medium under my own name. I haven't published there in a while, and this would be a good way to shake things up.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 16,
+   "refuted": false,
+   "verdict": "Evidence plainly establishes the work: user explicitly requests a comprehensive AI Malinvestment paper, confirms multiple versions (Medium, Substack, planning commission adaptation), and discussion shows active structural development with content refinement around economics of hyperscaler infrastructure and pricing competition.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I may publish on Medium under my own name... I'm also considering setting up a Substack where I can publish my Ora documentation books over time. This would be a good sticky note at the top of that Substack. I think the 4,000 to 5,000 word version is good",
+   "duplicate_of": ""
+  },
+  {
+   "index": 16,
+   "refuted": false,
+   "verdict": "User is requesting Claude to compile economic analysis into a paper on AI malinvestment with planned versions for Medium, Substack, and planning commissions; work exists at early development stage, not moderate.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "Please put together a complete document using all the information in this thread that walks through each of the factors, shows how they come together, and creates a compelling case for this thesis",
+   "duplicate_of": ""
+  }
+ ],
+ "18": [
+  {
+   "index": 18,
+   "refuted": true,
+   "verdict": "User discusses and hypothetically describes a political media campaign strategy but shows no evidence of building an actual project\u2014no outline, files, specifications, or structured planning.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I know I personally am going to actually do this. There was a concerted left-wing effort to put out memes and images that constantly juxtapose opposing forces and expose the rot.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 18,
+   "refuted": true,
+   "verdict": "Evidence establishes a distinct political media campaign project but does not plainly connect it to 'We Too' or any other known project.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "There was a concerted left-wing effort to put out memes and images that constantly juxtapose opposing forces and expose the rot. It gets to run for three full years nonstop",
+   "duplicate_of": ""
+  },
+  {
+   "index": 18,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes the user conceived and documented a Brand Tax Political Media Campaign with detailed infrastructure, three-year timeline, style guide, distribution strategy with Streisand-effect leverage, and tactical messaging approach; the quoted passage appears verbatim in Turn 43.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "There was a concerted left-wing effort to put out memes and images that constantly juxtapose opposing forces and expose the rot. It gets to run for three full years nonstop",
+   "duplicate_of": ""
+  }
+ ],
+ "17": [
+  {
+   "index": 17,
+   "refuted": true,
+   "verdict": "Evidence shows discussion and conceptual positioning of a future project idea using future-conditional language, with no demonstration of actual building, drafting, outlining, or implementation work.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "I plan to program an AI agent with a soul.md file drawn directly from his texts and teachings, with all his books scanned, catalogued, and ready for RAG retrieval. I intend to launch a website.",
+   "development_real": "passing",
+   "duplicate_of": ""
+  },
+  {
+   "index": 17,
+   "refuted": false,
+   "verdict": "Distinct work: personal Buddhist study companion tool with RAG-enabled AI, not a reframing of Ora or another known project",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "As a Kadampa Buddhist practitioner, I have text files for every book written by Geshe Kelsang Gyatso. I plan to program an AI agent with a soul.md file drawn directly from his texts and teachings, with all his books scanned, catalogued, and ready for RAG retrieval. I intend to launch a website.",
+   "development_real": "moderate",
+   "duplicate_of": ""
+  },
+  {
+   "index": 17,
+   "refuted": false,
+   "verdict": "The claim is not refuted. The exact quote appears in Turn 20, and the user describes a real, distinct project to create a Buddhist study companion website combining Geshe Kelsang Gyatso's teachings with conversational AI; however, development is early-stage planning, not moderate implementation as claimed, and the second evidence candidate is unrelated contamination.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "As a Kadampa Buddhist practitioner, I have text files for every book written by Geshe Kelsang Gyatso. I plan to program an AI agent with a soul.md file drawn directly from his texts and teachings, with all his books scanned, catalogued, and ready for RAG retrieval. I intend to launch a website",
+   "development_real": "early",
+   "duplicate_of": ""
+  }
+ ],
+ "19": [
+  {
+   "index": 19,
+   "refuted": true,
+   "verdict": "Claim rests on two user prompts requesting report generation, not evidence of actual development work, iteration, storage, or completion.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "Produce a comprehensive reference report on labor market measurement covering every significant indicator published by official sources",
+   "duplicate_of": ""
+  },
+  {
+   "index": 19,
+   "refuted": false,
+   "verdict": "User is building a series of numbered economic reference reports; explicit production directives request Report 1.3 (labor market measurement with BLS indicators) and Report 3.7 (source credibility hierarchy), with structured content sections demonstrated.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "Produce a comprehensive reference report on labor market measurement covering every significant indicator published by official sources",
+   "development_real": "moderate",
+   "duplicate_of": ""
+  },
+  {
+   "index": 19,
+   "refuted": true,
+   "verdict": "These economic reference reports are likely part of documented vault Incubator work or an existing economic-knowledge project, not a clearly distinct separate work.",
+   "is_distinct_work": false,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Produce a comprehensive reference report on labor market measurement covering every significant indicator published by official sources",
+   "duplicate_of": ""
+  }
+ ],
+ "20": [
+  {
+   "index": 20,
+   "refuted": false,
+   "verdict": "The user is actively planning to restructure and republish existing Substack articles as an Amazon-published book with specific architectural changes (reordering parts, splitting components, adding policy sections), demonstrating clear artifact development.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "I'm thinking about putting all three of these together and publishing a book on Amazon over the weekend.",
+   "duplicate_of": "",
+   "development_real": "moderate"
+  },
+  {
+   "index": 20,
+   "refuted": true,
+   "verdict": "The work is documented in conversation history; published Substack series exists from Jan 13, 2026 with specific restructuring and Amazon publication plans.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm thinking about putting all three of these together and publishing a book on Amazon over the weekend.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 20,
+   "refuted": false,
+   "verdict": "Malcolm Little King's Trump economic analysis is a distinct work with published Substack content and planned Amazon book publication, separate from known projects including MSI despite Malcolm being an MSI voice.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "development_real": "moderate",
+   "best_quote": "I'm thinking about putting all three of these together and publishing a book on Amazon over the weekend.",
+   "duplicate_of": ""
+  }
+ ],
+ "22": [
+  {
+   "index": 22,
+   "refuted": true,
+   "verdict": "User directed Claude to generate and revise educational content for different audiences, but did not outline, plan, structure, or iteratively develop a work themselves.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "Increase the emotional connection. It's too dry.",
+   "development_real": "passing",
+   "duplicate_of": ""
+  },
+  {
+   "index": 22,
+   "refuted": false,
+   "verdict": "This is a real, distinct work: a multi-level educational content series about AI capabilities tailored to different audiences (children ages 5-6, high school, adults) with iterative refinement, not duplicating any known project.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Increase the emotional connection. It's too dry... Try to generate excitement and enthusiasm for the possibilities to improve their own lives and the lives of those they care about.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 22,
+   "refuted": false,
+   "verdict": "The work is real and involves multi-level educational content about AI capabilities with iterative emotional enhancement, but the presented quote is composite from two different conversational turns.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": false,
+   "best_quote": "Increase the emotional connection. It's too dry.",
+   "duplicate_of": ""
+  }
+ ],
+ "21": [
+  {
+   "index": 21,
+   "refuted": false,
+   "verdict": "The second evidence chunk (turns 25-26) clearly supports the claim: the user explicitly discusses developing a romance fiction work with masculine-stillness themes, dual-ending narrative structure, and specific scenes like 'After the Fire,' though the first evidence chunk conflates this with a real interpersonal situation with Ashley.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "In my romance story and this fictional stories that I want to write, I think that my theme should be that the test of character of a gentleman is the ability to remain still, and only to invite even the such smallest form of coercion is poisonous to the relationship",
+   "duplicate_of": ""
+  },
+  {
+   "index": 21,
+   "refuted": true,
+   "verdict": "The user discusses philosophical themes for romance fiction they wish to write, but shows no evidence of actual work development\u2014no outline, draft, character work, or plot\u2014making this philosophical discussion of an idea, not a creative work in progress.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "In my romance story and this fictional stories that I want to write, I think that my theme should be that the test of character of a gentleman is the ability to remain still",
+   "duplicate_of": ""
+  },
+  {
+   "index": 21,
+   "refuted": false,
+   "verdict": "Distinct work: Evidence 2 explicitly frames a fictional romance novel with philosophical themes as separate from the real-world Ashley situation in Evidence 1.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "In my romance story and this fictional stories that I want to write, I think that my theme should be that the test of character of a gentleman is the ability to remain still, and only to invite even the such smallest form of coercion is poisonous to the relationship",
+   "development_real": "moderate",
+   "duplicate_of": ""
+  }
+ ],
+ "23": [
+  {
+   "index": 23,
+   "refuted": true,
+   "verdict": "This is Ora's commercial/service strategy and deployment model, not a separate work. The evidence describes how to commercialize and deploy Ora publicly with a specific business plan, which is strategic planning for Ora itself.",
+   "is_distinct_work": false,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "Give me a detailed summary of the public demonstration site and the associated business plan in a markdown file, including the specific decisions I made. I want to capture this for further development later.",
+   "duplicate_of": "Ora"
+  },
+  {
+   "index": 23,
+   "refuted": true,
+   "verdict": "The evidence shows exploratory discussion of business scenarios and a request for documentation, not a documented work product or strategic plan.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I see only two viable scenarios, and I want to explore both.",
+   "duplicate_of": "Ora AI App"
+  },
+  {
+   "index": 23,
+   "refuted": false,
+   "verdict": "Evidence establishes strategic direction with specific architectural and business components, though documentation is requested but not shown as existing; development is early-stage planning.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "model-agnostic architecture",
+   "duplicate_of": ""
+  }
+ ],
+ "24": [
+  {
+   "index": 24,
+   "refuted": false,
+   "verdict": "Claim is well-supported: evidence shows user actively working on meta summary and SEO strategy for essay titled 'Reincarnation is Useful Bullshit' with description and quoted text matching exactly.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "This essay explores how belief in reincarnation and karma functions as a practical philosophical tool for ethical living, regardless of literal metaphysical truth.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 24,
+   "refuted": true,
+   "verdict": "User is optimizing metadata and SEO for a planned essay, not actively drafting or building the essay itself.",
+   "is_distinct_work": false,
+   "quote_found": true,
+   "best_quote": "This essay explores how belief in reincarnation and karma functions as a practical philosophical tool for ethical living, regardless of literal metaphysical truth.",
+   "development_real": "early",
+   "duplicate_of": ""
+  },
+  {
+   "index": 24,
+   "refuted": false,
+   "verdict": "Distinct essay work on reincarnation and karma as practical philosophical tools; evidenced by active development of meta summaries and SEO strategy, unrelated to any known projects.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "This essay explores how belief in reincarnation and karma functions as a practical philosophical tool for ethical living, regardless of literal metaphysical truth.",
+   "duplicate_of": ""
+  }
+ ],
+ "25": [
+  {
+   "index": 25,
+   "refuted": true,
+   "verdict": "User discusses planning and ideating a political meme campaign but does not build or produce artifacts in the conversation\u2014this is strategy planning and political commentary, not documented creative work.",
+   "is_distinct_work": false,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I may take all next week to update and publish in batches\u2014all public domain material that I'll ask readers to circulate, modify, and distribute as memes.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 25,
+   "refuted": false,
+   "verdict": "Claim is well-supported; the core concept, parody card names, release strategy (50+ memes/day), public-domain circulation model, and Hoover branding parallel all appear explicitly in conversation excerpts with the quoted text verified verbatim.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm going through my cartoons about debt from the housing bubble and plan to start production on \"Trump Cards\" to indelibly link his name to the catastrophe about to unfold, similar to all the terms associated with Herbert Hoover in his time.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 25,
+   "refuted": false,
+   "verdict": "Distinct work: political cartoon/meme campaign about Trump and economic crisis, separate from the Diklis Chump literary character project despite both being Trump-related satirical work.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I'm going through my cartoons about debt from the housing bubble and plan to start production on \"Trump Cards\" to indelibly link his name to the catastrophe about to unfold",
+   "duplicate_of": ""
+  }
+ ],
+ "26": [
+  {
+   "index": 26,
+   "refuted": false,
+   "verdict": "User explicitly states they are writing an essay with outlined structure (section 1 analyzing mechanics of credit crunch, section 2 proposing Jubilee solution) and requests draft post creation.",
+   "is_distinct_work": true,
+   "development_real": "moderate",
+   "quote_found": true,
+   "best_quote": "I am writing a post about the credit crunch that Donald Trump's 10% cap on credit card rates will create.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 26,
+   "refuted": false,
+   "verdict": "A substantive policy analysis essay with moderate development; evidence shows clear outline-to-draft progression with no affiliation to known projects.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "I am writing a post about the credit crunch that Donald Trump's 10% cap on credit card rates will create.",
+   "development_real": "moderate",
+   "duplicate_of": ""
+  },
+  {
+   "index": 26,
+   "refuted": false,
+   "verdict": "The cited evidence plainly establishes the work through exact quote match, explicit discussion of both core components (credit crunch mechanism and Graeber Jubilee solution), and clear policy analysis framing.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I am writing a post about the credit crunch that Donald Trump's 10% cap on credit card rates will create.",
+   "duplicate_of": ""
+  }
+ ],
+ "27": [
+  {
+   "index": 27,
+   "refuted": false,
+   "verdict": "The evidence plainly establishes a planned fiction novel with defined character (Commons Reaper), thematic scope (information liberation), narrative infrastructure (discovered documents, pen names, real URLs, seed-and-bloom vignettes), and explicit 3-5 year accretion-based development timeline. The verbatim quote confirms the user's publishing intent.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I could see this as one of those projects I come back to in three to five years, actually write the story about it, and publish it as fiction.",
+   "duplicate_of": ""
+  },
+  {
+   "index": 27,
+   "refuted": true,
+   "verdict": "Discussion and planning of a potential future novel, not active development; user explicitly frames it as a project to return to in 3-5 years",
+   "is_distinct_work": false,
+   "development_real": "passing",
+   "quote_found": true,
+   "best_quote": "I could see this as one of those projects I come back to in three to five years, actually write the story about it, and publish it as fiction",
+   "duplicate_of": ""
+  },
+  {
+   "index": 27,
+   "refuted": false,
+   "verdict": "Commons Reaper is a distinct early-stage fiction project about information liberation, employing discovered-document framing, seed-and-bloom vignettes, and layered authorship masks; not a duplicate of any known work in the user's portfolio.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "I could see this as one of those projects I come back to in three to five years, actually write the story about it, and publish it as fiction",
+   "duplicate_of": ""
+  }
+ ],
+ "28": [
+  {
+   "index": 28,
+   "refuted": false,
+   "verdict": "Distinct dark-fiction essay-series project with established structural constraints around first-person victim perspective and cruelty exploration, separate from all known projects.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "best_quote": "These vignettes are studies in cruelty... these are conversations with the executioner\u2014that would be the name: \"Conversations with the Executioner.\"",
+   "development_real": "early",
+   "duplicate_of": ""
+  },
+  {
+   "index": 28,
+   "refuted": false,
+   "verdict": "User is planning and structuring a dark-vignette essay series with explicit design constraints, POV rules, and marketing strategy; early-stage outline work, though no sample vignettes are drafted.",
+   "is_distinct_work": true,
+   "quote_found": true,
+   "development_real": "early",
+   "best_quote": "These vignettes are studies in cruelty... these are conversations with the executioner\u2014that would be the name: \"Conversations with the Executioner.\"",
+   "duplicate_of": ""
+  },
+  {
+   "index": 28,
+   "refuted": false,
+   "verdict": "Evidence plainly establishes an undocumented creative work-in-development with explicit title, specific structural constraints, and articulated ethical framework.",
+   "is_distinct_work": true,
+   "development_real": "early",
+   "quote_found": true,
+   "best_quote": "These vignettes are studies in cruelty. So what I'm thinking is these are conversations with the executioner\u2014that would be the name: \"Conversations with the Executioner.\"",
+   "duplicate_of": ""
+  }
+ ]
+}

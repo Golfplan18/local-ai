@@ -1,0 +1,38 @@
+{"batch": 27, "works": [
+  {
+    "title": "Aura",
+    "kind": "product",
+    "description": "A software coding project the user has been developing intensively for three months. Aura is architected to support independent projects that can borrow code for execution (MSI is implemented as one such project). The user is exploring natural language programming as an abstraction layer, identifying it as a viable new computing paradigm enabled by AI.",
+    "development": "advanced",
+    "evidence_ids": ["historical-236562c25855#0", "historical-236562c25855#1"],
+    "quote": "Aura—there's the project name. I've been spending the last three months, hours a day, coding on this thing",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Media Grift Book",
+    "kind": "novel",
+    "description": "A satirical novel proposed within the American Jesus/CHUMP shared universe, featuring a media grifter character navigating the Trump media ecosystem and descending into complicity. Structured episodically as a newsroom day-in-the-life spiraling into madness, with tone described as black comedy bordering on horror. Thematically connects to Hayzeus's warnings about institutional corruption.",
+    "development": "early",
+    "evidence_ids": ["historical-23feb2daef06#0"],
+    "quote": "This book should be *black comedy bordering on horror*—a descent into media nihilism",
+    "possible_duplicate_of": "Diklis Chump"
+  },
+  {
+    "title": "Congressional Complicity Book",
+    "kind": "novel",
+    "description": "A novel proposed within the CHUMP universe focused on Republican House and Senate figures, depicting sycophancy, cowardice, performative resistance, and donor worship. Part of the broader multi-book universe the user is developing alongside American Jesus, American Judas, American King, and the Media Grift Book.",
+    "development": "early",
+    "evidence_ids": ["historical-23feb2daef06#0"],
+    "quote": "Republican House & Senate figures - Depict sycophancy, cowardice, performative resistance, donor worship",
+    "possible_duplicate_of": "Diklis Chump"
+  },
+  {
+    "title": "International Comparative Distributional Data Report",
+    "kind": "paper",
+    "description": "A reference report (labeled Report 3.5) covering international comparative data on income and wealth distribution. Includes methodology assessment for OECD, Luxembourg Income Study, World Inequality Database, Eurostat, Our World in Data, and WHO datasets, with detailed analysis of comparability issues in infant mortality and life expectancy data across countries.",
+    "development": "moderate",
+    "evidence_ids": ["historical-248913f7437c#0"],
+    "quote": "Report 3.5: International Comparative Distributional Data Produce a reference report on international comparative data for U.S. distributional reporting",
+    "possible_duplicate_of": ""
+  }
+]}

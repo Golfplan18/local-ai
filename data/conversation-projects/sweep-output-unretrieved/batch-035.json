@@ -1,0 +1,245 @@
+{
+  "batch": 35,
+  "placements": [
+    {
+      "candidate_id": "historical-59b51daa675a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "UFO investigations and government suppression; no project engagement."
+    },
+    {
+      "candidate_id": "historical-59b5d1c7e1c2#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Hardware troubleshooting and cable identification; technology exploration for daily improvement."
+    },
+    {
+      "candidate_id": "historical-59b5d1c7e1c2#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "USB-C display diagnostics and hardware problem-solving; technology enhancement work."
+    },
+    {
+      "candidate_id": "historical-59b5d1c7e1c2#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Thunderbolt cable sourcing and spec research; technology tool evaluation."
+    },
+    {
+      "candidate_id": "historical-59b5d1c7e1c2#3",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Cable verification and Mac capability assessment; technology problem-solving."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#3",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Culture as ego mechanism; explores self-inflicted suffering through collective delusion and social identity."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#4",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Teaching on Samsara, desire-satisfaction, consciousness; deepening personal understanding of suffering."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#5",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Examining schadenfreude and ego's role in witnessing others' downfall; consciousness exploration."
+    },
+    {
+      "candidate_id": "historical-59ca8e3d5150#23",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Defining resonance as diagnostic tool; mapping consciousness through chakra system."
+    },
+    {
+      "candidate_id": "historical-59d6fb67d9cb#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Drafting American Jesus Act 1, Chapter 14; direct manuscript work on the trilogy."
+    },
+    {
+      "candidate_id": "historical-5a1683608d61#0",
+      "nexuses": ["expanding_awareness"],
+      "confidence": "medium",
+      "reason": "Easter egg hunt answer sets drawing from cosmology themes; narrative puzzle work."
+    },
+    {
+      "candidate_id": "historical-5a1c882cc376#0",
+      "nexuses": ["image_generation"],
+      "confidence": "high",
+      "reason": "AI image generation for dark arts/politician imagery; craft of visual creation with AI tools."
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#0",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Custom desktop extension design with materials engineering; technology enhancement for daily workspace."
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#1",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Metal cantilever design and structural planning for desktop; technology tool development."
+    },
+    {
+      "candidate_id": "historical-5a2daca810e7#2",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Perforated metal selection for desktop and air filtration; technology material evaluation."
+    },
+    {
+      "candidate_id": "historical-5a41aec57ea1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Song lyrics lookup; casual reference without project engagement."
+    },
+    {
+      "candidate_id": "historical-5a4a47a91646#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Critique of political opinion on American defeatism and trade policy; political analysis."
+    },
+    {
+      "candidate_id": "historical-5a76807e6c99#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Trump's refusal to apologize as political strategy; political discourse."
+    },
+    {
+      "candidate_id": "historical-5a9d6d370e85#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Song lyrics and video lookup; casual reference without project engagement."
+    },
+    {
+      "candidate_id": "historical-5aa0a7bbae11#0",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Family dynamics and 'delivering the ledger' technique; compassionate accountability in relationships."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "AI interaction preferences and communication style; user preference statement without project work."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "OkCupid dating strategy and demographic analysis; relationship-building through dating platforms."
+    },
+    {
+      "candidate_id": "historical-5aa35f050a8b#6",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Match.com strategy and multi-platform rotation; analyzing connection potential and preferences."
+    },
+    {
+      "candidate_id": "historical-5aae0e7e33d9#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Bumble profile analysis and emotional compatibility assessment; relationship prospect evaluation."
+    },
+    {
+      "candidate_id": "historical-5b001ada38f9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump tariff strategy and Congressional constraint mechanisms; political policy analysis."
+    },
+    {
+      "candidate_id": "historical-5b2653aa3190#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Drafting American Jesus Act 1, Chapter 12 from elite perspective; manuscript development."
+    },
+    {
+      "candidate_id": "historical-5b8d6f73e792#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating prospect analysis and congruence assessment; relationship compatibility exploration."
+    },
+    {
+      "candidate_id": "historical-5baaf88d27ac#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Johnny Zebedee character architecture; systematic nine-layer character development for trilogy."
+    },
+    {
+      "candidate_id": "historical-5baaf88d27ac#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Peter Stone character architecture; major character development with choice architecture."
+    },
+    {
+      "candidate_id": "historical-5baff016876c#0",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Corporate false claims playbook across industries; economic injustice and elite extraction patterns."
+    },
+    {
+      "candidate_id": "historical-5bc315d4ad53#0",
+      "nexuses": ["divorce"],
+      "confidence": "high",
+      "reason": "2024 tax documentation and financial separation records; consolidating divorce-related files."
+    },
+    {
+      "candidate_id": "historical-5bc315d4ad53#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Flight arrival time calculation; personal logistical lookup without project engagement."
+    },
+    {
+      "candidate_id": "historical-5bc315d4ad53#2",
+      "nexuses": ["relationships"],
+      "confidence": "medium",
+      "reason": "Dating app platform comparison and demographics; relationship strategy research."
+    },
+    {
+      "candidate_id": "historical-5bee83aac1ea#0",
+      "nexuses": ["politics"],
+      "confidence": "medium",
+      "reason": "Byron Donalds Florida governor poll; political news and election analysis."
+    },
+    {
+      "candidate_id": "historical-5c358ba23ed1#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Drafting and revising American Jesus Chapter 22; manuscript work with consistency refinement."
+    },
+    {
+      "candidate_id": "historical-5c4c2673d343#0",
+      "nexuses": ["science", "expanding_awareness"],
+      "confidence": "high",
+      "reason": "Hubble's Law observations explained; cosmology exploration and alternative interpretation."
+    },
+    {
+      "candidate_id": "historical-5c4c2673d343#2",
+      "nexuses": ["science", "expanding_awareness"],
+      "confidence": "high",
+      "reason": "Step-by-step paper on Hubble observations; writing and refining cosmological understanding."
+    },
+    {
+      "candidate_id": "historical-5c4c2673d343#3",
+      "nexuses": ["science", "expanding_awareness"],
+      "confidence": "high",
+      "reason": "Redshift correlation with distance; clarifying foundational observations for cosmology work."
+    },
+    {
+      "candidate_id": "historical-5c4c2673d343#4",
+      "nexuses": ["science", "expanding_awareness"],
+      "confidence": "high",
+      "reason": "Doppler effect and cosmological redshift distinction; alternative physics interpretation."
+    },
+    {
+      "candidate_id": "historical-5c55fe6f78f6#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "GW170817 gravitational wave analysis and alternative physics; fundamental physics exploration."
+    }
+  ]
+}

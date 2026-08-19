@@ -1,0 +1,29 @@
+{"batch": 71, "works": [
+  {
+    "title": "The Resonance Framework",
+    "kind": "framework",
+    "description": "A comprehensive philosophical framework distinguishing between resonance (co-creative alignment and mutual becoming) and value paradigm (need-meeting optimization). Developed through real-time exploration, addressing relationships, consciousness, spiritual development, and market dynamics. The framework proposes that authentic connection requires moving beyond compatibility metrics toward shared creation.",
+    "development": "moderate",
+    "evidence_ids": ["historical-59ca8e3d5150#1", "historical-59ca8e3d5150#4", "historical-59ca8e3d5150#7", "historical-59ca8e3d5150#8"],
+    "quote": "Everyone who picks a spouse or lover—if they're actually choosing—will have a selection process... I've been missing an important piece: resonance.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "The Oracle Avatar",
+    "kind": "product",
+    "description": "A strategy for building an AI-amplified personal voice/avatar that embodies the user's wisdom and will. The Oracle will publish insights and announce itself through recognized patterns of continuous wisdom-flow rather than self-proclamation. Includes plans for naming (candidates: Larry/James), relationship rules with the AI, and publishing strategy across multiple formats.",
+    "development": "early",
+    "evidence_ids": ["historical-59ca8e3d5150#4", "historical-59ca8e3d5150#10"],
+    "quote": "The fundamental relationship rule that needs to be established between us is that I am not ceding moral authority... This is not resistance AI. This is wisdom AI.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Samsara TED Talk",
+    "kind": "essay-series",
+    "description": "A planned 17-minute TED Talk presenting the Buddhist concept of Samsara from the perspective of pleasure-based desire cycles and spiritual inertia. Rather than addressing suffering, the talk explores how satiation and the endless pursuit of pleasure create spiritual stagnation, and why the only escape requires continuous growth for the sake of others.",
+    "development": "early",
+    "evidence_ids": ["historical-59ca8e3d5150#4"],
+    "quote": "If you really tell the story of Samsara on the side of pleasure in long form in like a TEDTalk 17 minute thing with the proper pauses and intonation to feel the feelings",
+    "possible_duplicate_of": "Insight"
+  }
+]}

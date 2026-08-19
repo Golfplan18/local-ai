@@ -1,0 +1,18 @@
+{
+  "batch": 144,
+  "segments_read": 44,
+  "works_found": 1,
+  "works": [
+    {
+      "title": "Political Communication & Persuasion Strategy Book",
+      "kind": "book",
+      "description": "A book examining how distributed networks and narrative tactics overcome institutional resistance to political messaging. Focuses on why fiction changes minds when facts cannot, using chapters such as 'Digital Swarm Warfare' (Ch.33) and 'The Trojan Horse Strategy' (Ch.34) to explore the mechanics of political persuasion and information resistance.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-b33af45ba2e9#0"
+      ],
+      "quote": "We are writing a book from this outline. Use it for context.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

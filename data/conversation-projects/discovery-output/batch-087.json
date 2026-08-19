@@ -1,0 +1,29 @@
+{"batch": 87, "works": [
+  {
+    "title": "Trump, Rubio, and the Venezuela Intervention: A Geopolitical Analysis",
+    "kind": "essay-series",
+    "description": "A Substack essay analyzing Trump's military intervention in Venezuela, Rubio's foreign policy role, and cascading geopolitical consequences for the region including China's strategic position and humanitarian crises. The user outlined a comprehensive analysis examining the authoritarian playbook, regime collapse scenarios, and media narrative control.",
+    "development": "moderate",
+    "evidence_ids": ["historical-6ab4042a8572#9"],
+    "quote": "I want to make a Substack post focusing on what Trump and Rubio are saying about Venezuela, why they chose Venezuela as a target, and what will actually happen going forward.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Writing Style & Voice Guide",
+    "kind": "framework",
+    "description": "A comprehensive writing methodology and voice guide designed as a reusable tool to establish consistent character, tone, and structural approach across writing projects. The user is developing detailed specifications for metaphor preferences, cultural references, visual elements, argumentation frameworks, and citation approaches that can be uploaded to AI platforms (Claude, ChatGPT, NovelCrafter).",
+    "development": "moderate",
+    "evidence_ids": ["historical-6ba3c2f80257#0", "historical-6ba3c2f80257#1"],
+    "quote": "I want to establish a character and writing voice to animate and guide all written output for this project. The final product would be something I could upload to Claude, ChatGPT, or NovelCrafter to achieve the style and voice I'm looking for.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Character Scene Optimization Framework",
+    "kind": "framework",
+    "description": "A dedicated framework for mapping and optimizing American Jesus character scenes and arcs across the narrative, designed to increase prose density by ensuring every scene detail serves multiple character profiles simultaneously. The user plans to create this as a separate document for use during chapter conceptual development and outline generation.",
+    "development": "early",
+    "evidence_ids": ["historical-6ba29f64a75f#0", "historical-6ba29f64a75f#1"],
+    "quote": "I need a full framework analysis to construct this and keep it as a separate, dedicated document so I can incorporate it into the master outline when I create individual chapters.",
+    "possible_duplicate_of": "American Jesus"
+  }
+]}

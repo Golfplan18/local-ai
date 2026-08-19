@@ -1,0 +1,255 @@
+{
+  "batch": 77,
+  "placements": [
+    {
+      "candidate_id": "historical-c59279e93cea#6",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Tech troubleshooting support for Gemini tool, not project-specific."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#10",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General culinary knowledge about omakase dining."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#11",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "MBTI personality psychology trivia unrelated to projects."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#12",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Geographic information about Mandarin-speaking regions."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#14",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Personal email advice about hyperbaric oxygen chamber."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#15",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General AI scaling law speculation and AGI timelines."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#17",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Economic news commentary on Trump tariffs and Fed."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#18",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General discussion of AI's role in misinformation."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#22",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Art collection research about Shag artwork archives."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#23",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Nutritional fact lookup for Bartlett pear calories."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#24",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Inquiry about custom puzzle companies with patterns."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#27",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Planning gate/opening in rear property block wall."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#29",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Utility easement access and fire-barrier planning."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#30",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Dating profile observation about genetic background."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#35",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Economic analysis of tariff effects on dealers."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#39",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical how-to for iPhone Emergency SOS."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#40",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Bible reference lookup for fig tree curse."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#41",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Dating app advice about profile interpretation."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#42",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Google Sheets regex formulas for text cleaning."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#45",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Factual reference to US Constitution preamble."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#46",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Dating profile observation about Rancho Santa Fe."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#48",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Medical trivia definition of gleeking physiology."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#50",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Historical sacrifice narratives parallel project themes."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#51",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Municipal event planning about Coachella Festival."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#53",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Music trivia about Frankie Valli Four Seasons."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#54",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Financial analysis of index fund fee compression."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#55",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Historical research on meal patterns Spanish missions."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#57",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Bible reference on apostle Peter's name Simon."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#60",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Social media meme about anti-vaccine COVID deaths."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#61",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Zoological discussion of predator prey defense behavior."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#62",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical explanation of battery density limits aircraft."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#63",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Academic critique of single-cause war causation."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#65",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Physics discussion of windshield sunshade effectiveness."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#66",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical comparison of Frontier fiber versus Cox."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#68",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Food history research for character class coding."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#69",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Home and garden pest control product advice."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#70",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Fast food ordering customization through McDonald's app."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#73",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political philosophy on moral relativism frameworks."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#75",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General discussion of AI and dictionary definition."
+    },
+    {
+      "candidate_id": "historical-c59279e93cea#76",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Cultural critique on internet decline algorithms."
+    }
+  ]
+}

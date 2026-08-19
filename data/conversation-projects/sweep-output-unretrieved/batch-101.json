@@ -1,0 +1,191 @@
+{
+  "batch": 101,
+  "placements": [
+    {
+      "candidate_id": "historical-fe476c3aec70#7",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Detailed discussion of changing final utterances in Hayzeus character, comparing to Gospel seven last words, directly engaging Act 1 manuscript."
+    },
+    {
+      "candidate_id": "historical-fe717f637a90#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Exploration of gap between projected identity and lived reality in intimate/dating contexts, core relationships framework."
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Explicit chapter outline for Act 1 'The Living Word', detailing Matthew's arc from legalism to understanding in the trilogy."
+    },
+    {
+      "candidate_id": "historical-fe7ecea4d45e#5",
+      "nexuses": ["diklis_chump"],
+      "confidence": "high",
+      "reason": "Planning Book 2 of Diklis Chump series with POV strategy and Trump's Tibetan Buddhist hells narrative arc."
+    },
+    {
+      "candidate_id": "historical-fe8013652230#1",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Developing capitalist instability weakness framework with constituency identification for political messaging."
+    },
+    {
+      "candidate_id": "historical-fe8013652230#2",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Building religious-wealth contradiction weakness argument with press release guidance for political framework."
+    },
+    {
+      "candidate_id": "historical-fe8013652230#6",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Developing nationalism vs. globalization weakness showing how local wealth extraction harms working communities."
+    },
+    {
+      "candidate_id": "historical-feb454165158#0",
+      "nexuses": ["property"],
+      "confidence": "medium",
+      "reason": "Tax guidance on Airbnb owner-occupant mortgage interest deduction related to rental property expertise."
+    },
+    {
+      "candidate_id": "historical-fec3c8ccc19d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic technical code comparison task, no project-specific engagement."
+    },
+    {
+      "candidate_id": "historical-fefa1bbeff62#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Democratic senators' tax elimination proposals and electoral strategy implications."
+    },
+    {
+      "candidate_id": "historical-ff07891b8656#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Discussion of antitrust law, Bork framework, burden-of-proof inversion, regulatory philosophy."
+    },
+    {
+      "candidate_id": "historical-ff2ead5edfa5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic technical diagram request for velocity vs. technical debt, not project-specific."
+    },
+    {
+      "candidate_id": "historical-ff319cffafe5#0",
+      "nexuses": ["quantum_mechanics", "science"],
+      "confidence": "high",
+      "reason": "Substantive engagement with Bell's theorem, local realism, and quantum non-locality concepts."
+    },
+    {
+      "candidate_id": "historical-ff4e6f98eb8f#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political strategy analysis of Democratic moderation tradeoffs and electoral viability."
+    },
+    {
+      "candidate_id": "historical-ff4e6f98eb8f#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of institutional Democratic bias, concern trolling, and governing effectiveness after electoral victory."
+    },
+    {
+      "candidate_id": "historical-ff4e6f98eb8f#3",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Electoral analysis of Talarico's competitiveness without moderation, religious framing strategy."
+    },
+    {
+      "candidate_id": "historical-ff6641b0225e#0",
+      "nexuses": ["autism_acceptance"],
+      "confidence": "high",
+      "reason": "Transforming autism treatment outline into flowing narrative prose for the Autism Acceptance book."
+    },
+    {
+      "candidate_id": "historical-ff73b9ee6afe#0",
+      "nexuses": ["main-street-independent"],
+      "confidence": "high",
+      "reason": "MSI article creation on Vance-Watergate commentary with image generation technical notes."
+    },
+    {
+      "candidate_id": "historical-ff8c01d23c32#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Revising chapter headings with political/economic content showing book structure refinement."
+    },
+    {
+      "candidate_id": "historical-ffac067a6073#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating message strategy for Russian immigrant woman, masculine framing and family-structured lifestyle appeal."
+    },
+    {
+      "candidate_id": "historical-ffb289f582c8#0",
+      "nexuses": ["insight", "politics"],
+      "confidence": "high",
+      "reason": "Discussion of partisan media, fact-based news literacy, and navigating information ecosystems."
+    },
+    {
+      "candidate_id": "historical-ffb410739bb9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Trump's economic messaging campaign and approval rating dynamics."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Exploring male value identity paradox and behavioral misalignment in dating contexts."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app messaging tactics and opening lines strategy for high-value male frame."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Geographic dating strategy for Coachella Valley vs. Orange County, supply/demand and relationship logistics."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#3",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app mechanics, algorithm analysis, and commodity mindset in dating culture."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Reusable dating messaging framework and profile strategy summary."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#5",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Hard filters in dating, supply-demand economics, and single-parent household relocation constraints."
+    },
+    {
+      "candidate_id": "historical-ffecef50397a#6",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile analysis and red flag recognition patterns in dating profiles."
+    },
+    {
+      "candidate_id": "historical-ffeefb4a0e89#1",
+      "nexuses": ["obsidian"],
+      "confidence": "high",
+      "reason": "Obsidian theme customization UI design and plugin architecture for Style Settings integration."
+    },
+    {
+      "candidate_id": "historical-ffeefb4a0e89#4",
+      "nexuses": ["ora", "technology"],
+      "confidence": "high",
+      "reason": "Discussion of local AI asynchronous workflows vs. cloud AI optimization, Ora positioning and industry dynamics."
+    }
+  ]
+}

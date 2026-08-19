@@ -1,0 +1,29 @@
+{"batch": 25, "works": [
+  {
+    "title": "The New Communist Manifesto",
+    "kind": "paper",
+    "description": "A manifesto project leveraging existing work on corruption and manipulation to create a contemporary Communist manifesto with historical resonance. User is developing outline and working on comprehensive sections that examine economic systems, institutional power, and political transformation.",
+    "development": "early",
+    "evidence_ids": ["historical-1f4f2a36f76d#0"],
+    "quote": "I want to provide you with more background information so we can create a draft outline of this new project",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Natural Language Programming for AI Agents: A Primer on Clear Thinking and Cognitive Amplification",
+    "kind": "book",
+    "description": "Technical book documenting the development and implementation of a complete natural language programming system for AI agents, built on a $4,000 Mac Studio by a non-programmer. Includes chapters on decision-making frameworks (KVI, FIP, APC), natural language patterns, and agent architecture design.",
+    "development": "moderate",
+    "evidence_ids": ["historical-1fda16065259#0"],
+    "quote": "Book Outline (Updated Draft 2)... Documents development and implementation of a complete natural language programming system for AI agents",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Trope Analysis Framework (Ideation Initiation Layer)",
+    "kind": "framework",
+    "description": "A framework for story and character ideation that uses tropes as the foundational mechanism for generating story details from author rough notes. Structured as an initiation layer for fiction creation with progressive questioning architecture, scene challenges, thematic mapping, and emotional architecture components.",
+    "development": "early",
+    "evidence_ids": ["historical-1eee1672c32c#0"],
+    "quote": "We are on step 3 of implementing a Trope Analysis Framework as an Initiation Layer",
+    "possible_duplicate_of": "AI Assisted Writing"
+  }
+]}

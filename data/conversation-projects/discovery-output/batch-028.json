@@ -1,0 +1,23 @@
+{
+  "batch": 28,
+  "works": [
+    {
+      "title": "Invective Arsenal for Satirical Political Commentary",
+      "kind": "framework",
+      "description": "A categorized, recombinable repertoire of contemptuous epithets, diminutives, and invective patterns designed for satirical voices targeting powerful figures. Includes 200+ archetypally-grounded historical and literary deep cuts formatted as an AI-readable markdown cheat sheet with generative grammar principles.",
+      "development": "moderate",
+      "evidence_ids": ["historical-25aab1d10d9b#0"],
+      "quote": "Build an extensive, recombinable arsenal of contemptuous diminutives and epithets that a satirical voice can deploy against the powerful — modeled on the stickiness of coinages like 'Little Marco,' 'Rocket Man,' 'Shrub,' 'vampire squid.' The point is not a static list but a generative grammar the voice can riff from indefinitely.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Ideation Framework",
+      "kind": "framework",
+      "description": "A methodology for transforming raw creative material into organized, implementable narrative elements using character choice architecture and universal human pattern recognition. Targets ~9 concise, formatted story beats where each beat represents a single character action or choice.",
+      "development": "moderate",
+      "evidence_ids": ["historical-26c119492fad#0"],
+      "quote": "This framework transforms raw creative material into organized, implementable narrative elements. It uses character choice architecture and universal human pattern recognition to distill broad concepts into a target of ~9 concise, formatted story beats, ensuring each beat represents a single, clear action or choice.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

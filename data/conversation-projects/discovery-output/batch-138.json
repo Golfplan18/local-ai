@@ -1,0 +1,38 @@
+{"batch": 138, "works": [
+  {
+    "title": "Report 1.5: Inflation Measurement and Distributional Incidence",
+    "kind": "paper",
+    "description": "A comprehensive reference report examining inflation measurement methodology (CPI-U, CPI-W, C-CPI-U, PCE) and the distributional question of who experiences inflation differently. Covers core vs headline inflation, adjustments for quality changes (hedonic indexing), and the distributional incidence of inflation across income levels and demographics.",
+    "development": "moderate",
+    "evidence_ids": ["historical-aa1da56f2af3#0"],
+    "quote": "Produce a comprehensive reference report on inflation measurement and the distributional question of who experiences inflation differently.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Framework Creation Framework",
+    "kind": "framework",
+    "description": "A meta-framework for systematically creating frameworks. Designed as a capstone of eighteen months of framework development work. Transforms raw creative material into organized, implementable narrative elements using character choice architecture and universal human pattern recognition. Supports both specification-based and single-pass execution models.",
+    "development": "advanced",
+    "evidence_ids": ["historical-aa46cecadfb9#0", "historical-aa46cecadfb9#1", "historical-aa46cecadfb9#5"],
+    "quote": "The Framework Generation Framework is a capstone of everything I learned developing individual writing frameworks last year.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "AI Setup and Local Intelligence Book",
+    "kind": "book",
+    "description": "A practical guide book about setting up local AI on user machines, structured in multiple parts. Includes Introduction, 8+ chapters spanning setup, architecture, spiritual dimensions (soul.md concept), with appendices featuring the Local AI First Boot Framework and Framework Creation Framework as deployable tools. Approximately 24,500 words in outline form.",
+    "development": "advanced",
+    "evidence_ids": ["historical-aa46cecadfb9#0", "historical-aa46cecadfb9#1", "historical-aa46cecadfb9#2", "historical-aa46cecadfb9#3"],
+    "quote": "I plan to write about the experience of setting this up... The user confirmation gate between Layer 2 and Layer 3 is deliberate.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ask Geshe La (askgeshla.com)",
+    "kind": "website",
+    "description": "A Buddhist study companion website and AI agent tool combining Geshe Kelsang Gyatso's published teachings and books with conversational AI powered by a soul.md file derived directly from his teachings. Scanned and catalogued books made searchable and conversable via RAG retrieval. Positioned as an accessibility tool and study resource, not a substitute for human guidance or empowerment.",
+    "development": "moderate",
+    "evidence_ids": ["historical-aa46cecadfb9#4", "historical-aa46cecadfb9#5"],
+    "quote": "As a Kadampa Buddhist practitioner, I have text files for every book written by Geshe Kelsang Gyatso. I plan to program an AI agent with a soul.md file drawn directly from his texts and teachings, with all his books scanned, catalogued, and ready for RAG retrieval. I intend to launch a website.",
+    "possible_duplicate_of": ""
+  }
+]}

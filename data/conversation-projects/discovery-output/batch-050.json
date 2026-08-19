@@ -1,0 +1,11 @@
+{"batch": 50, "works": [
+  {
+    "title": "Right-Wing War Room / Media Strategy Book",
+    "kind": "novel",
+    "description": "Book exploring right-wing media war rooms, donor strategy sessions, and propaganda planning. Investigates how elites coordinate propaganda campaigns and potentially incite stochastic violence through dehumanization. Includes scene conception (donor meetings, newsroom strategy discussions), visual style references (Thomas Nast-inspired 19th-century political cartooning), and thematic exploration of propaganda as emotional shelter for believers.",
+    "development": "early",
+    "evidence_ids": ["historical-41303cf3858d#2", "historical-41303cf3858d#3", "historical-41303cf3858d#4"],
+    "quote": "You can even have a donor meetings where they discuss different aspects of right wing media that they want to support... Do they want to stir up more memes along certain lines do they want to spread false rumors in paramilitary circles start essentially using really dark tactics that would even lead to revolution",
+    "possible_duplicate_of": "Disingenuous Bullshitters"
+  }
+]}

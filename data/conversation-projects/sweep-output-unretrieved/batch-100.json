@@ -1,0 +1,303 @@
+{
+  "batch": 100,
+  "placements": [
+    {
+      "candidate_id": "historical-fa8a630e73e3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "YouTube Premium family plan setup and account sharing—household infrastructure question unrelated to any project."
+    },
+    {
+      "candidate_id": "historical-fa8a630e73e3#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Household account consolidation and shared expense optimization—practical infrastructure, no project engagement."
+    },
+    {
+      "candidate_id": "historical-fa9831d9759d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Metronome tuning to heart rate for nervous system regulation—practical device setup question."
+    },
+    {
+      "candidate_id": "historical-fadfd437d4a3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Comparative analysis of philosophical and technical foundations—academic methodology without project context."
+    },
+    {
+      "candidate_id": "historical-fae7c842eb10#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump IRS lawsuit and conflicts of interest analysis—political/legal analysis not tied to project work."
+    },
+    {
+      "candidate_id": "historical-fafdd5b83050#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "MAGA psychology, Voting Rights Act Section 2, enforcement of accountability versus healing—democratic accountability strategy directly engages both politics and economic-justice messaging."
+    },
+    {
+      "candidate_id": "historical-fb00e9439b83#0",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Intensive home improvement project over 12+ days, solving multi-thousand-dollar property problems cheaply; leverages career expertise in property management and real estate improvements."
+    },
+    {
+      "candidate_id": "historical-fb020de0d22d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Recycling bags vs. trash bags material difference—practical household question."
+    },
+    {
+      "candidate_id": "historical-fb1f80611d69#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Local veterinary clinic lookup (Country Club Animal Clinic)—service directory query."
+    },
+    {
+      "candidate_id": "historical-fb4b12740f00#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Federal spending scale, Democratic tax policy options (capital gains, portfolio loans, lobbying power)—political strategy and economic-justice taxation directly relevant to both projects."
+    },
+    {
+      "candidate_id": "historical-fb6cac230e77#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Dating app experience and developing functional forgetting; reflection on scammer detection and memory adaptation—explores compassionate filtering and understanding in relationships."
+    },
+    {
+      "candidate_id": "historical-fb7f82378da0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "White House renovation court halt fact-checking—verifying misinformation claim without project context."
+    },
+    {
+      "candidate_id": "historical-fba2646651bb#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Kansas transgender driver's license law and equal-protection legal framework analysis; democratic accountability and rights protection."
+    },
+    {
+      "candidate_id": "historical-fba2646651bb#1",
+      "nexuses": [
+        "american_jesus",
+        "ai_writing_method",
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Developing 'What Would Jesus Do' AI framework using Red Letter texts to expose religious hypocrisy in right-wing politics; reflection on writing the American Jesus trilogy and left's abandonment of religious language."
+    },
+    {
+      "candidate_id": "historical-fbbe8f880d2c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Wardrobe system design with white shirts and colored shorts; three-strike maintenance policy—personal fashion/lifestyle system unrelated to projects."
+    },
+    {
+      "candidate_id": "historical-fbbe8f880d2c#1",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Dust sealing systems at multiple scales (couch, furniture, garage baseboard); foam core barriers and dust control infrastructure—property maintenance engineering."
+    },
+    {
+      "candidate_id": "historical-fbbe8f880d2c#2",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Property-scale wind and dust management using fluid dynamics principles; macro airflow diversion; applying skirting solutions and urban-level engineering to property control."
+    },
+    {
+      "candidate_id": "historical-fc3eae1228a7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Dalai Lama tongue incident context, Tibetan cultural interpretation, Chinese propaganda—cultural/political analysis without project engagement."
+    },
+    {
+      "candidate_id": "historical-fc4250471caa#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "48 Laws of Power: Law 36 'Court Attention at All Costs' with historical examples—intellectual discussion of power principles without project work."
+    },
+    {
+      "candidate_id": "historical-fc4250471caa#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "48 Laws of Power: 'Win Through Your Actions, Never Through Argument' with historical examples—general principle study without project engagement."
+    },
+    {
+      "candidate_id": "historical-fc5cc7767d8c#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Trump's SAVE Act voting bill electoral strategy, rural disenfranchisement risk, GOP internal conflicts—political strategy and power-mechanism analysis central to both projects."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Removing odor from laundry using detergent, vinegar, and washer cleaning—household maintenance."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "T-Mobile single-line phone cost pricing—utility cost lookup."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Superglue curing time and full-strength bond duration—material properties reference."
+    },
+    {
+      "candidate_id": "historical-fc951c4e6240#1",
+      "nexuses": [
+        "insight",
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Mother's hair-trigger anger and achieving zero emotional reactivity without defense; non-porousness and sovereignty—personal insight into consciousness, suffering, and compassionate interaction."
+    },
+    {
+      "candidate_id": "historical-fd0fd0cf90c6#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Abortion pill mifepristone mailing ban and APA vacatur strategy as double-edged sword for future policy reversals—political strategy and power-mechanism analysis."
+    },
+    {
+      "candidate_id": "historical-fd361ec8e201#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political hypocrisy in rhetoric standards—Trump's profanity excused while Democrats' is condemned, asymmetric moral standards."
+    },
+    {
+      "candidate_id": "historical-fd6227560e13#0",
+      "nexuses": [
+        "writing_fiction",
+        "ai_writing_method"
+      ],
+      "confidence": "high",
+      "reason": "Using dating app observations to develop character archetypes for fiction; extracting personality traits and character development through systematic observation."
+    },
+    {
+      "candidate_id": "historical-fd6227560e13#2",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Applying lived dog-care experience to American Jesus Chapter 1 scene with Paul, Juan, and Hayzeus; moral signature through action rather than speech."
+    },
+    {
+      "candidate_id": "historical-fd63d22dd069#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Iran-Israel-US Strait of Hormuz deal analysis; geopolitical power dynamics, oil markets, rational actors pursuing national interest—political strategy and power-mechanism analysis."
+    },
+    {
+      "candidate_id": "historical-fd63d22dd069#1",
+      "nexuses": [
+        "main-street-independent",
+        "politics",
+        "writing"
+      ],
+      "confidence": "high",
+      "reason": "Funded propaganda durability (zombie ideas), George Lucas mythology engineering the Galactic Republic as political allegory; using fiction/narrative to counter propaganda and reach working-class audiences."
+    },
+    {
+      "candidate_id": "historical-fd9136d9ffdb#2",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Warrior codes, wrathful energy, war crimes, Hegseth military culture and moral framework critique; addressing moral hypocrisy in military and governance."
+    },
+    {
+      "candidate_id": "historical-fd9ff9fcb9b9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Maroon 5 streaming popularity rankings—music chart reference."
+    },
+    {
+      "candidate_id": "historical-fdc053cc8ba3#0",
+      "nexuses": [
+        "ora",
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Lost in the Middle LLM attention phenomenon and architectural mitigation strategies; technical exploration of Transformer behavior."
+    },
+    {
+      "candidate_id": "historical-fdd83017b937#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Formal legal complaint regarding dependent adult abuse and medical violations—formal document outside project scope."
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#1",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Character arc documentation and abortion/women's themes in the narrative; Jesus's theological perspective on rights, sacrifice, and burden-bearing in the American Jesus trilogy."
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#3",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Planning seven resolution speeches for seven subplots in American Jesus; confronting evil and rentier behavior without vilification, following Jesus/Pharisee dynamic."
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#4",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "March to Washington chapter outline with Governor Josh Stein across North Carolina; Hayzeus and apostles dialogue on moral leadership and political courage."
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#5",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Lincoln Memorial speech scene (alternative to crucifixion) and developing humor/playfulness in Jesus character; biblical examples of Jesus's wit."
+    },
+    {
+      "candidate_id": "historical-fe476c3aec70#6",
+      "nexuses": [
+        "american_jesus",
+        "ai_writing_method"
+      ],
+      "confidence": "high",
+      "reason": "Rewriting Jesus's 'I am' statements from Book of John into action verbs for American Jesus character development; systematic theological translation methodology."
+    }
+  ]
+}

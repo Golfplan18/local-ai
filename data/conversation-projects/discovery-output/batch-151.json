@@ -1,0 +1,29 @@
+{"batch": 151, "works": [
+{
+  "title": "Hackers Novel",
+  "kind": "novel",
+  "description": "Novel about tech monopoly activists and hackers breaking enclosure systems. Philosophical core uses Ayn Rand doctrine inverted against monopoly CEOs. Literary approach models Moby Dick (worldbuilding doctrine as background, not exposition). Develops multiple character archetypes (hardline hacker, skeptic/legalist skeptic, insider doubter) and CEO as unredeemed Darth Vader figure. Explicitly framed as 'revealed story' based on personal anonymous experience with tech monopolies.",
+  "development": "advanced",
+  "evidence_ids": ["historical-be0a3e2e00ee#0", "historical-be0a3e2e00ee#1", "historical-be0a3e2e00ee#2", "historical-be0a3e2e00ee#3", "historical-be0a3e2e00ee#4", "historical-be0a3e2e00ee#5", "historical-be0a3e2e00ee#6", "historical-be0a3e2e00ee#7", "historical-be0a3e2e00ee#8"],
+  "quote": "This allows me to get emotional investment in what these people are doing and establish a firm moral basis for what's being done entirely through dialogue among characters in a novel.",
+  "possible_duplicate_of": "Hackers Novel"
+},
+{
+  "title": "Trump Crunch Political Cartoon Campaign",
+  "kind": "essay-series",
+  "description": "Political meme and cartoon campaign linking Trump's economic policies to a catastrophic credit crunch (2008-style but worse). Uses parody credit cards (\"Donald J. Default,\" \"U.O. Me\") and visual metaphors (frozen credit freeze imagery, domino effect). Multi-wave release strategy planned: 50+ memes/day published as public-domain content for reader circulation and remixing. Explicitly designed to brand Trump with economic catastrophe the way Hoover became synonymous with Hoovervilles.",
+  "development": "moderate",
+  "evidence_ids": ["historical-be87473d50f4#0", "historical-be87473d50f4#1"],
+  "quote": "I'm going through my cartoons about debt from the housing bubble and plan to start production on \"Trump Cards\" to indelibly link his name to the catastrophe about to unfold, similar to all the terms associated with Herbert Hoover in his time.",
+  "possible_duplicate_of": ""
+},
+{
+  "title": "Corporate Deception Pattern Book",
+  "kind": "book",
+  "description": "Book examining corporate harm patterns across multiple industries (tobacco, chemicals, agriculture, pharmaceuticals). Chapter-based structure with author byline L.E. Nápoles (suggesting pen-name project). Fragment shows Chapter Two focus on connecting corporate deception dots and exposing methods, with aim to prevent reader vulnerability to corporate PR disconnection from survival instincts.",
+  "development": "early",
+  "evidence_ids": ["historical-be74bc5f7ae1#0"],
+  "quote": "The powerful force of PR campaigns can disconnect us from our own survival instincts and our allegiance to Natural Law. Allow me to present the opposition's handiwork during our lifetime—dots connected, methods exposed.",
+  "possible_duplicate_of": ""
+}
+]}

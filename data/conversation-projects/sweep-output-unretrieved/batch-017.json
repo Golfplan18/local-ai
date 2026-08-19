@@ -1,0 +1,245 @@
+{
+  "batch": 17,
+  "placements": [
+    {
+      "candidate_id": "historical-2a0a34470000#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Substantive discussion of filibuster mechanics and legislative reform strategy"
+    },
+    {
+      "candidate_id": "historical-2a27bd549c91#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating communication strategy for romantic connection and attraction"
+    },
+    {
+      "candidate_id": "historical-2a27bd549c91#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Building emotional connection before romantic pursuit"
+    },
+    {
+      "candidate_id": "historical-2a27bd549c91#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Romantic polarity and interaction strategy"
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Detailed filibuster history and Republican strategy analysis"
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#3",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Gerrymandering analysis and competitive vs. safe House seat analysis"
+    },
+    {
+      "candidate_id": "historical-2a346a03b957#5",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Filibuster elimination likelihood analysis and strategic implications"
+    },
+    {
+      "candidate_id": "historical-2a4d84c2f77b#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Masculine-feminine polarity dynamics and romantic attraction"
+    },
+    {
+      "candidate_id": "historical-2a629ac0d733#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic computer troubleshooting; no project engagement"
+    },
+    {
+      "candidate_id": "historical-2a64eb17638b#0",
+      "nexuses": ["human_nexus"],
+      "confidence": "high",
+      "reason": "AI philosophy critique and safety concerns discussion"
+    },
+    {
+      "candidate_id": "historical-2a9253ee5dc7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Financial markets news update; general interest only"
+    },
+    {
+      "candidate_id": "historical-2a9a32e9cc37#0",
+      "nexuses": ["politics"],
+      "confidence": "medium",
+      "reason": "Trump financial/legal situation; tangentially political"
+    },
+    {
+      "candidate_id": "historical-2b01b0654db5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual historical lookup on Lenin and Communist Manifesto"
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#0",
+      "nexuses": ["obsidian", "insight"],
+      "confidence": "high",
+      "reason": "Solipsistic philosophy and Obsidian vault design as external brain"
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#2",
+      "nexuses": ["obsidian"],
+      "confidence": "high",
+      "reason": "Movie libraries as inspiration for Obsidian knowledge repository design"
+    },
+    {
+      "candidate_id": "historical-2b18618508a9#4",
+      "nexuses": ["obsidian"],
+      "confidence": "high",
+      "reason": "Visual design and aesthetics for Obsidian vault interface"
+    },
+    {
+      "candidate_id": "historical-2b2feb2990eb#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Image generation for capitalism concept; no substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-2b6badb15479#2",
+      "nexuses": ["main-street-independent", "image_generation"],
+      "confidence": "high",
+      "reason": "Generating masthead headshots for MSI publication voices (Judas I. Mather and Big Jim)"
+    },
+    {
+      "candidate_id": "historical-2ba5905478b7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Financial derivatives strategy discussion; no dedicated investing project"
+    },
+    {
+      "candidate_id": "historical-2bf22a524f17#0",
+      "nexuses": ["writing_fiction", "ai_writing_method"],
+      "confidence": "high",
+      "reason": "Synthesizing Hero's/Heroine's/Sage's Journey frameworks for character narrative"
+    },
+    {
+      "candidate_id": "historical-2c1b142dd968#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Democratic fiscal policy analysis and tax strategy critique"
+    },
+    {
+      "candidate_id": "historical-2c4663065f1a#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Personal relationship boundary-setting with ex-spouse"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#6",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Pet nutrition planning; no project engagement"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#9",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal philosophy on masculine ideal, stillness, and presence"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#11",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Spiritual philosophy on karma and paying forward"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#12",
+      "nexuses": ["american_king"],
+      "confidence": "high",
+      "reason": "American King romance subplot between Malcolm and Mary Magdalena; masculine-feminine polarity parable"
+    },
+    {
+      "candidate_id": "historical-2c46707fc0fa#18",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Veterans as moral archetype for social programs; wealth redistribution and moral obligation framework"
+    },
+    {
+      "candidate_id": "historical-2c633b24f3e3#0",
+      "nexuses": ["autism_acceptance"],
+      "confidence": "high",
+      "reason": "Narrative prose on grief for parents of special needs child"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#0",
+      "nexuses": ["human_nexus", "ora"],
+      "confidence": "high",
+      "reason": "AI agent monitoring and orchestration strategies for distributed systems"
+    },
+    {
+      "candidate_id": "historical-2c6ed7ae9641#5",
+      "nexuses": ["ora", "technology"],
+      "confidence": "high",
+      "reason": "Local-cloud hybrid computing architecture for AI workloads"
+    },
+    {
+      "candidate_id": "historical-2c8a385790b8#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Loading American Jesus 3 story bible and reference material"
+    },
+    {
+      "candidate_id": "historical-2c98ed4ad905#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-communication strategy to prevent scraping; no substantive project work"
+    },
+    {
+      "candidate_id": "historical-2ce17fa39994#0",
+      "nexuses": ["wetoo"],
+      "confidence": "high",
+      "reason": "Historical research on monopoly opposition and economic justice themes"
+    },
+    {
+      "candidate_id": "historical-2cecb37ae5af#0",
+      "nexuses": ["science", "einstein_resonance"],
+      "confidence": "high",
+      "reason": "Einstein's differential geometry and tensor calculus foundations for general relativity"
+    },
+    {
+      "candidate_id": "historical-2cecbfd7acf9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Economic analysis of PPI and currency transmission; no dedicated project"
+    },
+    {
+      "candidate_id": "historical-2d02664ae7a9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tariff policy analysis and consumer economic effects"
+    },
+    {
+      "candidate_id": "historical-2d02664ae7a9#1",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Political/economic crisis scenario for wealthy class; wealth redistribution and tax policy"
+    },
+    {
+      "candidate_id": "historical-2d02664ae7a9#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-discussion about following instructions; no project engagement"
+    },
+    {
+      "candidate_id": "historical-2d02664ae7a9#3",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Progressive tax policy implementation at state/local levels"
+    },
+    {
+      "candidate_id": "historical-2d1ba9d757f4#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal philosophical understanding of religious reward-punishment systems"
+    }
+  ]
+}

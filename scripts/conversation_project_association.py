@@ -32,7 +32,10 @@ import argparse
 import json
 import math
 import os
+import collections
 import re
+import tempfile
+import subprocess
 import sys
 import urllib.request
 from collections import defaultdict
@@ -769,6 +772,139 @@ def build_judge_input(batch_size: int, only: list[str] | None) -> None:
 
 
 # ---------------------------------------------------------------------------
+# sweep-input
+# ---------------------------------------------------------------------------
+
+_SWEEP_WINDOWS = 2
+_SWEEP_WINDOW_CHARS = 850
+
+
+def _spread_excerpts(bodies: list[tuple[int, str]]) -> list[dict]:
+    """Excerpts for a segment nothing retrieved, so nothing points at a passage.
+
+    Route-matched candidates get their window aimed by project vocabulary.
+    These segments were never matched by any route, so there is no aim to
+    take: sample the opening and the middle of the segment's turns instead.
+    """
+    excerpts: list[dict] = []
+    for turn, body in bodies[:_SWEEP_WINDOWS]:
+        if len(body) <= _SWEEP_WINDOW_CHARS:
+            excerpts.append({"turn": turn, "text": body})
+            continue
+        head = body[: _SWEEP_WINDOW_CHARS // 2]
+        middle_at = max(0, len(body) // 2 - _SWEEP_WINDOW_CHARS // 4)
+        middle = body[middle_at : middle_at + _SWEEP_WINDOW_CHARS // 2]
+        excerpts.append({"turn": turn, "text": f"{head} [...] {middle}"})
+    return excerpts
+
+
+def _project_roster(profiles: dict) -> list[dict]:
+    return [
+        {
+            "nexus": nexus,
+            "name": profile["name"],
+            "about": _clip(profile["core_essence"] or profile["resolution"], 260),
+            "objectives": [_clip(o, 160) for o in profile["objectives"][:3]],
+        }
+        for nexus, profile in sorted(profiles.items())
+    ]
+
+
+def build_sweep_input(kind: str, batch_size: int) -> None:
+    """Batches for the segments the project-by-project pass never judged.
+
+    Retrieval asked, for each project, which segments look like it. That
+    leaves every segment no project's routes reached unexamined -- 43% of the
+    corpus. This asks the opposite question of those segments: given the whole
+    project roster, where does this one belong, and does it describe work that
+    has no project at all.
+    """
+    profiles = json.loads((OUT_DIR / "profiles.json").read_text(encoding="utf-8"))
+    segments = load_segments()
+    accepted_ids: set[str] = set()
+    accepted = json.loads((OUT_DIR / "accepted.json").read_text(encoding="utf-8"))["accepted"]
+    for rows in accepted.values():
+        accepted_ids |= set(rows)
+    retrieved: set[str] = set()
+    candidates_path = OUT_DIR / "candidates.json"
+    if candidates_path.exists():
+        for payload in json.loads(candidates_path.read_text(encoding="utf-8")).values():
+            for row in payload["candidates"]:
+                retrieved.add(f"{row['conversation_id']}#{row['segment_index']}")
+
+    targets: list[tuple[str, int]] = []
+    for cid, segs in segments.items():
+        for i in range(len(segs)):
+            key = f"{cid}#{i}"
+            if kind == "unretrieved" and key not in retrieved:
+                targets.append((cid, i))
+            elif kind == "orphan" and key not in accepted_ids:
+                targets.append((cid, i))
+            elif kind == "all":
+                targets.append((cid, i))
+    targets.sort()
+    print(f"{kind}: {len(targets)} segments", flush=True)
+
+    needed: set[tuple[str, int]] = set()
+    for cid, i in targets:
+        seg = segments[cid][i]
+        turns = list(range(seg["start_turn"], min(seg["end_turn"], seg["start_turn"] + 3) + 1))
+        for turn in turns[:_SWEEP_WINDOWS]:
+            needed.add((cid, turn))
+    print(f"fetching {len(needed)} pair documents ...", flush=True)
+    documents = _turn_documents(needed)
+
+    root = OUT_DIR / f"sweep-input-{kind}"
+    if root.exists():
+        for old in root.glob("batch-*.json"):
+            old.unlink()
+    root.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for cid, i in targets:
+        seg = segments[cid][i]
+        bodies = []
+        for turn in range(seg["start_turn"], min(seg["end_turn"], seg["start_turn"] + 3) + 1):
+            body = _body(documents.get((cid, turn), ""))
+            if body:
+                bodies.append((turn, body))
+        if not bodies:
+            continue
+        rows.append(
+            {
+                "candidate_id": f"{cid}#{i}",
+                "conversation_id": cid,
+                "segment_index": i,
+                "subject": seg["subject"],
+                "turn_range": [seg["start_turn"], seg["end_turn"]],
+                "excerpts": _spread_excerpts(bodies),
+            }
+        )
+
+    roster = _project_roster(profiles)
+    manifest = []
+    for i in range(0, len(rows), batch_size):
+        batch_no = i // batch_size + 1
+        chunk = rows[i : i + batch_size]
+        path = root / f"batch-{batch_no:03d}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "projects": roster,
+                    "batch": batch_no,
+                    "expected_candidate_ids": [r["candidate_id"] for r in chunk],
+                    "segments": chunk,
+                },
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
+        manifest.append({"kind": kind, "batch": batch_no, "path": str(path), "count": len(chunk)})
+    (OUT_DIR / f"sweep-manifest-{kind}.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+    print(f"{len(rows)} segments in {len(manifest)} batches -> {root}")
+
+
+# ---------------------------------------------------------------------------
 # verify-input
 # ---------------------------------------------------------------------------
 
@@ -863,6 +999,300 @@ def build_verify_input(batch_size: int) -> None:
     (OUT_DIR / "verify-manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
     total = sum(m["count"] for m in manifest)
     print(f"\n{total} candidates in {len(manifest)} verification batches")
+
+
+# ---------------------------------------------------------------------------
+# discovery-consolidate
+# ---------------------------------------------------------------------------
+
+
+def _title_key(title: str) -> str:
+    text = re.sub(r"[^a-z0-9 ]", " ", (title or "").lower())
+    words = [w for w in text.split() if w not in {"the", "a", "an", "of", "and", "for", "book", "novel", "paper", "project", "report", "series"}]
+    return " ".join(sorted(set(words)))
+
+
+_TYPE_WORDS = {
+    "book", "books", "novel", "novels", "paper", "papers", "project", "projects",
+    "framework", "frameworks", "series", "report", "reports", "system", "systems",
+    "guide", "article", "articles", "essay", "essays", "memoir", "manuscript",
+    "outline", "white", "whitepaper", "platform", "tool", "suite", "the", "a",
+    "an", "of", "and", "for", "on", "in", "to", "with", "my", "new",
+}
+
+
+def _probes(title: str) -> list[str]:
+    """Distinctive substrings to look for a work by.
+
+    The full title is the wrong probe. A discovery agent writes "DIKLIS
+    CHUMP: Loser Legacy" or "Wobble Model: Classical Explanation for Quantum
+    Phenomena"; neither string is in the vault, while "Diklis Chump" and
+    "Wobble Model" are all over it. Leading type words are wrong too: probing
+    "Book on Assisted Human Intelligence" as "Book on Assisted" misses the
+    "Assisted Human Intelligence" paper that already documents it.
+    """
+    text = (title or "").strip()
+    if not text:
+        return []
+    head = re.split(r"[:(\u2014\u2013]", text)[0].strip()
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'`]*", head)
+    while words and words[0].lower() in _TYPE_WORDS:
+        words.pop(0)
+    named = [w for w in words if w.lower() not in _TYPE_WORDS]
+
+    probes = set()
+    if len(text) >= 6:
+        probes.add(text)
+    if len(head) >= 6:
+        probes.add(head)
+    for size in (4, 3, 2):
+        if len(named) >= size:
+            probes.add(" ".join(named[:size]))
+    if len(named) == 1 and len(named[0]) >= 4:
+        probes.add(named[0])
+    return sorted({p for p in probes if len(p) >= 4}, key=len, reverse=True)
+
+
+def _known_names() -> dict[str, str]:
+    """Project display names and Incubator artifact titles, for exact matching."""
+    known: dict[str, str] = {}
+    for path in sorted(PROJECT_DIR.glob("*.json")):
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for value in (record.get("display_name"), record.get("name"), record.get("folder_name")):
+            if isinstance(value, str) and len(value) >= 4:
+                known.setdefault(value.lower(), f"project: {value}")
+    incubator = VAULT / "Projects" / "Incubator"
+    if incubator.is_dir():
+        for path in sorted(incubator.glob("*.md")):
+            stem = re.sub(r"^Book \u2014 ", "", path.stem)
+            stem = re.sub(r"\s+(Book\s+)?Report$|\s+Outline$", "", stem).strip()
+            if len(stem) >= 4:
+                known.setdefault(stem.lower(), f"incubator: {path.name}")
+    return known
+
+
+# Where the vault documents a work. Archive/ holds 135k raw atomics and
+# Resources/ holds harvested source material; a title appearing there is
+# evidence the subject was discussed, not that the work is documented. Adding
+# them also makes the search unusable: one fixed-string pass over the whole
+# vault is 233k files and returns more matches than can be held in memory.
+_DOCUMENTED_IN = ("Matrix", "Projects", "Modes", "Lenses")
+
+
+def _vault_probe_hits(all_probes: set[str]) -> dict[str, list[str]]:
+    """Look every probe up in the vault's documentation areas in one pass.
+
+    Done in-process rather than by grep: BSD grep given a pattern file of
+    several hundred fixed strings degrades to minutes over even this small a
+    tree, while the same search in memory is a couple of seconds. The
+    documentation areas are ~1,700 files, so reading them costs nothing.
+    """
+    if not all_probes:
+        return {}
+    hits: dict[str, list[str]] = {p: [] for p in all_probes}
+    lowered = [(p, p.lower()) for p in sorted(all_probes)]
+    roots = [VAULT / name for name in _DOCUMENTED_IN if (VAULT / name).is_dir()]
+    files = [f for root in roots for f in root.rglob("*.md")]
+    files.extend(VAULT.glob("*.md"))
+    for path in files:
+        try:
+            body = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except OSError:
+            continue
+        rel = str(path)[len(str(VAULT)) + 1 :]
+        for probe, needle in lowered:
+            if needle in body and len(hits[probe]) < 6:
+                hits[probe].append(rel)
+    return hits
+
+
+def discovery_consolidate() -> None:
+    """Cluster the discovered works, then ask the vault whether it knows them.
+
+    The discovery agents were given the project roster and the Incubator's
+    titles, but a work can already be documented under a name the agent did
+    not recognise -- "The Supreme Chumps" is inside the Supreme Court book
+    report, and "Hector Rentier" is a Main Street Independent voice. Only the
+    vault can settle that, so every candidate title is looked up in it.
+    """
+    works: list[dict] = []
+    unreadable = 0
+    for path in sorted((OUT_DIR / "discovery-output").glob("batch-*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            unreadable += 1
+            continue
+        for work in payload.get("works", []):
+            work["batch"] = payload.get("batch")
+            works.append(work)
+
+    real_segments: set[str] = set()
+    for cid, segs in load_segments().items():
+        for i in range(len(segs)):
+            real_segments.add(f"{cid}#{i}")
+
+    clusters: dict[str, dict] = {}
+    invented_evidence = 0
+    for work in works:
+        key = _title_key(work.get("title", ""))
+        if not key:
+            continue
+        evidence = [e for e in work.get("evidence_ids", []) if isinstance(e, str)]
+        good = [e for e in evidence if e in real_segments]
+        invented_evidence += len(evidence) - len(good)
+        entry = clusters.setdefault(
+            key,
+            {
+                "titles": [], "kinds": [], "descriptions": [], "quotes": [],
+                "development": [], "evidence_ids": [], "duplicate_of": [], "mentions": 0,
+            },
+        )
+        entry["mentions"] += 1
+        entry["titles"].append(work.get("title", ""))
+        entry["kinds"].append(work.get("kind", ""))
+        entry["descriptions"].append(work.get("description", ""))
+        if work.get("quote"):
+            entry["quotes"].append(work["quote"])
+        entry["development"].append(work.get("development", ""))
+        entry["evidence_ids"].extend(good)
+        if (work.get("possible_duplicate_of") or "").strip():
+            entry["duplicate_of"].append(work["possible_duplicate_of"].strip())
+
+    rank = {"advanced": 3, "moderate": 2, "early": 1, "passing": 0}
+    rows = []
+    for key, entry in clusters.items():
+        title = max(entry["titles"], key=len)
+        rows.append(
+            {
+                "title": title,
+                "key": key,
+                "kind": collections.Counter(entry["kinds"]).most_common(1)[0][0],
+                "development": max(entry["development"], key=lambda d: rank.get(d, 0)),
+                "mentions": entry["mentions"],
+                "description": max(entry["descriptions"], key=len),
+                "quote": max(entry["quotes"], key=len) if entry["quotes"] else "",
+                "evidence_ids": sorted(set(entry["evidence_ids"]))[:12],
+                "evidence_count": len(set(entry["evidence_ids"])),
+                "agent_duplicate_of": sorted(set(entry["duplicate_of"])),
+                "probes": _probes(title),
+            }
+        )
+    known = _known_names()
+    hits = _vault_probe_hits({p for row in rows for p in row["probes"]})
+    for row in rows:
+        seen: list[str] = []
+        matched: list[str] = []
+        for probe in row["probes"]:
+            if hits.get(probe):
+                matched.append(probe)
+                for path in hits[probe]:
+                    if path not in seen:
+                        seen.append(path)
+        row["vault_mentions"] = seen[:6]
+        row["matched_probes"] = matched
+        row["known_as"] = ""
+        for probe in row["probes"]:
+            match = known.get(probe.lower())
+            if match:
+                row["known_as"] = match
+                break
+    rows.sort(key=lambda r: (-rank.get(r["development"], 0), -r["evidence_count"], r["title"]))
+    (OUT_DIR / "discovered-works.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
+
+    undocumented = [r for r in rows if not r["vault_mentions"] and not r["known_as"]]
+    print(f"works reported {len(works)}  clusters {len(rows)}  unreadable batches {unreadable}")
+    print(f"evidence ids that are not real segments: {invented_evidence}")
+    print(f"clusters with no vault mention at all: {len(undocumented)}")
+    print()
+    for row in undocumented[:40]:
+        print(f"  [{row['development']:8s} {row['kind']:12s} ev={row['evidence_count']:2d}] {row['title'][:70]}")
+
+
+# ---------------------------------------------------------------------------
+# sweep-collect
+# ---------------------------------------------------------------------------
+
+
+def sweep_collect() -> dict:
+    """Fold the roster sweep's placements into the accepted set.
+
+    Retrieval asked each project which segments look like it, which serves a
+    named project with distinctive vocabulary far better than a Passion whose
+    matrix is three short generic sentences. The sweep asks each unexamined
+    segment where it belongs, and the Passions are where the difference lands.
+    """
+    profiles = json.loads((OUT_DIR / "profiles.json").read_text(encoding="utf-8"))
+    valid = set(profiles)
+    segments = load_segments()
+    real = set(segments)
+
+    accepted_path = OUT_DIR / "accepted.json"
+    data = json.loads(accepted_path.read_text(encoding="utf-8"))
+    accepted = {k: dict(v) for k, v in data["accepted"].items()}
+
+    inputs: dict[str, dict] = {}
+    for path in (OUT_DIR / "sweep-input-unretrieved").glob("batch-*.json"):
+        for row in json.loads(path.read_text(encoding="utf-8"))["segments"]:
+            inputs[row["candidate_id"]] = row
+
+    stats = {
+        "answered": 0,
+        "placed": 0,
+        "memberships": 0,
+        "invalid_nexus": 0,
+        "unknown_candidate": 0,
+        "unreadable_batches": 0,
+    }
+    for path in sorted((OUT_DIR / "sweep-output-unretrieved").glob("batch-*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            stats["unreadable_batches"] += 1
+            print(f"unreadable: {path.name}")
+            continue
+        for placement in payload.get("placements", []):
+            candidate_id = placement.get("candidate_id")
+            row = inputs.get(candidate_id)
+            if row is None:
+                stats["unknown_candidate"] += 1
+                continue
+            if row["conversation_id"] not in real:
+                stats["unknown_candidate"] += 1
+                continue
+            stats["answered"] += 1
+            nexuses = [n for n in placement.get("nexuses", []) if isinstance(n, str)]
+            stats["invalid_nexus"] += len([n for n in nexuses if n not in valid])
+            nexuses = [n for n in nexuses if n in valid]
+            if not nexuses:
+                continue
+            stats["placed"] += 1
+            for nexus in dict.fromkeys(nexuses):
+                stats["memberships"] += 1
+                accepted.setdefault(nexus, {})[candidate_id] = {
+                    "conversation_id": row["conversation_id"],
+                    "segment_index": row["segment_index"],
+                    "subject": row["subject"],
+                    "conversation_title": "",
+                    "date": "",
+                    "route_count": 0,
+                    "best_similarity": 0.0,
+                    "confidence": str(placement.get("confidence", "")).strip().lower(),
+                    "reason": str(placement.get("reason", ""))[:200],
+                    "source": "sweep",
+                }
+
+    data["accepted"] = {k: v for k, v in sorted(accepted.items())}
+    data["stats"]["sweep"] = stats
+    accepted_path.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    print(json.dumps(stats, indent=1))
+    for nexus, rows in sorted(accepted.items()):
+        swept = sum(1 for r in rows.values() if r.get("source") == "sweep")
+        print(f"{nexus:26s} segments={len(rows):5d}  (+{swept} from sweep)")
+    return data
 
 
 # ---------------------------------------------------------------------------
@@ -1113,8 +1543,16 @@ def main() -> int:
     p_judge.add_argument("--batch-size", type=int, default=80)
     p_judge.add_argument("--only", nargs="*")
 
+    p_sweep = sub.add_parser("sweep-input", help="batches for segments the project pass never judged")
+    p_sweep.add_argument("--kind", choices=["unretrieved", "orphan", "all"], default="unretrieved")
+    p_sweep.add_argument("--batch-size", type=int, default=40)
+
     p_verify = sub.add_parser("verify-input", help="re-judge accepts whose reason does not describe them")
     p_verify.add_argument("--batch-size", type=int, default=40)
+
+    sub.add_parser("discovery-consolidate", help="cluster discovered works and check them against the vault")
+
+    sub.add_parser("sweep-collect", help="fold roster-sweep placements into the accepted set")
 
     p_collect = sub.add_parser("collect", help="validate judge output and assemble accepted set")
     p_collect.add_argument("--strict", action="store_true", help="exit non-zero if any batch is bad")
@@ -1139,8 +1577,20 @@ def main() -> int:
         print(f"\n{len(profiles)} profiles -> {path}")
         return 0
 
+    if args.command == "sweep-input":
+        build_sweep_input(args.kind, args.batch_size)
+        return 0
+
     if args.command == "verify-input":
         build_verify_input(args.batch_size)
+        return 0
+
+    if args.command == "discovery-consolidate":
+        discovery_consolidate()
+        return 0
+
+    if args.command == "sweep-collect":
+        sweep_collect()
         return 0
 
     if args.command == "collect":

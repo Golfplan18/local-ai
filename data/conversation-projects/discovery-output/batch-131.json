@@ -1,0 +1,20 @@
+{"batch": 131, "works": [
+  {
+    "title": "AI Agent Systems Technical Book",
+    "kind": "book",
+    "description": "A technical work on designing and building AI agent systems. User has developed extensive outlines covering implementation architecture, systems design patterns, testing, observability, and integration. Two complementary volumes planned: one focused on technical implementation, the other on the conceptual framework that AI agents can be programmed in natural language. Distinct from Ora itself—this is a book about how to build such systems.",
+    "development": "advanced",
+    "evidence_ids": ["historical-9e96e6ba4900#0", "historical-9e96e6ba4900#3"],
+    "quote": "The attached outline was AI-generated based on a more extensive outline I've already developed. This one focuses entirely on the technical side, whereas the other outline explains the concepts more simply and covers the experience of developing the system.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Semantic Extraction and Data Formulation Framework",
+    "kind": "framework",
+    "description": "A framework for converting unstructured narrative text (conversations, chats) into structured machine-readable markdown and YAML format for efficient AI retrieval. Designed to make historical conversation archives queryable. Synthesizes Anthropic's contextual retrieval approaches with user's architecture for deduplication, contradiction resolution, temporal versioning, and query-side optimization.",
+    "development": "moderate",
+    "evidence_ids": ["historical-9f22577aad18#0", "historical-9f22577aad18#1", "historical-9f22577aad18#2"],
+    "quote": "I derived this system from first principles by asking AI to synthesize two documents I was working on to make my personal AI setup on my own machine work well.",
+    "possible_duplicate_of": ""
+  }
+]}

@@ -1,0 +1,29 @@
+{"batch": 24, "works": [
+  {
+    "title": "Initiation Frameworks Suite for Novel Writing",
+    "kind": "framework",
+    "description": "A systematic set of pre-foundation frameworks (Character, Theme, Setting, Plot, Chapter, and Chapter Concept Initiation Frameworks) designed to gather complete input data before running foundation frameworks. Each framework uses iterative questioning to extract comprehensive author information, evaluate response quality, and produce structured outputs optimized for the corresponding foundation framework.",
+    "development": "moderate",
+    "evidence_ids": ["historical-1da6b1c60ac6#0", "historical-1da6b1c60ac6#1", "historical-1da6b1c60ac6#2", "historical-1da6b1c60ac6#3"],
+    "quote": "Let's start with the Character Initiation Framework... Provide the theme initiation framework... Provide the settings initialization framework... Provide the plot initiation framework... Provide the chapter initiation framework... Provide a Chapter Concept Initiation Framework.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Bedtime Story for Scientist Outreach",
+    "kind": "paper",
+    "description": "A narrative physics communication piece presenting the concepts of matter, antimatter, and cosmic separation through a bedtime story framed as a father explaining to a young son. Designed as both a pedagogical narrative and a 'honeypot' email outreach to prominent scientists in cosmology, astronomy, physics, and astrophysics, with a teaser revealing the story as potentially connected to alternative physics theories.",
+    "development": "early",
+    "evidence_ids": ["historical-1bfa432fd750#0"],
+    "quote": "I want to take that story and present it in the format of a bedtime story told to an eight-year-old. I will follow that with a teaser: I am either just a creative writer who loves science... or I'm describing something real.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Automated News Analysis and Publishing Pipeline",
+    "kind": "service",
+    "description": "A Python-based infrastructure service to fetch news articles from RSS feeds, process them through a local AI model with custom analysis prompts, and automatically publish the analyzed output to WordPress or Substack. Designed as modular architecture separating news ingestion, AI processing, and publishing workflows, using WordPress REST API or Substack email distribution.",
+    "development": "early",
+    "evidence_ids": ["historical-1c3c2408583d#0"],
+    "quote": "I want to take stories from a news feed, feed them to an AI on my personal machine, and post the output to the web, either on a blog-based site or Substack. Could this be done with Python?",
+    "possible_duplicate_of": ""
+  }
+]}

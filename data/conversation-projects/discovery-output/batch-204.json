@@ -1,0 +1,65 @@
+{"batch": 204, "works": [
+  {
+    "title": "K-Shaped Economy Novel (Arlington High School Setting)",
+    "kind": "novel",
+    "description": "A young adult political fiction novel set in Arlington, Virginia, during economic collapse. Features diverse high school characters from wealthy and struggling backgrounds exploring themes of class conflict, romance, and moral choices. Specific plot elements include a rich male character secretly in love with a poor girl, and complex rejection dynamics between protagonists.",
+    "development": "moderate",
+    "evidence_ids": ["historical-f9df41e03158#0", "historical-f9df41e03158#1"],
+    "quote": "Use whatever suggestions from the AI you find useful. I need to add YA romance and sexual tension. I need two romances. One where the rich guy is in love with a poor girl, but he can't socially admit it.",
+    "possible_duplicate_of": "K-Shaped Economy Novel (Trumponomics Fiction)"
+  },
+  {
+    "title": "24/7 AI Agent Dispatcher Architecture",
+    "kind": "framework",
+    "description": "A technical framework and conceptual architecture for continuous, asynchronous AI task execution. Designed to decouple human input/wisdom from AI execution, allowing AI agents to work 24/7 on backlogs of prioritized tasks. Core components include a Python-based persistent Dispatcher layer (managing task queues and state) and Worker Nodes (AI models executing tasks).",
+    "development": "early",
+    "evidence_ids": ["historical-fa0e71e22201#1"],
+    "quote": "The productivity explosion occurs when you decouple Input (your wisdom) from Execution (the AI's labor). The Architecture of 24/7 Productivity: 1. The Dispatcher: This is the Python layer you are building. It is not intelligent; it is persistent. Its job is to maintain the state of the backlog and feed tasks to the agents.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ideation Framework (Never-Delete, Preservation-Focused Version)",
+    "kind": "framework",
+    "description": "A restructured ideation framework that preserves all ideas indefinitely rather than condensing or eliminating them. The framework maintains comprehensive organization and tagging of ideas as they move through different states (current narrative, junkyard, developed, etc.), with metadata about why ideas were excluded and decision-maker attribution. Output grows larger over time similar to master outlines.",
+    "development": "moderate",
+    "evidence_ids": ["historical-fa7b6d611b7f#0"],
+    "quote": "I need this framework to provide an ongoing list of all my ideas, organized and stored so that they are never condensed or eliminated. Establish a strict 'never delete' approach to all ideas. When an idea moves from Current Narrative to Idea Junkyard, it would be tagged with: Original form, Reason for exclusion, Decision-maker.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Character Foundation Framework (Expanded Layers)",
+    "kind": "framework",
+    "description": "An expanded character-building framework with new analytical layers added for deep narrative development. New Layer 10 focuses on Decision Cascade Mapping (how character choices create pressures and opportunities for other characters). New Layer 11 provides Gap Analysis Protocol for identifying missing elements in character development. Framework is designed to preserve all original functionality while enabling more sophisticated choice architecture analysis.",
+    "development": "moderate",
+    "evidence_ids": ["historical-fabdc45ad85e#0", "historical-fabdc45ad85e#1", "historical-fabdc45ad85e#2"],
+    "quote": "Layer 10: Decision Cascade Mapping; Layer 11: Gap Analysis Protocol. Choice-to-Pressure Cascades: Character A's Choice → Creates External Pressure for Character B → Forces Character B's Choice.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Political Fiction 20-Book Series",
+    "kind": "novel",
+    "description": "A collection of 20 related political fiction books being organized into series structure for publication strategy. User is determining optimal series grouping (single 20-book series vs. two 10-book series vs. three 7-book series) considering Amazon visibility, reader engagement, and marketing effectiveness. Specifically exploring a two-group-of-10 structure for political satire/fiction.",
+    "development": "advanced",
+    "evidence_ids": ["historical-fac0edc87b4e#0", "historical-fac0edc87b4e#1"],
+    "quote": "I have 20 related books that I could organize into a series, but I'd like to understand what the optimum number of books is for a series. For a political fiction series, breaking it into two groups of 10 books is likely the best option.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Comparative Analysis: Philosophical & Technical Foundations",
+    "kind": "paper",
+    "description": "A comparative analysis paper examining the philosophical and technical foundations of two academic papers. The work focuses on extracting and analyzing the authors' philosophical perspectives and underlying assumptions, comparing their approaches to knowledge and methodology.",
+    "development": "early",
+    "evidence_ids": ["historical-fadfd437d4a3#0"],
+    "quote": "I want to draft a paper that compares the philosophical and technical foundations of both papers, focusing on extracting and analyzing the authors' philosophies.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Alternative Cosmology: Tired Light Theory Development",
+    "kind": "research",
+    "description": "Research and theoretical development of a 'New Tired Light theory' as an alternative to the expanding universe model. The theory proposes that in a static universe, photons lose energy through interactions with intergalactic plasma, causing redshift. Includes exploration of how the theory explains the Hubble relationship, cosmic microwave background, and engages with challenges from gravitational redshift and time dilation.",
+    "development": "moderate",
+    "evidence_ids": ["historical-fa950fcebcb3#0", "historical-fa950fcebcb3#1"],
+    "quote": "The model proposed here is that in a static universe, photons of light from distant galaxies are absorbed and reemitted by electrons in the plasma of intergalactic space and on each interaction the electron recoils. Energy is lost to the recoiling electron and thus the reemitted photon has less energy.",
+    "possible_duplicate_of": "Expanding Awareness"
+  }
+]}

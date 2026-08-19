@@ -1,0 +1,38 @@
+{"batch": 16, "works": [
+  {
+    "title": "Political Satire Book Series",
+    "kind": "book",
+    "description": "A series of political satire books for Amazon KDP, targeting 30,000-50,000 words per book (~57 chapters at 700 words each), priced at $4.99 per title. User discusses genre positioning, market positioning, and release strategy tied to current events.",
+    "development": "moderate",
+    "evidence_ids": ["historical-1507ba5a70d0#4"],
+    "quote": "I am going to write a series of books with political satire. I want to price the Kindle books at $4.99. What word count range is most likely to lead to successful sales?",
+    "possible_duplicate_of": "K-Shaped Economy Novel (Trumponomics Fiction)"
+  },
+  {
+    "title": "Off-Grid Sanctuary Retreat",
+    "kind": "business",
+    "description": "Real estate and lifestyle development project for a tech-free sanctuary retreat center with intentional signal-blocking zones. Plans include land purchase in Adams County, building cabins and central meditation house, creating governance structures, and potentially scaling as a movement to establish radio-free zones.",
+    "development": "moderate",
+    "evidence_ids": ["historical-151c1cf4612d#0"],
+    "quote": "buy land (Adams County), build cabins + central meditation house, and intentionally create a tech-free, protected \"dead zone\" retreat with strict ingress/egress and caretaker protocols",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Automated Publishing Pipeline",
+    "kind": "product",
+    "description": "System for automating content production from vault research and ideas through writing, product generation (books, avatars, images), and Amazon publishing. User discusses achieving 12 books per year with rapid release strategy, managing production to capitalize on news cycles and viral attention.",
+    "development": "moderate",
+    "evidence_ids": ["historical-151c1cf4612d#1"],
+    "quote": "if I spend a month working on a book about a spiritual concept—thinking it through and putting all this personal effort into writing it—when it's done, I have my next product ready for Amazon. If I can do one of those a month, I'm producing 12 a year.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Divorce Recovery Fiction Series",
+    "kind": "novel",
+    "description": "Serialized fiction series exploring divorce recovery as a romance/comedy sub-genre for Amazon KDP. Early-stage market research phase examining audience preferences (female vs male protagonists, genre positioning), market size for male-focused divorce recovery, and how to position from male perspective.",
+    "development": "early",
+    "evidence_ids": ["historical-1507ba5a70d0#0", "historical-1507ba5a70d0#1"],
+    "quote": "divorce recovery as a sub-genre of fiction and romance... Will women read this if it's written from a male perspective? Do men read this material?",
+    "possible_duplicate_of": "Divorce/Marriage Memoir"
+  }
+]}

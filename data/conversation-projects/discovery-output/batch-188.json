@@ -1,0 +1,14 @@
+{
+  "batch": 188,
+  "works": [
+    {
+      "title": "Comic Book Speech Bubble Tool",
+      "kind": "product",
+      "description": "A custom Python/Tkinter desktop application for adding comic book-style speech bubbles with text to background images. Addresses the workflow gap between overly-simple web toys and complex desktop editors like Photoshop. Designed to import AI-generated or user-provided images and overlay stylized speech bubbles with configurable pointers and text rendering.",
+      "development": "early",
+      "evidence_ids": ["historical-e72b96aad656#0"],
+      "quote": "I want an image editor where I can take a background image—perhaps one I've had AI generate for me on Discord or elsewhere—and add comic book speech bubbles with text.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

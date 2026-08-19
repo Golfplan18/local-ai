@@ -1,0 +1,27 @@
+{
+  "batch": 30,
+  "works": [
+    {
+      "title": "Easy Talk Communication System",
+      "kind": "framework",
+      "description": "A structured communication methodology being developed to bridge understanding gaps between users and their child with special needs. Creates a 'living lexicon' that maps signals/words to their intended meanings, with documented context, typical triggers, effective responses, repair strategies when communication misfires, and confidence levels for each entry. Designed as a practical tool for shared meaning-making.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-28c1f31866ba#0"
+      ],
+      "quote": "I've been finding his words—the words he attaches to meaning—and mapping them out against my own, I realized that nobody had really done this before",
+      "possible_duplicate_of": "A Special Life (special-needs parenting)"
+    },
+    {
+      "title": "Geopolitical Analysis of Unprecedented Civilizational Disruption",
+      "kind": "paper",
+      "description": "An analytical framework examining three concurrent unprecedented disruptions unique to this historical moment: (1) technological disruption capable of restructuring the entire labor market through AI, (2) voluntary dismantling of the world order by the power that built and sustained it, and (3) a financial bubble of historic proportions built on fragile foundations. Analyzes how these overlapping crises create a qualitatively different geopolitical moment than any prior disruption.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-289c55090294#0"
+      ],
+      "quote": "We have never before seen the simultaneous occurrence of: A technological disruption capable of restructuring the entire labor market",
+      "possible_duplicate_of": "Civilizational Collapse / Neurological Hits"
+    }
+  ]
+}

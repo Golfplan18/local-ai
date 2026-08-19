@@ -1,0 +1,62 @@
+{
+  "batch": 193,
+  "works": [
+    {
+      "title": "Political Persuasion & Propaganda Defense Framework",
+      "kind": "framework",
+      "description": "An integrated framework for exposing political hypocrisy through evidence-based propaganda techniques and news filtering. Combines a text-rewriting spinner tool for generating persuasive narratives, a news feed filter to strip propaganda and sensationalism, and hypocrisy-detection logic that identifies contradictions in political rhetoric. The user explicitly states they are incorporating these into one larger work encompassing propaganda, retaliation, and defense concepts.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-eb675ae17c49#109",
+        "historical-eb675ae17c49#110",
+        "historical-eb675ae17c49#116",
+        "historical-eb675ae17c49#117",
+        "historical-eb675ae17c49#118",
+        "historical-eb675ae17c49#119",
+        "historical-eb675ae17c49#120",
+        "historical-eb675ae17c49#121",
+        "historical-eb675ae17c49#122",
+        "historical-eb675ae17c49#123",
+        "historical-eb675ae17c49#124",
+        "historical-eb675ae17c49#125",
+        "historical-eb675ae17c49#126",
+        "historical-eb675ae17c49#127",
+        "historical-eb675ae17c49#128",
+        "historical-eb675ae17c49#129",
+        "historical-eb675ae17c49#130",
+        "historical-eb675ae17c49#131",
+        "historical-eb675ae17c49#132",
+        "historical-eb675ae17c49#133",
+        "historical-eb675ae17c49#134",
+        "historical-eb675ae17c49#135"
+      ],
+      "quote": "That conceptual framework you laid out, I'm going to incorporate it into a bigger work that encompasses this piece plus the other things I'm putting out—propaganda, retaliation, defense.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Multi-Level Educational Content on AI Capabilities",
+      "kind": "essay-series",
+      "description": "A tiered educational framework explaining artificial intelligence capabilities and human potential enhancement to different audiences: children ages 5-6, high school students, and adults. Each level maintains consistency in core concepts while adjusting emotional appeal and complexity. The user is iteratively developing versions with increasing emotional resonance and excitement about AI applications for improving lives.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-ebcd97747ed9#0",
+        "historical-ebcd97747ed9#1"
+      ],
+      "quote": "Increase the emotional connection. It's too dry... target length is 750 to 1000 words. Try to generate excitement and enthusiasm for the possibilities to improve their own lives and the lives of those they care about.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Expanding Awareness Cosmology (Hubble's Law Reexamination)",
+      "kind": "paper",
+      "description": "An academic/preprint framework reexamining Hubble's Law through the lens of cumulative gravitational lensing effects at the observable universe's edge. The user is developing this as a scientific contribution with AI-powered peer review validation. Currently in title-development phase with emphasis on confident scientific tone and AI-supported analysis.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-ec021413d466#0",
+        "historical-ec021413d466#1",
+        "historical-ec021413d466#2"
+      ],
+      "quote": "I'm writing to share a cosmological framework that reexamines Hubble's Law through the lens of boundary gravitational effects—much as Einstein's thought experiments revealed hidden premises in classical mechanics.",
+      "possible_duplicate_of": "Expanding Awareness"
+    }
+  ]
+}

@@ -1,0 +1,312 @@
+{
+  "batch": 82,
+  "placements": [
+    {
+      "candidate_id": "historical-d0a99d36377e#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political correctness, social change mechanisms, enforcement analysis"
+    },
+    {
+      "candidate_id": "historical-d0a99d36377e#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Persuasion strategies in political movements and coercion responses"
+    },
+    {
+      "candidate_id": "historical-d0d550aabab5#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Medical condition explanation - no project engagement"
+    },
+    {
+      "candidate_id": "historical-d0da2f5d46c4#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Policy effectiveness analysis regarding drug epidemic"
+    },
+    {
+      "candidate_id": "historical-d0da2f5d46c4#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Trump administration tariff policy economic consequences"
+    },
+    {
+      "candidate_id": "historical-d11525591ff8#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Media response strategies to political allegations"
+    },
+    {
+      "candidate_id": "historical-d11525591ff8#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Internal political movement questioning regarding conduct allegations"
+    },
+    {
+      "candidate_id": "historical-d11a0b66fc27#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Constitutional electoral authority and voting infrastructure policy"
+    },
+    {
+      "candidate_id": "historical-d11a0b66fc27#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of media framing mismatch with actual party dynamics and priorities"
+    },
+    {
+      "candidate_id": "historical-d13741032c40#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "News summary of geopolitical event without substantive engagement"
+    },
+    {
+      "candidate_id": "historical-d141f7cde3ba#0",
+      "nexuses": [
+        "writing_fiction",
+        "ai_writing_method"
+      ],
+      "confidence": "high",
+      "reason": "Developing fictional character representing political betrayal; character naming methodology"
+    },
+    {
+      "candidate_id": "historical-d1546d7530e2#0",
+      "nexuses": [
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Substantive discussion of journalistic standards and when to report ongoing investigations"
+    },
+    {
+      "candidate_id": "historical-d1a07c6ae4a6#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Personal communication boundary-setting, not project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-d1a87e0c51cc#1",
+      "nexuses": [
+        "writing"
+      ],
+      "confidence": "high",
+      "reason": "Overcoming creative procrastination through motion-driven clarity"
+    },
+    {
+      "candidate_id": "historical-d1e32b6fa561#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Physical health crisis impact on emotional availability and romantic attachment"
+    },
+    {
+      "candidate_id": "historical-d1f92b9956ea#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Geopolitical economic analysis without specific project engagement"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#1",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Romantic relationship emotional dynamics and sexual compatibility navigation"
+    },
+    {
+      "candidate_id": "historical-d1fd19fbee7a#6",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Emotional growth in masculine identity and readiness for committed partnership"
+    },
+    {
+      "candidate_id": "historical-d1fef9355ecb#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic product launch pre-mortem analysis, no active project evidence"
+    },
+    {
+      "candidate_id": "historical-d2351c698fba#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of military intervention as geopolitical power and resource extraction"
+    },
+    {
+      "candidate_id": "historical-d2351c698fba#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Structural analysis of American dominance loss and global realignment"
+    },
+    {
+      "candidate_id": "historical-d23539dc906d#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Dating communication strategy and personality assessment"
+    },
+    {
+      "candidate_id": "historical-d23539dc906d#1",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Geographic incompatibility and readiness mismatch in romantic context"
+    },
+    {
+      "candidate_id": "historical-d23539dc906d#2",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Comparative analysis of two romantic interests and readiness signals"
+    },
+    {
+      "candidate_id": "historical-d237fe8bbb4b#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Hardware troubleshooting and alternative charging methods"
+    },
+    {
+      "candidate_id": "historical-d25d14fdeea7#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "General finance education on residual valuation, not property expertise building"
+    },
+    {
+      "candidate_id": "historical-d275f4b14c67#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Electoral system reform through competitive district creation analysis"
+    },
+    {
+      "candidate_id": "historical-d2783186ae29#0",
+      "nexuses": [
+        "american_jesus",
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Character development for American Jesus trilogy; religious authority archetype"
+    },
+    {
+      "candidate_id": "historical-d2783186ae29#2",
+      "nexuses": [
+        "american_jesus",
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Character foundation for Shawn Carter in American Jesus; youth leadership representation"
+    },
+    {
+      "candidate_id": "historical-d2b783485509#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Electoral strategy analysis and electoral coalition vulnerability assessment"
+    },
+    {
+      "candidate_id": "historical-d2f8e672c337#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic academic writing framework, no project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-d2f8e672c337#1",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Academic paper writing assistance on specific topic, no project engagement"
+    },
+    {
+      "candidate_id": "historical-d39a8829bc5d#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Tool evaluation for improved writing infrastructure and spell-checking capability"
+    },
+    {
+      "candidate_id": "historical-d3dde5095fa7#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Deep exploration of historical prejudice patterns and cultural separation dynamics"
+    },
+    {
+      "candidate_id": "historical-d408acfa9e59#2",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Chapter development for American Jesus with movement crystallization and coalition formation"
+    },
+    {
+      "candidate_id": "historical-d408acfa9e59#4",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Chapter summary standardization for American Jesus manuscript"
+    },
+    {
+      "candidate_id": "historical-d44442405020#0",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Chapter outline framework adopted for American Jesus multi-act structure"
+    },
+    {
+      "candidate_id": "historical-d44442405020#1",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 2 Chapter 5 outline for American Jesus with journalistic perspective"
+    },
+    {
+      "candidate_id": "historical-d44442405020#2",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 3 Chapter 15 outline showing Hayzeus confronting power structures"
+    },
+    {
+      "candidate_id": "historical-d44442405020#3",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 3 Chapter 16 outline with political figures and prophetic tradition"
+    }
+  ]
+}

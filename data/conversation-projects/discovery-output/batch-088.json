@@ -1,0 +1,20 @@
+{"batch": 88, "works": [
+  {
+    "title": "Reincarnation is Useful Bullshit",
+    "kind": "essay",
+    "description": "Essay exploring how belief in reincarnation and karma functions as a practical philosophical tool for ethical living, regardless of metaphysical truth. The work argues that one need not believe in rebirth as literal reality to benefit from acting as if consequences extend across lifetimes. User is actively developing meta summary and SEO strategy for the piece.",
+    "development": "moderate",
+    "evidence_ids": ["historical-6c4557c46116#0", "historical-6c4557c46116#1"],
+    "quote": "This essay explores how belief in reincarnation and karma functions as a practical philosophical tool for ethical living, regardless of literal metaphysical truth.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Digital Swarm Warfare",
+    "kind": "book",
+    "description": "Strategic book on political communication and persuasion tactics centered on how leaderless networked movements outperform hierarchical structures in information warfare. Covers distributed experimentation in messaging, the failure modes of consensus-based communication, and how fiction functions as a vehicle for bypassing cognitive defenses and changing political minds. Explicitly in active chapter outline and drafting phase.",
+    "development": "moderate",
+    "evidence_ids": ["historical-6e1038e42d3c#0"],
+    "quote": "We are writing a book from this outline. Use it for context. ### Chapter 33: Digital Swarm Warfare - **The Networked Revolution** - How leaderless movements outperform hierarchical structures in modern information warfare",
+    "possible_duplicate_of": "We Too"
+  }
+]}

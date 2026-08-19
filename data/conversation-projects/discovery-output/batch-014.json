@@ -1,0 +1,14 @@
+{
+  "batch": 14,
+  "works": [
+    {
+      "title": "Project 2030",
+      "kind": "white paper",
+      "description": "A strategic counter-document to Project 2025 that maps authoritarian methodologies but applies them toward progressive and democratic ends. Describes concrete policy approaches to dismantle Trump's agenda and establish its institutional opposite.",
+      "development": "early",
+      "evidence_ids": ["historical-14b9ceccf826#21"],
+      "quote": "This underscores my need to produce a counter document, Project 2030, that describes how to use the same methods to dismantle what Trump is trying to accomplish and instead install the exact opposite regime.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

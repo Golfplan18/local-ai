@@ -1,0 +1,20 @@
+{"batch": 199, "works": [
+  {
+    "title": "Third Brain AI System",
+    "kind": "product",
+    "description": "A multi-agent AI system architecture running on Mac Studio with dual 70B models configured as cognitive hemispheres (creative/expansive vs. logical/reductive), specialist agents for targeted domains, a coordinator agent managing task orchestration and information flow, and an incognito-processing sidebar. Simulates human brain structure and function to achieve 100-1000x cognitive amplification.",
+    "development": "advanced",
+    "evidence_ids": ["historical-f48d2b0a9bec#0", "historical-f48d2b0a9bec#1", "historical-f48d2b0a9bec#2"],
+    "quote": "I am working on AI agent team coordination. I have a Mac Studio with 128GB of combined RAM that will allow me to run two 70B large language models in memory simultaneously with room for computation and other LLMs to assist.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Book on Assisted Human Intelligence",
+    "kind": "book",
+    "description": "A comprehensive book documenting the OR/Ora system architecture, covering RAG-based retrieval design, stateless pipeline processing, context management across tool calls, RAG provenance systems, model coordination strategy, and personal knowledge management system design built on atomic notes. 100,000+ word outline with chapters 1-14 fully vetted; book development runs parallel with system development.",
+    "development": "advanced",
+    "evidence_ids": ["historical-f3d777c1994e#0", "historical-f3d777c1994e#1", "historical-f3d777c1994e#2", "historical-f3d777c1994e#3", "historical-f3d777c1994e#4", "historical-f3d777c1994e#5", "historical-f3d777c1994e#6"],
+    "quote": "I couldn't have developed the system without writing the book, and I certainly couldn't have written the book without developing the system. The book forced clarity and gave me something to discuss with Claude that I wouldn't have gotten any other way.",
+    "possible_duplicate_of": ""
+  }
+]}

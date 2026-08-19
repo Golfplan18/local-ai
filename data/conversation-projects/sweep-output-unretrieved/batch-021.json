@@ -1,0 +1,283 @@
+{
+  "batch": 21,
+  "placements": [
+    {
+      "candidate_id": "historical-34ae28cbd2a2#21",
+      "nexuses": [
+        "insight"
+      ],
+      "reason": "Personal observations on climate and understanding physical mechanisms"
+    },
+    {
+      "candidate_id": "historical-34b41d0bf6cd#0",
+      "nexuses": [
+        "ora",
+        "technology"
+      ],
+      "reason": "Claude/Ora adoption surge, AI empowerment wave impact on dev teams"
+    },
+    {
+      "candidate_id": "historical-34b7b774cf40#0",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Anonymous vs. public strategy for controversial release with threat modeling"
+    },
+    {
+      "candidate_id": "historical-34d5cada489d#0",
+      "nexuses": [],
+      "reason": "Sports analytics and team performance analysis, no project engagement"
+    },
+    {
+      "candidate_id": "historical-34f074a310df#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "reason": "Constitutional law abuse and political-economic elite manipulation strategy"
+    },
+    {
+      "candidate_id": "historical-355d2f7817d0#0",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "reason": "Direct work on American Jesus narrative: parable placement and chapter structure"
+    },
+    {
+      "candidate_id": "historical-355d2f7817d0#2",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "reason": "American Jesus parable integration across trilogy structure and arcs"
+    },
+    {
+      "candidate_id": "historical-35d3b9bbbfd6#0",
+      "nexuses": [
+        "science"
+      ],
+      "reason": "Physics exploration: Hawking radiation and black hole thermodynamics"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#0",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Trump admin geopolitical impact, soft power loss, authoritarianism dynamics"
+    },
+    {
+      "candidate_id": "historical-35d65efe8df4#2",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Political right narrative sleight of hand maintaining exceptionalism myth"
+    },
+    {
+      "candidate_id": "historical-35e6076f9826#0",
+      "nexuses": [],
+      "reason": "Practical support document, not project engagement"
+    },
+    {
+      "candidate_id": "historical-35faa8bc4ca2#0",
+      "nexuses": [],
+      "reason": "Factual lookup, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3608f25e09b5#0",
+      "nexuses": [],
+      "reason": "Personal health/care discussion, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3612379e0659#0",
+      "nexuses": [
+        "politics",
+        "american_jesus",
+        "american_judas"
+      ],
+      "reason": "Political-theological research on Christian Nationalism and evangelical power"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#0",
+      "nexuses": [
+        "ora",
+        "technology"
+      ],
+      "reason": "Ora order-system reliability architecture disrupting VC-backed startups"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#4",
+      "nexuses": [
+        "ora",
+        "technology"
+      ],
+      "reason": "Enterprise AI adoption cascade driven by Ora-like reliability systems"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#7",
+      "nexuses": [
+        "technology"
+      ],
+      "reason": "AI-driven code production and automation-driven organizational restructuring"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#8",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "reason": "Economic injustice, elite extraction, structural inequality dynamics"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#11",
+      "nexuses": [
+        "technology"
+      ],
+      "reason": "Critique of AGI marketing hype and AI model commodity pricing"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#12",
+      "nexuses": [
+        "technology"
+      ],
+      "reason": "Cybersecurity AI market structural limitations and competitive positioning"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#13",
+      "nexuses": [
+        "ora",
+        "ora_foundation"
+      ],
+      "reason": "Ora release geopolitical implications vs. Chinese commoditized AI models"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#14",
+      "nexuses": [
+        "ora",
+        "politics"
+      ],
+      "reason": "Ora release political risk: personal accusations and foundation governance"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#15",
+      "nexuses": [
+        "technology"
+      ],
+      "reason": "OpenAI governance drift from nonprofit mission to commercial structure"
+    },
+    {
+      "candidate_id": "historical-36340dc93cfb#18",
+      "nexuses": [
+        "technology"
+      ],
+      "reason": "AI impact on educational assessment and institutional adaptation"
+    },
+    {
+      "candidate_id": "historical-368768ae0a46#0",
+      "nexuses": [],
+      "reason": "Historical research on UFO investigation, no project engagement"
+    },
+    {
+      "candidate_id": "historical-36a3f05cdd9d#0",
+      "nexuses": [],
+      "reason": "Technical support for account compromise, no project engagement"
+    },
+    {
+      "candidate_id": "historical-36bb62e4e803#0",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Trump negotiation failure and geopolitical consequence analysis"
+    },
+    {
+      "candidate_id": "historical-36f4aa660a61#0",
+      "nexuses": [
+        "american_jesus",
+        "american_king"
+      ],
+      "reason": "Character architecture and narrative scene structure work"
+    },
+    {
+      "candidate_id": "historical-370eeee70fdb#0",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Trump immigration policy and humanitarian harm analysis"
+    },
+    {
+      "candidate_id": "historical-3721daae62c2#0",
+      "nexuses": [
+        "insight"
+      ],
+      "reason": "Personal insight on creativity and cognitive management through focus"
+    },
+    {
+      "candidate_id": "historical-379992ee0ebb#0",
+      "nexuses": [],
+      "reason": "Financial market analysis, no project engagement"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#0",
+      "nexuses": [
+        "pen_names",
+        "politics"
+      ],
+      "reason": "Malcolm persona development and political-economic analysis distribution"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#1",
+      "nexuses": [
+        "pen_names",
+        "politics"
+      ],
+      "reason": "Malcolm persona audience targeting and political-economic message framing"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#3",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Geopolitical analysis: colectivo control, ELN negotiations, US interference"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#4",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Proxy war dynamics and mercenary actor coordination in Venezuela"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#5",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Constitutional law and executive power strategy for economic intervention"
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#6",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Venezuela oil sales and multi-actor proxy war mechanics"
+    },
+    {
+      "candidate_id": "historical-384166babaff#0",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "Geopolitical analysis of China-Iran strategy failure and imperial logic"
+    },
+    {
+      "candidate_id": "historical-384166babaff#1",
+      "nexuses": [
+        "politics"
+      ],
+      "reason": "China-US geopolitics: selective engagement undermining Western alliance"
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#14",
+      "nexuses": [
+        "obsidian"
+      ],
+      "reason": "Obsidian knowledge management workflow and web source integration"
+    }
+  ]
+}

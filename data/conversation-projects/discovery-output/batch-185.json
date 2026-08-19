@@ -1,0 +1,20 @@
+{"batch": 185, "works": [
+  {
+    "title": "Dystopian Novel: Concentrated AI Governance",
+    "kind": "novel",
+    "description": "A dystopian narrative exploring what happens if artificial intelligence or assisted human intelligence is allowed to concentrate. The plot hinges on an inflection event where emergency-justified surveillance precedents enable permanent expansion of oversight-bypass, with reader positioned to argue both sides of the moral dilemma.",
+    "development": "early",
+    "evidence_ids": ["historical-e458a350d765#7"],
+    "quote": "I need to create a dystopian vision of what would happen if artificial intelligence or assisted human intelligence were allowed to be concentrated",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Brand Tax Political Media Campaign",
+    "kind": "project",
+    "description": "A three-year coordinated left-wing media and meme campaign designed to systematically expose Republican brand contradictions through juxtaposed imagery and innuendo. Infrastructure includes unified style guide (2-3 fonts, 2-3 layout templates, recurring visual motifs), production loop, repeating slogans, and distribution strategy with Streisand-effect leverage.",
+    "development": "moderate",
+    "evidence_ids": ["historical-e3f17068bdfe#2", "historical-e3f17068bdfe#4"],
+    "quote": "There was a concerted left-wing effort to put out memes and images that constantly juxtapose opposing forces and expose the rot. It gets to run for three full years nonstop",
+    "possible_duplicate_of": "We Too"
+  }
+]}

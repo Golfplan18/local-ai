@@ -1,0 +1,38 @@
+{"batch": 48, "works": [
+  {
+    "title": "Elite Misconduct Pattern Reference Archive",
+    "kind": "research",
+    "description": "A structured reference archive cataloging recurring patterns of elite misconduct across decades, enabling rapid pattern identification and multi-decade exemplar rosters for political writing and analysis.",
+    "development": "early",
+    "evidence_ids": ["historical-3e3ccd33b870#0"],
+    "quote": "Build a well-scoped reference archive so that when a real article about elite misconduct lands, the voice can instantly slot it into a known recurring pattern, name the structurally true claim that explains the pattern, and reel off a multi-decade roster of canonical exemplars",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ideation Framework",
+    "kind": "framework",
+    "description": "A systematic methodology for transforming raw creative material into organized, implementable narrative elements using character choice architecture and universal human pattern recognition, with explicit layers for material analysis and narrative application.",
+    "development": "early",
+    "evidence_ids": ["historical-3e4ce1b645a3#1"],
+    "quote": "This framework transforms raw creative material into organized, implementable narrative elements. It uses character choice architecture and universal human pattern recognition to distill broad concepts into a target of concise, formatted story beats",
+    "possible_duplicate_of": "Framework Library"
+  },
+  {
+    "title": "Plot Refinement Framework",
+    "kind": "framework",
+    "description": "A comprehensive system for creating tactical prose generation blueprints from strategic plot structure, converting abstract plot and character arcs into choice-driven narrative roadmaps with consequence mapping and bridge-event identification for chapter-by-chapter drafting.",
+    "development": "early",
+    "evidence_ids": ["historical-3ef73b32af96#1"],
+    "quote": "A Comprehensive System for Creating Tactical Prose Generation Blueprints. Transform strategic plot structure from the Plot Foundation Framework into a tactical prose generation blueprint for chapter-by-chapter drafting",
+    "possible_duplicate_of": "Framework Library"
+  },
+  {
+    "title": "Ruth Justice Voice Specification",
+    "kind": "framework",
+    "description": "A voice specification and rhetorical device guide for the Ruth Justice character, establishing stylistic direction with elder-voiced punch-up contempt, extracting transferable rhetorical devices from Molly Ivins and classical rhetoric sources (accumulatio, declarative closers, word economy).",
+    "development": "early",
+    "evidence_ids": ["historical-3e80348db27e#0"],
+    "quote": "Give Claude Code a stylistic North Star for how Ruth Justice sounds — composed, elder-voiced, punch-up contempt; hot conviction, cold delivery. Curate the tradition and extract the transferable devices.",
+    "possible_duplicate_of": "Main Street Independent"
+  }
+]}

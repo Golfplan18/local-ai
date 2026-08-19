@@ -1,0 +1,29 @@
+{"batch": 93, "works": [
+  {
+    "title": "New Beginnings Bible Study Curriculum",
+    "kind": "curriculum",
+    "description": "A five-session Bible study curriculum on the theme of new beginnings for September 2025, targeting adult learners in southwestern Nigeria. Incorporates grace and truth principles, divine initiative and human response, cultural context-appropriate teaching techniques, and addresses the spiritual dynamics of transformation and new beginnings in scripture.",
+    "development": "moderate",
+    "evidence_ids": ["historical-71d930e20e46#0", "historical-71d930e20e46#1", "historical-71d930e20e46#2"],
+    "quote": "I'll be leading Bible Study for the entire month of September 2025 every Tuesday. During Bible study today, I had an epiphany about creating a series on New Beginnings",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ideation Framework",
+    "kind": "framework",
+    "description": "A pre-writing story-building ideation framework with associated evaluation criteria and evaluation framework. Designed to address the prewriting phase of AI-assisted writing, enabling multi-format IP generation (novels, screenplays, streaming series, graphic novels). Includes core narrative assessment, medium adaptability evaluation, and commercial viability assessment with ongoing refinement and criteria updates.",
+    "development": "moderate",
+    "evidence_ids": ["historical-722b08f58407#0", "historical-722b08f58407#1"],
+    "quote": "I have been developing my AI-assisted writing method and realized I needed a pre-writing story-building ideation phase. I created the Ideation Framework, the Ideation Evaluation Framework",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Visual Learning Tools with AI Integration",
+    "kind": "tool",
+    "description": "A documentation and tool-development project examining the state of mind mapping and visual tools for learning, how practitioners use AI to generate and manipulate these tools, and the historical foundations laid by Edward Tufte. Includes creation of an AI-assisted platform for creating, managing, and updating visual learning tools.",
+    "development": "early",
+    "evidence_ids": ["historical-722cb5fb73c8#0"],
+    "quote": "I want to document the current state of mind mapping and visual tools for learning, including how practitioners are using AI to generate and manipulate these tools. My goal is to create an AI-assisted tool for creating, managing, and updating visual learning tools.",
+    "possible_duplicate_of": ""
+  }
+]}

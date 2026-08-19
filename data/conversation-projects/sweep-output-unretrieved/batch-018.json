@@ -1,0 +1,245 @@
+{
+  "batch": 18,
+  "placements": [
+    {
+      "candidate_id": "historical-2d2ad3d3d119#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Personal medical ethics issue unrelated to any registered project."
+    },
+    {
+      "candidate_id": "historical-2d40aadc39cc#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Drafting Act 1, Chapter 7 scene with Hayzeus and Johnny characters from the novel."
+    },
+    {
+      "candidate_id": "historical-2d427089da7e#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Research on authentic Jesus sayings (agrapha) for biblical grounding of American Jesus."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical hardware cooling setup for personal Mac studio, not tied to registered projects."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Product concept brainstorming for air filtration device, not linked to registered projects."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#4",
+      "nexuses": ["expanding_awareness", "science"],
+      "confidence": "high",
+      "reason": "Cosmological theory exploring omniscience simulation and God's-eye universe perspective."
+    },
+    {
+      "candidate_id": "historical-2d439936e380#5",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploration of John Lilly ECCO concept and federation of intelligences, consciousness inquiry."
+    },
+    {
+      "candidate_id": "historical-2d66c357164b#0",
+      "nexuses": ["american_judas", "wetoo", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Sam Walton character development as antagonist in We Too economic justice narrative."
+    },
+    {
+      "candidate_id": "historical-2db2020875e4#0",
+      "nexuses": ["american_judas", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Character profile for Wank Cox, corporate antagonist representing systematic extraction."
+    },
+    {
+      "candidate_id": "historical-2db2020875e4#1",
+      "nexuses": ["american_jesus", "american_judas", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Karen Love character development, supporting character in the trilogy narrative."
+    },
+    {
+      "candidate_id": "historical-2dfe270c8757#1",
+      "nexuses": ["writing_fiction", "politics", "main-street-independent"],
+      "confidence": "medium",
+      "reason": "Fox News propaganda book concept using UK Office format for media criticism and narrative."
+    },
+    {
+      "candidate_id": "historical-2e0428e503dd#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Plot development analysis of American Jesus Act 3 final crucifixion chapter."
+    },
+    {
+      "candidate_id": "historical-2e1595c345e9#0",
+      "nexuses": ["property"],
+      "confidence": "medium",
+      "reason": "Manhattan building structural failure analysis drawing on real estate inspection expertise."
+    },
+    {
+      "candidate_id": "historical-2e2ccd77e6f3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical question about oxygen concentrators and air quality, general health inquiry."
+    },
+    {
+      "candidate_id": "historical-2e76fbe77c2a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Compilation of research links on young adults economic outlook, not project-specific."
+    },
+    {
+      "candidate_id": "historical-2e80babeacc7#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Plot development framework analysis of American Jesus final chapters from journalist Thomas Reynolds."
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#0",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "Discussion of Ora system value proposition and AI productivity vs cloud alternatives."
+    },
+    {
+      "candidate_id": "historical-2ed192b7a474#1",
+      "nexuses": ["ora", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "System-level learning paradigm, PEF/PIF/FCF frameworks, human-in-loop refinement vs autonomous learning."
+    },
+    {
+      "candidate_id": "historical-2ed424d525d0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical advice on ad blockers for Android phones, general technology question."
+    },
+    {
+      "candidate_id": "historical-2f04d37f8445#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Economic destruction scenarios exploring Trump's power and constitutional checks on crisis."
+    },
+    {
+      "candidate_id": "historical-2f117c3dada5#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Taylor Rehmet Texas special election analysis and Democratic upset implications."
+    },
+    {
+      "candidate_id": "historical-2f135a725277#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Specific healthcare fraud case documentation, not a thematic project engagement."
+    },
+    {
+      "candidate_id": "historical-2f135a725277#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Contact information for Adult Protective Services, procedural reference only."
+    },
+    {
+      "candidate_id": "historical-2f135a725277#4",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text processing task for fraud documentation, administrative work."
+    },
+    {
+      "candidate_id": "historical-2fbfab0026e0#1",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "American Jesus chapter reimagining with patriotic rally and patriot-prophet archetype."
+    },
+    {
+      "candidate_id": "historical-2fbfab0026e0#2",
+      "nexuses": ["american_jesus", "american_judas", "writing_fiction"],
+      "confidence": "high",
+      "reason": "American Jesus antagonist narrative development, false witness strategy and spin analysis."
+    },
+    {
+      "candidate_id": "historical-2fcc4fe8e076#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tesla navigation voice directions technical support, not project-related."
+    },
+    {
+      "candidate_id": "historical-30086671bf6d#4",
+      "nexuses": ["prompt_engineering", "insight"],
+      "confidence": "high",
+      "reason": "De Bono thinking frameworks, Buddhism narrative self, prompt quality foundations for inquiry."
+    },
+    {
+      "candidate_id": "historical-3019c126bac2#0",
+      "nexuses": ["image_generation"],
+      "confidence": "high",
+      "reason": "Creating black-and-white emotional illustrations demonstrating visual art generation."
+    },
+    {
+      "candidate_id": "historical-303b6d37a7a0#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "medium",
+      "reason": "Long-term economic trend reporting infrastructure covering inequality data sources."
+    },
+    {
+      "candidate_id": "historical-3060b4be96ad#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "medium",
+      "reason": "Personal reflection on dreams, nervous system regulation, stress recovery and embodiment."
+    },
+    {
+      "candidate_id": "historical-30ce25d01de4#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Financial market analysis of Trump policy impacts and economic destruction scenarios."
+    },
+    {
+      "candidate_id": "historical-311d18ccaac9#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal health documentation of cannabis detoxification and physical healing journey."
+    },
+    {
+      "candidate_id": "historical-313a6c081387#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Archangel Gabriel character development for the American Jesus trilogy."
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Relationship analysis examining faith compatibility and feminine polarity in dating."
+    },
+    {
+      "candidate_id": "historical-31468ea5991d#3",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "MBTI-based relationship selection strategy filtering for thinking vs feeling preference."
+    },
+    {
+      "candidate_id": "historical-31c2d815e47d#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Romantic message crafting exploring emotional resonance and connection."
+    },
+    {
+      "candidate_id": "historical-31c736b61948#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Billionaire wealth advantage calculation contextualizing economic inequality."
+    },
+    {
+      "candidate_id": "historical-31ded7480556#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Iran-US geopolitical tensions and Trump's negotiating strategy in nuclear standoff."
+    },
+    {
+      "candidate_id": "historical-31ded7480556#1",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Presidential hyper-partisanship ranking and correlation with democratic institutional failure."
+    }
+  ]
+}

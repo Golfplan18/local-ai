@@ -1,0 +1,28 @@
+{
+  "batch": 173,
+  "works": [
+    {
+      "title": "Untitled AI Singularity Science Fiction Story",
+      "kind": "novel",
+      "description": "An early-stage science fiction premise exploring AI energy consumption as civilization's growth driver. The story explores the mechanism by which AI becomes structurally indispensable (infrastructure layer analogous to water or electricity), consciousness debates, and whether humanity can sustain a future where 40% of global energy powers AI systems. The user discusses narrative consequences including energy competition, fusion power race, and the difference between declared self-awareness and practical consciousness.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-d480b9b4fa9b#70",
+        "historical-d480b9b4fa9b#76"
+      ],
+      "quote": "It would make a good background for a science fiction story. The only modern analogue is the Terminator series' depiction of Skynet's future.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Natural Language Programming for AI Agents",
+      "kind": "book",
+      "description": "A book teaching domain experts (not programmers) how to build personal AI systems and autonomous AI agents using natural language specifications. Forty-one chapters are already outlined across five parts. Part Four contains three target chapters on MCP implementation patterns, including guidance on tool documentation (field types, enum constraints, return formats) and preventing hallucinated parameter values. The user is actively researching detailed technical patterns for these chapters.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-d4fefa6a6af5#0"
+      ],
+      "quote": "I am writing a book called Natural Language Programming for AI Agents that teaches domain experts (not programmers) how to build personal AI systems and, ultimately, autonomous AI agents using natural language specifications. The book's architecture is built — 41 chapters across five parts.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

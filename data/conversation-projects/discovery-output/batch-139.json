@@ -1,0 +1,17 @@
+{
+  "batch": 139,
+  "works": [
+    {
+      "title": "Spiritual Practice: Middle Path Framework",
+      "kind": "book",
+      "description": "A spiritual practice book organized around the middle path as the central organizing principle for understanding all spiritual teachings across traditions. Treats teachings not as absolute truths but as 'pointers' to guide practitioners out of two-sided ditches (extremes). Includes a physics analogy (quantum particle collisions as metaphor for conceptual organization), cross-tradition mapping in chapter end-notes, and concrete examples of paired opposite teachings.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-aadf74c2bc1b#3",
+        "historical-aadf74c2bc1b#4"
+      ],
+      "quote": "When you look at spiritual teachings collectively—say, a thousand concepts—it's like when quantum physicists first started smashing particles together and got bizarre results they couldn't explain. That's how most people approach spiritual practice: they don't know where to begin. But once you develop a conceptual system that treats these teachings not as truth but as pointers, you start seeing organization.",
+      "possible_duplicate_of": "Spiritual Practice"
+    }
+  ]
+}
