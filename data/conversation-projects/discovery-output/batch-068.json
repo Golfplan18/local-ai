@@ -1,0 +1,20 @@
+{"batch": 68, "works": [
+  {
+    "title": "DIKLIS CHUMP: Loser Legacy",
+    "kind": "novel",
+    "description": "A satirical political fiction work depicting authoritarian regime decline through six stages. Features fictional characters (Diklis Chump, Phukher Tarlson) experiencing policy deterioration, institutional corruption, and moral erosion. Includes framework for policy categories evolving across stages and detailed character psychology for cosmic-truth antagonist.",
+    "development": "moderate",
+    "evidence_ids": ["historical-55f0a83c9ec2#0", "historical-55f0a83c9ec2#1", "historical-5606bfe398c1#0"],
+    "quote": "six-stage progression of authoritarian decline",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Parliament of Self Framework",
+    "kind": "framework",
+    "description": "A spiritual/philosophical character-modeling system using commitment weights to drive agent behavior across task domains. Includes structured library of character traits (60+ entries organized by psychological families), commitment dyads, portrait texts, and runtime mechanics for how weights determine decision-making in communication, research, and other domains. Currently in v0.2.2/v0.2.3 refinement with multi-framework ecosystem design.",
+    "development": "advanced",
+    "evidence_ids": ["historical-56370628b15b#0", "historical-56370628b15b#1", "historical-56370628b15b#2", "historical-56370628b15b#3"],
+    "quote": "Help me understand the mechanics of how this actually works...how all of these math and weights and their relative strengths determine what he does and what he says",
+    "possible_duplicate_of": ""
+  }
+]}

@@ -1,0 +1,20 @@
+{"batch": 162, "works": [
+  {
+    "title": "Natural Language Programming for AI Agents",
+    "kind": "framework",
+    "description": "A technical framework and documentation system for building multi-model AI agent orchestrators on local hardware. The user is designing a system that runs multiple specialized language models (large + small + utility slots) on a Mac Studio with 128GB RAM, coordinating them through natural language instructions, prompt refinement, and coverage audits to form an agentic swarm for knowledge work.",
+    "development": "advanced",
+    "evidence_ids": ["historical-c80a033d4537#0", "historical-c80a033d4537#1", "historical-c80a033d4537#2", "historical-c80a033d4537#3", "historical-c80a033d4537#4", "historical-c80a033d4537#5", "historical-c80a033d4537#6", "historical-c80a033d4537#7", "historical-c80a033d4537#8", "historical-c7f0a6c2e905#0"],
+    "quote": "I want to build upon the ideas on Natural Language Programming for AI agents in this document and refine the document itself. I will continue to refine this document and fill out more details as I create my own AI agent instructions for running multiple AI models on my Mac Studio with 128GB RAM.",
+    "possible_duplicate_of": "Human Nexus White Paper / Extending Human Cognition"
+  },
+  {
+    "title": "Master Trope Library for Narrative Design",
+    "kind": "framework",
+    "description": "A comprehensive, categorized reference library of narrative tropes for fiction writers. Systematically organized into thematic groups (Character Tropes, Crime Tropes, etc.) with each entry including name, definition, narrative utility, common genres, and meta-tags for filtering within a writing framework.",
+    "development": "moderate",
+    "evidence_ids": ["historical-c883eb926eeb#0", "historical-c883eb926eeb#1"],
+    "quote": "Master Trope Library for Narrative Design This document organizes commonly used tropes into thematic categories. Each entry includes: Name of the trope Definition Narrative utility (why it's used) Common genres Meta-tag suggestions for filtering in your framework.",
+    "possible_duplicate_of": ""
+  }
+]}

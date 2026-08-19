@@ -1,0 +1,29 @@
+{"batch": 55, "works": [
+  {
+    "title": "The Adversarial AI Agent",
+    "kind": "book",
+    "description": "A technically-framed systems design book with 31 chapters plus three appendix sections, serving as a companion to Natural Language Programming for AI Agents. Covers architecture, pipeline design, failure modes, RAG, security, PKM, hardware, and deployable specifications. Positioned as design rationale for practitioners building AI systems.",
+    "development": "advanced",
+    "evidence_ids": ["historical-453028fe4a4b#0", "historical-453028fe4a4b#4"],
+    "quote": "The book is a technically-framed systems design companion to Natural Language Programming for AI Agents — 31 chapters plus three appendix sections",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ora Online Services Platform and Business Model",
+    "kind": "service",
+    "description": "A documented strategic direction for Ora as a public-facing service offering, including a free demonstration website with limited queries, a model-agnostic routing layer API, and a pipeline orchestration service. Includes detailed business plan with three-tier pricing, $2M seed valuation, 18-24 month runway, and retention-driven Series A strategy.",
+    "development": "moderate",
+    "evidence_ids": ["historical-453028fe4a4b#1", "historical-453028fe4a4b#2"],
+    "quote": "Give me a detailed summary of the public demonstration site and the associated business plan in a markdown file, including the specific decisions I made. I want to capture this for further development later.",
+    "possible_duplicate_of": "Ora AI App"
+  },
+  {
+    "title": "Federated Product Index Network",
+    "kind": "system",
+    "description": "A decentralized peer-to-peer product discovery and indexing architecture designed to bypass tech platform monopolies and return search control to consumers. Includes raw HTML and JSON storage with provenance chains, anti-scraping defenses, federation protocols, and optional IPFS mirroring. Enables open-source product indexing as an alternative to Amazon, eBay, and other walled silos.",
+    "development": "early",
+    "evidence_ids": ["historical-4543c20d9eea#2", "historical-4543c20d9eea#3"],
+    "quote": "If they had made one open-source index—which Google could have done and was on track to do—they would have cut off the chokepoint for everybody",
+    "possible_duplicate_of": ""
+  }
+]}

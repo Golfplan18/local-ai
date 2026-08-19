@@ -1,0 +1,11 @@
+{"batch": 4, "works": [
+  {
+    "title": "Inverted Propaganda Poster Series",
+    "kind": "product",
+    "description": "Visual art project using AI image generation to adapt Cold War anti-communist propaganda materials into contemporary critiques of corporate monopolism and economic extraction. Preserves original artwork and design while reframing text and themes to expose parallels between authoritarian state control and modern capitalist coercion.",
+    "development": "moderate",
+    "evidence_ids": ["historical-05b142dec97e#0"],
+    "quote": "I'll preserve the underlying artwork and colors closely while changing the text and themes. I would replace \"communism\" with \"corporatism.\"",
+    "possible_duplicate_of": ""
+  }
+]}

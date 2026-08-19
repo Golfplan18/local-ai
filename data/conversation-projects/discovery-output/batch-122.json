@@ -1,0 +1,20 @@
+{"batch": 122, "works": [
+  {
+    "title": "Natural Language Programming",
+    "kind": "book",
+    "description": "A book teaching programming through the lens of natural language frameworks (Process Inference Framework, Framework Creation Framework). The user is actively updating chapters to integrate discussions of agent architecture, demonstrating how frameworks function as the operational workhorses that enable system learning and institutional capability over time. Agent systems use the frameworks to solve novel problems, capturing solutions permanently in the shared library.",
+    "development": "moderate",
+    "evidence_ids": ["historical-94c43b32f181#0", "historical-94c43b32f181#1"],
+    "quote": "This is part of the Natural Language programming book, and I want to talk about this in the book. As it stands the book mentions the framework creation framework in chapter 7",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Writing Evaluation Framework for Novel Development",
+    "kind": "framework",
+    "description": "A comprehensive multi-phase evaluation framework for assessing novel and fiction quality during development. The framework includes structured assessment of thematic foundation (patterns, contradictions, archetypes), conceptual integrity, character development, structural coherence, audience impact, and editorial gap analysis. The user is building prompts to systematically evaluate novels at different development phases and is testing whether the current prompt suite adequately addresses all evaluation needs.",
+    "development": "early",
+    "evidence_ids": ["historical-94ee1b08bed0#0"],
+    "quote": "Evaluation Phase I Comprehensive... Primary Function: Assess conceptual foundation integrity and development potential with reader engagement SECTION A: THEMATIC FOUNDATION ANALYSIS",
+    "possible_duplicate_of": ""
+  }
+]}

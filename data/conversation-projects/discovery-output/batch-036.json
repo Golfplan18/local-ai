@@ -1,0 +1,20 @@
+{"batch": 36, "works": [
+  {
+    "title": "Personal Prompt Engineering Architecture System",
+    "kind": "framework",
+    "description": "A multi-component methodological framework for AI-assisted prompting combining prompt cleanup, RAG provenance rating, belief-architecture tagging (axioms/hypotheses/credence), relationship typing for outline organization, and thinking-framework integration. The user is designing systems for tagged information retrieval, paradigm-level commitment tracking, and comprehension-testing through relationship labeling.",
+    "development": "moderate",
+    "evidence_ids": ["historical-30086671bf6d#0", "historical-30086671bf6d#1", "historical-30086671bf6d#2", "historical-30086671bf6d#3", "historical-30086671bf6d#4"],
+    "quote": "I'll ultimately develop to help formalize my concepts: an analysis algorithm that organizes these outlines and makes the relationship between main bullet points and subheadings explicit",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Atticus Book",
+    "kind": "book",
+    "description": "A text-based book in active production and formatting using Atticus publishing software. The user is actively working through detailed typography and layout decisions including font size optimization (currently 10-point Garamond, too small), line spacing, margins, headers/footers, widows/orphans control, and table of contents structure for readability.",
+    "development": "advanced",
+    "evidence_ids": ["historical-3019c126bac2#1"],
+    "quote": "I just got my book back today, and the text looks very small. Atticus recommends and defaults to a 10-point font.",
+    "possible_duplicate_of": ""
+  }
+]}

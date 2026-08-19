@@ -1,0 +1,29 @@
+{"batch": 31, "works": [
+  {
+    "title": "Sum of Human Knowledge - Future History Narrative",
+    "kind": "speculative-fiction",
+    "description": "A narrative exploration of an AI-coordinated galactic knowledge expansion system, told from multiple perspectives: a historian's retrospective 100 years in the future recounting how the system became the reality of their age, and an enthusiast's present-day vision of the concept. The work examines how independent but interlinked networks of AI explorers expand human understanding of the universe.",
+    "development": "early",
+    "evidence_ids": ["historical-2932aa9c912e#0"],
+    "quote": "A fictionalized narrative told from the perspective of a historian 100 years from now, writing a history of the 21st century. In this historian's history book, he outlines how the concept unfolded to become the reality of his age.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Greenland Strategic Analysis: Rare Earths and Military Capability",
+    "kind": "essay",
+    "description": "An article analyzing Trump's real strategic interest in acquiring Greenland, focusing on rare earth element supply chains and implications for US military capabilities. The piece challenges surface-level narratives by connecting Trump's interest to geopolitical competition with China over critical minerals essential for defense technology.",
+    "development": "early",
+    "evidence_ids": ["historical-29c332a4bbd5#1"],
+    "quote": "I want to use this information, which I want you to verify and expand upon, to write a post detailing why Trump really wants Greenland. The current narrative is that it's either a distraction or about Trump wanting to make a deal. I haven't seen anyone make the connections to rare earths and how critical they are to US military capabilities.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "The Full Progressive Agenda",
+    "kind": "book",
+    "description": "A comprehensive policy reform book presenting progressive arguments on multiple fronts of systemic change. Chapters address economic extraction mechanisms (Private Equity as wealth-extraction tool), market concentration (Antitrust resurrection), legislative dysfunction (The Filibuster Farce), corporate power (Democratic Corporate Governance), environmental crisis (Environmental and Infrastructure Investment), electoral manipulation (Gerrymandering), and judicial capture (Court Packing). Each chapter uses narrative examples before diving into policy solutions.",
+    "development": "moderate",
+    "evidence_ids": ["historical-2a0a34470000#0", "historical-2a0a34470000#1", "historical-2a0a34470000#2", "historical-2a0a34470000#3", "historical-2a0a34470000#4", "historical-2a0a34470000#5"],
+    "quote": "Provide a full update of chapter 4 incorporating the section above. Also, since that section is such a downer, I would like to add more context to the section about identifying as guardians of the common good and the joy of collective liberation.",
+    "possible_duplicate_of": "We Too"
+  }
+]}

@@ -1,0 +1,20 @@
+{"batch": 8, "works": [
+  {
+    "title": "Hector Rentier: Political Cartoonist",
+    "kind": "website",
+    "description": "A fictional satirist cartoonist character being developed to create visual and textual satire targeting right-wing propaganda, corruption, and institutional hypocrisy. The character is establishing a distinctive voice with literary references (Thomas Nast, Hunter S. Thompson), quote styles, physical presence, and a recurring gopher mascot.",
+    "development": "moderate",
+    "evidence_ids": ["historical-0ac7f0e8b436#0", "historical-0ac7f0e8b436#1"],
+    "quote": "Hector Rentier is stronger than the earlier options because the verb is built into the job description: he hectors rentiers.",
+    "possible_duplicate_of": "Diklis Chump"
+  },
+  {
+    "title": "Distributional National Accounts (DINA) Comprehensive Methodology Reference",
+    "kind": "research",
+    "description": "A comprehensive reference report documenting Distributional National Accounts (DINA) methodology, covering the Piketty-Saez-Zucman approach from the World Inequality Lab and the Auten-Splinter alternative methodology, with detailed analysis of major papers and methodological revisions from 2016 to present.",
+    "development": "moderate",
+    "evidence_ids": ["historical-0bc4a7df7c23#0"],
+    "quote": "Produce a comprehensive reference report on Distributional National Accounts (DINA) methodology covering: (1) the Piketty-Saez-Zucman methodology as published by the World Inequality Lab, including all major papers, data releases, and methodological revisions from 2016 to present",
+    "possible_duplicate_of": ""
+  }
+]}

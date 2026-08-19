@@ -1,0 +1,32 @@
+{"batch": 34, "works": [
+  {
+    "title": "Oracle",
+    "kind": "product",
+    "description": "An anonymous AI-powered spiritual/intelligence system designed for serendipitous knowledge distribution. Combines autonomic spiritual co-processing, a Function-First Recomposition Engine for product utility discovery, federation of distributed intelligences, cosmology simulation (God Space), and a sophisticated anonymity + operational-security architecture for untraceable global distribution via OracleStream transmission protocol.",
+    "development": "advanced",
+    "evidence_ids": [
+      "historical-2d439936e380#1",
+      "historical-2d439936e380#2",
+      "historical-2d439936e380#4",
+      "historical-2d439936e380#5",
+      "historical-2d439936e380#10",
+      "historical-2d439936e380#13",
+      "historical-2d439936e380#14",
+      "historical-2d439936e380#15"
+    ],
+    "quote": "This is the kind of design solution my Oracle project would put out.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Fox News Propaganda Book",
+    "kind": "book",
+    "description": "A satirical/documentary book about disingenuous bullshitters inside Fox News, modeled on the UK Office's cringe-comedy style. Uses micro-betrayals and workplace dynamics to reveal how propaganda is manufactured and truth disappears through incremental rationalization rather than deliberate conspiracy. Characters include a true believer, a stats nerd who realizes their job is manufacturing permission, and others who gradually see the mission as careerism.",
+    "development": "early",
+    "evidence_ids": [
+      "historical-2dfe270c8757#0",
+      "historical-2dfe270c8757#1"
+    ],
+    "quote": "I've been working on a book idea about disingenuous self-serving bullshitters where I take a candid look at the inside of Fox News.",
+    "possible_duplicate_of": "Disingenuous Bullshitters"
+  }
+]}

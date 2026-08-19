@@ -1,0 +1,38 @@
+{"batch": 9, "works": [
+  {
+    "title": "AI-Assisted Fiction Writing Framework",
+    "kind": "framework",
+    "description": "A comprehensive, systematic methodology for fiction creation using AI as collaborative partner. User is developing structured framework documents with sequential steps from concept to finished manuscript, incorporating character choice architecture and mode-specific guidance.",
+    "development": "moderate",
+    "evidence_ids": ["historical-0c629e266ce2#0"],
+    "quote": "I am developing a comprehensive AI-assisted writing method for fiction. We've been analyzing and improving several framework documents that guide the AI through a structured process of story development.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Supreme Court Satire Story",
+    "kind": "novel",
+    "description": "A satirical novel intended to undermine the credibility of the US Supreme Court in its current conservative incarnation. User frames this as exploring the tension between tatemae (appearance) and honne (reality) in the Court's originalist jurisprudence, with judges treating legal proof-texting as competitive performance rather than justice.",
+    "development": "early",
+    "evidence_ids": ["historical-0cf0d6219103#2"],
+    "quote": "One of my back burner story ideas is to write a satirical piece intended purely to undermine The credibility of the US supreme Court, at least in its current conservative incarnation cuz nobody's done it.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Republican Coalition Division Through Masculinity Redefinition",
+    "kind": "essay-series",
+    "description": "A strategic narrative exploration of fracturing the Republican political coalition by redefining masculinity through labor and union historical framing. User is developing messaging strategy using fictional narrative to show that real masculine identity (post-union worker pride and dignity) is incompatible with contemporary Republican policies.",
+    "development": "early",
+    "evidence_ids": ["historical-0d8896d1e3a5#0"],
+    "quote": "creating a strong divide in the Republican party coalition that I believe will cause actual defections away from the party itself. Party polarization is at an all-time high, with men disproportionately identifying as conservative Republicans.",
+    "possible_duplicate_of": "Diklis Chump"
+  },
+  {
+    "title": "Personal Wikipedia and Knowledge System",
+    "kind": "product",
+    "description": "A personal, durable external knowledge management system being built over 2-3 years. User is creating an internal Wikipedia focused on personal conceptual distinctions, building foundational vocabulary, organizing concepts from external sources, and serving as a coherence engine for worldview.",
+    "development": "early",
+    "evidence_ids": ["historical-0db7e777c45d#7", "historical-0db7e777c45d#8"],
+    "quote": "I'm building my own internal Wikipedia, but the important part is that it's focused on my personal distinctions... Essentially, I'm building my own internal Wikipedia, but the important part is that it's focused on my personal distinctions.",
+    "possible_duplicate_of": ""
+  }
+]}

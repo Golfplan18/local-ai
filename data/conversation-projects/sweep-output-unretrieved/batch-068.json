@@ -1,0 +1,293 @@
+{
+  "batch": 68,
+  "placements": [
+    {
+      "candidate_id": "historical-a9a13a15a821#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Causal loop diagram technique; generic systems methodology, no substantive engagement with registered projects."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Current-events geopolitical commentary on Iran's Strait of Hormuz tactics; no sustained project work."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump administration's pattern of payment avoidance; passing political analysis, no project engagement."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Economic collapse scenarios (insurance, SPR, recession); topical commentary without registered project alignment."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Epstein files as diplomatic distraction; political timeline observation, not project work."
+    },
+    {
+      "candidate_id": "historical-a9ca68c44815#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Project 2025 power consolidation mechanisms; substantive engagement with how institutions structurally concentrate executive authority."
+    },
+    {
+      "candidate_id": "historical-a9ca68c44815#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Reversibility of power grabs and historical boomerang effects; sustained analysis of institutional dynamics that informs altruistic political framework."
+    },
+    {
+      "candidate_id": "historical-a9ebe2e4bc0a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple arithmetic query (2+2); factual lookup, no project engagement."
+    },
+    {
+      "candidate_id": "historical-a9ff2ff30876#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Trump pressure on credit card interest rates; brief economic policy observation, no sustained work."
+    },
+    {
+      "candidate_id": "historical-aa1da56f2af3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Inflation measurement methodology reference report; generic technical reference, not aligned with user's project work."
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "MBTI personality assessment of a dating profile candidate; relationship advice outside registered projects."
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Crafted Hinge message with Laguna Beach visualization; dating interaction, not project work."
+    },
+    {
+      "candidate_id": "historical-aa624482b019#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Cosmic neutrino background confirming Big Bang predictions; scientific cosmology discussion aligned with Science project's physics exploration."
+    },
+    {
+      "candidate_id": "historical-aa624482b019#1",
+      "nexuses": [
+        "science",
+        "expanding_awareness"
+      ],
+      "confidence": "high",
+      "reason": "Scale-invariant spectral index and inflation theory testability; directly engages Expanding Awareness project's challenge to prevailing cosmology theories."
+    },
+    {
+      "candidate_id": "historical-aa7e0f2e3359#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Polish woman dating profile translation; relationship/dating context, not project engagement."
+    },
+    {
+      "candidate_id": "historical-aa8b7ba80fee#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Wage indexation and inflation spiral economics; policy discussion without sustained project work."
+    },
+    {
+      "candidate_id": "historical-aa8b7ba80fee#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Union corruption and political realignment; passing political commentary, no registered project engagement."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#7",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Sleep deprivation diagnosis and ego-detector recalibration; substantive personal insight about consciousness, energy management, and self-inflicted suffering patterns."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#8",
+      "nexuses": [
+        "insight",
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "October 2023 hospitalization and betrayal reflection; personal insight on institutional injustice and interpersonal betrayal dynamics."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#17",
+      "nexuses": [
+        "insight",
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Food-vigilance rulebook breakdown and requesting honesty in conversation; deep reflection on habit patterns, suffering avoidance, and authentic engagement."
+    },
+    {
+      "candidate_id": "historical-aa8b8215c01a#21",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Rough body day and aversion to Claude; personal reflection on experience, physical suffering, and authentic engagement in work."
+    },
+    {
+      "candidate_id": "historical-aa9fb6261c46#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Federal AI regulation versus state preemption strategy; substantive political analysis of how Democratic strategy leverages California effect in regulatory capture."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#4",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Romantic life review with Ashley and Krista profiles; substantive engagement with relationship boundaries, warmth, and personal values in courtship."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#6",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Accidental Siri voice activation while walking dogs; technical mishap anecdote, not project engagement."
+    },
+    {
+      "candidate_id": "historical-aadf74c2bc1b#7",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Synchronicity reflection and dog story; personal reflection on openness, readiness, and the intersection of attention with relationship possibilities."
+    },
+    {
+      "candidate_id": "historical-aafc24d77c3f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Ancient philosophy of home and exclusion of women; generic scholarly article, no engagement with registered projects."
+    },
+    {
+      "candidate_id": "historical-ab01aead0960#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Housing distributional analysis reference report; technical reference material without project-specific application."
+    },
+    {
+      "candidate_id": "historical-aba499ffec8c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Zelle transaction limits factual query; straightforward reference lookup, not project work."
+    },
+    {
+      "candidate_id": "historical-abb0a3c4c686#0",
+      "nexuses": [
+        "obsidian"
+      ],
+      "confidence": "high",
+      "reason": "Chat export API to Obsidian vault integration; substantive engagement with knowledge capture and vault architecture."
+    },
+    {
+      "candidate_id": "historical-abb0a3c4c686#1",
+      "nexuses": [
+        "obsidian"
+      ],
+      "confidence": "high",
+      "reason": "OpenAI export functionality and vault integration; continued work on automating chat-to-vault capture pipeline."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Outdoor storage box specifications and dimensions; product search query, not project engagement."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Solar-powered rodent repellent effectiveness; practical pest control evaluation, not project work."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#2",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Rat exclusion engineering with wall-top flashing design; substantive engagement with property protection strategy and structural barriers."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#3",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Window buffer and moisture management in desert climate; detailed property design work for environmental control."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#4",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Polycarbonate sheet sourcing and custom cutting services; material selection for property construction project."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#5",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Adhesive strategies and material comparisons for pane construction; construction methodology for property project."
+    },
+    {
+      "candidate_id": "historical-abcd2232f05c#6",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Inline blower fan and HVAC ductwork design; substantive engagement with air-filtration system engineering for property."
+    },
+    {
+      "candidate_id": "historical-abcde02dea15#2",
+      "nexuses": [
+        "politics",
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Right-wing media ecosystem and judicial impunity; institutional capture dynamics central to both political analysis and American Jesus examination of power."
+    },
+    {
+      "candidate_id": "historical-abcde02dea15#3",
+      "nexuses": [
+        "american_jesus",
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Downstream consequences of delegitimizing Supreme Court in fiction; strategic guidance on writing powerful institutional critique without self-censoring."
+    },
+    {
+      "candidate_id": "historical-abe962d792d2#0",
+      "nexuses": [
+        "politics",
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Government policies contradicting Christian values; moral/religious framework for exposing institutional hypocrisy central to both Politics and American Jesus projects."
+    }
+  ]
+}

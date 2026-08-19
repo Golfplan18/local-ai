@@ -1,0 +1,20 @@
+{"batch": 6, "works": [
+  {
+    "title": "Dating in the Fifties",
+    "kind": "book",
+    "description": "A nonfiction book project extracting wisdom from dozens of dating conversations and experiences. The user is developing a structured three-pass methodology (cluster & counterbalance theses, outline outcome patterns, then manuscript with chapter template) to transform scattered dating insights into a coherent work exploring dating dynamics, MBTI personality types, masculine/feminine polarity, and relationship strategies.",
+    "development": "moderate",
+    "evidence_ids": ["historical-0874c28108c7#22", "historical-0874c28108c7#23", "historical-0874c28108c7#40"],
+    "quote": "I probably have two or three dozen dating threads like this, and some of them went on so long that ChatGPT finally notified me that I couldn't add anymore to that thread.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Best Practices Manual for AI Prompt Optimization",
+    "kind": "framework",
+    "description": "An instructional guide establishing best practices for converting prompts into formats that AI can understand efficiently with minimal ambiguity, focusing on definition clarity and grammatical/syntactic structure to reduce hallucination. The user is commissioning research synthesis across linguistics, cognitive science, and AI alignment literature to ground the manual empirically.",
+    "development": "early",
+    "evidence_ids": ["historical-08dd1e7cafa0#0"],
+    "quote": "in order to establish a best practices instruction manual for converting any prompt into a format and structure that AI can use efficiently with minimal ambiguity to reduce hallucination",
+    "possible_duplicate_of": ""
+  }
+]}

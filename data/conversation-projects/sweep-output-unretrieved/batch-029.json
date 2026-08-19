@@ -1,0 +1,310 @@
+{
+  "batch": 29,
+  "placements": [
+    {
+      "candidate_id": "historical-4940168b05f3#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-494512cf198f#0",
+      "nexuses": [
+        "autism_acceptance"
+      ],
+      "confidence": "high",
+      "reason": "FDA warning about autism treatment fraud; autism acceptance theme"
+    },
+    {
+      "candidate_id": "historical-495bff007c82#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-495bff007c82#1",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-495bff007c82#2",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-495bff007c82#3",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-495bff007c82#5",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#2",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 2, Chapter 19 detailed narrative planning for American Jesus"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#3",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 2, Chapter 19 chapter overview documentation and continuity check"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#4",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 2, Chapter 20 environmental justice arc and character development"
+    },
+    {
+      "candidate_id": "historical-498b738159f3#5",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Act 2, Chapter 21 economic justice and Clarence's betrayal arc"
+    },
+    {
+      "candidate_id": "historical-498c4d5aa261#0",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "American Jesus Book 1 outline with thematic implementation and choice architecture"
+    },
+    {
+      "candidate_id": "historical-4990029dbd7b#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Buddhist teachings on anger, jealousy, and freedom from suffering"
+    },
+    {
+      "candidate_id": "historical-4990029dbd7b#1",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Buddhist purification practices and moral discipline framework"
+    },
+    {
+      "candidate_id": "historical-49b392341e6c#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-49c2b3463956#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Dating dynamics analysis: giver vs extractor orientation screening"
+    },
+    {
+      "candidate_id": "historical-49c2b3463956#1",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Dating philosophy on reciprocity, care orientation, and relationship qualities"
+    },
+    {
+      "candidate_id": "historical-49c2b3463956#2",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Attraction patterns, age, vitality, and relationship identity fit discussion"
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#1",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#2",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#3",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Generic discussion without substantive engagement to specific project mission"
+    },
+    {
+      "candidate_id": "historical-4a098ea140b1#0",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Karen Love character development and moral injury in American Jesus"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#0",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Trump-Erdogan authoritarian parallels; economic policy and institutional decline"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#1",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "US soft power collapse impacts on tech monopolies and extractive capitalism"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#2",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Trump administration abandoning human rights rhetoric and exceptionalism myth"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#3",
+      "nexuses": [
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "WSJ critique of flat-tax framing; progressive vs regressive tax policy"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#4",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Economic boycotts and consumer resistance as political strategy"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#5",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Constitutional crisis; Trump ignoring court orders and rule of law"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#6",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Market instability linked to Trump economic policies; investor flight"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#8",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "NATO abandonment threat and EU military independence implications"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#9",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Trade deficit policy contradictions and capital flow collapse"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#10",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Due process violations in deportation; Supreme Court independence"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#11",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Trump attacks on Fed independence; currency decline and policy credibility"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#12",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Media failure to connect systemic economic decline dots"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#13",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Economic and political catastrophic collapse scenario; Cassandra reflection"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#14",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Democratic tariff-repeal messaging strategy; preemptive political framing"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#15",
+      "nexuses": [
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Nordic civic capitalism as alternative post-US multipolar economic model"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#16",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Market crash confirms economic predictions; investor confidence collapse"
+    }
+  ]
+}

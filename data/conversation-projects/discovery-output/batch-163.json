@@ -1,0 +1,20 @@
+{"batch": 163, "works": [
+{
+  "title": "AI Expert Teams: The Knower and The Doer",
+  "kind": "paper",
+  "description": "A white paper proposing a complementary two-part AI agent system—the Knower (Sum of Human Knowledge Database, source of wisdom) and the Doer (Master Problem Solver, source of action)—as a powerful extension of human cognition that projects human will into the world. Developed with multiple conceptual analogies (feminine/masculine, heart/mind, circuit/current, star/planet, heaven/earth).",
+  "development": "moderate",
+  "evidence_ids": ["historical-ca80040f1244#0", "historical-ca80040f1244#1", "historical-ca80040f1244#2"],
+  "quote": "A complementary two-part system of AI Agents working on behalf of humanity. The foundation is the Sum of Human Knowledge Database—the Knower, source of all wisdom. The second is a Master Problem Solver—the Doer, source of all action and improvement.",
+  "possible_duplicate_of": "Human Nexus White Paper"
+},
+{
+  "title": "Nigerian Governance Reflection",
+  "kind": "essay",
+  "description": "A reflective essay on Nigerian governance, leadership challenges under successive presidencies (Buhari, Tinubu), and the nature of political decision-making. Explores how governance is about managing perceptions and navigating trade-offs rather than simply doing the 'right thing,' grounded in prayers for understanding and compassion across political cycles.",
+  "development": "early",
+  "evidence_ids": ["historical-ca7b201df286#0"],
+  "quote": "I hope that one day, more of us will experience genuine power and influence—the kind where our daily decisions meaningfully impact others' lives. Perhaps then we'll better understand that governance and politics are rarely about doing the 'right thing' (itself subject to endless interpretation), but rather about managing people's perceptions and realities.",
+  "possible_duplicate_of": ""
+}
+]}

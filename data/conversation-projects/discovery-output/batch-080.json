@@ -1,0 +1,29 @@
+{"batch": 80, "works": [
+  {
+    "title": "Blog Post: AI Disrupting Search and Ad-Supported Internet",
+    "kind": "paper",
+    "description": "Analysis of how AI assistants (ChatGPT, Gemini) are replacing traditional search engines, eliminating paid advertisements, and fundamentally reshaping the internet economy. Traces shift from 'search results' to 'search answers' and explores implications for tech companies and the ad-based web.",
+    "development": "early",
+    "evidence_ids": ["historical-621c5e21328b#1"],
+    "quote": "I want to write a blog post summarizing this conversation. Start with the state of internet search today",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Diklis Chump Novel Series",
+    "kind": "book",
+    "description": "A 22-book satirical series exploring authoritarian rise and decline through multiple character perspectives. First six books follow character-centered narratives (the authoritarian leader, political operatives, academics, working class) before expanding to thematic volumes addressing economic extraction, labor exploitation, religious manipulation, and resistance movements.",
+    "development": "advanced",
+    "evidence_ids": ["historical-630f6ececa81#0", "historical-630f6ececa81#1", "historical-630f6ececa81#2", "historical-630f6ececa81#3", "historical-630f6ececa81#4", "historical-630f6ececa81#5"],
+    "quote": "I've envisioned 22 books now. ### Group: Undermining Authoritarianism",
+    "possible_duplicate_of": "Diklis Chump"
+  },
+  {
+    "title": "Concentration of Power Political Framework",
+    "kind": "framework",
+    "description": "Political and economic framework analyzing mechanics of capital and power concentration. Explores how policies benefiting in-groups systematically externalize costs to out-groups, and traces this pattern across immigration policy, taxation, environmental protection, and labor regulation.",
+    "development": "moderate",
+    "evidence_ids": ["historical-63297d343a27#0", "historical-63297d343a27#1", "historical-63297d343a27#3"],
+    "quote": "any law or policy passed in the interests of capital inherently favors one group of people over another",
+    "possible_duplicate_of": "We Too"
+  }
+]}

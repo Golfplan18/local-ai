@@ -1,0 +1,245 @@
+{
+  "batch": 27,
+  "placements": [
+    {
+      "candidate_id": "historical-45dd37f45a4e#6",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Crafting political messaging strategy ('tax the Republican brand') to confront friend"
+    },
+    {
+      "candidate_id": "historical-45dd37f45a4e#8",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Discussing Gaza/billionaire accountability within political moral clarity framework"
+    },
+    {
+      "candidate_id": "historical-461b8037aaca#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing 10-point character profile for Paul Santana (American Jesus antagonist)"
+    },
+    {
+      "candidate_id": "historical-46474e540547#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "News analysis of Trump's White House ballroom legal case"
+    },
+    {
+      "candidate_id": "historical-46474e540547#1",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring Buddhist wrathful compassion, contemplative practice, suffering nature"
+    },
+    {
+      "candidate_id": "historical-464bd210c7c8#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual analysis of Trump's White House address and policy themes"
+    },
+    {
+      "candidate_id": "historical-46a078158ba9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Analytical discussion of Iran/US propaganda tactics in ongoing conflict"
+    },
+    {
+      "candidate_id": "historical-46a078158ba9#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Analysis of war unpopularity and Trump's diplomatic offramp challenge"
+    },
+    {
+      "candidate_id": "historical-46a078158ba9#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Geopolitical analysis of Iran's Strait of Hormuz strategy and government centralization"
+    },
+    {
+      "candidate_id": "historical-46f603d7f9af#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual lists of Trump and Biden accomplishments with no substantive engagement"
+    },
+    {
+      "candidate_id": "historical-46f940cd8470#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Information about Georgia sports events for specific weekend"
+    },
+    {
+      "candidate_id": "historical-472a976a2c9a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Personal legal strategy for medical malpractice case (not project work)"
+    },
+    {
+      "candidate_id": "historical-472a976a2c9a#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tactical engagement with medical providers on malpractice case"
+    },
+    {
+      "candidate_id": "historical-472a976a2c9a#3",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring moral complexity of reform vs. justice in family conflict"
+    },
+    {
+      "candidate_id": "historical-472a976a2c9a#4",
+      "nexuses": ["pen_names", "main-street-independent"],
+      "confidence": "high",
+      "reason": "Writing prolifically under Malcolm Little King (left-wing activist persona) about Trump"
+    },
+    {
+      "candidate_id": "historical-474473ad57a4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "News analysis of DOJ's presidential power argument in ballroom case"
+    },
+    {
+      "candidate_id": "historical-4746818d6244#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Critique of energy policy opinion article on fossil fuel dependency"
+    },
+    {
+      "candidate_id": "historical-474759ca9b26#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Analysis of EU Anti-Coercion Instrument response to Trump trade threats"
+    },
+    {
+      "candidate_id": "historical-475550515c26#0",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Creating custom parable for Book 2 Chapter 15 alternative healthcare scene"
+    },
+    {
+      "candidate_id": "historical-4775815c08a7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Discussing tech monopolies and disenshittification briefly in policy context"
+    },
+    {
+      "candidate_id": "historical-4783128837c7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Research on California physician standard of care for psychiatric medications"
+    },
+    {
+      "candidate_id": "historical-47d29f361cd0#0",
+      "nexuses": ["human_nexus", "writing_fiction", "ora"],
+      "confidence": "high",
+      "reason": "Planning novels about Ora system (Oracle afterlife + Mira and Human Nexus)"
+    },
+    {
+      "candidate_id": "historical-47d29f361cd0#1",
+      "nexuses": ["human_nexus", "writing_fiction", "ora"],
+      "confidence": "high",
+      "reason": "Clarifying relationship between Ora book thesis and companion novels"
+    },
+    {
+      "candidate_id": "historical-480ff939606a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Questions about investment options and cryptocurrency fraud history"
+    },
+    {
+      "candidate_id": "historical-480ff939606a#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Analytical discussion of fiscal policy crises (Truss, Trump tax cuts)"
+    },
+    {
+      "candidate_id": "historical-480ff939606a#2",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Exploring economic philosophy: COLAs, serfdom, preventing elite capture"
+    },
+    {
+      "candidate_id": "historical-480ff939606a#3",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Substantive discussion of anti-wealth movements, elite extraction, economic justice"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#1",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 1 'The Commander's Dog' narrative outline"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#2",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 2 character introductions and Hayzeus's typical day"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#3",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 3 'The Video' event and Paul's brutality escalation"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#5",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 5 shop scene character development chapter"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#6",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 6 'The Skeptic's Inquiry' introducing Thomas"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#8",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 7 'Drawn by Firelight' John's musical conversion scene"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#10",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Jo's country-club chapter 'The View From Above' character perspective"
+    },
+    {
+      "candidate_id": "historical-486d9ae312af#11",
+      "nexuses": ["american_jesus", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Act 1 Chapter 11 'Peter's Conversion' shop crew debate scene"
+    },
+    {
+      "candidate_id": "historical-4871dae3fbb1#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Phone purchase and retail availability questions (consumer transaction)"
+    },
+    {
+      "candidate_id": "historical-4871dae3fbb1#3",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Critiquing Apple OS update UI friction and interface redesign burden"
+    },
+    {
+      "candidate_id": "historical-487cebcea13d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "PhD term paper on programme evaluation with Nigerian agricultural extension focus"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Understanding INFP personality appeal in dating profiles and romantic connection"
+    },
+    {
+      "candidate_id": "historical-48a7b23a46b8#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Life philosophy on filtering partners who accept core life pillars"
+    }
+  ]
+}

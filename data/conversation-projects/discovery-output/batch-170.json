@@ -1,0 +1,18 @@
+{
+  "batch": 170,
+  "works": [
+    {
+      "title": "Natural Language Programming for AI Agents: A Primer on Clear Thinking and Cognitive Amplification",
+      "kind": "book",
+      "description": "A technical primer documenting the development and implementation of a complete natural language programming system for AI agents, built on a Mac Studio by a writer with no formal programming background. Covers system foundations, frameworks for email processing and authentication, website infrastructure, and practical implementations of multi-step AI agent processes. The book demonstrates that sophisticated AI systems can be developed on commodity hardware without deep technical training.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-d23a0b236c5d#0",
+        "historical-d23a0b236c5d#1",
+        "historical-d23a0b236c5d#2"
+      ],
+      "quote": "Documents development and implementation of a complete natural language programming system for AI agents. Built on a ~$4,000 Mac Studio by a writer and domain expert with no formal programming background.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

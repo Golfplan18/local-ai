@@ -1,0 +1,245 @@
+{
+  "batch": 31,
+  "placements": [
+    {
+      "candidate_id": "historical-4a31127c437c#61",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Rule of law analysis: Trump's authoritarianism challenges democratic foundations"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#62",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Electoral analysis of GOP strategy and district politics around Santos scandal"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#63",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political reversal analysis and emotional impact on political movements"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#64",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Narrative analysis of political collapse using Tyson/Douglas boxing analogy"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#65",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Casual entertainment comment about SNL schedule, not substantive project work"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#66",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tragic political narrative framing of Trump's downfall for public discourse"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#67",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Judicial independence and Democratic strategic response to political intimidation"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#68",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Gender dynamics in political leadership and messaging strategy analysis"
+    },
+    {
+      "candidate_id": "historical-4a31127c437c#69",
+      "nexuses": ["american_jesus", "pen_names"],
+      "confidence": "high",
+      "reason": "Project prioritization decision between American Jesus and pen-name political campaign work"
+    },
+    {
+      "candidate_id": "historical-4a36287e37cc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical support notification about missing image, not project work"
+    },
+    {
+      "candidate_id": "historical-4a3678e7afc0#0",
+      "nexuses": [],
+      "confidence": "medium",
+      "reason": "EU geopolitical analysis without clear engagement with registered project objectives"
+    },
+    {
+      "candidate_id": "historical-4ac2ff453ce1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Personal home decor shopping and color palette refinement, not project work"
+    },
+    {
+      "candidate_id": "historical-4b1a02de93b1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic science explanation about bread rising, not substantive project engagement"
+    },
+    {
+      "candidate_id": "historical-4b2462f15c37#0",
+      "nexuses": ["wetoo", "politics"],
+      "confidence": "high",
+      "reason": "Comprehensive labor standards and worker power analysis central to both projects"
+    },
+    {
+      "candidate_id": "historical-4b4dca7db21c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Quick reference lookup of terminology, not substantive project work"
+    },
+    {
+      "candidate_id": "historical-4b4e767f8282#0",
+      "nexuses": ["divorce"],
+      "confidence": "high",
+      "reason": "2024 tax filing email for accountant regarding financial separation and property division"
+    },
+    {
+      "candidate_id": "historical-4b4e767f8282#1",
+      "nexuses": ["divorce"],
+      "confidence": "high",
+      "reason": "Post-divorce family logistics for ex-wife and son arrival"
+    },
+    {
+      "candidate_id": "historical-4b4e767f8282#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Dating app demographic analysis, generic research not tied to project"
+    },
+    {
+      "candidate_id": "historical-4b4e767f8282#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Dating app business model analysis, generic research not project-specific"
+    },
+    {
+      "candidate_id": "historical-4b4e767f8282#4",
+      "nexuses": ["divorce"],
+      "confidence": "high",
+      "reason": "Revised tax filing documentation and financial event summary for tax preparation"
+    },
+    {
+      "candidate_id": "historical-4b61c08be979#4",
+      "nexuses": ["project_workshop"],
+      "confidence": "medium",
+      "reason": "Strategic evaluation of how to institutionalize and scale educational learning methodology"
+    },
+    {
+      "candidate_id": "historical-4b66f40ef37c#5",
+      "nexuses": ["obsidian", "technology"],
+      "confidence": "high",
+      "reason": "PDF workflow strategy for vault ingestion using OCR and markdown processing"
+    },
+    {
+      "candidate_id": "historical-4c2d6c3be501#1",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Physics exploration of time-translation symmetry and energy conservation violations"
+    },
+    {
+      "candidate_id": "historical-4c74d41e73a1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Logic and rhetoric analysis of AI safety arguments, not tied to specific project"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Direct work on American Jesus Sermon on the Mount update with voice consistency review"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "American Jesus Part 2 sections: Salt/Light and Law fulfillment updates"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#4",
+      "nexuses": ["american_jesus", "insight"],
+      "confidence": "high",
+      "reason": "American Jesus loving enemies section integrating Buddhist equanimity philosophy"
+    },
+    {
+      "candidate_id": "historical-4c8b85deed43#6",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "American Jesus Lord's Prayer rewrite debate and strategic messaging analysis"
+    },
+    {
+      "candidate_id": "historical-4ca61e47aedd#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic pet health question about strawberries and dogs, not project work"
+    },
+    {
+      "candidate_id": "historical-4cb02045980f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Amazon app technical problem troubleshooting, not substantive project work"
+    },
+    {
+      "candidate_id": "historical-4cb02045980f#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Consumer tech troubleshooting for device pairing and WiFi interference, not project work"
+    },
+    {
+      "candidate_id": "historical-4d0eda7e199f#0",
+      "nexuses": [],
+      "confidence": "medium",
+      "reason": "Geopolitical/energy market analysis without clear engagement with registered projects"
+    },
+    {
+      "candidate_id": "historical-4d2e1b5fa4d8#0",
+      "nexuses": [],
+      "confidence": "medium",
+      "reason": "Trade policy and tech sovereignty analysis, geopolitical rather than moral framework engagement"
+    },
+    {
+      "candidate_id": "historical-4d2e1b5fa4d8#1",
+      "nexuses": [],
+      "confidence": "medium",
+      "reason": "Currency dominance geopolitical analysis without project-specific engagement"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#1",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Cultural and spiritual meaning interpretation of Jonathan Livingston Seagull"
+    },
+    {
+      "candidate_id": "historical-4d588237601f#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Interpersonal communication strategy for message delivery and emotional alignment"
+    },
+    {
+      "candidate_id": "historical-4d731138d953#1",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Theological philosophy exploration of omniscience and human consciousness"
+    },
+    {
+      "candidate_id": "historical-4d79fce4223c#0",
+      "nexuses": ["main-street-independent", "pen_names"],
+      "confidence": "high",
+      "reason": "Energy policy reference dossier for Mark Paulson pen name at MSI publication"
+    },
+    {
+      "candidate_id": "historical-4d8286001ce1#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political strategy for countering media manipulation and establishing moral authority"
+    },
+    {
+      "candidate_id": "historical-4d8286001ce1#1",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Analysis of bad-faith rhetorical patterns and manipulation tactics"
+    }
+  ]
+}

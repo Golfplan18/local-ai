@@ -1,0 +1,50 @@
+{
+  "batch": 85,
+  "works": [
+    {
+      "title": "Balls and Strikes",
+      "kind": "novel",
+      "description": "A fictional work about Supreme Court justices and their decision-making processes. Pierces through the facade of judicial neutrality to examine political and personal motivations behind major rulings, using visual motifs (toy metaphors as diagnostic tools) and cultural commentary (political cartoons) to expose bias and reveal how power functions behind the veneer of impartiality.",
+      "development": "moderate",
+      "evidence_ids": ["historical-67dcee300975#0", "historical-67dcee300975#1", "historical-67dcee300975#2"],
+      "quote": "I want to pierce the veil they're working feverishly to maintain—that they're above the fray, even-keeled, and deciding cases only on the facts. That's complete horseshit.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Manifesto of the American Aristocrat",
+      "kind": "essay-series",
+      "description": "A satirical manifesto critiquing modern American aristocracy and wealth inequality. Reimagines Marx and Engels' Communist Manifesto to expose how contemporary billionaires and corporations exploit workers while controlling politics, media, and the state. Frames class dynamics and wealth extraction through the lens of contemporary elites.",
+      "development": "early",
+      "evidence_ids": ["historical-67bb2f33e9a8#0"],
+      "quote": "A satirical response to Marx and Engels' Communist Manifesto. This piece critiques the rise of a modern aristocracy in the U.S., challenging democratic ideals and promoting authoritarianism, while highlighting class struggles and the influence of wealth in politics.",
+      "possible_duplicate_of": "The Real American Communist Manifesto"
+    },
+    {
+      "title": "Trump Failure Terminology Project",
+      "kind": "research",
+      "description": "Development of derogatory terminology and satirical framing for Trump-era economic failures, paralleling the 'Hoovervilles' concept from the Great Depression. Includes detailed term development (Trump's Tax, Trump Goods, Trump Merchandise) with visual descriptions and taglines intended for public awareness campaigns and political commentary.",
+      "development": "moderate",
+      "evidence_ids": ["historical-683bce377a01#0"],
+      "quote": "Provide me with a list of potential names for Trump-associated failures, similar to what was done for Hoover... taking interpretive liberties in mapping his actions and policies to the conceptual framework of Great Depression-era terminology.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Yama: Buddhist Hell Narrative",
+      "kind": "novel",
+      "description": "Character-centered narrative development featuring Yama, the gatekeeper of Buddhist Hell and cosmic judge of karmic retribution. Draws on Tibetan Buddhist literature and cosmology to develop a complex character embodying cosmic law, moral judgment beyond human agency, and the Mirror of Karma. Character developed through formal character foundation frameworks.",
+      "development": "early",
+      "evidence_ids": ["historical-68b112035b8f#1"],
+      "quote": "Provide a character profile for Yama, the gatekeeper of the Buddhist Hell. Obtain information from Tibetan Buddhist literature to make his character as true to the scriptures as possible.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Universal Theme Library",
+      "kind": "framework",
+      "description": "A systematic organizational framework for capturing and applying universal thematic elements across multiple creative projects. Structured as a reusable library with submission-ready formatting that can accompany prompts for new projects, enabling consistent theme evaluation and completeness checking. Includes subsections for core worldview principles, philosophical frameworks, and project-specific adaptations.",
+      "development": "moderate",
+      "evidence_ids": ["historical-67f0e1e0d65e#0", "historical-67f0e1e0d65e#1"],
+      "quote": "My goal is to create a Universal Theme Library that I can submit as part of prompts when creating new projects and evaluating existing themes for completeness.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

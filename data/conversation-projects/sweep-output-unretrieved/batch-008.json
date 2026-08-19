@@ -1,0 +1,330 @@
+{
+  "batch": 8,
+  "placements": [
+    {
+      "candidate_id": "historical-14b9ceccf826#24",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Sustained discussion of Republican political strategy (CBO manipulation, Byrd Rule scoring)"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#25",
+      "nexuses": [
+        "writing_fiction",
+        "diklis_chump"
+      ],
+      "confidence": "high",
+      "reason": "Character development for 'Chump' novel protagonist: buffoon vs cynical operator portrayal"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#26",
+      "nexuses": [
+        "writing_fiction",
+        "diklis_chump"
+      ],
+      "confidence": "high",
+      "reason": "Character analysis for Stephen Miller-based 'Heinrich Mueller' antagonist in novel"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#28",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of Hegseth military deployment as authoritarian choreography"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#30",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "medium",
+      "reason": "Tactical discussion of obtaining staffer contact information for activism"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#33",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Generic foreign policy commentary on Iran's nuclear negotiations"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#34",
+      "nexuses": [
+        "writing",
+        "politics",
+        "publishing"
+      ],
+      "confidence": "high",
+      "reason": "Legal analysis of writing books mocking foreign autocrats for political impact"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#37",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of RFK Jr.'s vaccine advisory committee purge"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#38",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political commentary framing Trump's troop deployment as military overreach"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#39",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of US-China trade talks as capitulation not victory"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#40",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Democratic risk-aversion analysis; left's moral authority vacuum; economic justice framing"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#43",
+      "nexuses": [
+        "writing_fiction",
+        "diklis_chump"
+      ],
+      "confidence": "high",
+      "reason": "Chump novel ideation: six-stage authoritarian arc, character development"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#45",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Daily market data snapshot with no project context"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#47",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Military leadership's institutional failure on partisan speech"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#49",
+      "nexuses": [
+        "politics",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Fact-checking political claims about detention facility"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#50",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of injury data asymmetry in George Floyd protests"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#51",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Economic analysis of US-China rare earths framework as lopsided concession"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#52",
+      "nexuses": [
+        "politics",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Media criticism of right-wing outlets' authoritarian framing of protests"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#54",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Legal analysis of using foreign policy determinations as deportation tools"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#57",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of SBC resolution endorsing Obergefell reversal"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#59",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political events: Trump military parade, troop deployment, No Kings protest"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#60",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of Trump's FEMA elimination plan as executive overreach"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#61",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political polling on public opinion of Trump's LA troop deployment"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#63",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Legal analysis of state National Guard deployment and Posse Comitatus"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#64",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political skepticism of rare earths deal as face-saving"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#68",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "California cannabis policy discussion (hemp-THC ban)"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#69",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political narrative analysis of parade overshadowed by protests"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#72",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "ICE halting raids exposing donor class hypocrisy and elite betrayal"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#73",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Media criticism of military parade as hollow spectacle"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#74",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Foreign policy analysis of Trump's veto of Israeli assassination plan"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#75",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of military parade as boring cosplay"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#76",
+      "nexuses": [
+        "politics",
+        "wetoo"
+      ],
+      "confidence": "high",
+      "reason": "Political strategy: Ernst gaffe as effective Democratic messaging on harm"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#77",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Foreign policy analysis of Trump's Iran statement as proxy-war doctrine"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#79",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political events: Senator Padilla handcuffed by DHS agents"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#80",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "No Kings protests mostly peaceful; documentation of violence"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#81",
+      "nexuses": [
+        "politics",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Red-vs-blue market sentiment divide and user's cash-out decision analysis"
+    },
+    {
+      "candidate_id": "historical-14b9ceccf826#83",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political violence: federal charges against Minnesota suspect"
+    },
+    {
+      "candidate_id": "historical-14c33018d0cd#0",
+      "nexuses": [
+        "insight",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Media criticism of CBS/Pelley apology failure and narrative integrity"
+    },
+    {
+      "candidate_id": "historical-14dc7beda14a#0",
+      "nexuses": [
+        "technology",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Critical audit of AI-safety op-ed logic; identifies genetic fallacies"
+    },
+    {
+      "candidate_id": "historical-14df4588611b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical Nintendo Switch troubleshooting"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{"batch": 7, "works": [
+  {
+    "title": "The Great Deleveraging",
+    "kind": "essay-series",
+    "description": "A two-part essay analyzing the economic mechanics of a 10% credit-card rate cap and proposing a demand-side rescue plan (Postal Bank/Fairness Dividend). Part I examines the credit crunch cascade triggered by Trump's cap; Part II outlines the systemic recovery through direct demand injection. Includes satirical cartoons, headlines, Midjourney images, and political outreach strategy targeting sympathetic senators.",
+    "development": "advanced",
+    "evidence_ids": [
+      "historical-091bb050ac16#0",
+      "historical-091bb050ac16#1",
+      "historical-091bb050ac16#2",
+      "historical-091bb050ac16#3",
+      "historical-091bb050ac16#4",
+      "historical-091bb050ac16#5",
+      "historical-091bb050ac16#6",
+      "historical-091bb050ac16#10",
+      "historical-091bb050ac16#11"
+    ],
+    "quote": "The Great Deleveraging: How the 10% Cap Breaks the Banks—and How the Postal Bank and Fairness Dividend Save America",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "The Supreme Chumps",
+    "kind": "novel",
+    "description": "A satirical political novel chronicling Trump-era Supreme Court justices (particularly Chief Justice Roberts and the right-wing bloc) through fictional backroom deliberations. The narrative deliberately roots itself in historical fact before projecting into the future, framing judicial corruption and betrayal of democratic principles through a moral lens distinguishing between right and wrong. Includes braided narrative structure debate and character development for Alito and Thomas.",
+    "development": "early",
+    "evidence_ids": [
+      "historical-09a77fad48aa#0",
+      "historical-09a77fad48aa#1"
+    ],
+    "quote": "To create a powerful fictional narrative that permanently stains the legacy of the Trump-era Supreme Court by dramatizing judicial corruption and betrayal through satirical backroom deliberations",
+    "possible_duplicate_of": ""
+  }
+]}

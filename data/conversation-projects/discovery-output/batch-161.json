@@ -1,0 +1,32 @@
+{
+  "batch": 161,
+  "works": [
+    {
+      "title": "DSBS Book",
+      "kind": "book",
+      "description": "A book project in early development. The user is seeking an overview of the book and existing information to guide work on it, with plans to listen to content updates while driving.",
+      "development": "early",
+      "evidence_ids": ["historical-c6ba773748cb#0"],
+      "quote": "We're going to discuss this book project. First, give me an overview of the book and the information I have now.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Vista Yucca Estate Vacation Rental Website",
+      "kind": "website",
+      "description": "A luxury vacation rental website and comprehensive content strategy for a property at 41289 Yucca Ln, Bermuda Dunes, CA. Development includes property description, feature slides, terms and conditions, FAQ, contact page, header imagery, and SEO-optimized amenity landing pages.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-c71d2f6fbdc1#0",
+        "historical-c71d2f6fbdc1#1",
+        "historical-c71d2f6fbdc1#2",
+        "historical-c71d2f6fbdc1#3",
+        "historical-c71d2f6fbdc1#4",
+        "historical-c71d2f6fbdc1#5",
+        "historical-c71d2f6fbdc1#6",
+        "historical-c71d2f6fbdc1#7"
+      ],
+      "quote": "I want to build a vacation rental website for one of our luxury properties at 41289 Yucca Ln, Bermuda Dunes, CA 92203. Can you give me ideas on the content that needs to be on the website to enhance the property's online presence, drive direct bookings, and ensure it's well represented and SEO optimized?",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

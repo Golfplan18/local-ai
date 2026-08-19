@@ -1,0 +1,65 @@
+{"batch": 56, "works": [
+  {
+    "title": "Rentier-Capitalism Novella",
+    "kind": "novel",
+    "description": "A novella following a couple (man and wife) over an 80-year lifespan, showing how rent-seeking capitalism systematically destroys them at each life stage (education, housing, healthcare, employment). Dual perspectives illuminate both characters' decision-making as they face impossible binary choices between dignity and solvency.",
+    "development": "early",
+    "evidence_ids": ["historical-45dd37f45a4e#5"],
+    "quote": "A young person born today, walking through their 80-year life and demonstrating at each stage how rent-seeking capitalism destroys them",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "AI Agent Systems White Paper (Knower-Doer Framework)",
+    "kind": "paper",
+    "description": "A comprehensive white paper on complementary two-part AI agent systems: the Knower (sum of human knowledge) and the Doer (master problem solver extending human will). Structured for multiple audience levels (vision, technical depth, field applications) with mythological and systems-theory analogies. Actively drafting emotional, accessible introductory sections.",
+    "development": "advanced",
+    "evidence_ids": ["historical-46c0d8ac7306#0", "historical-46c0d8ac7306#2", "historical-46c0d8ac7306#3", "historical-46c0d8ac7306#4"],
+    "quote": "developing a comprehensive white paper outline with multiple audience levels; actively working on introductory narrative sections with emotional resonance",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Field Manual: Quick-Reference Guide",
+    "kind": "essay-series",
+    "description": "A shorter quick-reference companion extracted from the AI Agent Systems white paper and other outlines. Designed for immediate practical application, excluding theoretical foundations and system internals. Section-by-section extraction targeting practitioner users who will explore deeper documentation if interested.",
+    "development": "early",
+    "evidence_ids": ["historical-46e38a0cdae8#0"],
+    "quote": "I want to discuss the smaller quick-reference manual that will be extracted from these two other outlines",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Malcolm Little King Activist Writings",
+    "kind": "essay-series",
+    "description": "A prolific writing project using the pen name Malcolm Little King, a black militant activist and left-wing persona. The user has been producing a high volume of content analyzing and critiquing Trump administration actions and policies, driven by recent political developments.",
+    "development": "advanced",
+    "evidence_ids": ["historical-472a976a2c9a#4"],
+    "quote": "I've been doing a lot of writing online using the pen name Malcolm Little King, a black militant activist and left-wing persona, and I've been putting out a tremendous volume of writings",
+    "possible_duplicate_of": "Pen Names"
+  },
+  {
+    "title": "Rural Policy Electoral Strategy Framework",
+    "kind": "framework",
+    "description": "A policy and messaging framework for Democrats on rural economic policy. Outlines concrete proposals (local rural development banks, community currencies, cooperative agriculture) with corresponding message-framing strategies to appeal to working-class and culturally conservative rural Americans. Addresses the political opportunity to reshape the electoral landscape through actual results-driven policy.",
+    "development": "moderate",
+    "evidence_ids": ["historical-469611fea2c4#0"],
+    "quote": "creating policies that would actually benefit small town America they would have an opportunity to completely remake the political landscape for generations",
+    "possible_duplicate_of": "We Too"
+  },
+  {
+    "title": "American Jesus Manuscript (Book 2, Chapter 15 Parables)",
+    "kind": "novel",
+    "description": "Active development on the American Jesus trilogy manuscript, specifically creating and refining custom parables for Book 2, Chapter 15's alternative healthcare scene. Developing parable architecture using the Carpenter metaphor with embodied physical grounding and emotional specificity to match biblical parable precedent.",
+    "development": "advanced",
+    "evidence_ids": ["historical-475550515c26#0"],
+    "quote": "creating a custom parable for this chapter; The Carpenter and the Strong House; parable for the alternative healthcare chapter",
+    "possible_duplicate_of": "American Jesus"
+  },
+  {
+    "title": "American Jesus Manuscript (Act 1, Chapter 18-19 Planning)",
+    "kind": "novel",
+    "description": "Detailed scene-by-scene planning and development of Act 1, Chapter 18 ('The Fourth Estate') with beat-level breakdown of the Thomas/Matthew intercut sequences. Includes parable placement analysis showing why the Parable of the Sower is optimal for Chapter 18 Scene D, with specific textual refinement suggestions.",
+    "development": "advanced",
+    "evidence_ids": ["historical-475550515c26#1"],
+    "quote": "Act 1, Chapter 18: 'The Fourth Estate' with detailed Scene A, B, C planning; Parable of the Sower analysis for Chapter 18 Scene D",
+    "possible_duplicate_of": "American Jesus"
+  }
+]}

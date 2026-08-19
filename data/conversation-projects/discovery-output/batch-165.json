@@ -1,0 +1,38 @@
+{"batch": 165, "works": [
+  {
+    "title": "Spinner Project (Identity-Inversion Political Messaging Tool)",
+    "kind": "product",
+    "description": "A modular propaganda-analysis and political-messaging system designed to expose right-wing hypocrisy through rhetorical reversal and moral critique. Multiple branded variants (Jesus AI for religious hypocrisy exposure; Turning Tables for general political messaging) target different audiences. Features guardrails against dehumanization, virality-optimized distribution via Substack influencers, and documented case studies (gerrymander/Supreme Court rulings).",
+    "development": "advanced",
+    "evidence_ids": ["historical-cc173417417e#5", "historical-cc173417417e#6", "historical-cc173417417e#8", "historical-cc173417417e#10", "historical-cc173417417e#12", "historical-cc173417417e#15", "historical-cc173417417e#19"],
+    "quote": "I'm about to launch a project that doesn't seem very Jesus-like. However, there is another principle at play here.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Consciousness and Subjectivity Bridge Paper",
+    "kind": "paper",
+    "description": "A scientific paper bridging David Chalmers' and Dennis's theoretical work on consciousness and subjective experience. Will involve translating PDFs to markdown, analyzing core concepts from both theorists, and synthesizing their frameworks into a coherent bridge argument. Addresses the hard problem of consciousness through comparative analysis of two major contemporary philosophers.",
+    "development": "early",
+    "evidence_ids": ["historical-cc173417417e#12"],
+    "quote": "take David Chalmers' writings and Dennis's writings (I have them as PDFs), and after I translate all of his PDFs to markdown, write a scientific paper about their concepts showing the bridge between them",
+    "possible_duplicate_of": "Hard Problem of Consciousness"
+  },
+  {
+    "title": "\"Out of the Vault\" Publisher Content Pipeline",
+    "kind": "website",
+    "description": "A blog/publishing feature for the personal publisher website that showcases timestamped vault insights, research drafts, and papers as they are developed. Serves as both a content stream and proof-of-concept demonstrating the publisher's intellectual productivity and systematic approach to knowledge production. Creates a verifiable record of insights and drafts produced.",
+    "development": "moderate",
+    "evidence_ids": ["historical-cc173417417e#13"],
+    "quote": "I could create something I'll call 'Out of the Vault', presenting... the stream of fresh thinking and research, not just polished books",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Event-Driven News Distribution System",
+    "kind": "product",
+    "description": "An AI-powered news feed system designed to disintermediate traditional media gatekeepers by providing verified event reporting with layered context (primary claims, evidence checks, moral analysis). Intended to be distributed as a simple text-file prompt that users can apply to any LLM, prioritizing factual event documentation over editorial interpretation.",
+    "development": "early",
+    "evidence_ids": ["historical-cc173417417e#18"],
+    "quote": "It's nothing more than a prompt, just one of those prompts that's going to be really popular as a text file people share and copy-paste. The disruptive potential of that prompt is everything.",
+    "possible_duplicate_of": ""
+  }
+]}

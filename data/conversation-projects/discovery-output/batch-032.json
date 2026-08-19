@@ -1,0 +1,38 @@
+{"batch": 32, "works": [
+  {
+    "title": "Automated Novel Writing Pipeline",
+    "kind": "framework",
+    "description": "A hierarchical automation system for generating complete novels from minimal inputs. The system takes only protagonist name and core wound, love interest name and primary obstacle, setting details, central conflict hook, and one subplot twist—then orchestrates a multi-tiered skill pipeline with fully documented step outputs to produce a complete manuscript. Each step's output is reviewable until quality standards are met, at which point the user becomes a creative director selecting from AI-generated options rather than an author writing from scratch.",
+    "development": "advanced",
+    "evidence_ids": ["historical-2aceb0e15474#0", "historical-2aceb0e15474#1", "historical-2aceb0e15474#2", "historical-2aceb0e15474#3"],
+    "quote": "This document represents my holy grail. Each step references a framework, and each framework contains several thousand words with many substeps. I already have a complete outline for creating a book from start to finish based on a few key inputs: theme, POV/style, plot, character, and setting. If I provide these basic inputs, theoretically AI could write an entire book for me—not just a generic story, but something that preserves each character's choice architecture",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Wobble Model: Classical Explanation for Quantum Phenomena",
+    "kind": "paper",
+    "description": "A physics paper proposing the Wobble Model as a classical-mechanics alternative to quantum mechanics. The model explains double-slit experiment results, quantum correlations, and Bell's Theorem predictions without invoking the Copenhagen interpretation or wave-function collapse. Includes theoretical framework, experimental protocol with natural calibration mechanisms, and mathematical bridges connecting wobble mechanics to observed quantum phenomena.",
+    "development": "advanced",
+    "evidence_ids": ["historical-2af1e25db010#0", "historical-2af1e25db010#1", "historical-2af1e25db010#2"],
+    "quote": "Like discovering that apparent planetary retrograde motion could be explained by heliocentric orbits rather than epicycles, the wobbling electron model offers a simpler mechanical explanation for seemingly mysterious quantum behavior. Would you like me to explore any particular aspect of how this model could be integrated into your paper?",
+    "possible_duplicate_of": "Quantum Mechanics"
+  },
+  {
+    "title": "Novel Development Evaluation Framework Suite",
+    "kind": "framework",
+    "description": "A comprehensive suite of seven specialized evaluation frameworks designed to guide character development, chapter architecture, and narrative coherence in novel writing. Frameworks include Chapter Foundation (17-point scene architecture), Character-Theme Integration, Character Ensemble Narrative Functionality, Setting-Character-Theme Coherence, Editorial Gap Analysis, Seeds Harvested/Loose Ends Analysis, and Evaluation Phase II Comprehensive. Each framework provides numerical scoring criteria (1-10), execution instructions, and specific actionable refinement directives.",
+    "development": "advanced",
+    "evidence_ids": ["historical-2b6e1ae0390a#0", "historical-2b6e1ae0390a#1", "historical-2b6e1ae0390a#2", "historical-2b6e1ae0390a#3", "historical-2b6e1ae0390a#4", "historical-2b6e1ae0390a#5", "historical-2b6e1ae0390a#6"],
+    "quote": "Purpose: Expand brief chapter overviews into comprehensive chapter architecture with detailed scene breakdowns. Create two outputs: a detailed 17-point chapter outline and a condensed master outline entry (650–750 words). Build integrated architecture connecting character development across the sequence",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Synthesized Hero/Heroine/Sage Journey Framework",
+    "kind": "framework",
+    "description": "A new narrative journey framework synthesizing Joseph Campbell's Hero with a Thousand Faces with Maureen Murdock's Heroine's Journey to create a unified dual-track story architecture. The framework reconciles outer physical quest with inner emotional transformation, mapping both journeys through parallel stages and producing a new integrated narrative structure that serves both masculine and feminine archetypal patterns simultaneously.",
+    "development": "early",
+    "evidence_ids": ["historical-2bf22a524f17#0"],
+    "quote": "Reconcile the two analyses included in the pasted content. Provide an updated tabular analysis of the hero's journey, the heroine's journey, and the consolidated journey, providing apt names for each stage in this new synthesis journey. Provide 10 apt names for this new journey",
+    "possible_duplicate_of": ""
+  }
+]}

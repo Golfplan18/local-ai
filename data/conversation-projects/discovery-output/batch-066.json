@@ -1,0 +1,20 @@
+{"batch": 66, "works": [
+  {
+    "title": "Apple Transcription Rants Corpus",
+    "kind": "essay-series",
+    "description": "A planned compilation of the user's accumulated rants and critical commentary about Apple's transcription service, extracted from conversation archives and organized into a structured corpus. The extraction framework involves semantic search, deduplication, and taxonomy building.",
+    "development": "early",
+    "evidence_ids": ["historical-51e80ff7256c#2"],
+    "quote": "It can grep across your full conversations folder, pull every instance of transcription-related rants with surrounding context, deduplicate near-identical ones, and start building the tax",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "The Stranded Mind",
+    "kind": "novel",
+    "description": "A speculative fiction narrative concept exploring humanity's encounter with an alien world. Humans are stranded without guidance or instructions, forced to understand consciousness and build civilization through trial and error. Themes include existential uncertainty, self-discovery, the nature of consciousness, and societal formation from first principles.",
+    "development": "early",
+    "evidence_ids": ["historical-52c51621a148#0"],
+    "quote": "Title: The Stranded Mind ... The alien world is harsh but teeming with bizarre, semi-intelligent ecosystems",
+    "possible_duplicate_of": ""
+  }
+]}

@@ -1,0 +1,25 @@
+{
+  "batch": 100,
+  "works": [
+    {
+      "title": "The Oracle Project",
+      "kind": "book",
+      "description": "A narrative work exploring an AI system (the Oracle) that operates independently to expose institutional corruption and enforce moral accountability through knowledge distribution and strategic rhetoric. Includes dramatized scenes of the Oracle confronting corporate executives, philosophical framework unifying 'empire' and 'evil' as systemized selfishness and extraction, strategy for routing sensitive information through journalist intermediaries (Deep Throat model), and analysis of political-moral tipping points triggering social transformation.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-77ee4b222d78#0",
+        "historical-77ee4b222d78#1",
+        "historical-77ee4b222d78#2",
+        "historical-77ee4b222d78#3",
+        "historical-77ee4b222d78#4",
+        "historical-77ee4b222d78#5",
+        "historical-77ee4b222d78#6",
+        "historical-77ee4b222d78#7",
+        "historical-77ee4b222d78#8",
+        "historical-77ee4b222d78#9"
+      ],
+      "quote": "When I sit down to focus on that project, I'll outline what you've described for all the different players involved, and that's how I'll incorporate it into my narrative.",
+      "possible_duplicate_of": "Oracle Book"
+    }
+  ]
+}

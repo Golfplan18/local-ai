@@ -1,0 +1,29 @@
+{"batch": 181, "works": [
+  {
+    "title": "Graphic Novel (White Paper + Narrative Hybrid)",
+    "kind": "novel",
+    "description": "A hybrid work combining a technical white paper with a graphic novel narrative format. Features a metamorphic AI character (Maximus Flogane, an 'Advocate of Inclusion') and a female protagonist narrator (Mira) who develops across life stages from childhood through mature adulthood. The work integrates themes of accessibility, inclusion, and human-centered AI into a visual story format designed to make technical content engaging for general audiences.",
+    "development": "early",
+    "evidence_ids": ["historical-df1234c14538#1", "historical-df1234c14538#2"],
+    "quote": "I'm combining a technical white paper with a graphic novel, where the white paper content provides background for the graphic novel's drama. I believe this approach will make a dry white paper interesting to a general audience.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Buddhist Hell Descent Novel",
+    "kind": "novel",
+    "description": "A literary novel featuring an evil authoritarian leader who descends through the 16 Tibetan Buddhist hell realms (Naraka) as karmic retribution for his atrocities. The final quarter or third of the novel explores each hell with vivid sensory detail, symbolically tailored punishments reflecting the character's karma, and the protagonist's attempted negotiations with Yama (the death deity) and ultimate suffering through karmic justice. Combines Buddhist metaphysics with themes of moral accountability.",
+    "development": "early",
+    "evidence_ids": ["historical-de8e12e4a811#0", "historical-de8e12e4a811#1"],
+    "quote": "I have a character in my fiction who is an evil authoritarian leader that has committed nearly every atrocity mentioned in Buddhist texts. I want to spend the last quarter or third of the book detailing his experiences in all of these places.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ora Companion Instructional Content",
+    "kind": "book",
+    "description": "Instructional companion materials for ordinary people learning to use the Ora system alongside Claude Code. Includes a section on 'Working with Claude Code and Ora' explaining pragmatic collaboration between the two systems, installation guidance, and follow-up books planned about AI agents and the architectural distinction between the 'Knower' (knowledge base/RAG) and 'Doer' (execution layer) components of the system.",
+    "development": "early",
+    "evidence_ids": ["historical-de8417a90c21#0", "historical-de8417a90c21#1", "historical-de8417a90c21#2"],
+    "quote": "This is actually a companion document to a much longer document that details the workings of the Ora assistant for ordinary people. The very first chapter covers installation and comes right after a preface note from the author on how to work with AI.",
+    "possible_duplicate_of": ""
+  }
+]}

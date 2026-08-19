@@ -1,0 +1,20 @@
+{"batch": 103, "works": [
+  {
+    "title": "Local AI Swarm System: Multi-Model Coordination Architecture",
+    "kind": "product",
+    "description": "A planned system for running multiple large language models (70B+) locally on a Mac, coordinated as teams to perform automated knowledge management tasks integrated with an Obsidian vault. The user is actively designing file-watch protocols, concurrent-write safety, error recovery, and state synchronization mechanisms to enable multi-AI collaboration.",
+    "development": "moderate",
+    "evidence_ids": ["historical-7c587a8c52b2#0", "historical-7c587a8c52b2#1"],
+    "quote": "I'm purchasing a new Mac to run multiple large language models as teams to perform work involving my personal knowledge management system in Obsidian.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Pandemic-Era Economic Support Programs and the Permanence Question",
+    "kind": "paper",
+    "description": "An analytical reference examining whether temporary pandemic-era economic support programs became permanent policy fixtures. Structured in 7 sections with empirical analysis of automation displacement, productivity-wage decoupling, and task-based reinstatement trends since 1980, synthesizing research methodology into actionable policy design insights.",
+    "development": "early",
+    "evidence_ids": ["historical-7bd6cc535b05#0"],
+    "quote": "Starting the research now.",
+    "possible_duplicate_of": ""
+  }
+]}

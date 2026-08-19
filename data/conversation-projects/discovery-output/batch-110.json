@@ -1,0 +1,29 @@
+{"batch": 110, "works": [
+  {
+    "title": "Learning Method Book",
+    "kind": "book",
+    "description": "A comprehensive book documenting his methodology for learning and thinking, structured in three pedagogical layers: tape-recorder method, mind-map synthesis, and AI-augmented genealogy. Built on analysis of 39,000+ archived AI conversations spanning 19 months as a RAG corpus for extracting learning patterns.",
+    "development": "moderate",
+    "evidence_ids": ["historical-8620bf8fbb65#8", "historical-8620bf8fbb65#9", "historical-8620bf8fbb65#11", "historical-8620bf8fbb65#12"],
+    "quote": "Planning the 'learning method' book's three-layer structure, tape-recorder-to-mind-map-to-AI genealogy, and gearbox metaphor",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "LLM Model Selection Formula and Tool",
+    "kind": "framework",
+    "description": "A method and accompanying calculator for selecting large language models based on intelligence-per-dollar value ratio. Uses cost-elasticity of intelligence and Pareto frontier filtering rather than naive index/cost ratios. Organizes models into four preset buckets (premium/optimum/budget/free) with configurable intelligence floors. Designed to make AI model selection transparent and expose pricing inefficiencies in the market.",
+    "development": "early",
+    "evidence_ids": ["historical-8620d493ac22#0", "historical-8620d493ac22#1"],
+    "quote": "Both cost-elasticity of intelligence and efficient-frontier filtering actually work: Compute Δindex / Δlog(cost) between adjacent models when sorted by price",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Inside the Parliament Cartoon Series",
+    "kind": "book",
+    "description": "An animated cartoon series depicting his internal parliament governance model — the deliberative process of different internal factions voting on decisions (ego, jester, body, long-term mission). Format is absurdist animation (similar to Being John Malkovich in tone). Deliberately non-prescriptive and guilt-free spiritual philosophy — showing his own mind's deliberation rather than teaching others. Designed as an indefinitely extensible project drawing directly from daily life and internal decision-making.",
+    "development": "early",
+    "evidence_ids": ["historical-863ee5762a7c#7"],
+    "quote": "I may have just stumbled across a long-term project I could add to indefinitely. Unlike most fiction I've imagined, this wouldn't have a natural endpoint... this cartoon series would be different because I'd be drawing directly from my daily life",
+    "possible_duplicate_of": ""
+  }
+]}

@@ -1,0 +1,245 @@
+{
+  "batch": 97,
+  "placements": [
+    {
+      "candidate_id": "historical-ef8b07e0632d#2",
+      "nexuses": ["insight", "image_generation"],
+      "confidence": "high",
+      "reason": "DALL-E imagery request about clear mind, clean heart, happy life—spiritual wellbeing imagery"
+    },
+    {
+      "candidate_id": "historical-ef8f07c2726c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Criminal case legal analysis and early release mechanisms—no project engagement"
+    },
+    {
+      "candidate_id": "historical-efa89f795289#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Tibetan Buddhist Lamrim teachings on renunciation and suffering—spiritual insight work"
+    },
+    {
+      "candidate_id": "historical-efadbd42e254#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump AI-generated Christ image and religious right backlash analysis—political discourse"
+    },
+    {
+      "candidate_id": "historical-efbc8b18ba73#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Character development for James Zebedee across American Jesus narrative chapters"
+    },
+    {
+      "candidate_id": "historical-efe2cd2c0ae2#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Starlink/Ukraine geopolitical article on private company seizure and national security"
+    },
+    {
+      "candidate_id": "historical-efe2cd2c0ae2#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Emergency powers reform, tariffs, constitutional executive authority analysis"
+    },
+    {
+      "candidate_id": "historical-f0533af593ba#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Guidelines for ethical political satire memes—how to critique without manipulation"
+    },
+    {
+      "candidate_id": "historical-f05b1855f63b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "iPhone warranty/purchase date lookup—general consumer tech support"
+    },
+    {
+      "candidate_id": "historical-f05ed412ac2f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Amazon product research for USB chargers—consumer product search"
+    },
+    {
+      "candidate_id": "historical-f07b60185099#0",
+      "nexuses": ["diklis_chump"],
+      "confidence": "high",
+      "reason": "Diklis Chump satirical press release titles—genre fiction satire project work"
+    },
+    {
+      "candidate_id": "historical-f0b20785ab9a#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Draft chapter 13 of American Jesus—character Matthew's faith crisis narrative"
+    },
+    {
+      "candidate_id": "historical-f0fbd4efdfbd#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Malcolm Gladwell's Blink book analysis—general book summary, no project engagement"
+    },
+    {
+      "candidate_id": "historical-f113c61ca7b3#0",
+      "nexuses": ["main-street-independent"],
+      "confidence": "high",
+      "reason": "RSS feed and API setup for news site—publication infrastructure work"
+    },
+    {
+      "candidate_id": "historical-f14455239af0#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Claude Sonnet 5 capabilities and features—LLM model improvement tracking"
+    },
+    {
+      "candidate_id": "historical-f15c8e87374d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "UPS/voltage regulator electrical wiring—home infrastructure troubleshooting"
+    },
+    {
+      "candidate_id": "historical-f1742a1b8d91#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "iPhone dictation transcription problems—technology exploration and workarounds"
+    },
+    {
+      "candidate_id": "historical-f1742a1b8d91#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Custom transcription solutions, open platform alternatives—technology tool exploration"
+    },
+    {
+      "candidate_id": "historical-f1afc989441b#1",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Good Shepherd parable analysis for chapter 6—narrative structure work"
+    },
+    {
+      "candidate_id": "historical-f1f41dc80f52#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Parent communication letter editing—general writing cleanup, no project"
+    },
+    {
+      "candidate_id": "historical-f218bfcd4d2d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Formal psychiatric medical negligence complaint—legal document, no project engagement"
+    },
+    {
+      "candidate_id": "historical-f29092b2676f#0",
+      "nexuses": ["insight"],
+      "confidence": "medium",
+      "reason": "First-order vs second-order economic thinking—personal insight about cognitive patterns"
+    },
+    {
+      "candidate_id": "historical-f322c7c8e9b1#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "U.S. Treasury market dynamics, Sell America trade, geopolitical analysis"
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#2",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Jesus as Prince of Peace theological analysis—Christian allegory thematic work"
+    },
+    {
+      "candidate_id": "historical-f34b5e796447#3",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Buddha's enlightenment and teaching philosophy—spiritual practice insight"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#0",
+      "nexuses": ["ora", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Multi-AI session orchestration with LM Studio—Ora local model coordination"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#1",
+      "nexuses": ["technology", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "AI tool interfaces (LM Studio, Ollama, MLX)—platform capability exploration"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#2",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "User background in multi-step AI coordination—framework design expertise"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#3",
+      "nexuses": ["ora", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Multi-agent expansion/contraction architecture—Ora-style pipeline design"
+    },
+    {
+      "candidate_id": "historical-f3d2c460c022#4",
+      "nexuses": ["human_nexus"],
+      "confidence": "high",
+      "reason": "AI industry swarm intelligence analysis—AI agents application framework"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#2",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "RAG retrieval paths and context window management—Ora system architecture"
+    },
+    {
+      "candidate_id": "historical-f3d777c1994e#3",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "Stateless architecture and memory management—Ora design principle discussion"
+    },
+    {
+      "candidate_id": "historical-f409bb799f17#0",
+      "nexuses": ["wetoo"],
+      "confidence": "medium",
+      "reason": "David Graeber Debt book—economic and power structure foundations"
+    },
+    {
+      "candidate_id": "historical-f412c34a7108#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "YouTube TV family sharing features—consumer product information"
+    },
+    {
+      "candidate_id": "historical-f4ce14a01966#0",
+      "nexuses": ["insight"],
+      "confidence": "medium",
+      "reason": "Countries with highest happiness levels—wellbeing and life satisfaction insight"
+    },
+    {
+      "candidate_id": "historical-f4fc0a54c4b3#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump credit card interest cap and tariff rulings—policy announcement analysis"
+    },
+    {
+      "candidate_id": "historical-f50450c83a46#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Media narratives about Trump, Gabbard, Musk, Rogan—political discourse analysis"
+    },
+    {
+      "candidate_id": "historical-f51835eb9280#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Water in ear canal removal methods—medical/health advice"
+    },
+    {
+      "candidate_id": "historical-f56cfd0b9da8#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trump Greenland threat and NATO negotiations—geopolitical analysis"
+    },
+    {
+      "candidate_id": "historical-f56eeb3a32d1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Apple Music and Books on Android—cross-platform app availability"
+    }
+  ]
+}

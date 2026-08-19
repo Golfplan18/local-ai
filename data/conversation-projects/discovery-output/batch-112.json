@@ -1,0 +1,20 @@
+{"batch": 112, "works": [
+  {
+    "title": "Natural Language Programming for AI Agents",
+    "kind": "book",
+    "description": "A practical guide teaching domain experts (not programmers) how to build personal AI systems and autonomous AI agents using natural language specifications. The book has 41 chapters across five parts, with architecture locked and specific research being gathered for chapters including AI Agent Security research (Part Four, Chapter 13).",
+    "development": "moderate",
+    "evidence_ids": ["historical-87bb2d3c1f36#0"],
+    "quote": "I am writing a book called Natural Language Programming for AI Agents that teaches domain experts (not programmers) how to build personal AI systems and, ultimately, autonomous AI agents using natural language specifications. The book's architecture is built — 41 chapters across five parts.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "AI Malinvestment: The Economics of the AI Bubble",
+    "kind": "paper",
+    "description": "A comprehensive analysis of the artificial intelligence industry's malinvestment, examining the collapse of the hyperscaler AGI narrative through economic mechanisms, hyperscaler infrastructure obsolescence, pricing competition between American monopolies and Chinese commodity AI competitors, and the structural unsustainability of current capital deployment. Being developed in multiple versions for different audiences: 4,000-5,000 word version for Medium publication, Substack sticky note, and planning commission adaptation for local officials opposing data center approvals.",
+    "development": "moderate",
+    "evidence_ids": ["historical-8982bea6fb40#3", "historical-8982bea6fb40#5"],
+    "quote": "Please put together a complete document using all the information in this thread that walks through each of the factors, shows how they come together, and creates a compelling case for this thesis... I may publish on Medium under my own name... I'm also considering setting up a Substack where I can publish my Ora documentation books over time.",
+    "possible_duplicate_of": ""
+  }
+]}

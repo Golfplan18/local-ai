@@ -1,0 +1,38 @@
+{"batch": 13, "works": [
+  {
+    "title": "The Plinko Paradigm: A Classical Challenge to Quantum Orthodoxy",
+    "kind": "paper",
+    "description": "A formal physics paper presenting a thought experiment using a Plinko game to challenge fundamental assumptions in quantum mechanics. The paper examines particle behavior across scales (macroscopic to elementary particles) and proposes that quantum phenomena might emerge from classical geometric relationships rather than requiring wave function collapse or superposition.",
+    "development": "moderate",
+    "evidence_ids": ["historical-124fb5fbfebb#2", "historical-124fb5fbfebb#3"],
+    "quote": "This paper presents a novel thought experiment challenging fundamental assumptions in quantum mechanics through the lens of a familiar game: Plinko.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Political Manipulation Detector (Spinner Tool)",
+    "kind": "product",
+    "description": "A strategic communication tool designed to identify manipulation techniques in political discourse and provide counter-strategies. Uses a bounded taxonomy of manipulation patterns (threat cue, weakened dose, refutational preemption) to shift debates from claims to tactics. Includes context-collapse detection, quote-mining identification, and multiple response options.",
+    "development": "advanced",
+    "evidence_ids": ["historical-126ca32dbbb7#0", "historical-126ca32dbbb7#1", "historical-126ca32dbbb7#2", "historical-126ca32dbbb7#3", "historical-126ca32dbbb7#4", "historical-126ca32dbbb7#5"],
+    "quote": "You're not wrong: even if it's imperfect, it still works is a legitimate property here. What you're building isn't a courtroom brief. It's a conversational weapon that does two useful things even when it misses",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "AI Swarm Orchestrator System",
+    "kind": "product",
+    "description": "A multi-agent orchestrator system using MLX for local reasoning. Architecture includes six main components: prompt evaluator/RAG processor, cross-evaluator, reviser, consolidator, formatter, and simple FastAPI server. Designed as specification-first development (generate code from architecture documentation) with synchronization points for parallel model processing.",
+    "development": "moderate",
+    "evidence_ids": ["historical-130c5b751f97#0", "historical-130c5b751f97#1", "historical-130c5b751f97#2", "historical-130c5b751f97#3", "historical-130c5b751f97#4"],
+    "quote": "I am committed to having the code generate from a specification document. I am not a coder, and if I make any code changes, then the documentation won't match the code.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Dark Energy Reference Dataset",
+    "kind": "research",
+    "description": "A reference dataset of redshift measurements and associated cosmological data from modern probes that constrain dark energy and matter density parameters (Omega_m and Omega_Lambda). The project aims to assemble a reusable, well-documented dataset and enable independent reproduction of cosmological constraint calculations from raw data.",
+    "development": "early",
+    "evidence_ids": ["historical-128d5553f69f#0"],
+    "quote": "My primary goal is to assemble a reusable, well-documented dataset; my secondary goal is to be able to reproduce the cosmological constraints myself",
+    "possible_duplicate_of": "Expanding Awareness"
+  }
+]}

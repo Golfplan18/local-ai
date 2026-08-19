@@ -1,0 +1,245 @@
+{
+  "batch": 3,
+  "placements": [
+    {
+      "candidate_id": "historical-0874c28108c7#2",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Personal discovery of attraction patterns (Hispanic/Southeast Asian preference intensifying)"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "User interaction preference with AI, not project-related work"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app strategy planning and specific prospect evaluation (Kira)"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#7",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Personal growth after year of dating; confidence and decision clarity emerging"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#9",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Brief technical question about model availability, not project engagement"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#10",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile evaluation and scam detection strategy"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#11",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Analysis of dopamine/emotional cycles in dating (72-96 hour pattern)"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#12",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Relationship psychology: nice guy/girl syndrome and unsolicited caretaking pattern"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#13",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating platform dynamics and cyclical activity patterns across apps"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#15",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating preferences (age filtering) and ex-spouse relationship reflection"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#16",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating funnel strategy and planned in-person meeting execution"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#17",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating platform strategy: 90-120 day reset theory for Match.com"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#19",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Niche dating app (Stir) evaluation against mainstream platforms"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#20",
+      "nexuses": ["wetoo"],
+      "confidence": "high",
+      "reason": "Substantive economic analysis: Cory Doctorow enshittification, debt-fueled monopoly consolidation"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#21",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile red flags analysis (dominance, passivity, age accuracy)"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#24",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Authenticity signals in dating profiles (foot/hand photos, direct messaging)"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#25",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating psychology: hesitation approaching prime targets, marriage age-gap statistics"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#27",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Evolutionary mating-market theory and post-abstinence sexual physiology"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#28",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating pipeline reset after dealbreaker discovery; reopening search strategy"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#30",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Cultural dynamics and gender polarity with Brazilian match"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#31",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Cultural understanding: Hungarian-born woman dating dynamics and traits"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#32",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating app mechanics: height-filter driven vanishing matches"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#34",
+      "nexuses": ["insight", "obsidian", "inception_and_incubation"],
+      "confidence": "high",
+      "reason": "Buddhist emptiness/identity exploration, building Obsidian second brain, tending mind garden"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#35",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Masculine frame holding and self-selection dynamics in dating"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#37",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Self-selection patterns, tourist swipes, and masculine sovereignty in dating"
+    },
+    {
+      "candidate_id": "historical-0874c28108c7#40",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Transcendence from selector to recognizer; process-over-outcome philosophy in dating"
+    },
+    {
+      "candidate_id": "historical-087bcb514831#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "General automotive technical help unrelated to projects"
+    },
+    {
+      "candidate_id": "historical-08b6877ce17a#0",
+      "nexuses": ["expanding_awareness", "science"],
+      "confidence": "high",
+      "reason": "Alternative physics theories (aether, infinite universe) challenging conventional models"
+    },
+    {
+      "candidate_id": "historical-09000c4fa838#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political/geopolitical analysis: Trump credibility crisis with NATO allies"
+    },
+    {
+      "candidate_id": "historical-09000c4fa838#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Geopolitical analysis: Venezuela oil control and colectivo payment dynamics"
+    },
+    {
+      "candidate_id": "historical-0919860e8186#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "General Mac technical help unrelated to projects"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#0",
+      "nexuses": ["wetoo", "writing", "publishing", "politics"],
+      "confidence": "high",
+      "reason": "Economic mechanics article 'Great Deleveraging': credit-cap crash and postal bank rescue plan"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#4",
+      "nexuses": ["wetoo", "writing", "publishing", "politics"],
+      "confidence": "high",
+      "reason": "Final polished two-part article review on debt economy and deleveraging"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#5",
+      "nexuses": ["wetoo", "politics", "writing"],
+      "confidence": "high",
+      "reason": "Real-time news validation of thesis (Dimon, media sources) and senator outreach campaign"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#7",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Unrelated tangent: macOS Finder icon settings fix"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#8",
+      "nexuses": ["wetoo", "politics", "writing"],
+      "confidence": "high",
+      "reason": "Cartoon series review and Wall Street normalcy bias analysis for economic article"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#9",
+      "nexuses": ["politics", "wetoo", "writing"],
+      "confidence": "high",
+      "reason": "New political post idea: NYC Mayor Mamdani pressure strategy on Trump"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#10",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Real-time analysis of Wall Street reaction (Powell DOJ, Bill Pulte motives)"
+    },
+    {
+      "candidate_id": "historical-091bb050ac16#11",
+      "nexuses": ["politics", "wetoo", "writing"],
+      "confidence": "high",
+      "reason": "Appealing Reddit satire takedown and verifying government titles for article defense"
+    },
+    {
+      "candidate_id": "historical-0936719d4794#0",
+      "nexuses": ["human_nexus", "writing", "technology"],
+      "confidence": "high",
+      "reason": "Silicon Valley brief on AI agent disruption thesis for policy implementation"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{"batch": 74, "works": [
+  {
+    "title": "Bedtime Creation Story",
+    "kind": "narrative",
+    "description": "A narrative story framed as a father telling his son about creation, using the metaphor of a father and son building universes together in a workshop. The user is actively developing variations of the prose, refining the opening and emotional tone across multiple drafts.",
+    "development": "moderate",
+    "evidence_ids": ["historical-5dc82a664455#0"],
+    "quote": "Picture a workshop—not just any workshop, but one where universes get built. The father worked there. The son worked there too. Together, they created worlds.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Simulation Theory Paper",
+    "kind": "paper",
+    "description": "A cosmology paper developing the thesis that simulation theory, as posited by philosopher Nick Bostrom, is the most likely explanation of reality. The paper incorporates concepts of multiverse theory and awareness emergence to support this cosmological framework. The user is actively requesting draft preparation and integration of multiple theoretical concepts.",
+    "development": "moderate",
+    "evidence_ids": ["historical-5cb230b2cac8#0"],
+    "quote": "I want to incorporate simulation theory as posited by philosopher Nick Bostrom to support the following thesis: Simulation theory is the most likely explanation of our reality.",
+    "possible_duplicate_of": "Cosmology Preprint"
+  }
+]}

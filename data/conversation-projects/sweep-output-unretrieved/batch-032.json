@@ -1,0 +1,245 @@
+{
+  "batch": 32,
+  "placements": [
+    {
+      "candidate_id": "historical-4d8286001ce1#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tactical discussion of political messaging; no substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-4da185b0a1f4#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal search for spiritual understanding and mutual recognition with a gifted individual."
+    },
+    {
+      "candidate_id": "historical-4da90a5423f2#0",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "Explicit work on Ora system architecture and per-task model configuration."
+    },
+    {
+      "candidate_id": "historical-4e764fb89276#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual research request about Doppler effect; no project engagement."
+    },
+    {
+      "candidate_id": "historical-4e7c225d5b6f#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Discussion of originality as combinatorial synthesis and forgetting sources."
+    },
+    {
+      "candidate_id": "historical-4e824bef48c0#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Personality assessment and romantic/sexual compatibility analysis."
+    },
+    {
+      "candidate_id": "historical-4ea6021b10c5#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Historical examples of beauty fading and impact on happiness and relationships."
+    },
+    {
+      "candidate_id": "historical-4eb9741c88f5#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political deception, gaslighting, and PR campaign manipulation mechanics."
+    },
+    {
+      "candidate_id": "historical-4ecb9156e8b4#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal exploration of anhedonia, neurological recovery, and consciousness."
+    },
+    {
+      "candidate_id": "historical-4ecb9156e8b4#2",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "Cognitive recovery impacting capacity for AI swarm project work."
+    },
+    {
+      "candidate_id": "historical-4ecb9156e8b4#3",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Reflection on forty-year gap between potential and actual accomplishment."
+    },
+    {
+      "candidate_id": "historical-4ecb9156e8b4#4",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool optimization question about handwriting and diagramming workflow."
+    },
+    {
+      "candidate_id": "historical-4ecb9156e8b4#5",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Recovery milestone, Buddhist philosophy of love, relationship self-sufficiency."
+    },
+    {
+      "candidate_id": "historical-4ee4b2bd5dfa#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual biography lookup about Fred Waring; no project engagement."
+    },
+    {
+      "candidate_id": "historical-4ee4b2bd5dfa#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual lottery jackpot query; no project engagement."
+    },
+    {
+      "candidate_id": "historical-4f458c177fb9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Drafting analysis of Trump's credit card rate cap policy and economic crisis mechanics."
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Full conversation reassessment analyzing romantic interaction with Laura."
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Text coordination strategy and handling uncertainty in dating interaction."
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#5",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analysis of Laura's silence and shift in communication pattern."
+    },
+    {
+      "candidate_id": "historical-4f7fdeb04122#6",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Acceptance of ambiguity and philosophical indifference in relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-501df6671288#0",
+      "nexuses": ["american_jesus"],
+      "confidence": "high",
+      "reason": "Building character arc optimization framework for American Jesus narrative construction."
+    },
+    {
+      "candidate_id": "historical-502723bef9f8#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Economic policy analysis on credit crunch and its reverberation through economy."
+    },
+    {
+      "candidate_id": "historical-502723bef9f8#1",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Incorporating Graeber's jubilee framework for debt deleveraging and economic freedom."
+    },
+    {
+      "candidate_id": "historical-505bd1ef92c7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "News lookup about Fetterman and Menendez; no substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-505bd1ef92c7#1",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Forbes billionaire data to argue US is no longer merit-based economy."
+    },
+    {
+      "candidate_id": "historical-50a771f85386#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical causal loop diagram request; no project substantive engagement."
+    },
+    {
+      "candidate_id": "historical-50ec7971d26e#0",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Economics analysis of Japanese yen carry trade and institutional repatriation."
+    },
+    {
+      "candidate_id": "historical-50ec7971d26e#1",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Constraints on Japanese intervention and government treasury policy mechanics."
+    },
+    {
+      "candidate_id": "historical-50ec7971d26e#2",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Trump tariff policy impact on US treasuries and global economic realignment."
+    },
+    {
+      "candidate_id": "historical-50ec7971d26e#3",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Dollar weakness, trade deficits, and market dynamics analysis."
+    },
+    {
+      "candidate_id": "historical-50ec7971d26e#4",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Krugman's thesis on global economic divorce and structural realignment."
+    },
+    {
+      "candidate_id": "historical-511d7ea648ff#0",
+      "nexuses": ["image_generation", "insight"],
+      "confidence": "high",
+      "reason": "Using AI image generation to explore and express anger imagery progression."
+    },
+    {
+      "candidate_id": "historical-511d7ea648ff#1",
+      "nexuses": ["image_generation"],
+      "confidence": "high",
+      "reason": "Image generation exploration of objects of desire and future trends."
+    },
+    {
+      "candidate_id": "historical-511d7ea648ff#2",
+      "nexuses": ["image_generation", "insight"],
+      "confidence": "high",
+      "reason": "Image generation of emotional and psychological states visualization."
+    },
+    {
+      "candidate_id": "historical-51265f1cb1a9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual nutrition query about ice cream carbohydrates."
+    },
+    {
+      "candidate_id": "historical-51265f1cb1a9#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual queries about Queensland heeler dog breed and size."
+    },
+    {
+      "candidate_id": "historical-51a454e269dd#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "DIY home improvement advice on garage baseboard materials and installation."
+    },
+    {
+      "candidate_id": "historical-51b37bc11d8f#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political analysis of gender differences, political correctness, and voting patterns."
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Government shutdown blame dynamics and partisan propaganda mechanisms."
+    },
+    {
+      "candidate_id": "historical-51e34e12686e#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Strategic reframing of propaganda from news genre to defang disinformation."
+    }
+  ]
+}

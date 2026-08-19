@@ -1,0 +1,338 @@
+{
+  "batch": 22,
+  "placements": [
+    {
+      "candidate_id": "historical-3853dbe35160#25",
+      "nexuses": [
+        "obsidian"
+      ],
+      "confidence": "high",
+      "reason": "Discusses Obsidian YouTube transcript plugin for vault integration."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#37",
+      "nexuses": [
+        "obsidian"
+      ],
+      "confidence": "high",
+      "reason": "Discusses cleaning voice-dictated transcriptions for vault quality."
+    },
+    {
+      "candidate_id": "historical-3853dbe35160#41",
+      "nexuses": [
+        "technology",
+        "ora"
+      ],
+      "confidence": "high",
+      "reason": "Hardware budgeting for permanent AI system infrastructure; local model deployment."
+    },
+    {
+      "candidate_id": "historical-38628c322858#0",
+      "nexuses": [
+        "politics",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "News article on Trump lawsuit against JPMorgan; political/economic event."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#1",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Python and terminal basics tutorial; general technical education."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#3",
+      "nexuses": [
+        "technology",
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Colab vs local Python decision; Claude context window advantages for workflows."
+    },
+    {
+      "candidate_id": "historical-3872c327f0f0#14",
+      "nexuses": [
+        "prompt_engineering",
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Claude context window as core advantage for book writing; instruction retention."
+    },
+    {
+      "candidate_id": "historical-38857a0b67d9#0",
+      "nexuses": [
+        "politics",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Labor market decline news article; economic/political reporting."
+    },
+    {
+      "candidate_id": "historical-39039be28df7#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Tariffs and inflation analysis; economic policy discussion."
+    },
+    {
+      "candidate_id": "historical-391feb3157a2#0",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "Character profile development for James Zebedee; American Jesus character canon."
+    },
+    {
+      "candidate_id": "historical-3944d2830f64#0",
+      "nexuses": [
+        "obsidian"
+      ],
+      "confidence": "high",
+      "reason": "Obsidian note-taking configuration and properties system setup."
+    },
+    {
+      "candidate_id": "historical-3944d2830f64#1",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "medium",
+      "reason": "Gemini chat search interface; minimal substantive engagement."
+    },
+    {
+      "candidate_id": "historical-3944d2830f64#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-question about whether a term was mentioned; no substantive project work."
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#0",
+      "nexuses": [
+        "writing_fiction",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Dark vignette book concept exploring isolation, empathy, and cruelty."
+    },
+    {
+      "candidate_id": "historical-397ad3fe05b9#1",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Reframing vignettes as 'Conversations with the Executioner'; fiction design."
+    },
+    {
+      "candidate_id": "historical-39955a02ac69#0",
+      "nexuses": [
+        "writing_fiction",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Emotional hooks for content engagement and reader clickthrough design."
+    },
+    {
+      "candidate_id": "historical-39c8861095f0#0",
+      "nexuses": [
+        "american_king"
+      ],
+      "confidence": "high",
+      "reason": "Act 3 Chapter 22 choice architecture for Jo Rivera Blackwell; American King narrative."
+    },
+    {
+      "candidate_id": "historical-3a15577595d1#2",
+      "nexuses": [
+        "photo_books"
+      ],
+      "confidence": "high",
+      "reason": "Instagram post excerpt about fourth book project and outsider identity."
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Media literacy discussion on COVID ivermectin framing and misinformation."
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Identifying left-wing propaganda examples; media framing analysis."
+    },
+    {
+      "candidate_id": "historical-3a3ac013ebfa#3",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Factual queries on January 6 arrests and Romney quote; political verification."
+    },
+    {
+      "candidate_id": "historical-3a5cab8046df#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Gravitational lensing sphere thought experiment; physics exploration."
+    },
+    {
+      "candidate_id": "historical-3a5ee4278122#0",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Coachella Valley homeowners insurance agent research."
+    },
+    {
+      "candidate_id": "historical-3a85ad702bb5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical notification of image upload failure; no project content."
+    },
+    {
+      "candidate_id": "historical-3aa9152b3c83#1",
+      "nexuses": [
+        "politics",
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "Trump administration ICE shooting narrative and propaganda campaign analysis."
+    },
+    {
+      "candidate_id": "historical-3ac6ad1aef45#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Cryptocurrency critique on lack of intrinsic value and regulatory risk."
+    },
+    {
+      "candidate_id": "historical-3b1e8fd33027#0",
+      "nexuses": [
+        "property",
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Particleboard/melamine material selection for construction project."
+    },
+    {
+      "candidate_id": "historical-3b3e9909d03a#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Epson scanner setup via macOS Image Capture; hardware integration."
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#0",
+      "nexuses": [
+        "politics",
+        "ora_chokepoint_response"
+      ],
+      "confidence": "high",
+      "reason": "Supreme Court Cox v. Sony copyright/ISP liability case; chokepoint/IP enclosure."
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Accidental voice-dictation fragment about food choice; not substantive."
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#3",
+      "nexuses": [
+        "politics",
+        "ora_chokepoint_response",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "IP law legitimacy critique; domain registrar competition as chokepoint case study."
+    },
+    {
+      "candidate_id": "historical-3b86d36abeac#4",
+      "nexuses": [
+        "politics",
+        "wetoo",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Vigilantism and civil breakdown analysis; UnitedHealthcare CEO killing as response to institutional failure."
+    },
+    {
+      "candidate_id": "historical-3b8ac8a00977#0",
+      "nexuses": [
+        "writing",
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Text cleanup tool and second-order thinking framework discussion."
+    },
+    {
+      "candidate_id": "historical-3bb11a72bf0c#4",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Feature-based user testing strategy and Fiverr review policy compliance."
+    },
+    {
+      "candidate_id": "historical-3c17a02ca76e#0",
+      "nexuses": [
+        "science",
+        "quantum_mechanics"
+      ],
+      "confidence": "high",
+      "reason": "Bell's Theorem paper review on quantum mechanics interpretation."
+    },
+    {
+      "candidate_id": "historical-3c2721536c32#1",
+      "nexuses": [
+        "american_jesus"
+      ],
+      "confidence": "high",
+      "reason": "American Jesus chapter redraft with enhanced emotional intensity and Hayzeus scene work."
+    },
+    {
+      "candidate_id": "historical-3c2f4c25272a#0",
+      "nexuses": [
+        "writing",
+        "politics",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Generational Betrayal Dossier using Taylor Swift and Catholic social teaching."
+    },
+    {
+      "candidate_id": "historical-3c44f9525210#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Pure Land Buddhism afterlife concepts; spiritual/philosophical understanding."
+    },
+    {
+      "candidate_id": "historical-3cb7dcd5a2b1#0",
+      "nexuses": [
+        "main-street-independent"
+      ],
+      "confidence": "high",
+      "reason": "ADHD medication cascade news article; medical journalism."
+    },
+    {
+      "candidate_id": "historical-3cb7dcd5a2b1#1",
+      "nexuses": [
+        "autism_acceptance",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Personal polypharmacy experience with autistic son; medication side-effects reflection."
+    }
+  ]
+}

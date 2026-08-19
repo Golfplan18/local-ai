@@ -1,0 +1,29 @@
+{"batch": 196, "works": [
+  {
+    "title": "Eximius Story and Sermon",
+    "kind": "essay-series",
+    "description": "A personal essay/sermon about the user's graduating class (Eximius) from Nigeria ten years ago, centered on a classmate's gesture of organizing a giveaway for the group. The piece develops themes of faithfulness, economic disparity, and community care within a religious/spiritual framework.",
+    "development": "moderate",
+    "evidence_ids": ["historical-edfdb72d61d5#0"],
+    "quote": "Can you help me rewrite the story better?",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Trump Fail Weak Loser",
+    "kind": "essay",
+    "description": "A data-driven political critique article analyzing Trump's first year of his second term (January 2025 – January 2026). The piece presents a factual indictment of policy failures, using forensic analysis and documented evidence to argue Trump has weakened American power and betrayed allies.",
+    "development": "advanced",
+    "evidence_ids": ["historical-ef55b1075b65#0", "historical-ef55b1075b65#1"],
+    "quote": "This is not fiction. It's based on historical facts up through January 9, 2026, eleven months into his term.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Romantic-Comedy Story (Gates Decision Architecture)",
+    "kind": "novel",
+    "description": "A romantic-comedy novel-in-planning about a character who has developed and now applies a multi-stage selection criteria (gates) system for choosing a significant other. The narrative structure uses flashbacks to explain why each gate exists, with three contrasting case-study women to test the algorithm.",
+    "development": "early",
+    "evidence_ids": ["historical-ef56277866b7#7"],
+    "quote": "At some point I'm going to write a story with a character who goes through the same refinement process I did to develop my selection criteria for choosing a significant other.",
+    "possible_duplicate_of": ""
+  }
+]}

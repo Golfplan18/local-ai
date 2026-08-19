@@ -1,0 +1,239 @@
+{
+  "batch": 59,
+  "placements": [
+    {
+      "candidate_id": "historical-929c1d5061f6#4",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Right-wing media coverage analysis of geopolitical events; no substantive project engagement."
+    },
+    {
+      "candidate_id": "historical-929c1d5061f6#5",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "War escalation news reporting; generic geopolitical discussion without project work."
+    },
+    {
+      "candidate_id": "historical-929c1d5061f6#6",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "NATO alliance geopolitical analysis; broad political analysis without project context."
+    },
+    {
+      "candidate_id": "historical-929c1d5061f6#7",
+      "nexuses": ["politics", "american-king"],
+      "confidence": "high",
+      "reason": "Trump endgame policy decisions, economic isolationism relevant to political analysis and American King electoral/policy work."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#1",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Substantive analysis of behavioral scripts, control patterns in ex-wife relationship, duty coalition framework."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#2",
+      "nexuses": ["relationships", "technology"],
+      "confidence": "high",
+      "reason": "Family boundary-setting communication strategy combined with transcription tool friction analysis."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#3",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Substantive philosophical analysis of duty, guilt, shame, remorse, regret in family obligation context."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#4",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Real-world co-parenting boundary enforcement with parents, fraud issue resolution, family dynamics."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#5",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal philosophical reflection on earned pride and self-satisfaction without grandiosity."
+    },
+    {
+      "candidate_id": "historical-92d7b63b0011#9",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Family recognition dynamics, applied behavioral reward structures (with dog example), parent-child perception lag."
+    },
+    {
+      "candidate_id": "historical-92e6fc38e3de#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Fact-checking journalism work on Trump press briefing; no substantive engagement with user projects."
+    },
+    {
+      "candidate_id": "historical-92ee03b4e9eb#0",
+      "nexuses": ["american-king", "politics"],
+      "confidence": "high",
+      "reason": "Explicit mention of American King trilogy; substantive historical analysis (1920s-2020s parallels, Smoot-Hawley, fascism avoidance) directly relevant to political novel."
+    },
+    {
+      "candidate_id": "historical-92ee70a5a8f4#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Rare earth military strategy and Greenland escalation; geopolitical analysis without project engagement."
+    },
+    {
+      "candidate_id": "historical-92ee70a5a8f4#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Economic cascade effects and Republican realignment analysis; broad political analysis without project context."
+    },
+    {
+      "candidate_id": "historical-92f34728e9fa#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Substantive personal reflection on serenity, life design, choosing problems, present-moment appreciation."
+    },
+    {
+      "candidate_id": "historical-9312714dcdd3#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Tariff inflation and economic inequality debate; relevant to political messaging and economic-justice work."
+    },
+    {
+      "candidate_id": "historical-931b302a8bf1#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "iPhone verification code disappearing; technology tool troubleshooting question."
+    },
+    {
+      "candidate_id": "historical-93779a4b0b4b#0",
+      "nexuses": ["property"],
+      "confidence": "high",
+      "reason": "Airbnb property management, bedding solutions, hotel triple-sheeting technique; applies real estate expertise."
+    },
+    {
+      "candidate_id": "historical-939e6abc9ee8#0",
+      "nexuses": ["writing_fiction", "american-king"],
+      "confidence": "high",
+      "reason": "Character development framework applied to Marjorie Temple Redd (American Jesus antagonist); direct trilogy work."
+    },
+    {
+      "candidate_id": "historical-93a7b6511302#1",
+      "nexuses": ["insight", "politics"],
+      "confidence": "high",
+      "reason": "Substantive analysis of psychological extremes (Dalai Lama vs Trump), inherited wealth effects, vipers-in-the-nest framework."
+    },
+    {
+      "candidate_id": "historical-93a7b6511302#2",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Peanut gallery dynamics, flattery as manipulation currency, historical parallels (Tiberius/Caligula); power psychology."
+    },
+    {
+      "candidate_id": "historical-93a7b6511302#3",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Real-world co-parenting conflict; ex-wife's pharmacological escalation due to fear-based anxiety, safety vs sedation."
+    },
+    {
+      "candidate_id": "historical-93a7b6511302#4",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Pedestal-breaker confession scene construction for fiction; narrative technique for shattering idealization."
+    },
+    {
+      "candidate_id": "historical-93a7b6511302#5",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Anti-deification narrative structure, character pressure-vessel metaphor, beat-by-beat story construction for fiction."
+    },
+    {
+      "candidate_id": "historical-93b5278c5020#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Philosophical analysis distinguishing self-centered rationalization from valid reasons for conflict."
+    },
+    {
+      "candidate_id": "historical-93c221cf7864#4",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "Substantive discussion of Ora continuous operation, statelessness problem, RAG architecture, work queue design."
+    },
+    {
+      "candidate_id": "historical-93eec5509bef#1",
+      "nexuses": ["american-king", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Veteran Healers character thread development with choice architecture for American Jesus trilogy; narrative framework."
+    },
+    {
+      "candidate_id": "historical-9431a514e0f2#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Marjorie Taylor Greene political leverage strategy using traitor framing; political messaging analysis."
+    },
+    {
+      "candidate_id": "historical-9431a514e0f2#2",
+      "nexuses": ["politics", "writing_fiction"],
+      "confidence": "high",
+      "reason": "Fiction, parody, humor as political persuasion tools to penetrate ideological bubbles; media ecosystem analysis."
+    },
+    {
+      "candidate_id": "historical-944368ed2b09#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "25 conservative arguments and counterargument compilation; political messaging work."
+    },
+    {
+      "candidate_id": "historical-94489112b7f5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "2026 IHSS pay rates factual query; no project engagement."
+    },
+    {
+      "candidate_id": "historical-94489112b7f5#1",
+      "nexuses": ["ora"],
+      "confidence": "high",
+      "reason": "AI instruction following behavior; personal instruction adherence weighting in Ora/Claude system."
+    },
+    {
+      "candidate_id": "historical-94489112b7f5#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Pay calculation for wage increases; mathematical computation without project context."
+    },
+    {
+      "candidate_id": "historical-94b452781583#0",
+      "nexuses": ["wetoo"],
+      "confidence": "high",
+      "reason": "Comprehensive income/wealth/consumption distributional analysis; economic justice research for political work."
+    },
+    {
+      "candidate_id": "historical-94c041fa1762#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal health reflection on quitting marijuana, lung recovery, growth and wellness insights."
+    },
+    {
+      "candidate_id": "historical-94f06b75adcc#0",
+      "nexuses": ["politics", "wetoo"],
+      "confidence": "high",
+      "reason": "Credit card debt crisis analysis, Federal Reserve reasoning, economic extraction patterns; political and economic-justice work."
+    },
+    {
+      "candidate_id": "historical-951576e5e137#0",
+      "nexuses": ["quantum-mechanics"],
+      "confidence": "high",
+      "reason": "Technical explanation of CHSH experiment and Bell's inequality; quantum mechanics research substantive work."
+    },
+    {
+      "candidate_id": "historical-9530beb1795e#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Optical polarizing film research and selection; technology evaluation for garage window application."
+    },
+    {
+      "candidate_id": "historical-95817bc6f6f0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Meta-conversation about missing image attachment; no substantive project engagement."
+    }
+  ]
+}

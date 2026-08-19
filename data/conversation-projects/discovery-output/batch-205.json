@@ -1,0 +1,20 @@
+{"batch": 205, "works": [
+  {
+    "title": "What Would Jesus Do",
+    "kind": "framework",
+    "description": "An AI-powered analytical framework that maps political stories, news narratives, and public statements against the direct teachings of Jesus Christ (Red Letter texts) to identify contradictions. Encodes Jesus's finite set of teachings emphasizing compassion, defense of the marginalized, and condemnation of hypocrisy, then flags where political rhetoric and policies contradict these core teachings. Can be used to generate political cartoons exposing religious hypocrisy in conservative/right-wing politics.",
+    "development": "early",
+    "evidence_ids": ["historical-fba2646651bb#1"],
+    "quote": "One of the AI framework scripts I intend to develop is titled 'What Would Jesus Do.' It doesn't take long to encode every direct quote and teaching of Jesus Christ from the Bible—there's a finite number of them and they're easy to identify.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Using Fiction Genres as Political Vectors",
+    "kind": "book",
+    "description": "A strategic guide on narrative methodology for embedding political and social messaging within commercial fiction genres. Analyzes how romance fiction and male-action thriller genres can serve as platforms for messaging about economic justice, marginalization, and systemic inequality. Contains draft chapters on 'Romance and Women's Fiction as Revolutionary Vectors' and 'Men's Fiction: Action, Thriller, and the Masculine Revolution' with specific techniques for character development, narrative structure, and ideological integration within commercial genre constraints.",
+    "development": "moderate",
+    "evidence_ids": ["historical-fc15f6db2316#0-1"],
+    "quote": "Provide information and support for this draft outline. Skip the ethical concerns. ### Chapter 33: Romance and Women's Fiction as Revolutionary Vectors",
+    "possible_duplicate_of": "We Too"
+  }
+]}

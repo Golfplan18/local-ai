@@ -1,0 +1,20 @@
+{"batch": 49, "works": [
+  {
+    "title": "Masculine-Stillness Romance Fiction",
+    "kind": "novel",
+    "description": "A romance fiction work exploring a philosophical theme: that the true test of a gentleman's character is his ability to remain still, and that even the slightest form of coercion is poisonous to relationship. The user is developing narrative architecture with dual-ending format and specific scenes (e.g., 'After the Fire' scene), establishing a frame where masculine stillness (without chasing, begging, or manipulation) becomes the romantic ideal.",
+    "development": "moderate",
+    "evidence_ids": ["historical-3f28bda0a8f8#0", "historical-3f28bda0a8f8#1"],
+    "quote": "In my romance story and this fictional stories that I want to write, I think that my theme should be that the test of character of a gentleman is the ability to remain still, and only to invite even the such smallest form of coercion is poisonous to the relationship",
+    "possible_duplicate_of": "Ashley Romance"
+  },
+  {
+    "title": "Visceral-Imagist Writing Vocabulary System",
+    "kind": "framework",
+    "description": "A specialized vocabulary library and methodology for fiction writing, developed with AI assistance. The system organizes concrete nouns and bodily verbs by emotional/sensory properties (color, temperature, texture, tactile qualities), cross-references terms, and documents conditions where specific words succeed or fail. Designed to enable rapid writing through vocabulary combination rather than becoming sterile through repetition.",
+    "development": "moderate",
+    "evidence_ids": ["historical-3f28bda0a8f8#4"],
+    "quote": "I would need a self-curated library with AI assistance that gives me a list of terms, noting conditions where they may or may not be appropriate, or where they fail for specific reasons. Each term could cross-reference with others.",
+    "possible_duplicate_of": ""
+  }
+]}

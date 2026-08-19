@@ -1,0 +1,38 @@
+{"batch": 47, "works": [
+  {
+    "title": "Mary Magdalena Voice / Moral Indictment Project",
+    "kind": "essay-series",
+    "description": "A new political voice and persona for moral/political indictment writing, developed for Substack publication. Uses somatic and visceral language techniques to bypass intellectual defenses and reach the body/heart. User plans to build a month-long inventory of prompt frameworks and publish under this distinct persona as part of a broader messaging strategy.",
+    "development": "moderate",
+    "evidence_ids": ["historical-3d18a1e14096#0", "historical-3d18a1e14096#1", "historical-3d18a1e14096#2", "historical-3d18a1e14096#3"],
+    "quote": "I could spend a month building an inventory and refining the prompt framework. When I launch the Substack blog, I'll start with my first post being the about-me section",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Ideological Critique Book: The Vulnerable Foundations of Conservative Power",
+    "kind": "book",
+    "description": "A multi-part political analysis examining contradictions within the conservative coalition, particularly focusing on masculine identity deceptions and economic policy contradictions. Currently in active chapter drafting (chapter 15+) with extensive outlines and character development frameworks completed for all parts.",
+    "development": "advanced",
+    "evidence_ids": ["historical-3cced031743e#0"],
+    "quote": "Chapter 15 will be the first chapter in Part III: 'THE VULNERABLE FOUNDATIONS OF CONSERVATIVE POWER,' specifically focusing on 'Masculine Identity Contradiction.'",
+    "possible_duplicate_of": "We Too"
+  },
+  {
+    "title": "Cross-Tradition Pastoral-Prophetic Reference Dossier",
+    "kind": "paper",
+    "description": "A scholarly reference dossier on pastoral and prophetic concepts across religious traditions, written from a Mexican-American Catholic carpenter/medic perspective. Examines how historical religious figures view institutional power, betrayal, and moral response across Hindu, Buddhist, Islamic, Jewish, and Christian traditions.",
+    "development": "early",
+    "evidence_ids": ["historical-3d63959655cc#0"],
+    "quote": "This is a substantial and well-defined dossier request... I have what I need to begin. Diving into the research now.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "Generational Betrayal Dossier",
+    "kind": "essay-series",
+    "description": "A three-part reference companion using Taylor Swift's catalog as an analytical lens for generational/millennial critique, combined with Catholic social teaching and cultural-criticism sources. Explores work/family/capitalism contradiction and generational betrayal patterns in millennial experience.",
+    "development": "early",
+    "evidence_ids": ["historical-3c2f4c25272a#0"],
+    "quote": "I'll build this dossier carefully. Let me start by reading the reference brief in full and then structuring the research approach. The file content is in the document context above.",
+    "possible_duplicate_of": ""
+  }
+]}

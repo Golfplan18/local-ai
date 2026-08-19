@@ -1,0 +1,37 @@
+{
+  "batch": 129,
+  "works": [
+    {
+      "title": "Personal AI System Setup & Natural Language Programming Guide",
+      "kind": "book",
+      "description": "A comprehensive guide teaching readers how to set up local AI systems with natural language programming on Mac hardware. Covers multiple hardware tiers (8GB to 128GB), a five-gear pipeline architecture, model selection strategies, knowledge architecture, and the philosophical foundations of delegating formal-language tool-building to AI agents. Targets domain experts anxious about AI-driven job displacement by positioning expertise as increasingly valuable for interpreting AI insights.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-9c6c8dc73477#0",
+        "historical-9c6c8dc73477#1",
+        "historical-9c6c8dc73477#2",
+        "historical-9c6c8dc73477#3",
+        "historical-9c6c8dc73477#4",
+        "historical-9c6c8dc73477#5",
+        "historical-9c6c8dc73477#6",
+        "historical-9c6c8dc73477#7",
+        "historical-9c6c8dc73477#8",
+        "historical-9c6c8dc73477#9",
+        "historical-9c6c8dc73477#10"
+      ],
+      "quote": "This book will be timely. Right now, the AI job destruction hasn't taken place. It's coming, and some realize it, and most deny it, but it creates palpable anxiety in society, particularly among domain experts who fear they will be replaced by AI.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Data Visualization Reference Guide for Distributional Reporting",
+      "kind": "paper",
+      "description": "A reference guide on data visualization techniques for communicating distributional and inequality data. Covers Lorenz curves, Gini coefficients, percentile share charts, decile bar charts, limitations of single-number inequality measures, treemaps and bubble charts for wealth concentration, and how to annotate causal claims with reference lines and synthetic-control comparisons in policy reporting.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-9c23ffeed878#0"
+      ],
+      "quote": "Produce a reference guide on data visualization for distributional reporting. Cover: (1) when to use Lorenz curves, Gini coefficients, percentile share charts, decile bar charts, and which conveys what; (2) the limitations of single-number inequality measures (Gini, Palma ratio, 90/10, 99/50)",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

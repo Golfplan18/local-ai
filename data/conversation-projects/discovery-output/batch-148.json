@@ -1,0 +1,20 @@
+{"batch": 148, "segments_read": 45, "works_found": 2, "works": [
+  {
+    "title": "Trump Hell Vignettes",
+    "kind": "novel",
+    "description": "A structured literary work comprising vignettes of Donald Trump experiencing suffering in Tibetan Buddhist hells across multiple incarnations. The narrative framework includes a demonic organization (with leaderboard, Hall of Fame, and karmic court system) that engineers and prosecutes Trump's incarnations. Each vignette is pure close POV of the victim, exploring how karmic consequences unfold across Buddhist hell realms.",
+    "development": "moderate",
+    "evidence_ids": ["historical-b8939c9fefd3#7", "historical-b8939c9fefd3#8", "historical-b8939c9fefd3#9", "historical-b8939c9fefd3#10"],
+    "quote": "I'm going to write vignettes of a future where somebody suffers terribly at the hands of the system he put in place.",
+    "possible_duplicate_of": "Dumb Fucking Piece of Shit (may be the same work, though that is described as rant volume and this is structured literary vignettes)"
+  },
+  {
+    "title": "The Housing Play",
+    "kind": "essay",
+    "description": "A financial and political economy analysis essay examining Trump, Bill Pulte, and Bill Ackman's coordinated strategy around credit markets, housing policy, and Federal Reserve actions. The essay presents a thesis that Wall Street's conventional analysis is wrong and explores the real financial logic behind credit card caps, GSE stock manipulation, and suburban housing expansion as an interconnected political economy play.",
+    "development": "early",
+    "evidence_ids": ["historical-b9709e74a404#0"],
+    "quote": "The Housing Play: Why Trump, Pulte, and Ackman Are Burning Down Wall Street to Build Suburbs... The Real Financial Logic Behind the Credit Card War... Part III in a Series",
+    "possible_duplicate_of": ""
+  }
+]}

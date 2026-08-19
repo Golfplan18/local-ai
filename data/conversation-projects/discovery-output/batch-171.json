@@ -1,0 +1,14 @@
+{
+  "batch": 171,
+  "works": [
+    {
+      "title": "Natural Language Programming for AI Agents",
+      "kind": "book",
+      "description": "A structured instructional book teaching domain experts (non-programmers) how to build personal AI systems and autonomous AI agents using natural language specifications. The architecture has 41 chapters across five parts already built, with active research underway on specific technical topics including SoulSpec specifications, MSR 2026 research findings, and agent specification standards.",
+      "development": "advanced",
+      "evidence_ids": ["historical-d41a3e13a513#0"],
+      "quote": "I am writing a book called Natural Language Programming for AI Agents that teaches domain experts (not programmers) how to build personal AI systems and, ultimately, autonomous AI agents using natural language specifications. The book's architecture is built — 41 chapters across five parts.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

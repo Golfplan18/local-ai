@@ -1,0 +1,68 @@
+{
+  "batch": 18,
+  "works": [
+    {
+      "title": "American Jesus 2",
+      "kind": "novel",
+      "description": "A sequel to the American Jesus trilogy, exploring religious distortion and institutional betrayal through a distinct narrative and character set. Features full thematic implementation strategy, character profiles with choice-driven architecture, setting development, and structured Act planning with specific chapter frameworks using the Chapter Initiation and Chapter Foundation methodologies.",
+      "development": "advanced",
+      "evidence_ids": [
+        "historical-17e0e9328038#0",
+        "historical-17e0e9328038#2"
+      ],
+      "quote": "# American Jesus 2 ## Themes and Concepts ### 1. THEMATIC IMPLEMENTATION OVERVIEW #### Primary Theme Implementation Strategy ##### Religious Distortion",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "The AI Agent Revolution",
+      "kind": "paper",
+      "description": "A white paper examining AI agent inevitability and disruption, framed as a call to action for Silicon Valley executives. Aims to convince decision-makers to embrace AI agent technology or risk being disrupted, with structured arguments about implementation, disruptions, and policy implications.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-1798a4f460b0#0"
+      ],
+      "quote": "The pasted material includes several early drafts and a current outline. Use the uploaded white paper to help guide your work. The task is to write this paper to appeal to executives living in Silicon Valley. They have a disruption-focused mindset, so the paper should serve as a call to action",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Reference Reports Series",
+      "kind": "essay-series",
+      "description": "An organized series of numbered economic and policy reference reports with distinct analytical scopes. Currently visible reports include: Report 3.3 (Distributional Reporting guide), Report 3.4 (Conservative/heterodox economic critique), Report 2.6 (Trade policy distributional effects), and Report 4.1 (Economic data calendar). The numbering scheme suggests a larger coordinated reference library framework.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-16df41df8c45#0",
+        "historical-17f4d5b900b0#0",
+        "historical-17fd134236eb#0",
+        "historical-1835939ae061#0"
+      ],
+      "quote": "Report 3.3: Honest Distributional Reporting — Practical Guide for Common Reporting Traps Produce a practical reference guide on common pitfalls in distributional reporting and how to avoid them.",
+      "possible_duplicate_of": "We Too"
+    },
+    {
+      "title": "Air Filtration System Design",
+      "kind": "product",
+      "description": "A DIY closet-based plenum filtration system designed for installation and dual use as living room furniture. Includes detailed component selection (grow-room fans, multiple MERV-rated filters, foam core construction), dimensional specifications (36-40 inches wide, modular stacking design), and integration plans as a side table with rigid foam core top and optional custom frame.",
+      "development": "moderate",
+      "evidence_ids": [
+        "historical-182dbd04b2d8#0",
+        "historical-182dbd04b2d8#1",
+        "historical-182dbd04b2d8#2"
+      ],
+      "quote": "I'm looking at the space next to my couch in my living room. I used to have an accent chair there, but it didn't fit—the space is only about 36 to 40 inches wide before you hit a decorative Kelvin unit. I'm thinking I could stack two of these boxes on top of each other and use them as a side table.",
+      "possible_duplicate_of": ""
+    },
+    {
+      "title": "Ad/Paywall Circumvention AI Tool",
+      "kind": "product",
+      "description": "An open-source AI agent tool planned for development over the coming months to bypass attention-based business models (ads, paywalls) on websites. Intended to be distributed freely via open-source channels to counter Google, Amazon, and ad-based revenue ecosystems. Addresses technical challenges (website obfuscation, CFAA legal risks), distribution methods (GitHub, BitTorrent, Reddit), and geopolitical dynamics around IP enforcement.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-1818636000dc#3",
+        "historical-1818636000dc#4",
+        "historical-1818636000dc#6"
+      ],
+      "quote": "Over the next couple of months, I'm planning to program an AI script that will allow me to use AI agents to completely bypass the attention and ad ecosystem on all websites, rendering Google, Amazon, and any ad-based system irrelevant. I'm hoping to make it open source so I can distribute it freely to everyone.",
+      "possible_duplicate_of": "Chokepoint Response"
+    }
+  ]
+}

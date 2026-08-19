@@ -1,0 +1,17 @@
+{
+  "batch": 127,
+  "works": [
+    {
+      "title": "Political Dog-Whistle Allegory Novel",
+      "kind": "novel",
+      "description": "A dark political allegory about a mainstream political party that cynically weaponizes racist, homophobic, and anti-immigrant dog whistles to energize voters without expecting to enact the policies. When a populist demagogue rises and takes the propaganda literally, implementing destructive policies the party never intended, the narrative explores how institutional deception spawns its own authoritarian consequences.",
+      "development": "early",
+      "evidence_ids": [
+        "historical-9af46f6c531d#38",
+        "historical-9af46f6c531d#39"
+      ],
+      "quote": "The scary part is that the book which now I feel almost needs to be written is happening in real life today in the United States.",
+      "possible_duplicate_of": ""
+    }
+  ]
+}

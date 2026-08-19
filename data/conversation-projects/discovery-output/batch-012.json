@@ -1,0 +1,20 @@
+{"batch": 12, "works": [
+  {
+    "title": "Comprehensive Writing Style Guide Template",
+    "kind": "framework",
+    "description": "A professional reference guide and template for writing instruction covering Point of View (narrative perspective options), General principles (AP style, Elements of Style, target audience adaptation), Language balance (literal vs figurative), and related stylistic elements. Structured as a teaching/reference tool for consistent writing quality.",
+    "development": "moderate",
+    "evidence_ids": ["historical-12009fc26ed0#0"],
+    "quote": "Conform output to the AP style guide. Conform to the principles outlined in The Elements of Style by Strunk and White.",
+    "possible_duplicate_of": ""
+  },
+  {
+    "title": "The Quantum Mirror: Reimagining Observer-System Dynamics",
+    "kind": "paper",
+    "description": "A theoretical challenge paper attacking Bell's theorem as a conceptual red herring and proposing an alternative interpretation of quantum mechanics where measurement occurs as a dialogue between consciousness and physical reality. Integrates wobble model concepts and Planck-scale uncertainty as potential bridges between determinism and quantum randomness.",
+    "development": "early",
+    "evidence_ids": ["historical-124fb5fbfebb#0", "historical-124fb5fbfebb#1"],
+    "quote": "Imagine measurement not as a passive act of observation, but as a profound dialogue between consciousness and physical reality.",
+    "possible_duplicate_of": "Quantum Mechanics"
+  }
+]}
