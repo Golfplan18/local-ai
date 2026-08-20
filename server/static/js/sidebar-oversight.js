@@ -279,6 +279,34 @@
     const actions = document.createElement('div');
     actions.className = 'oversight-detail-actions';
 
+    // A spent card's approval request is gone or already consumed, so
+    // Approve and Deny would both dead-end at "[Unauthenticated …]" and —
+    // worse — would report success while the card survived. Offer the one
+    // action that can still work, and say why.
+    if (entry.spent) {
+      const why = document.createElement('div');
+      why.className = 'oversight-detail-reasoning oversight-spent-note';
+      why.textContent =
+        'This card can no longer approve or deny anything: the approval '
+        + 'request behind it is already spent. Dismissing it clears the card '
+        + 'and grants nothing.';
+      det.appendChild(why);
+
+      const dismissBtn = document.createElement('button');
+      dismissBtn.type = 'button';
+      dismissBtn.className = 'primary';
+      dismissBtn.textContent = 'Dismiss';
+      dismissBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        dismissBtn.disabled = true;
+        dismissBtn.textContent = 'Dismissing…';
+        await dismissEntry(entry, dismissBtn);
+      });
+      actions.appendChild(dismissBtn);
+      det.appendChild(actions);
+      return det;
+    }
+
     const approveBtn = document.createElement('button');
     approveBtn.type = 'button';
     approveBtn.className = 'primary';
@@ -423,6 +451,27 @@
     await fetchPaused();
     state.expanded = null;
     renderPaused();
+  };
+
+  const dismissEntry = async (entry, button) => {
+    try {
+      const r = await fetch(
+        `/api/oversight/paused/${encodeURIComponent(entry.id)}/dismiss`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+      );
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        button.disabled = false;
+        button.textContent = 'Dismiss';
+        window.alert(data.message || 'The card was not dismissed.');
+        return;
+      }
+      state.expanded = null;
+      await fetchPaused();
+    } catch (e) {
+      button.disabled = false;
+      button.textContent = 'Dismiss';
+    }
   };
 
   const createDiscussion = async (entryId) => {

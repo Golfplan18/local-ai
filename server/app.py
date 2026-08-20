@@ -20750,6 +20750,19 @@ def api_job_cancel(job_id):
 
 # ── Oversight panels (V3 sidebar Paused + Operating) ────────────────────────
 
+def _paused_entry_is_spent(checker, entry) -> bool:
+    """Best-effort spent check for the listing.
+
+    The listing must render even if the approvals store is unreadable, so a
+    failure here reports "not spent" — the conservative direction, because it
+    offers no Dismiss button rather than offering one for a live gate.
+    """
+    try:
+        return bool(checker(entry))
+    except Exception:
+        return False
+
+
 @app.route("/api/oversight/paused", methods=["GET"])
 def api_oversight_paused():
     """Return the Paused queue as a list of entries for the sidebar panel.
@@ -20759,7 +20772,7 @@ def api_oversight_paused():
     Sorted oldest-first.
     """
     try:
-        from oversight_queue import list_paused
+        from oversight_queue import gate_entry_is_spent, list_paused
     except ImportError:
         return json.dumps({"entries": []}), 200, {"Content-Type": "application/json"}
     entries = list_paused()
@@ -20798,6 +20811,10 @@ def api_oversight_paused():
             "trace_step": (e.event or {}).get("trace_step", ""),
             "review_kind": review_kind,
             "abandoned_attempt_branch": attempt_branch,
+            # A card whose approval request is spent can neither approve nor
+            # deny. Saying so lets the panel offer the only action that can
+            # still work, instead of two buttons that both dead-end.
+            "spent": _paused_entry_is_spent(gate_entry_is_spent, e),
             "user_explanation": (
                 "Ora could not independently verify this turn. It preserved an "
                 "inspectable attempt reference and did not automatically merge the "
@@ -20851,6 +20868,22 @@ def api_oversight_engagement(entry_id):
     if mark_engagement(entry_id, state):
         return json.dumps({"success": True}), 200
     return json.dumps({"error": "entry not found or invalid state"}), 400
+
+
+@app.route("/api/oversight/paused/<entry_id>/dismiss", methods=["POST"])
+def api_oversight_dismiss(entry_id):
+    """Clear a gate card that can no longer approve or deny anything.
+
+    Refuses any card whose approval request is still live, so this cannot be
+    used to skip a review.
+    """
+    try:
+        from oversight_queue import dismiss_spent_gate_entry
+    except ImportError:
+        return json.dumps({"error": "oversight_queue unavailable"}), 503
+    ok, message = dismiss_spent_gate_entry(entry_id)
+    return json.dumps({"ok": ok, "message": message}), (200 if ok else 409), {
+        "Content-Type": "application/json"}
 
 
 @app.route("/api/oversight/paused/<entry_id>/discuss", methods=["POST"])
