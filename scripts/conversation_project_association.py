@@ -1771,6 +1771,72 @@ class _AlreadyPopulated(Exception):
 
 
 # ---------------------------------------------------------------------------
+# retitle
+# ---------------------------------------------------------------------------
+
+_UNINFORMATIVE_SUBJECT = re.compile(
+    r"^(main discussion|continuing discussion|various topics|general discussion"
+    r"|conversation \d+|untitled|code snippet or technical implementation)",
+    re.I,
+)
+
+
+def retitle(apply_changes: bool) -> None:
+    """Give each archived conversation a title that says what it is about.
+
+    The envelope title was the first sixty characters of the first thing the
+    user typed, which for a pasted URL or a pasted document is not a title at
+    all. Segmentation already produced a one-line subject for every topical
+    segment of every conversation, which is a far better source: a
+    single-segment conversation can take its subject verbatim, and a
+    conversation spanning several needs a title naming what ties them
+    together rather than whichever subject happened to come first.
+    """
+    segments = load_segments()
+    generated: dict[str, str] = {}
+    for name in ("generated-titles.json", "generated-titles-2.json"):
+        path = OUT_DIR / name
+        if path.exists():
+            generated.update(json.loads(path.read_text(encoding="utf-8")))
+
+    from orchestrator import conversation_memory
+
+    stats = {"conversations": 0, "from_subject": 0, "from_model": 0, "unchanged": 0, "written": 0, "failed": 0}
+    samples: list[tuple[str, str]] = []
+    for cid in sorted(segments):
+        stats["conversations"] += 1
+        title = generated.get(cid, "")
+        source = "model"
+        if not title:
+            subject = (segments[cid][0]["subject"] or "").strip()
+            if not subject or _UNINFORMATIVE_SUBJECT.match(subject):
+                stats["unchanged"] += 1
+                continue
+            title = subject
+            source = "subject"
+        title = " ".join(title.split())[:200]
+        if not title:
+            stats["unchanged"] += 1
+            continue
+        stats["from_subject" if source == "subject" else "from_model"] += 1
+        if len(samples) < 6:
+            samples.append((cid, title))
+        if not apply_changes:
+            continue
+        written = conversation_memory.set_display_name(cid, title)
+        if written is None:
+            stats["failed"] += 1
+        else:
+            stats["written"] += 1
+
+    print(json.dumps(stats, indent=1))
+    for cid, title in samples:
+        print(f"  {cid}  {title}")
+    if not apply_changes:
+        print("\ndry run - nothing written. Re-run with --apply.")
+
+
+# ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
 
@@ -1809,6 +1875,9 @@ def main() -> int:
     p_hydrate = sub.add_parser("hydrate", help="fill bound archive envelopes with their real turns")
     p_hydrate.add_argument("--apply", action="store_true")
     p_hydrate.add_argument("--limit", type=int)
+
+    p_retitle = sub.add_parser("retitle", help="name conversations from their segment subjects")
+    p_retitle.add_argument("--apply", action="store_true")
 
     p_bind = sub.add_parser("bind", help="write conversation project membership")
     p_bind.add_argument("--apply", action="store_true")
@@ -1852,6 +1921,10 @@ def main() -> int:
 
     if args.command == "hydrate":
         hydrate(args.apply, args.limit)
+        return 0
+
+    if args.command == "retitle":
+        retitle(args.apply)
         return 0
 
     if args.command == "bind":

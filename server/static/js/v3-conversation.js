@@ -273,8 +273,16 @@
       && !lifecycleBusy
       && state.hasEnvelope === true;
     displayName.classList.toggle('is-clickable', renameable);
-    if (renameable) displayName.title = 'Click to rename';
-    else displayName.removeAttribute('title');
+    // A title too long for the header is unreadable without this; the rename
+    // hint rides along rather than replacing it.
+    const fullTitle = displayName.textContent || '';
+    if (renameable) {
+      displayName.title = fullTitle ? fullTitle + '\n(click to rename)' : 'Click to rename';
+    } else if (fullTitle) {
+      displayName.title = fullTitle;
+    } else {
+      displayName.removeAttribute('title');
+    }
     if (modeIcon) {
       modeIcon.textContent = modeIconSymbolFor(state.activeTag);
       modeIcon.dataset.tag = state.activeTag || '';
@@ -294,10 +302,15 @@
     }
     const total = state.turns.length;
     if (turnPosition) {
+      // The word "turn" adds nothing beside the arrows that step through
+      // them, and the header is the scarcest space in the pane. It stays on
+      // the accessible name, where "1 of 12" alone would be ambiguous.
       if (total === 0) {
-        turnPosition.textContent = 'no turns';
+        turnPosition.textContent = '\u2014';
+        turnPosition.setAttribute('aria-label', 'no turns');
       } else {
-        turnPosition.textContent = `turn ${state.currentTurnIndex + 1} of ${total}`;
+        turnPosition.textContent = `${state.currentTurnIndex + 1} of ${total}`;
+        turnPosition.setAttribute('aria-label', `turn ${state.currentTurnIndex + 1} of ${total}`);
       }
     }
     if (navBack)    navBack.disabled    = state.currentTurnIndex <= 0;

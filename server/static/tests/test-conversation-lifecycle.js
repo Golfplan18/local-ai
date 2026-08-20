@@ -1848,12 +1848,12 @@ async function run() {
     displayedForkResult && displayedForkResult.selected === true
       && w.OraConversation.getActiveConversationId() === 'display-fork-child'
       && w.OraConversation.getTurnCount() === 0
-      && w.document.getElementById('outputPaneTurnPosition').textContent === 'no turns');
+      && w.document.getElementById('outputPaneTurnPosition').textContent === '\u2014');
   w.OraConversation.appendUser('First local child question');
   w.OraConversation.appendAssistant('First local child answer');
   record('first child exchange is numbered locally as 1 of 1',
     w.OraConversation.getTurnCount() === 1
-      && w.document.getElementById('outputPaneTurnPosition').textContent === 'turn 1 of 1');
+      && w.document.getElementById('outputPaneTurnPosition').textContent === '1 of 1');
   await w.OraConversation.load('fork-parent');
   record('fork leaves the parent transcript unchanged at its latest turn',
     envelopes.forkParent.messages.length === 4
@@ -1906,7 +1906,7 @@ async function run() {
     exitedToParent && exitedToParent.destination === 'parent'
       && w.OraConversation.getActiveConversationId() === 'exit-parent'
       && w.OraConversation.getCurrentTurn().assistant.content === 'Latest parent answer'
-      && w.document.getElementById('outputPaneTurnPosition').textContent === 'turn 2 of 2');
+      && w.document.getElementById('outputPaneTurnPosition').textContent === '2 of 2');
   record('Exit Stealth completes the normal selection transition from video state',
     exitSelections.length === 2
       && exitSelections[1].conversation_id === 'exit-parent'
