@@ -5,7 +5,7 @@ Unit tests for ``orchestrator/visual_validator.py`` (WP-1.6).
 Runs under the stdlib ``unittest`` runner — no pytest dependency in the
 ora runtime. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
     # or
     /opt/homebrew/bin/python3 ~/ora/orchestrator/tests/test_visual_validator.py
 

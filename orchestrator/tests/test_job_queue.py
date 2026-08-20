@@ -15,7 +15,7 @@ ora-visual-compiler tests via ``run.js`` (added separately).
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 """
 from __future__ import annotations
 

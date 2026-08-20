@@ -4,7 +4,7 @@ Unit tests for the WP-2.3 visual end-to-end path (server-side).
 
 Runs under the stdlib ``unittest`` runner — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * The chat endpoint streams SSE events; any ``ora-visual`` fenced block in

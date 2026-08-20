@@ -4,7 +4,7 @@ WP-4.3 — vision extraction prompt + response parser tests.
 
 Runs under stdlib ``unittest`` — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * ``EXTRACTION_PROMPT`` contains the required structural instructions.

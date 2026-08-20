@@ -4,7 +4,7 @@ Unit tests for ``orchestrator/vault_export.py`` (WP-6.1).
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
     # or
     /opt/homebrew/bin/python3 ~/ora/orchestrator/tests/test_vault_export.py
 

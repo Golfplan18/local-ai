@@ -6,7 +6,7 @@ live vault).
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_maintenance_scheduler -v
+    /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_maintenance_scheduler.py -q
 """
 from __future__ import annotations
 

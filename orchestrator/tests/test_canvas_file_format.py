@@ -4,7 +4,7 @@ Unit tests for ``orchestrator/canvas_file_format.py`` — WP-7.0.2.
 
 Runs under stdlib ``unittest`` (no pytest)::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
     # or
     /opt/homebrew/bin/python3 ~/ora/orchestrator/tests/test_canvas_file_format.py
 

@@ -7,7 +7,7 @@ positive silently deletes a line of the user's answer — so the no-false-
 positive cases below are the real test surface.
 
 Run:
-    cd ~/ora && /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_deliverable_scrub
+    cd ~/ora && /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_deliverable_scrub.py -q
 """
 import os
 import sys

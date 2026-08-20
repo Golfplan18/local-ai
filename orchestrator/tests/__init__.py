@@ -1,9 +1,14 @@
 # Arm the oversight write quarantine before any test module (and therefore
-# any production module) loads — covers `python3 -m unittest
-# orchestrator.tests.test_x` runs, where this package __init__ executes
-# first. `unittest discover -s orchestrator/tests` does NOT import this
-# package (test files load as top-level modules); those runs are armed by
-# the live_guard imports inside the test files themselves.
+# any production module) loads. pytest imports this package before the test
+# module inside it — orchestrator/__init__.py and this file make
+# orchestrator/tests a package, so a test file resolves as
+# orchestrator.tests.test_x and the chain runs top-down — which is why the
+# guard is provably armed first under the supported runner.
+#
+# `unittest discover -s orchestrator/tests` did NOT import this package (test
+# files loaded as top-level modules), so those runs were armed only by
+# whichever test file happened to import live_guard first. unittest was
+# retired as a supported runner on 2026-08-19; see CLAUDE.md.
 import os as _os
 import sys as _sys
 

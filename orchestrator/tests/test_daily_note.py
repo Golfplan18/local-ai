@@ -4,7 +4,7 @@ Paths are redirected into a tempdir via module constants + ORA_VAULT_PATH.
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_daily_note -v
+    /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_daily_note.py -q
 """
 from __future__ import annotations
 

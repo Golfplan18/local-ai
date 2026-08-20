@@ -8,25 +8,28 @@ reeval-queue.jsonl, archived-peds.jsonl, revise-counters.json,
 conversation-ped-derivatives.json, tool-events.jsonl,
 execution-approvals.json, risk-sticky.json.
 
-Why call-time and why here: module-level path constants bake at import, and
-``unittest discover`` imports every test module (alphabetically) BEFORE any
-test executes — so an env var armed during ANY test module's import is in
-force for the whole run, regardless of which production modules were already
-imported. This closes the trap that let the Execution Review build's test
-runs append 1,444 fake escalations to the live human queue (residue archived
-2026-07-09 as human-queue-test-residue-2026-07-09.jsonl.gz — the second
-occurrence after the 2026-07-02 events/router cleanup).
+Why call-time and why here: module-level path constants bake at import, so a
+guard that arms late cannot fix a constant that already resolved. This closes
+the trap that let the Execution Review build's test runs append 1,444 fake
+escalations to the live human queue (residue archived 2026-07-09 as
+human-queue-test-residue-2026-07-09.jsonl.gz — the second occurrence after the
+2026-07-02 events/router cleanup).
 
 Coverage by entry point:
-- ``python3 -m unittest discover -s orchestrator/tests`` — every test file in
-  the execution-review + oversight suites imports this module (directly or
-  via ``oversight_sandbox``), so the guard arms during discovery.
-- ``python3 -m unittest orchestrator.tests.test_x`` — the package __init__
-  arms it before the test module loads.
+- ``python3 -m pytest orchestrator/tests`` — the supported runner. pytest
+  imports the ``orchestrator.tests`` package before any test module in it, and
+  that package __init__ imports this guard, so arming provably precedes every
+  test module and everything they import.
+- ``python3 -m pytest orchestrator/tests/test_x.py`` — same chain.
 - ``python3 orchestrator/tests/test_x.py`` — the test file's own import arms
-  it before its TestCases run.
+  it before its TestCases run, for the files that import it directly.
 - Ad-hoc smoke probes (``python3 -c`` snippets poking gate()/risk paths)
   bypass all of the above: export ORA_OVERSIGHT_SANDBOX="$(mktemp -d)" first.
+
+``unittest discover`` was retired as a supported runner on 2026-08-19. It
+loaded test files as top-level modules, so this package __init__ never ran and
+arming depended on whichever test file happened to import the guard first —
+and it collected 61 fewer tests. See CLAUDE.md.
 
 Per-test isolation and inspection remain the job of
 ``oversight_sandbox.redirect_oversight_logs`` — an explicit path monkeypatch
@@ -177,9 +180,8 @@ MODELS_JSON_ENV_VAR = "ORA_MODELS_JSON_PATH"
 # writes an empty local_models array for a successfully-read empty dir.
 LOCAL_MODELS_DIR_ENV_VAR = "ORA_LOCAL_MODELS_DIR"
 
-# Repo root without importing runtime_paths: this module is loaded before
-# anything else in a `unittest discover` run and must stay dependency-free so
-# it can arm the environment before the path layer resolves against it.
+# Repo root without importing runtime_paths: this module arms the environment
+# before the path layer resolves against it, so it must stay dependency-free.
 _REPO_ROOT = pathlib.Path(
     os.environ.get("ORA_HOME") or pathlib.Path(__file__).resolve().parents[2]
 )
