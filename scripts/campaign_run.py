@@ -2302,9 +2302,46 @@ def audit_campaign(corpus_path: Path,
     }
 
 
+# ``outputs/`` holds finished records, not working output. An audit written
+# there is a receipt for one run at one moment, kept alongside a closeout note
+# that fingerprints it.
+ACCEPTED_EVIDENCE_ROOT = ORA_HOME / "outputs"
+
+
+def is_accepted_evidence_dir(destination: Path) -> bool:
+    """True when ``destination`` lands inside the accepted-record tree."""
+    try:
+        from orchestrator import runtime_paths as _rp
+        return bool(_rp.within_base(destination, ACCEPTED_EVIDENCE_ROOT))
+    except Exception:
+        # The path layer is not importable from every invocation of this
+        # script. Path.is_relative_to compares components rather than string
+        # prefixes, so it is boundary-anchored too; it only lacks the Windows
+        # case-folding within_base adds.
+        try:
+            return destination.resolve().is_relative_to(
+                ACCEPTED_EVIDENCE_ROOT.resolve())
+        except (OSError, ValueError):
+            return False
+
+
 def write_campaign_audit(summary: dict,
-                         output_dir: Path | None = None) -> tuple[Path, Path]:
+                         output_dir: Path | None = None,
+                         allow_accepted_overwrite: bool = False) -> tuple[Path, Path]:
     destination = Path(output_dir or CAMPAIGN_DIR).expanduser().resolve()
+    if not allow_accepted_overwrite and is_accepted_evidence_dir(destination):
+        raise SystemExit(
+            f"[audit] refusing to overwrite accepted evidence in {destination}\n"
+            "        This audit reads pipeline traces and a campaign manifest that\n"
+            "        are deliberately temporary and git-ignored — traces are swept\n"
+            "        after 30 days — so a re-run measures a corpus that no longer\n"
+            "        matches the one the record was taken from. It cannot reproduce\n"
+            "        the recorded numbers, only replace them with today's.\n"
+            "        outputs/g1-2 was overwritten this way on 2026-08-19 and had to\n"
+            "        be restored from git.\n"
+            "        Write somewhere else:      --output-dir /tmp/campaign-audit\n"
+            "        Or replace the record on purpose:  --allow-accepted-overwrite"
+        )
     destination.mkdir(parents=True, exist_ok=True)
     json_path = destination / "campaign-audit.json"
     md_path = destination / "campaign-audit.md"
@@ -2529,6 +2566,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sp.add_argument("--no-write", action="store_true",
                     help="print the summary without writing campaign-audit.*")
+    sp.add_argument("--allow-accepted-overwrite", action="store_true",
+                    help="permit writing into outputs/, replacing an accepted "
+                         "record; refused by default because the audit's inputs "
+                         "are temporary and a re-run cannot reproduce them")
     sp.set_defaults(func=cmd_audit)
 
     sp = sub.add_parser("render-doc", help="Assemble the capture document.")
@@ -2610,7 +2651,10 @@ def cmd_audit(args) -> int:
     )
     if not args.no_write:
         output_dir = Path(args.output_dir) if args.output_dir else None
-        json_path, md_path = write_campaign_audit(summary, output_dir=output_dir)
+        json_path, md_path = write_campaign_audit(
+            summary, output_dir=output_dir,
+            allow_accepted_overwrite=args.allow_accepted_overwrite,
+        )
         print(f"[audit] wrote {json_path}")
         print(f"[audit] wrote {md_path}")
     return 0 if comp["complete_selected"] == summary["corpus"]["entries"] else 1

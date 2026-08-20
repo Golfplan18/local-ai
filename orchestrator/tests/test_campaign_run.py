@@ -414,6 +414,57 @@ class TestCampaignAudit(unittest.TestCase):
         )
 
 
+    def test_audit_refuses_to_overwrite_accepted_evidence(self):
+        """outputs/ holds finished records; a re-run replaces, never refreshes.
+
+        The audit reads pipeline traces and a campaign manifest that are
+        git-ignored and swept after 30 days, so re-running it against an
+        accepted record cannot reproduce the recorded numbers — it can only
+        write today's. outputs/g1-2 was overwritten exactly this way on
+        2026-08-19 and had to be restored from git.
+        """
+        campaign.append_manifest({
+            "technique": "argument-audit", "kind": "mode",
+            "pipeline": "premium", "status": "ok",
+            "trace_dir": self._trace("trace-clean", []),
+        })
+        summary = campaign.audit_campaign(self.corpus_path, pipelines=["premium"])
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(campaign, "ACCEPTED_EVIDENCE_ROOT", Path(td)):
+                target = Path(td) / "g1-2"
+                with self.assertRaisesRegex(
+                        SystemExit, "refusing to overwrite accepted"):
+                    campaign.write_campaign_audit(summary, output_dir=target)
+                self.assertFalse(
+                    target.exists(),
+                    "refused after creating the directory; it must refuse first")
+
+    def test_accepted_evidence_check_is_boundary_anchored(self):
+        """A sibling directory that merely shares the prefix is not inside it."""
+        root = campaign.ACCEPTED_EVIDENCE_ROOT
+        self.assertTrue(campaign.is_accepted_evidence_dir(root))
+        self.assertTrue(campaign.is_accepted_evidence_dir(root / "g1-2"))
+        self.assertFalse(
+            campaign.is_accepted_evidence_dir(root.parent / "outputs-scratch"))
+        self.assertFalse(campaign.is_accepted_evidence_dir(Path(self.root)))
+
+    def test_explicit_override_still_writes_into_accepted_evidence(self):
+        """The refusal is a guard, not a wall — you can still mean it."""
+        campaign.append_manifest({
+            "technique": "argument-audit", "kind": "mode",
+            "pipeline": "premium", "status": "ok",
+            "trace_dir": self._trace("trace-clean", []),
+        })
+        summary = campaign.audit_campaign(self.corpus_path, pipelines=["premium"])
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(campaign, "ACCEPTED_EVIDENCE_ROOT", Path(td)):
+                target = Path(td) / "g1-2"
+                json_path, md_path = campaign.write_campaign_audit(
+                    summary, output_dir=target, allow_accepted_overwrite=True)
+                self.assertTrue(json_path.exists())
+                self.assertTrue(md_path.exists())
+
+
 class TestVisualExtraction(unittest.TestCase):
     def test_fence_extracted_and_placeholder_left(self):
         text = ("Intro prose.\n\n```ora-visual\n{\"type\": \"concept_map\"}\n```\n\n"
