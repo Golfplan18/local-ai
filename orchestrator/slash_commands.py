@@ -247,7 +247,14 @@ def _format_command_list(specs, title: str) -> str:
             suffix = ""
             if spec.aliases:
                 suffix = " (aliases: " + ", ".join(f"`{a}`" for a in spec.aliases) + ")"
-            lines.append(f"- `{spec.command}` - {spec.summary}{suffix}")
+            # A command that cannot currently run must not read like one that
+            # can. Only "hidden" is filtered out of this catalog, so anything
+            # else non-active — blocked, shadowed, deprecated — was being
+            # listed indistinguishably from working commands, and the catalog
+            # was recommending its own dead ends.
+            status = getattr(spec, "status", "active")
+            marker = f" **[{status}]**" if status != "active" else ""
+            lines.append(f"- `{spec.command}`{marker} - {spec.summary}{suffix}")
         lines.append("")
     lines.append("Use `/help <command>` for details, e.g. `/help /framework`.")
     return "\n".join(lines).rstrip()

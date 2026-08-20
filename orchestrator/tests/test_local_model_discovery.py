@@ -431,7 +431,15 @@ class RefreshRoundTrip(unittest.TestCase):
         self.assertEqual(len(loaded["local_models"]), 1)
         self.assertEqual(loaded["local_models"][0]["id"], "local-mlx-qwen-test")
 
-    def test_readable_empty_directory_clears_inventory(self):
+    def test_readable_empty_directory_no_longer_clears_inventory(self):
+        """A readable-but-wrong directory must not truncate a good inventory.
+
+        This previously wrote the empty array. The missing-directory guard
+        below only covers a directory that cannot be read at all, so a fresh
+        worktree, a half-mounted volume, or a partially synced machine passed
+        every check and silently replaced the recorded models with nothing.
+        models.json is gitignored, so there was no diff and no alarm.
+        """
         original_locals = [{"id": "manual-entry", "vision_capable": True}]
         self._seed_models_json({
             "overhead_reservation_gb": 8,
@@ -446,9 +454,107 @@ class RefreshRoundTrip(unittest.TestCase):
             write=True,
         )
         self.assertEqual(result["discovered"], [])
+        self.assertFalse(result["wrote"])
+        self.assertIn("keeping the recorded inventory", result["refused"])
+        loaded = json.loads(self.models_json.read_text())
+        self.assertEqual(loaded["local_models"], original_locals)
+
+    def test_allow_shrink_still_clears_a_deliberately_emptied_directory(self):
+        """Removing a model on purpose stays possible — it just needs saying."""
+        self._seed_models_json({
+            "overhead_reservation_gb": 8,
+            "local_models": [{"id": "manual-entry"}],
+            "commercial_models": [],
+        })
+        result = refresh(
+            models_json=self.models_json,
+            models_dir=self.models_dir,
+            routing_config=None,
+            write=True,
+            allow_shrink=True,
+        )
         self.assertTrue(result["wrote"])
+        self.assertIsNone(result["refused"])
         loaded = json.loads(self.models_json.read_text())
         self.assertEqual(loaded["local_models"], [])
+        # The guard protects the inventory, not the rest of the document.
+        self.assertEqual(loaded["overhead_reservation_gb"], 8)
+
+    def test_a_partial_directory_cannot_truncate_a_larger_inventory(self):
+        """The exact shape that corrupted a worktree: present, readable, wrong."""
+        self._seed_models_json({
+            "local_models": [
+                {"id": "local-mlx-a"}, {"id": "local-mlx-b"},
+                {"id": "local-mlx-c"},
+            ],
+            "commercial_models": [{"id": "cloud"}],
+        })
+        _make_fake_model_dir(
+            self.models_dir, "only-one",
+            {"architectures": ["LlamaForCausalLM"], "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+        result = refresh(
+            models_json=self.models_json,
+            models_dir=self.models_dir,
+            routing_config=None,
+            write=True,
+        )
+        self.assertFalse(result["wrote"])
+        self.assertIn("found 1 local model(s)", result["refused"])
+        self.assertIn("already records 3", result["refused"])
+        # The refusal names what went missing and how to proceed on purpose.
+        self.assertIn("local-mlx-a", result["refused"])
+        self.assertIn("--allow-shrink", result["refused"])
+        self.assertEqual(
+            len(json.loads(self.models_json.read_text())["local_models"]), 3)
+
+    def test_growing_the_inventory_is_never_refused(self):
+        """Only shrinking can destroy a working configuration."""
+        self._seed_models_json({
+            "local_models": [{"id": "local-mlx-first"}],
+            "commercial_models": [],
+        })
+        for name in ("first", "second"):
+            _make_fake_model_dir(
+                self.models_dir, name,
+                {"architectures": ["LlamaForCausalLM"],
+                 "quantization": {"bits": 4}},
+                safetensors_bytes=2_000_000_000,
+            )
+        result = refresh(
+            models_json=self.models_json,
+            models_dir=self.models_dir,
+            routing_config=None,
+            write=True,
+        )
+        self.assertTrue(result["wrote"])
+        self.assertIsNone(result["refused"])
+        self.assertEqual(
+            len(json.loads(self.models_json.read_text())["local_models"]), 2)
+
+    def test_a_same_size_swap_is_not_a_shrink(self):
+        """Replacing one model with another is legitimate and must go through."""
+        self._seed_models_json({
+            "local_models": [{"id": "local-mlx-outgoing"}],
+            "commercial_models": [],
+        })
+        _make_fake_model_dir(
+            self.models_dir, "incoming",
+            {"architectures": ["LlamaForCausalLM"], "quantization": {"bits": 4}},
+            safetensors_bytes=2_000_000_000,
+        )
+        result = refresh(
+            models_json=self.models_json,
+            models_dir=self.models_dir,
+            routing_config=None,
+            write=True,
+        )
+        self.assertTrue(result["wrote"])
+        self.assertEqual(
+            [e["id"] for e in
+             json.loads(self.models_json.read_text())["local_models"]],
+            ["local-mlx-incoming"])
 
     def test_missing_directory_preserves_prior_inventory(self):
         original_locals = [{"id": "last-known-good"}]
