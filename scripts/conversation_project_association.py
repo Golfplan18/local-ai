@@ -798,6 +798,25 @@ def _spread_excerpts(bodies: list[tuple[int, str]]) -> list[dict]:
     return excerpts
 
 
+def _passion_nexuses() -> set[str]:
+    """Nexuses whose matrix declares project_type: passion.
+
+    A Passion is an ongoing exploration area with no finite deliverable, so
+    what counts as belonging to one differs from a Project: reading and
+    tracking a subject is the Passion being lived, not evidence of nothing
+    happening.
+    """
+    found: set[str] = set()
+    for path in sorted(MATRIX_DIR.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        match = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+        if not match or not re.search(r"project_type:\s*\n\s*-\s*passion", match.group(1)):
+            continue
+        for nexus in _frontmatter_nexus(text):
+            found.add(nexus)
+    return found
+
+
 def _project_roster(profiles: dict) -> list[dict]:
     return [
         {
@@ -832,6 +851,11 @@ def build_sweep_input(kind: str, batch_size: int) -> None:
             for row in payload["candidates"]:
                 retrieved.add(f"{row['conversation_id']}#{row['segment_index']}")
 
+    bound_conversations: set[str] = set()
+    bindings_path = OUT_DIR / "bindings.json"
+    if bindings_path.exists():
+        bound_conversations = set(json.loads(bindings_path.read_text(encoding="utf-8")))
+
     targets: list[tuple[str, int]] = []
     for cid, segs in segments.items():
         for i in range(len(segs)):
@@ -841,6 +865,8 @@ def build_sweep_input(kind: str, batch_size: int) -> None:
             elif kind == "orphan" and key not in accepted_ids:
                 targets.append((cid, i))
             elif kind == "all":
+                targets.append((cid, i))
+            elif kind == "unbound" and cid not in bound_conversations:
                 targets.append((cid, i))
     targets.sort()
     print(f"{kind}: {len(targets)} segments", flush=True)
@@ -882,6 +908,13 @@ def build_sweep_input(kind: str, batch_size: int) -> None:
         )
 
     roster = _project_roster(profiles)
+    if kind == "unbound":
+        passion_ids = _passion_nexuses()
+        roster = [row for row in roster if row["nexus"] in passion_ids]
+        for row in roster:
+            entry = profiles[row["nexus"]]
+            row["practices"] = [_clip(x, 180) for x in entry.get("practices", [])[:4]]
+            row["directions_of_travel"] = [_clip(x, 180) for x in entry.get("directions", [])[:3]]
     manifest = []
     for i in range(0, len(rows), batch_size):
         batch_no = i // batch_size + 1
@@ -1217,7 +1250,7 @@ def discovery_consolidate() -> None:
 # ---------------------------------------------------------------------------
 
 
-def sweep_collect() -> dict:
+def sweep_collect(kind: str = "unretrieved") -> dict:
     """Fold the roster sweep's placements into the accepted set.
 
     Retrieval asked each project which segments look like it, which serves a
@@ -1235,7 +1268,7 @@ def sweep_collect() -> dict:
     accepted = {k: dict(v) for k, v in data["accepted"].items()}
 
     inputs: dict[str, dict] = {}
-    for path in (OUT_DIR / "sweep-input-unretrieved").glob("batch-*.json"):
+    for path in (OUT_DIR / f"sweep-input-{kind}").glob("batch-*.json"):
         for row in json.loads(path.read_text(encoding="utf-8"))["segments"]:
             inputs[row["candidate_id"]] = row
 
@@ -1247,7 +1280,7 @@ def sweep_collect() -> dict:
         "unknown_candidate": 0,
         "unreadable_batches": 0,
     }
-    for path in sorted((OUT_DIR / "sweep-output-unretrieved").glob("batch-*.json")):
+    for path in sorted((OUT_DIR / f"sweep-output-{kind}").glob("batch-*.json")):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
@@ -1282,7 +1315,7 @@ def sweep_collect() -> dict:
                     "best_similarity": 0.0,
                     "confidence": str(placement.get("confidence", "")).strip().lower(),
                     "reason": str(placement.get("reason", ""))[:200],
-                    "source": "sweep",
+                    "source": f"sweep-{kind}",
                 }
 
     data["accepted"] = {k: v for k, v in sorted(accepted.items())}
@@ -1290,7 +1323,7 @@ def sweep_collect() -> dict:
     accepted_path.write_text(json.dumps(data, indent=1), encoding="utf-8")
     print(json.dumps(stats, indent=1))
     for nexus, rows in sorted(accepted.items()):
-        swept = sum(1 for r in rows.values() if r.get("source") == "sweep")
+        swept = sum(1 for r in rows.values() if str(r.get("source", "")).startswith("sweep"))
         print(f"{nexus:26s} segments={len(rows):5d}  (+{swept} from sweep)")
     return data
 
@@ -1544,7 +1577,7 @@ def main() -> int:
     p_judge.add_argument("--only", nargs="*")
 
     p_sweep = sub.add_parser("sweep-input", help="batches for segments the project pass never judged")
-    p_sweep.add_argument("--kind", choices=["unretrieved", "orphan", "all"], default="unretrieved")
+    p_sweep.add_argument("--kind", choices=["unretrieved", "orphan", "all", "unbound"], default="unretrieved")
     p_sweep.add_argument("--batch-size", type=int, default=40)
 
     p_verify = sub.add_parser("verify-input", help="re-judge accepts whose reason does not describe them")
@@ -1552,7 +1585,8 @@ def main() -> int:
 
     sub.add_parser("discovery-consolidate", help="cluster discovered works and check them against the vault")
 
-    sub.add_parser("sweep-collect", help="fold roster-sweep placements into the accepted set")
+    p_sc = sub.add_parser("sweep-collect", help="fold roster-sweep placements into the accepted set")
+    p_sc.add_argument("--kind", choices=["unretrieved", "orphan", "all", "unbound"], default="unretrieved")
 
     p_collect = sub.add_parser("collect", help="validate judge output and assemble accepted set")
     p_collect.add_argument("--strict", action="store_true", help="exit non-zero if any batch is bad")
@@ -1590,7 +1624,7 @@ def main() -> int:
         return 0
 
     if args.command == "sweep-collect":
-        sweep_collect()
+        sweep_collect(args.kind)
         return 0
 
     if args.command == "collect":

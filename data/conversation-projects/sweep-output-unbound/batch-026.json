@@ -1,0 +1,215 @@
+{
+  "batch": 26,
+  "placements": [
+    {
+      "candidate_id": "historical-a9c1afe46908#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking Iran's Strait of Hormuz toll system and extortion mechanism through detailed source analysis."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump's documented payment avoidance patterns and their political consequences."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking economic collapse dynamics, SPR depletion, and midterm political fallout with claims analysis."
+    },
+    {
+      "candidate_id": "historical-a9c1afe46908#3",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Epstein files as political distraction with timeline evidence."
+    },
+    {
+      "candidate_id": "historical-a9ebe2e4bc0a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple arithmetic lookup with no engagement."
+    },
+    {
+      "candidate_id": "historical-a9ff2ff30876#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump administration pressure on credit card policy through source-backed claims."
+    },
+    {
+      "candidate_id": "historical-aa10f3c5a836#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Deep personal wrestling with church leadership, calling, and growth through attentive reflection."
+    },
+    {
+      "candidate_id": "historical-aa1da56f2af3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical reference report request with no real engagement to passion subject."
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "MBTI personality analysis of dating profile woman with character assessment."
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Continued MBTI verdict and polarity analysis for relationship context."
+    },
+    {
+      "candidate_id": "historical-aa2c72aef9ac#2",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting dating message with personality-tailored approach and visualization."
+    },
+    {
+      "candidate_id": "historical-aa55f025efbe#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing editorial opinion on AI and labor through source-backed argumentation."
+    },
+    {
+      "candidate_id": "historical-aa7e0f2e3359#0",
+      "nexuses": ["relationships"],
+      "confidence": "medium",
+      "reason": "Translation and engagement with dating profile content."
+    },
+    {
+      "candidate_id": "historical-aa8b7ba80fee#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking wage indexation and monetary policy through historical examples Israel and Argentina."
+    },
+    {
+      "candidate_id": "historical-aa8b7ba80fee#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing union corruption and political realignment through structural institutional analysis."
+    },
+    {
+      "candidate_id": "historical-aa9aec9b04ed#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Character development of Phukher Tarlson with deliberate attention to arc, psychology, and choice."
+    },
+    {
+      "candidate_id": "historical-aabfc5567cb0#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Character profile construction through life stages with emotional and trait development."
+    },
+    {
+      "candidate_id": "historical-aafc24d77c3f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Passive reading of philosophical content without engagement or application to passion."
+    },
+    {
+      "candidate_id": "historical-ab01aead0960#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical reference report request without engagement."
+    },
+    {
+      "candidate_id": "historical-ab2f28e5d491#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical tool clarification and error diagnosis."
+    },
+    {
+      "candidate_id": "historical-aba127f84acd#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement."
+    },
+    {
+      "candidate_id": "historical-aba499ffec8c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical financial system lookup with no sustained engagement."
+    },
+    {
+      "candidate_id": "historical-abde033e5d7d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "One-off legal and medical issue requiring practical advice."
+    },
+    {
+      "candidate_id": "historical-ac198bf90ac2#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Masculine-feminine polarity analysis and dating opener strategy with deliberate engagement."
+    },
+    {
+      "candidate_id": "historical-ac2280078296#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual list lookup with no engagement."
+    },
+    {
+      "candidate_id": "historical-ac297bf7e9c5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Video game product inquiry unrelated to any passion."
+    },
+    {
+      "candidate_id": "historical-ac726a934ac9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "One-off practical dispute resolution advice."
+    },
+    {
+      "candidate_id": "historical-acade30a54d0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Financial market technical analysis without altruistic principle grounding."
+    },
+    {
+      "candidate_id": "historical-acb11e0ed9d4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical diagram request."
+    },
+    {
+      "candidate_id": "historical-acb528340cde#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Testing Claude Code effort levels and model selection with recorded outcomes."
+    },
+    {
+      "candidate_id": "historical-ad506f23f079#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple math question that errored."
+    },
+    {
+      "candidate_id": "historical-ad7473f4515a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Explanation request with malformed response."
+    },
+    {
+      "candidate_id": "historical-ad8b9c0aef31#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Creating satirical press releases within fictional dystopian world with deliberate character voice."
+    },
+    {
+      "candidate_id": "historical-adff703b9c62#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Character foundation framework execution with emotional state and arc development."
+    },
+    {
+      "candidate_id": "historical-ae08905acd6a#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting dating message with empathy and personality observation."
+    }
+  ]
+}

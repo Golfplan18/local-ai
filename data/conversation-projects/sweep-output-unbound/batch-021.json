@@ -1,0 +1,215 @@
+{
+  "batch": 21,
+  "placements": [
+    {
+      "candidate_id": "historical-8c03a4b8ec21#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Engagement with satirical political content exposing authoritarian policies and propaganda."
+    },
+    {
+      "candidate_id": "historical-8d23859fb55e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement with no subject engagement."
+    },
+    {
+      "candidate_id": "historical-8d9470e7999a#0",
+      "nexuses": ["relationships"],
+      "confidence": "medium",
+      "reason": "Analysis of dating profile and relationship dynamics through Direct Leadership framework."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Hands-on testing and troubleshooting of power infrastructure and hardware setup."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#1",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Technical network configuration and cable specification learning for personal setup."
+    },
+    {
+      "candidate_id": "historical-8e12e19f3cd6#2",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Reflective recap on personal AI and infrastructure setup philosophy after time away."
+    },
+    {
+      "candidate_id": "historical-8e140b7edd73#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement with no subject engagement."
+    },
+    {
+      "candidate_id": "historical-8e18391f777f#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Designing knowledge architecture and relationships for Obsidian vault with RAG capabilities."
+    },
+    {
+      "candidate_id": "historical-8e717ed1db75#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political claims and crises with source-backed analysis of Trump administration."
+    },
+    {
+      "candidate_id": "historical-8e74e28cb260#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-8e9ef2e746fd#0",
+      "nexuses": ["ora_foundation"],
+      "confidence": "medium",
+      "reason": "Analyzing and contrasting cognitive frameworks (OpenCog Hyperon vs white paper on knowledge commons)."
+    },
+    {
+      "candidate_id": "historical-8edac610cf83#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-8f1a0834cf9f#0",
+      "nexuses": ["politics"],
+      "confidence": "medium",
+      "reason": "Creating reference guide on source credibility for evaluating political and economic claims."
+    },
+    {
+      "candidate_id": "historical-8f6befb59d65#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical framework verification task with no Passion subject engagement."
+    },
+    {
+      "candidate_id": "historical-8f77a1ada731#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement with no subject engagement."
+    },
+    {
+      "candidate_id": "historical-8f8b19a44538#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-8fbdd4a63d8c#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political context and judicial events related to Trump administration actions."
+    },
+    {
+      "candidate_id": "historical-90194e48b63f#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Strategic analysis of quality vs speed in publishing and market positioning dynamics."
+    },
+    {
+      "candidate_id": "historical-907ec9112429#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-909770e19d9e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-90a605372c59#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-90cab69c387f#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Reading and annotating references on Bohmian mechanics and quantum mechanics research."
+    },
+    {
+      "candidate_id": "historical-90d07e5957ec#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-917f2c7bdfb4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-92e6fc38e3de#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Fact-checking Trump's claims through source-backed verification at press briefing."
+    },
+    {
+      "candidate_id": "historical-92ee70a5a8f4#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Extended analysis of Trump's Greenland crisis and geopolitical escalation patterns."
+    },
+    {
+      "candidate_id": "historical-92ee70a5a8f4#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Strategic analysis of rare earth supply, military escalation, and authoritarian patterns."
+    },
+    {
+      "candidate_id": "historical-92ee70a5a8f4#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Constitutional and political analysis of succession, Republican realignment, and crises."
+    },
+    {
+      "candidate_id": "historical-92f9ced14f10#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing false claims playbook used in propaganda across multiple conflicts and campaigns."
+    },
+    {
+      "candidate_id": "historical-935e79455cfa#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating email providers and RSS-to-email tools for publication workflow."
+    },
+    {
+      "candidate_id": "historical-938794100477#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement with no subject engagement."
+    },
+    {
+      "candidate_id": "historical-93cddfe1c4be#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification of tool role, no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-943af47ceecd#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Learning and exploring quantum mechanics principles (Pauli Exclusion, Heisenberg Uncertainty)."
+    },
+    {
+      "candidate_id": "historical-946bf7c0ae2f#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Personal exploration of consciousness, spiritual awakening, passion-physiology links."
+    },
+    {
+      "candidate_id": "historical-946e97d75160#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image, no substantive engagement."
+    }
+  ]
+}

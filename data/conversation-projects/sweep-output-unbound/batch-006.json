@@ -1,0 +1,215 @@
+{
+  "batch": 6,
+  "placements": [
+    {
+      "candidate_id": "historical-25cc93e97361#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical economic policy report without Passion engagement—not analysis of altruistic principles or personal values in economics."
+    },
+    {
+      "candidate_id": "historical-25ee6213a5f6#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Real evaluation of ChatGPT Atlas browser against personal workflows—testing tools against tasks."
+    },
+    {
+      "candidate_id": "historical-26087a5dbefd#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Trump's political power trajectory and legislative capacity—tracking political dynamics through source-backed reasoning."
+    },
+    {
+      "candidate_id": "historical-2628f7b3915e#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Engagement with appeals court ruling on deportation flights and accountability—tracking political/legal events."
+    },
+    {
+      "candidate_id": "historical-26609c564d3b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool meta-discussion about role boundaries—administrative exchange, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-268532250891#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical troubleshooting for garage door opener—unrelated technical support."
+    },
+    {
+      "candidate_id": "historical-26cfa68c15a4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare single-fact lookup for U.S. Open leaderboard—no attentive observation or analysis of golf practice."
+    },
+    {
+      "candidate_id": "historical-273b1b82b10b#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Working through story structure combining hero and heroine journeys—deliberate attention to character arc and narrative craft."
+    },
+    {
+      "candidate_id": "historical-278189a23eb8#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of currency markets, currency crises, and financial system responses to political pressure—political economy tracking."
+    },
+    {
+      "candidate_id": "historical-2795bbd667c2#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Stylistic formatting preference—administrative."
+    },
+    {
+      "candidate_id": "historical-28031b5f52d7#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Drafting political op-ed on Trump's strategy through game theory and historical analogy—real political analysis and writing."
+    },
+    {
+      "candidate_id": "historical-28031b5f52d7#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Refining political article with factual review and impact analysis—sustained engagement with political messaging."
+    },
+    {
+      "candidate_id": "historical-28031b5f52d7#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Final structural polish of published political article—completing political work for publication."
+    },
+    {
+      "candidate_id": "historical-282d5877855b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Traffic law question about merge right-of-way—technical legal lookup unrelated to any Passion."
+    },
+    {
+      "candidate_id": "historical-28503ecc3557#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Executing Universal Theme Library for American Jesus novel—developing thematic architecture for fiction."
+    },
+    {
+      "candidate_id": "historical-286364b0dba0#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Assessing emotional availability and relational stance in dating context—empathetic analysis of relationship dynamics."
+    },
+    {
+      "candidate_id": "historical-286364b0dba0#1",
+      "nexuses": ["relationships", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Dating apps temporal dynamics plus AI-assisted signal-matching strategy—relationships practice + AI communication mastery."
+    },
+    {
+      "candidate_id": "historical-28985440d477#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "T-Mobile DIGITS technical setup question—unrelated technical support."
+    },
+    {
+      "candidate_id": "historical-2917fc98de9b#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal reflection on music, emotion, and inner child reparenting—exploration of consciousness and emotional understanding."
+    },
+    {
+      "candidate_id": "historical-291f309f9872#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Renee Good shooting incident and media narrative framing—tracking political events and competing claims."
+    },
+    {
+      "candidate_id": "historical-2932aa9c912e#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Exploring speculative AI concept from multiple narrative perspectives—creative writing exercise on ambitious ideas."
+    },
+    {
+      "candidate_id": "historical-295d121c32f4#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Updating novel chapter outlines and character inconsistencies—deliberate attention to narrative structure and character agency."
+    },
+    {
+      "candidate_id": "historical-295d121c32f4#1",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Creating detailed character profiles for Sudowrite submission—refining character development and voice."
+    },
+    {
+      "candidate_id": "historical-29fe55370f90#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare business phone number lookup—not sustained engagement with any Passion."
+    },
+    {
+      "candidate_id": "historical-2a629ac0d733#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Computer performance troubleshooting—unrelated technical support."
+    },
+    {
+      "candidate_id": "historical-2a8c45ec9149#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "SEO metadata optimization for meditation content—publishing infrastructure and reach optimization work."
+    },
+    {
+      "candidate_id": "historical-2a9253ee5dc7#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Financial markets update with political commentary on Trump statements and economic fallout—tracking political-economic events."
+    },
+    {
+      "candidate_id": "historical-2b01b0654db5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare historical lookups on Communist Manifesto and Lenin—single-fact research without Passion engagement."
+    },
+    {
+      "candidate_id": "historical-2b2feb2990eb#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Discussion of capitalist competition through political/economic philosophy lens—engagement with political-economic principles."
+    },
+    {
+      "candidate_id": "historical-2ba5905478b7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tail-risk options hedging strategy discussion—financial trading work, not a Passion engagement."
+    },
+    {
+      "candidate_id": "historical-2bb1c57ee308#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool meta-discussion about role boundaries—administrative."
+    },
+    {
+      "candidate_id": "historical-2c6a89dfd447#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting dating message frame emphasizing accomplishment and lifestyle—deliberate relationship strategy and masculine presentation."
+    },
+    {
+      "candidate_id": "historical-2c8f076080f4#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Building personal knowledge system by training AI on Obsidian vault—learning to communicate with AI for cognitive enhancement."
+    },
+    {
+      "candidate_id": "historical-2c98ed4ad905#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Adding protective text strategy for future contact management—publishing/content distribution strategy work."
+    },
+    {
+      "candidate_id": "historical-2cecbfd7acf9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Producer Price Index analysis with focus on currency transmission and supply chain—economic/political analysis of market dynamics."
+    }
+  ]
+}

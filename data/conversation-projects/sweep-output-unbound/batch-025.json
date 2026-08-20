@@ -1,0 +1,215 @@
+{
+  "batch": 25,
+  "placements": [
+    {
+      "candidate_id": "historical-a341d0b72b91#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Economic policy analysis; not personal subject exploration."
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating LangFlow capabilities for workflow refinement."
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare fact lookup on board games; no engagement."
+    },
+    {
+      "candidate_id": "historical-a3599e8c06a3#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Learning about PydanticAI framework to evaluate tool capability."
+    },
+    {
+      "candidate_id": "historical-a395fe277766#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool roleplay exchange; not real engagement."
+    },
+    {
+      "candidate_id": "historical-a39dc7dc0fa3#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Reading political analysis of corporate manipulation tactics."
+    },
+    {
+      "candidate_id": "historical-a3e2a4bc294c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical diagram request; not subject exploration."
+    },
+    {
+      "candidate_id": "historical-a3fdd553fceb#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image."
+    },
+    {
+      "candidate_id": "historical-a41bcd00de32#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring consciousness and Kevin Kelly's methodology for testing ideas."
+    },
+    {
+      "candidate_id": "historical-a4220ec4d16c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Practical electrical troubleshooting; not personal subject pursuit."
+    },
+    {
+      "candidate_id": "historical-a4704a368d9e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool roleplay exchange; not real engagement."
+    },
+    {
+      "candidate_id": "historical-a496cdef6e46#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Refining plot framework language and structure for fiction writing."
+    },
+    {
+      "candidate_id": "historical-a496cdef6e46#1",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing plot initiation framework for fiction story preparation."
+    },
+    {
+      "candidate_id": "historical-a52103361975#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring ethical principles through Jedi philosophy and biblical teaching."
+    },
+    {
+      "candidate_id": "historical-a54b8808bcb4#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating Gemini 3.1 Pro capabilities for coding workflows."
+    },
+    {
+      "candidate_id": "historical-a563864f18d2#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Social services eligibility lookup; not personal passion exploration."
+    },
+    {
+      "candidate_id": "historical-a6453d892169#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring sacred space imagery related to spiritual practice."
+    },
+    {
+      "candidate_id": "historical-a66877239394#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Refining writing craft and tone in complaint letter revision."
+    },
+    {
+      "candidate_id": "historical-a68f81e9a601#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greeting; not subject engagement."
+    },
+    {
+      "candidate_id": "historical-a6a7fdcb8473#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing MeToo social movement as political/societal change."
+    },
+    {
+      "candidate_id": "historical-a6e17e754280#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Service lookup; bare fact request with no engagement."
+    },
+    {
+      "candidate_id": "historical-a6e17e754280#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Auto repair shop lookup; bare fact request."
+    },
+    {
+      "candidate_id": "historical-a704adeb0716#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greeting; not subject engagement."
+    },
+    {
+      "candidate_id": "historical-a7057dd34fb0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greeting; not subject engagement."
+    },
+    {
+      "candidate_id": "historical-a70f3f927b6c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Gambling options lookup; bare fact request."
+    },
+    {
+      "candidate_id": "historical-a70f3f927b6c#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Store hours lookup; bare fact request."
+    },
+    {
+      "candidate_id": "historical-a70f3f927b6c#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Store hours lookup; bare fact request."
+    },
+    {
+      "candidate_id": "historical-a7b44718e240#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greeting; not subject engagement."
+    },
+    {
+      "candidate_id": "historical-a7de546bc418#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analyzing dating profile signals to understand person before engagement."
+    },
+    {
+      "candidate_id": "historical-a80890a725c1#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Discussing editorial review processes and quality gates for AI content."
+    },
+    {
+      "candidate_id": "historical-a906a24daaa3#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Personal reflection on consciousness, unconditional commitment, and deep relationship with son."
+    },
+    {
+      "candidate_id": "historical-a90b5c3590fe#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image."
+    },
+    {
+      "candidate_id": "historical-a988dd0ef417#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "System test exchange; not real engagement."
+    },
+    {
+      "candidate_id": "historical-a9a13a15a821#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical diagram request; not subject exploration."
+    },
+    {
+      "candidate_id": "historical-a9a9b2392f41#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Refining ideation framework and story beat structure for American Jesus fiction project."
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "batch": 5,
+  "placements": [
+    {
+      "candidate_id": "historical-215b4912b887#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical tool support for Google Sheets—unrelated to Passions"
+    },
+    {
+      "candidate_id": "historical-21de545cf36a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative message about missing attachment, not engagement"
+    },
+    {
+      "candidate_id": "historical-2201504fe957#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Reference report on monetary policy distributional effects; source-backed policy analysis"
+    },
+    {
+      "candidate_id": "historical-221e94e8f74e#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analysis of Middle East conflict as cyclical pattern; tracking political events"
+    },
+    {
+      "candidate_id": "historical-22532c49beed#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Fashion/clothing advice; unrelated to any Passion"
+    },
+    {
+      "candidate_id": "historical-228cba288a74#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Political correctness definition and historical analysis; tracking political concepts"
+    },
+    {
+      "candidate_id": "historical-22d64dfb3258#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting empathetic response to customer; practicing compassionate interaction"
+    },
+    {
+      "candidate_id": "historical-22e334cd3168#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Healthcare policy distributional analysis; evidence-backed policy research"
+    },
+    {
+      "candidate_id": "historical-22fb2dfcf6ea#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative message about missing attachment, not engagement"
+    },
+    {
+      "candidate_id": "historical-23250705e906#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Test message verification; administrative exchange only"
+    },
+    {
+      "candidate_id": "historical-236562c25855#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Reflection on AI model costs and effectiveness; exploring prompt/model optimization"
+    },
+    {
+      "candidate_id": "historical-236562c25855#1",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Exploring natural language programming as computing abstraction; AI communication methodology"
+    },
+    {
+      "candidate_id": "historical-2368ab5c1e03#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Environmental policy and EPA regulatory framework analysis"
+    },
+    {
+      "candidate_id": "historical-2368ab5c1e03#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Democratic legislative strategy and reinstatement approach; tracking political response"
+    },
+    {
+      "candidate_id": "historical-2368ab5c1e03#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Legal strategy analysis and Major Questions Doctrine application; court/policy dynamics"
+    },
+    {
+      "candidate_id": "historical-2368ab5c1e03#3",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing policy repeal as narrative theater; distinguishing real from claimed impact"
+    },
+    {
+      "candidate_id": "historical-2372b67f7235#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Thematic analysis of story using framework; examining narrative structure and meaning"
+    },
+    {
+      "candidate_id": "historical-2379d1b2f639#0",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "TV enclosure design and ambient lighting; evaluating technology for daily life"
+    },
+    {
+      "candidate_id": "historical-240558319c91#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool-specific role clarification; administrative exchange only"
+    },
+    {
+      "candidate_id": "historical-243a66a32435#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare product lookup without engagement or sustained exploration"
+    },
+    {
+      "candidate_id": "historical-243a66a32435#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Practical problem-solving for garage door; not sustained Passion engagement"
+    },
+    {
+      "candidate_id": "historical-243a66a32435#2",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Air filtration system design exploration; evaluating tools for improved living"
+    },
+    {
+      "candidate_id": "historical-244b438d4622#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical troubleshooting for Disney+ authentication; unrelated to Passions"
+    },
+    {
+      "candidate_id": "historical-244c8d2a396b#0",
+      "nexuses": ["insight"],
+      "confidence": "medium",
+      "reason": "Exploring human nature through power strategies and philosophy; understanding human motivation"
+    },
+    {
+      "candidate_id": "historical-247e6dfab842#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "First-time computer setup; practical task without sustained exploration"
+    },
+    {
+      "candidate_id": "historical-248913f7437c#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "International comparative data methodology for distributional policy analysis"
+    },
+    {
+      "candidate_id": "historical-24b6e44d8854#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Strategizing release and distribution of fictional white paper; publishing platform strategy"
+    },
+    {
+      "candidate_id": "historical-24d806143d7b#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Infrastructure law reference analysis; policy implementation tracking"
+    },
+    {
+      "candidate_id": "historical-24d9ebdd1a15#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Historical analysis of FDR's political positions and policy exclusions"
+    },
+    {
+      "candidate_id": "historical-24ef24f634ff#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting authentic opening for dating profile; practicing attentive empathetic interaction"
+    },
+    {
+      "candidate_id": "historical-2525891f2870#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Solving formatting issues in writing tool workflow; refining writing process"
+    },
+    {
+      "candidate_id": "historical-252658da6c34#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Music history fact lookup with no deeper engagement or sustained exploration"
+    },
+    {
+      "candidate_id": "historical-25700f7e32d0#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Observing unhappiness patterns and defiant personas; understanding suffering and human dynamics"
+    },
+    {
+      "candidate_id": "historical-25708325e09d#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Trade policy analysis and tariff deal assessment; political economy tracking"
+    },
+    {
+      "candidate_id": "historical-258a2cf02d73#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Iran diplomacy through Abraham Accords; analyzing diplomatic strategy and negotiation dynamics"
+    }
+  ]
+}

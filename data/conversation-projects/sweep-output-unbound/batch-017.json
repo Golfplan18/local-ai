@@ -1,0 +1,215 @@
+{
+  "batch": 17,
+  "placements": [
+    {
+      "candidate_id": "historical-7255e3d55b01#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare lookup: user requests song lyrics and YouTube link with no engagement or analysis"
+    },
+    {
+      "candidate_id": "historical-72ce481a19cb#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Applies Sun Tzu's principles to personal relationships and leadership, exploring interaction dynamics and strategic understanding"
+    },
+    {
+      "candidate_id": "historical-7329fe6a8fa7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical/health information about laxatives; no engagement with any Passion subject"
+    },
+    {
+      "candidate_id": "historical-7329fe6a8fa7#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical information on laxative abuse and eating disorders; no engagement with any Passion subject"
+    },
+    {
+      "candidate_id": "historical-7329fe6a8fa7#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical advice on chronic bloating and laxatives; no engagement with any Passion subject"
+    },
+    {
+      "candidate_id": "historical-73928b3a62ae#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative tool clarification; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-73a854fb3bfe#0",
+      "nexuses": ["property"],
+      "confidence": "medium",
+      "reason": "Real estate property management expertise applied to refining response; engages with property domain knowledge"
+    },
+    {
+      "candidate_id": "historical-73da5872f13f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare user preference statement; no substantive engagement"
+    },
+    {
+      "candidate_id": "historical-743379b05892#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical information on medications and side effects; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-7458cadd71d0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare technical lookups: omega symbol display and iCloud backup questions"
+    },
+    {
+      "candidate_id": "historical-7458cadd71d0#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical questions on movie marquee and iCloud; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-7465dc28ab4e#0",
+      "nexuses": ["technology", "writing"],
+      "confidence": "high",
+      "reason": "System architecture for knowledge management with atomic notes; evaluating technology tools and refining capture process"
+    },
+    {
+      "candidate_id": "historical-74b40b9a5e8c#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Sustained reading on Depression-era economists and economic theory; exploration of fundamental ideas through source research"
+    },
+    {
+      "candidate_id": "historical-74b40b9a5e8c#1",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Deep analysis of Keynes's distinction between capitalist and rentier; sustained economic theory exploration"
+    },
+    {
+      "candidate_id": "historical-74b40b9a5e8c#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "AutoCorrect frustration and technical workaround suggestions; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-74e9fb4c3835#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile analysis and crafting emotionally resonant opening messages; practicing meaningful interaction and connection"
+    },
+    {
+      "candidate_id": "historical-74f33168f68b#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Building jurisprudential dossier for satirical character; researching voice, character consistency, and analytical depth"
+    },
+    {
+      "candidate_id": "historical-7528c0fb7d24#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump's political motivations and Federal Reserve policy conflict; tracking political events and claims"
+    },
+    {
+      "candidate_id": "historical-75f6cada5169#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Dating profile analysis and relationship communication strategy; practicing understanding of personality and interaction dynamics"
+    },
+    {
+      "candidate_id": "historical-7601ea2de607#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Sustained reading and analysis of gauge theory and Higgs field physics; exploration of fundamental physics concepts"
+    },
+    {
+      "candidate_id": "historical-764ef391b566#0",
+      "nexuses": ["publishing", "technology"],
+      "confidence": "high",
+      "reason": "Mission statement for extended cognition framework and media creation; evaluating technology infrastructure and publishing platform"
+    },
+    {
+      "candidate_id": "historical-7661b145f814#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image attachment; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-76adeb31ba2d#0",
+      "nexuses": ["technology", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Managing chat history across AI services; evaluating technology tools and understanding AI platform workflows"
+    },
+    {
+      "candidate_id": "historical-76d45722e271#0",
+      "nexuses": ["technology", "publishing"],
+      "confidence": "high",
+      "reason": "Web hosting provider evaluation for multiple websites; technology assessment and publishing infrastructure consideration"
+    },
+    {
+      "candidate_id": "historical-76d7af40c18c#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Pixel phone setup guide and feature evaluation; testing technology for daily life enhancement"
+    },
+    {
+      "candidate_id": "historical-76fac4e3879c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Academic assignment on agricultural media; one-off coursework, not personal Passion engagement"
+    },
+    {
+      "candidate_id": "historical-7793d93268fe#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative tool role clarification; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-77da06ceadf5#0",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Organizing and extracting iMessage conversations; using technology tools for information organization"
+    },
+    {
+      "candidate_id": "historical-786a8cfba422#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Statistical data calendar and reference guide; technical documentation without personal Passion engagement"
+    },
+    {
+      "candidate_id": "historical-78c7fd6d6d4f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Health information on foot reflexology and pain; no Passion engagement"
+    },
+    {
+      "candidate_id": "historical-78e4364dc82b#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Judicial nomination and US Attorney news; tracking political events and institutional processes"
+    },
+    {
+      "candidate_id": "historical-78e569e697d4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Government UFO report information; news item without sustained engagement with science or politics Passions"
+    },
+    {
+      "candidate_id": "historical-791c95f13d2e#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Legal and policy analysis of immigration detention law; tracking political/legal frameworks and source-backed analysis"
+    },
+    {
+      "candidate_id": "historical-79789b155b09#0",
+      "nexuses": ["ora_foundation", "technology"],
+      "confidence": "high",
+      "reason": "Discussing AI as extended cognition infrastructure; sustaining cognitive commons and evaluating intelligence augmentation technology"
+    },
+    {
+      "candidate_id": "historical-798d9a12d93c#0",
+      "nexuses": ["science", "politics"],
+      "confidence": "high",
+      "reason": "Exploring market humanism as economic paradigm; sustained reading on economic theory and political frameworks"
+    }
+  ]
+}

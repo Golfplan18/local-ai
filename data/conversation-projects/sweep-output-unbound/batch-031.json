@@ -1,0 +1,254 @@
+{
+  "batch": 31,
+  "placements": [
+    {
+      "candidate_id": "historical-c7043a9a0f12#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare market data lookup with no sustained engagement."
+    },
+    {
+      "candidate_id": "historical-c71c5b8fd214#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing romantic interest profile and personality compatibility."
+    },
+    {
+      "candidate_id": "historical-c72d91225350#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical protocol fact-check, no real engagement."
+    },
+    {
+      "candidate_id": "historical-c765ccb8fb38#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical support for unrelated tool."
+    },
+    {
+      "candidate_id": "historical-c77bdc217d34#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Questioning mathematical modeling approaches to physics."
+    },
+    {
+      "candidate_id": "historical-c7d5185a3d81#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Evaluating AI tools cost-effectiveness and resource optimization."
+    },
+    {
+      "candidate_id": "historical-c7e6a0ccd38b#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Exploring Buddhist consciousness teachings on equanimity and self-worth."
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Self-description as playful word game, not serious reflection."
+    },
+    {
+      "candidate_id": "historical-c7e758977f0b#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative test message requesting memory deletion."
+    },
+    {
+      "candidate_id": "historical-c8199fa85fb0#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Working through emotional patterns and self-awareness around mood."
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Research bibliography lookup only."
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Examining historical political figures as altruistic advocacy models."
+    },
+    {
+      "candidate_id": "historical-c832889c98ac#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Name spelling variations lookup, no engagement."
+    },
+    {
+      "candidate_id": "historical-c89369ac3d9d#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing military ethics and government principle application."
+    },
+    {
+      "candidate_id": "historical-c89b1c2105cb#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical formatting task, no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-c8f41bc86e77#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Project report request for MSI, not personal Passion pursuit."
+    },
+    {
+      "candidate_id": "historical-c9721c27fd1b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Resource list lookup, no engagement."
+    },
+    {
+      "candidate_id": "historical-c975f41fb074#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing democratic mechanisms and ballot initiative power."
+    },
+    {
+      "candidate_id": "historical-ca14af7b48f5#0",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Developing fictional character profiles and psychology."
+    },
+    {
+      "candidate_id": "historical-ca163beb823b#0",
+      "nexuses": [
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Exploring AI retrieval systems and communication patterns."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing dating profile and crafting relationship communication."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#1",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Understanding romantic attraction and emotional/polarity dynamics."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#2",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Navigating early romantic interaction and conversation progression."
+    },
+    {
+      "candidate_id": "historical-ca67c97d186d#3",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "MBTI analysis of potential partner understanding in relationships."
+    },
+    {
+      "candidate_id": "historical-cad21bc31e5d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple greeting only."
+    },
+    {
+      "candidate_id": "historical-cafcbaa9f5d2#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Meditation practice visualization for virtuous feelings."
+    },
+    {
+      "candidate_id": "historical-cb042d2249b8#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Personality typing and relationship communication strategy."
+    },
+    {
+      "candidate_id": "historical-cb06845f52f0#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing corporate regulation and tech company power dynamics."
+    },
+    {
+      "candidate_id": "historical-cb2369c49398#0",
+      "nexuses": [
+        "insight",
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Family interaction patterns, emotional dynamics, relationship understanding."
+    },
+    {
+      "candidate_id": "historical-cbae17a7d50e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Format preference statement only."
+    },
+    {
+      "candidate_id": "historical-cc9cc2eb3b78#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Format preference statement only."
+    },
+    {
+      "candidate_id": "historical-ccbcf4dff4ee#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Error message about missing image attachment."
+    },
+    {
+      "candidate_id": "historical-ccc994d054e3#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Crafting dating message and analyzing personality compatibility."
+    },
+    {
+      "candidate_id": "historical-cd24dd8e56cd#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Social services information lookup only."
+    },
+    {
+      "candidate_id": "historical-cd4264dde1d4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Format preference statement only."
+    }
+  ]
+}

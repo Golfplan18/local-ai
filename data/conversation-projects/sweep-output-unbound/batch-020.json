@@ -1,0 +1,258 @@
+{
+  "batch": 20,
+  "placements": [
+    {
+      "candidate_id": "historical-861847909a3a#1",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Exploring AI agents, browser technology, CAPTCHA barriers, and decentralized networks"
+    },
+    {
+      "candidate_id": "historical-861c8939150e#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Tracking economic claims about tariffs with analytical rigor"
+    },
+    {
+      "candidate_id": "historical-861c8939150e#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Verifying tariff inflation claims with source-backed analysis"
+    },
+    {
+      "candidate_id": "historical-861df2e6f9ce#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical support lookup without engagement"
+    },
+    {
+      "candidate_id": "historical-865e0d13d016#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Personal dating strategy and MBTI personality polarity analysis"
+    },
+    {
+      "candidate_id": "historical-86633b50549f#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Administrative message (no image attached)"
+    },
+    {
+      "candidate_id": "historical-86caa40251f6#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Brief technical feedback on diagram structure"
+    },
+    {
+      "candidate_id": "historical-8721de3a16a9#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Single fact lookup (golf tournament result)"
+    },
+    {
+      "candidate_id": "historical-8752437e8b81#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Exploring Buddhist path, Bodhisattva Vow, spiritual transformation"
+    },
+    {
+      "candidate_id": "historical-8752437e8b81#1",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Studying Amida Buddha and Pure Land Buddhism teachings"
+    },
+    {
+      "candidate_id": "historical-8752437e8b81#2",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Comparative spiritual inquiry: Evangelical salvation pathway"
+    },
+    {
+      "candidate_id": "historical-8752437e8b81#3",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Headline generation without analysis"
+    },
+    {
+      "candidate_id": "historical-875f70b073c6#0",
+      "nexuses": [
+        "property"
+      ],
+      "confidence": "high",
+      "reason": "Real estate compliance: vacation rental signage regulations"
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Dating profile analysis for congruence and attraction signals"
+    },
+    {
+      "candidate_id": "historical-8765e805c43f#1",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical troubleshooting for dating app video upload"
+    },
+    {
+      "candidate_id": "historical-87881b7c3482#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Tracking Trump administration litigation and government accountability"
+    },
+    {
+      "candidate_id": "historical-87881b7c3482#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing DHS policy and executive separation-of-powers violations"
+    },
+    {
+      "candidate_id": "historical-8792148a61df#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Economic policy analysis: credit card regulation and market impact"
+    },
+    {
+      "candidate_id": "historical-8792148a61df#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Tracking FBI obstruction and ICE racial profiling claims"
+    },
+    {
+      "candidate_id": "historical-87dae2788ad7#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Reference compilation without analytical engagement"
+    },
+    {
+      "candidate_id": "historical-87e1e056c02f#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Reference report compilation from academic sources"
+    },
+    {
+      "candidate_id": "historical-8848a4c29411#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Exploring tacit knowledge in AI systems and LLM capabilities"
+    },
+    {
+      "candidate_id": "historical-88762ea1d2d5#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Administrative directive (text format preference)"
+    },
+    {
+      "candidate_id": "historical-88b74658e774#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Neuroscience learning: anosognosia and brain dysfunction"
+    },
+    {
+      "candidate_id": "historical-88d7207ce271#0",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Fiction craft work: thematic analysis of novel using universal theme library"
+    },
+    {
+      "candidate_id": "historical-89985b95fdaa#0",
+      "nexuses": [
+        "technology"
+      ],
+      "confidence": "high",
+      "reason": "Tracking Anthropic Claude policy changes and usage limits"
+    },
+    {
+      "candidate_id": "historical-89f418c2b9e6#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Observation without Passion engagement"
+    },
+    {
+      "candidate_id": "historical-8a1bc5eb92cd#0",
+      "nexuses": [
+        "writing"
+      ],
+      "confidence": "high",
+      "reason": "Writing craft analysis: WSJ Opinion team rhetorical strategies"
+    },
+    {
+      "candidate_id": "historical-8a86cd6d3ce5#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Administrative directive (text format preference)"
+    },
+    {
+      "candidate_id": "historical-8aae5e6dfd71#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Tool role clarification (administrative)"
+    },
+    {
+      "candidate_id": "historical-8ae3b90d34bc#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Geopolitical analysis: Iran war economic dominance effects"
+    },
+    {
+      "candidate_id": "historical-8aea5ea6dcfc#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Technical support for device account access"
+    },
+    {
+      "candidate_id": "historical-8b22d98db872#0",
+      "nexuses": [],
+      "confidence": "low",
+      "reason": "Diagram feedback (duplicate/brief)"
+    },
+    {
+      "candidate_id": "historical-8b3223515bc2#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political systems analysis: Democratic Party nomination process"
+    },
+    {
+      "candidate_id": "historical-8b3dff26952a#0",
+      "nexuses": [
+        "ora_foundation",
+        "publishing"
+      ],
+      "confidence": "medium",
+      "reason": "Open knowledge access and universal AI democratization for global talent"
+    }
+  ]
+}

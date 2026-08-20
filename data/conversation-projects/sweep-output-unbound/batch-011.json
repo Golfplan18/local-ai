@@ -1,0 +1,215 @@
+{
+  "batch": 11,
+  "placements": [
+    {
+      "candidate_id": "historical-46e8ac08d1da#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative message about tool role clarification."
+    },
+    {
+      "candidate_id": "historical-46f940cd8470#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup about sports events for a specific weekend."
+    },
+    {
+      "candidate_id": "historical-474473ad57a4#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking and analyzing political/legal event: DOJ courtroom argument on presidential powers."
+    },
+    {
+      "candidate_id": "historical-4746818d6244#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing energy policy article, identifying fossil fuel rhetoric, examining geopolitical implications."
+    },
+    {
+      "candidate_id": "historical-474759ca9b26#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political events (Trump trade threats, EU response) with source-backed analysis."
+    },
+    {
+      "candidate_id": "historical-4775815c08a7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical support request about accessing web content."
+    },
+    {
+      "candidate_id": "historical-4783128837c7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Research request for medical standards of care; not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-487cebcea13d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Academic term paper work; assignment-driven, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-48c787947c58#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Drafting and refining satirical fiction about fictional authoritarian regime."
+    },
+    {
+      "candidate_id": "historical-4940168b05f3#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Reflecting on how complexity collapses when simpler solutions emerge; recognition of self-inflicted over-engineering."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Testing tech product (Govee lights) against real task; evaluating tool choice."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual specification lookup on device range/connectivity."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Testing materials (foam insulation) against real DIY task for noise reduction."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#3",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Reflecting on over-engineering a gate project; recognition of unnecessary complexity."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#4",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating fan specifications (CFM, noise, efficiency curves) for home improvement task."
+    },
+    {
+      "candidate_id": "historical-495bff007c82#5",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating projection screen technical properties (white balance, gain, coating options)."
+    },
+    {
+      "candidate_id": "historical-495c6e662187#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Executing character development framework; working through theme integration for fictional character."
+    },
+    {
+      "candidate_id": "historical-49b392341e6c#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking Trump's political statements and response to Supreme Court ruling."
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Real-time analysis of Japanese bond market, yen intervention, geopolitical implications."
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Scenario planning for economic crises, analyzing monetary policy and geopolitical consequences."
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#2",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Analyzing Bitcoin/cryptocurrency security risks and vulnerabilities as technology asset."
+    },
+    {
+      "candidate_id": "historical-49dcdd97dd57#3",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Real-time market and central bank intervention tracking with geopolitical implications."
+    },
+    {
+      "candidate_id": "historical-4a36287e37cc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative notification about missing attachment."
+    },
+    {
+      "candidate_id": "historical-4a3678e7afc0#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political events (Orban defeat, NATO collapse), analyzing European security implications."
+    },
+    {
+      "candidate_id": "historical-4ac2ff453ce1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Personal shopping and home decoration; no sustained analytical engagement with a Passion subject."
+    },
+    {
+      "candidate_id": "historical-4ad3b957d6c3#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analyzing dating profile personality to understand person and craft meaningful communication."
+    },
+    {
+      "candidate_id": "historical-4b1a02de93b1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative message about text cleanup tool function."
+    },
+    {
+      "candidate_id": "historical-4b4dca7db21c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookups about Dunning-Kruger effect and Edward Tufte; no sustained engagement."
+    },
+    {
+      "candidate_id": "historical-4b7322e867b8#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Executing character refinement framework; analyzing character agency, motivation, thematic positioning."
+    },
+    {
+      "candidate_id": "historical-4b8b7725a7c1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Single-line formatting preference; administrative message."
+    },
+    {
+      "candidate_id": "historical-4c74d41e73a1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Argument audit for logical validity; analytical but not clearly sustaining a Passion subject."
+    },
+    {
+      "candidate_id": "historical-4ca61e47aedd#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup about pet safety."
+    },
+    {
+      "candidate_id": "historical-4ca62844f311#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Researching person's background and personality to understand motivations; seeking empathetic connection."
+    },
+    {
+      "candidate_id": "historical-4cb02045980f#0",
+      "nexuses": ["technology", "politics"],
+      "confidence": "high",
+      "reason": "Tech troubleshooting for Amazon app + critique of monopoly power and consumer rights."
+    },
+    {
+      "candidate_id": "historical-4cb02045980f#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing monopoly power; tracking political efforts to regulate Amazon; advocating consumer/altruistic principles."
+    }
+  ]
+}
