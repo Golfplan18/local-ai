@@ -2419,6 +2419,26 @@
 
     card.appendChild(line);
     card.appendChild(msg);
+
+    // How this provider's key is actually used. The row previously showed
+    // only Set/Not set, so a present, valid, metered key looked identical to
+    // one riding a subscription — the question "is this billing me per token
+    // or not?" had no answer anywhere in the UI.
+    if (row.transport) {
+      var transport = document.createElement('div');
+      transport.className = 'ora-settings-apikey-transport';
+      var used = document.createElement('span');
+      used.textContent = 'Key in use: ' + row.transport;
+      transport.appendChild(used);
+      if (row.subscription_transport) {
+        var sub = document.createElement('span');
+        sub.className = 'ora-settings-apikey-transport-sub';
+        sub.textContent = 'Subscription also active: ' + row.subscription_transport
+          + ' — those models bill nothing per call.';
+        transport.appendChild(sub);
+      }
+      card.appendChild(transport);
+    }
     parent.appendChild(card);
   }
 
