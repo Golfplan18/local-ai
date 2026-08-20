@@ -14,7 +14,11 @@
 
 checks:
   test:
-    argv: [python, -m, unittest, discover, -s, orchestrator/tests]
+    # pytest, not `unittest discover`: unittest never collected the eight files
+    # that use module-level `def test_` functions, so it reported on ~61 fewer
+    # tests than exist. `-p no:cacheprovider` keeps `mutates: false` honest —
+    # pytest otherwise writes a .pytest_cache directory into the repo.
+    argv: [python, -m, pytest, orchestrator/tests, -q, -p, no:cacheprovider]
     mutates: false
     timeout: 1200          # provisional — the full suite is large
     network: deny

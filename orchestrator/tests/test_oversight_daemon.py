@@ -9,7 +9,7 @@ watchdog dumps the stack of a stalled lane thread and restarts the lane.
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_oversight_daemon -v
+    /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_oversight_daemon.py -q
 """
 from __future__ import annotations
 

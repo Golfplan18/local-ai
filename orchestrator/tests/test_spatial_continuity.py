@@ -4,7 +4,7 @@ WP-5.3 — Spatial continuity across turns (unit + integration tests).
 
 Runs under stdlib ``unittest`` — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * ``conversation_memory.get_prior_spatial_state`` walks history/disk backwards

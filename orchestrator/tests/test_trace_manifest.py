@@ -9,7 +9,7 @@ stubbed — no model calls.
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_trace_manifest -v
+    /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_trace_manifest.py -q
 """
 from __future__ import annotations
 

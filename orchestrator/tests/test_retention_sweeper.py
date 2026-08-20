@@ -5,7 +5,7 @@ test touches the live ~/ora tree.
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest orchestrator.tests.test_retention_sweeper -v
+    /opt/homebrew/bin/python3 -m pytest orchestrator/tests/test_retention_sweeper.py -q
 """
 from __future__ import annotations
 

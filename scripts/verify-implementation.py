@@ -1581,17 +1581,25 @@ def check_test_suites(verbose: bool = False) -> CheckResult:
 
     # Python tests
     try:
+        # pytest, not `unittest discover`: unittest never collected the eight
+        # files that use module-level `def test_` functions, so this check
+        # passed on ~61 fewer tests than exist. `-p no:cacheprovider` stops it
+        # writing a .pytest_cache directory into the checkout under review.
         py_result = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "orchestrator/tests"],
+            [sys.executable, "-m", "pytest", "orchestrator/tests", "-q",
+             "-p", "no:cacheprovider"],
             capture_output=True, text=True, cwd=str(ORA_ROOT), timeout=600
         )
+        # unittest wrote its summary to stderr; pytest writes to stdout, so the
+        # reported tail comes from stdout or this silently reports nothing.
+        report = (py_result.stdout or py_result.stderr).strip()
         if py_result.returncode != 0:
             result.passed = False
-            tail = py_result.stderr.strip().split("\n")[-10:]
+            tail = report.split("\n")[-10:]
             result.details.append("Python tests FAILED. Tail:")
             result.details.extend(tail)
         else:
-            tail = py_result.stderr.strip().split("\n")[-3:]
+            tail = report.split("\n")[-3:]
             result.details.append(f"Python tests OK: {tail[-1] if tail else ''}")
     except subprocess.TimeoutExpired:
         result.passed = False

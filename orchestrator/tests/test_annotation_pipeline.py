@@ -4,7 +4,7 @@ WP-5.2 — annotation pipeline unit tests (server-side).
 
 Runs under stdlib ``unittest`` — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * ``visual_validator.validate_annotations`` accepts well-formed payloads,

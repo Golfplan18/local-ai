@@ -17,7 +17,7 @@ Three test classes:
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 This file uses stdlib ``unittest`` to match the rest of the suite (per
 ~/ora/CLAUDE.md commands section).

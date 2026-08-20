@@ -4,7 +4,7 @@ Unit tests for ``orchestrator/visual_adversarial.py`` (WP-1.6).
 
 Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
     # or
     /opt/homebrew/bin/python3 ~/ora/orchestrator/tests/test_visual_adversarial.py
 

@@ -4,7 +4,7 @@ WP-4.4 — Text-only fallback UX tests.
 
 Runs under stdlib ``unittest`` — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * ``_build_visual_fallback_frame`` returns ``None`` for unset/mixed

@@ -26,7 +26,7 @@ covers the **server-side** cancel-signal path:
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 """
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ WP-4.2 — capability-conditional vision routing gate tests.
 
 Runs under stdlib ``unittest`` — no pytest dependency. Invoke::
 
-    /opt/homebrew/bin/python3 -m unittest discover -s ~/ora/orchestrator/tests -v
+    /opt/homebrew/bin/python3 -m pytest ~/ora/orchestrator/tests -q
 
 Scope:
 * ``route_for_image_input`` selects an extractor from the preferred bucket when
