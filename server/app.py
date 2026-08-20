@@ -87,6 +87,7 @@ from boot import (
     route_output, TOOLS_AVAILABLE, compare_intent_with_mode,
     list_pickable_frameworks, vision_capable_for_endpoint,
     compose_dispatch_announcement, stage3_input_completeness_check,
+    TerminalInputAbort,
 )
 from dispatcher import (
     dispatch as dispatcher_dispatch, set_permission_mode,
@@ -3505,26 +3506,6 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     # defaulting to 'interactive'.
     context_pkg.setdefault("execution_context", execution_context)
 
-    # WP-4.2: capability-conditional vision routing gate. If image_path is
-    # present and the downstream model is text-only, select a vision-capable
-    # extractor (fallback cascade); if nothing is available anywhere, flag
-    # no_vision_available for WP-4.4 UX. No-op when there's no image.
-    try:
-        from boot import route_for_image_input
-        route_for_image_input(context_pkg, requested_model=None,
-                              execution_context=execution_context)
-    except Exception as exc:
-        print(f"[visual-routing] gate skipped due to error: {exc}")
-
-    # WP-4.4: emit visual_fallback SSE frame BEFORE the first model token if
-    # the routing/extraction pipeline signalled either "no vision model
-    # anywhere" or "extraction was attempted and failed to parse". The client
-    # chat-panel routes this to the visual panel's showFallbackPrompt() which
-    # renders an overlay with Start tracing / Queue for later / Dismiss.
-    fallback_frame = _build_visual_fallback_frame(context_pkg)
-    if fallback_frame is not None:
-        yield _sse("visual_fallback", **fallback_frame)
-
     gear = context_pkg["gear"]
     if turn_state is not None:
         # Authoritative gear for the trace manifest. Gear 1/2 turns never
@@ -3696,18 +3677,36 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                     pass
             yield _sse("error", text=terminal_value)
             return
+        image_input_error = _boot_context_api()._prepare_image_routing(
+            context_pkg,
+            [ep],
+            images,
+            user_input,
+            execution_context=execution_context,
+        )
+        if image_input_error:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=image_input_error)
+            return
         messages = [{"role": "system", "content": system_prompt}]
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
-        response = run_single_pass_with_tools(
-            messages, ep,
-            slot=fast_slot,
-            gear=gear,
-            config_name=config_name,
-            images=images,
-            step_name="step3-direct-response",
-            history=history,
-            context_pkg=context_pkg,
-        )
+        try:
+            response = run_single_pass_with_tools(
+                messages, ep,
+                slot=fast_slot,
+                gear=gear,
+                config_name=config_name,
+                images=images,
+                step_name="step3-direct-response",
+                history=history,
+                context_pkg=context_pkg,
+            )
+        except TerminalInputAbort as exc:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=exc.safe_message)
+            return
         if trace_dir:
             try:
                 from orchestrator import pipeline_trace as _pt_direct
@@ -3722,7 +3721,16 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 pass
 
     elif gear == 3:
-        response = run_gear3(context_pkg, config, history, images=images, config_name=config_name)
+        try:
+            response = run_gear3(
+                context_pkg, config, history, images=images,
+                config_name=config_name,
+            )
+        except TerminalInputAbort as exc:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=exc.safe_message)
+            return
 
     elif gear >= 4:
         # KV cache release check for sequential fallback
@@ -3730,20 +3738,47 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             depth_model = config.get("slot_assignments", {}).get("depth", "")
             if depth_model:
                 release_kv_cache(depth_model)
-        response = run_gear4(context_pkg, config, history, images=images,
-                             execution_context=execution_context,
-                             config_name=config_name)
+        try:
+            response = run_gear4(
+                context_pkg, config, history, images=images,
+                execution_context=execution_context,
+                config_name=config_name,
+            )
+        except TerminalInputAbort as exc:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=exc.safe_message)
+            return
 
     else:
         _persona_resolution = context_pkg.get("persona_resolution")
-        response = _run_model_with_tools(
-            [{"role": "system", "content": load_boot_md(
-                include_persona=bool(_persona_resolution),
-                persona_resolution=_persona_resolution,
-            )},
-             {"role": "user", "content": user_input}],
-            endpoint, images=images
-        )
+        try:
+            response = _run_model_with_tools(
+                [{"role": "system", "content": load_boot_md(
+                    include_persona=bool(_persona_resolution),
+                    persona_resolution=_persona_resolution,
+                )},
+                 {"role": "user", "content": user_input}],
+                endpoint, images=images
+            )
+        except TerminalInputAbort as exc:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=exc.safe_message)
+            return
+
+    terminal_input_error = context_pkg.get("_terminal_input_error")
+    if terminal_input_error:
+        if turn_state is not None:
+            turn_state["status"] = "error"
+        yield _sse("error", text=terminal_input_error)
+        return
+
+    # Image routing now runs only after the real raw-image recipients resolve.
+    # Keep the fallback frame ahead of the terminal response event.
+    fallback_frame = _build_visual_fallback_frame(context_pkg)
+    if fallback_frame is not None:
+        yield _sse("visual_fallback", **fallback_frame)
 
     effective_trace_gear = context_pkg.get("_trace_effective_gear")
     if isinstance(effective_trace_gear, int):
@@ -3770,6 +3805,10 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
     except Exception as _vh_exc:
         # Fail-open: never block legitimate prose on a hook bug.
         print(f"[server visual-hook] skipped due to error: {_vh_exc}")
+
+    response = _boot_context_api()._append_codex_canvas_image_notice(
+        response, images,
+    )
 
     if turn_state is not None:
         # Explicit completion signal for the trace manifest — the only
@@ -4997,6 +5036,15 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     except Exception as _rge_ds:
         print(f"[risk-gate] direct-stream hold skipped: {_rge_ds}")
 
+    image_input_error = _boot_context_api()._codex_subscription_image_input_error(
+        [endpoint], images, user_input,
+    )
+    if image_input_error:
+        if turn_state is not None:
+            turn_state["status"] = "error"
+        yield _sse("error", text=image_input_error)
+        return
+
     def _call_direct_stage(model_messages, model_endpoint, images=None):
         boot_context = _boot_context_api()
         tokens = boot_context.set_model_stage_context(
@@ -5011,14 +5059,23 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     for iteration in range(MAX_ITERATIONS):
         call_images = images if iteration == 0 else None
         # Pass images only on the first call (they accompany the user's original message)
-        response = _call_direct_stage(
-            messages, endpoint, images=call_images,
-        )
+        try:
+            response = _call_direct_stage(
+                messages, endpoint, images=call_images,
+            )
+        except TerminalInputAbort as exc:
+            if turn_state is not None:
+                turn_state["status"] = "error"
+            yield _sse("error", text=exc.safe_message)
+            return
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
             reset_consecutive()
             clean = strip_tool_calls(response)
+            clean = _boot_context_api()._append_codex_canvas_image_notice(
+                clean, images,
+            )
             if _ds_trace_dir:
                 try:
                     from orchestrator import pipeline_trace as _pt_direct_response
@@ -5088,6 +5145,9 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     # no signal that the model never converged. Parity with
     # boot._run_model_with_tools's overrun fix.
     clean = strip_tool_calls(response)
+    clean = _boot_context_api()._append_codex_canvas_image_notice(
+        clean, images,
+    )
     endpoint_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
     print(
         f"[_direct_stream] agentic loop hit MAX_ITERATIONS={MAX_ITERATIONS} "
@@ -9570,6 +9630,7 @@ def chat_multipart():
             "name": os.path.basename(image_path),
             "mime": image_mime or "image/png",
             "base64": base64.b64encode(Path(image_path).read_bytes()).decode("ascii"),
+            "source": "upload",
         })
     if canvas_preview_path is not None:
         model_images.append({
@@ -9578,6 +9639,11 @@ def chat_multipart():
             "base64": base64.b64encode(
                 Path(canvas_preview_path).read_bytes()
             ).decode("ascii"),
+            "source": (
+                "v3_canvas_preview"
+                if visual_checkpoint_id is not None
+                else "legacy_canvas_preview"
+            ),
         })
     if visual_checkpoint_id is not None:
         extra_context["visual_checkpoint_id"] = visual_checkpoint_id
@@ -19150,6 +19216,17 @@ def model_registry_get():
                                     if ep.get("service") == "claude-code"
                                     else "provider-managed subscription runtime"
                                 )
+                            is_codex_subscription = (
+                                ep.get("service") == "codex-subscription"
+                            )
+                            subscription_inputs = (
+                                list(ep.get("input_modalities") or ["text"])
+                                if is_codex_subscription else ["text"]
+                            )
+                            subscription_outputs = (
+                                list(ep.get("output_modalities") or ["text"])
+                                if is_codex_subscription else ["text"]
+                            )
                             subscription_model = {
                                 "id": eid,
                                 "display_name": ep.get("display_name") or eid,
@@ -19157,9 +19234,13 @@ def model_registry_get():
                                 "provider": provider_id,
                                 "vendor": "Subscription",
                                 "category": "chat",
-                                "vision_capable": False,
-                                "input_modalities": ["text"],
-                                "output_modalities": ["text"],
+                                "vision_capable": bool(
+                                    is_codex_subscription
+                                    and ep.get("vision_capable")
+                                    and "image" in subscription_inputs
+                                ),
+                                "input_modalities": subscription_inputs,
+                                "output_modalities": subscription_outputs,
                                 "context_length": ep.get("context_window"),
                                 "pricing": {"input_per_token": 0,
                                             "output_per_token": 0,

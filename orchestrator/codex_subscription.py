@@ -35,10 +35,10 @@ _CONFIG_OVERRIDES = (
 )
 
 _DEVELOPER_INSTRUCTIONS = (
-    "Act only as a text completion model for Ora. Do not call tools, run "
+    "Act only as a completion model for Ora. Do not call tools, run "
     "commands, browse the web, inspect the working directory, or read files. "
-    "Use only the system instructions and conversation transcript supplied "
-    "in this turn, and return only the assistant response."
+    "Use only the system instructions, conversation transcript, and any image "
+    "supplied in this turn, and return only the assistant response."
 )
 
 _state_lock = threading.RLock()
@@ -50,7 +50,9 @@ _login_generation = 0
 _last_error: "CodexSubscriptionError | None" = None
 _reauth_required = False
 _catalog_revision = 0
-_model_fingerprint: tuple[tuple[str, str], ...] = ()
+_model_fingerprint: tuple[
+    tuple[str, str, tuple[str, ...], tuple[str, ...]], ...
+] = ()
 
 _SELECTOR_COST_FIELD = "_subscription_selector_cost_per_m"
 _INHERITED_METRIC_FIELDS = (
@@ -475,11 +477,6 @@ def _enrich_endpoint(
     if any(enriched.get(field) is not None for field in _INHERITED_METRIC_FIELDS):
         enriched["metrics_inherited_from"] = counterpart_id
 
-    # The Codex transport is text-only even when its API counterpart accepts
-    # images. Counterpart capability metadata must never override that truth.
-    enriched["vision_capable"] = False
-    enriched["input_modalities"] = ["text"]
-    enriched["output_modalities"] = ["text"]
     return enriched
 
 
@@ -552,6 +549,18 @@ def model_endpoints() -> list[dict]:
         }
         if modalities and "text" not in modalities:
             continue
+        input_modalities = (
+            [value for value in ("text", "image") if value in modalities]
+            + sorted(modalities.difference({"text", "image"}))
+        ) if modalities else ["text"]
+        output_values = {
+            _enum_value(value).lower()
+            for value in (_object_value(row, "output_modalities", None) or [])
+        }
+        output_modalities = (
+            [value for value in ("text", "image") if value in output_values]
+            + sorted(output_values.difference({"text", "image"}))
+        ) or ["text"]
         display_name = str(
             _object_value(row, "display_name", "") or native_model
         )
@@ -567,9 +576,9 @@ def model_endpoints() -> list[dict]:
             "service": "codex-subscription",
             "model_id": native_model,
             "dispatch": "subscription",
-            "vision_capable": False,
-            "input_modalities": ["text"],
-            "output_modalities": ["text"],
+            "vision_capable": "image" in modalities,
+            "input_modalities": input_modalities,
+            "output_modalities": output_modalities,
             "capabilities": {
                 "tool_access": False,
                 "file_system_access": False,
@@ -586,7 +595,12 @@ def model_endpoints() -> list[dict]:
 
     endpoints.sort(key=lambda endpoint: endpoint["id"])
     fingerprint = tuple(
-        (endpoint["id"], endpoint["model_id"]) for endpoint in endpoints
+        (
+            endpoint["id"], endpoint["model_id"],
+            tuple(endpoint.get("input_modalities") or ()),
+            tuple(endpoint.get("output_modalities") or ()),
+        )
+        for endpoint in endpoints
     )
     with _state_lock:
         if fingerprint != _model_fingerprint:
@@ -669,8 +683,53 @@ def _compile_messages(messages: list[dict]) -> tuple[str | None, str]:
     return ("\n\n".join(system_parts).strip() or None), prompt
 
 
-def run_completion(messages: list[dict], model: str) -> dict:
-    """Run one text-only, ephemeral, deny-all Codex turn."""
+def validate_image_input(
+    messages: list[dict],
+    images: list[dict] | None,
+    input_modalities: list[str] | None,
+) -> dict | None:
+    """Return the sole valid current-canvas image, without runtime effects."""
+    if not images:
+        return None
+    advertised = {
+        _enum_value(value).lower() for value in (input_modalities or [])
+    }
+    if "image" not in advertised:
+        raise CodexSubscriptionError(
+            "text_only_image_input",
+            "The selected ChatGPT subscription model is text-only and "
+            "cannot accept the current Exhibits canvas image.",
+        )
+    user_has_text = any(
+        str(message.get("role") or "").lower() == "user"
+        and _message_text(message.get("content")).strip()
+        for message in messages or []
+    )
+    if (
+        len(images) != 1
+        or not user_has_text
+        or not isinstance(images[0], dict)
+        or images[0].get("source") != "v3_canvas_preview"
+        or images[0].get("mime") != "image/png"
+        or not isinstance(images[0].get("base64"), str)
+        or not images[0]["base64"]
+    ):
+        raise CodexSubscriptionError(
+            "invalid_image_input",
+            "ChatGPT subscription image input requires exactly one current "
+            "V3 Exhibits canvas PNG submitted with text.",
+        )
+    return images[0]
+
+
+def run_completion(
+    messages: list[dict],
+    model: str,
+    *,
+    images: list[dict] | None = None,
+    input_modalities: list[str] | None = None,
+) -> dict:
+    """Run one ephemeral, deny-all Codex turn."""
     if not model:
         raise CodexSubscriptionError(
             "invalid_model", "No ChatGPT subscription model was requested."
@@ -688,9 +747,22 @@ def run_completion(messages: list[dict], model: str) -> dict:
             "ChatGPT is not connected in Ora Settings.",
         )
 
+    base_instructions, prompt = _compile_messages(messages)
+    run_input: Any = prompt
+    submitted_image = validate_image_input(
+        messages, images, input_modalities,
+    )
+
     sdk = _sdk_module()
     client = _new_client(create_home=False)
-    base_instructions, prompt = _compile_messages(messages)
+    if submitted_image is not None:
+        data_url = (
+            "data:image/png;base64," + submitted_image["base64"]
+        )
+        run_input = [
+            sdk.TextInput(prompt),
+            sdk.ImageInput(data_url),
+        ]
     try:
         with tempfile.TemporaryDirectory(
             prefix="ora-codex-turn-", dir=str(CODEX_HOME)
@@ -706,7 +778,7 @@ def run_completion(messages: list[dict], model: str) -> dict:
                 sandbox=sdk.Sandbox.read_only,
             )
             result = thread.run(
-                prompt,
+                run_input,
                 approval_mode=sdk.ApprovalMode.deny_all,
                 cwd=isolated_cwd,
                 model=model,
@@ -723,6 +795,8 @@ def run_completion(messages: list[dict], model: str) -> dict:
         raise CodexSubscriptionError(
             "empty_response", "The ChatGPT subscription returned an empty response."
         )
+    if submitted_image is not None:
+        submitted_image["_codex_subscription_image_submitted"] = True
     usage = getattr(getattr(result, "usage", None), "last", None)
     return {
         "text": text,

@@ -3402,6 +3402,147 @@ def route_for_image_input(context_pkg: dict,
     return requested_model, context_pkg
 
 
+CODEX_CANVAS_IMAGE_NOTICE = (
+    "Image submitted to Codex; the current runtime does not independently "
+    "confirm processing."
+)
+
+
+class TerminalInputAbort(BaseException):
+    """Request-local validation abort that generic recovery must not mask."""
+
+    def __init__(self, safe_message: str):
+        super().__init__(safe_message)
+        self.safe_message = safe_message
+
+
+def _is_codex_subscription_endpoint(endpoint: dict | None) -> bool:
+    return bool(
+        isinstance(endpoint, dict)
+        and endpoint.get("service") == "codex-subscription"
+    )
+
+
+def _current_v3_canvas_images(images: list | None) -> list[dict]:
+    return [
+        image for image in (images or [])
+        if isinstance(image, dict)
+        and image.get("source") == "v3_canvas_preview"
+    ]
+
+
+def _codex_subscription_image_input_error(
+    endpoints: list[dict] | tuple[dict, ...],
+    images: list | None,
+    user_text: str,
+) -> str | None:
+    """Validate only the new current-canvas subscription image route."""
+    codex_endpoints = [
+        endpoint for endpoint in endpoints
+        if _is_codex_subscription_endpoint(endpoint)
+    ]
+    if not codex_endpoints or not images:
+        return None
+
+    if (
+        len(images) != 1
+        or not str(user_text or "").strip()
+        or not isinstance(images[0], dict)
+        or images[0].get("source") != "v3_canvas_preview"
+        or images[0].get("mime") != "image/png"
+        or not isinstance(images[0].get("base64"), str)
+        or not images[0]["base64"]
+    ):
+        return (
+            "ChatGPT subscription image input requires exactly one current "
+            "V3 Exhibits canvas PNG submitted with text."
+        )
+
+    for endpoint in codex_endpoints:
+        modalities = {
+            str(value).strip().lower()
+            for value in (endpoint.get("input_modalities") or [])
+            if str(value).strip()
+        }
+        if (
+            "image" not in modalities
+            or not vision_capable_for_endpoint(endpoint)
+        ):
+            return (
+                "The selected ChatGPT subscription model is text-only and "
+                "cannot accept the current Exhibits canvas image."
+            )
+    return None
+
+
+def _prepare_image_routing(
+    context_pkg: dict,
+    endpoints: list[dict] | tuple[dict, ...],
+    images: list | None,
+    user_text: str,
+    execution_context: str = "interactive",
+) -> str | None:
+    """Route one turn's image after its raw-image recipients are resolved."""
+    if not context_pkg.get("image_path"):
+        return None
+
+    error = _codex_subscription_image_input_error(
+        endpoints, images, user_text,
+    )
+    if error:
+        context_pkg["_vision_routing_prepared"] = True
+        context_pkg["_terminal_input_error"] = error
+        context_pkg["_trace_terminal_status"] = "error"
+        return error
+
+    # Raw SDK image input is available only when the request carries bytes.
+    # A mixed recipient set still needs the established text extractor for
+    # whichever analyst cannot see the image.
+    direct_endpoint = None
+    if images and endpoints and all(
+        vision_capable_for_endpoint(endpoint) for endpoint in endpoints
+    ):
+        direct_endpoint = endpoints[0]
+    desired_mode = "direct" if direct_endpoint is not None else "extractor"
+    current_mode = context_pkg.get("_vision_routing_mode")
+    if current_mode == "extractor" or current_mode == desired_mode:
+        return None
+    try:
+        route_for_image_input(
+            context_pkg,
+            requested_model=direct_endpoint,
+            execution_context=execution_context,
+        )
+    except Exception as exc:
+        # Preserve the established fail-open behavior for extractor/runtime
+        # faults. Subscription shape/modality rejection happened above and is
+        # never swallowed here.
+        print(f"[visual-routing] gate skipped due to error: {exc}")
+    context_pkg["_vision_routing_prepared"] = True
+    context_pkg["_vision_routing_mode"] = desired_mode
+    return None
+
+
+def _append_codex_canvas_image_notice(
+    response: str,
+    images: list | None,
+) -> str:
+    """Append the required notice only after a successful marked SDK call."""
+    if (
+        not isinstance(response, str)
+        or not response.strip()
+        or response.lstrip().startswith("[Error")
+        or CODEX_CANVAS_IMAGE_NOTICE in response
+    ):
+        return response
+    if any(
+        image.get("_codex_subscription_image_submitted") is True
+        for image in _current_v3_canvas_images(images)
+    ):
+        return response.rstrip() + "\n\n" + CODEX_CANVAS_IMAGE_NOTICE
+    return response
+
+
 def load_framework(name: str) -> str:
     """Load a framework specification from frameworks/book/.
 
@@ -11284,6 +11425,9 @@ def run_pipeline(user_input: str, history: list = None,
             conversation_tag, style_id, style_register,
             extra_context=extra_context,
             turn_state=turn_state)
+    except TerminalInputAbort as exc:
+        turn_state["status"] = "error"
+        return exc.safe_message
     except BaseException:
         turn_state["status"] = "error"
         raise
@@ -11716,23 +11860,6 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     # the turn ends before any gear function writes one.
     turn_state["gear"] = gear
 
-    # --- WP-4.2 — capability-conditional vision routing gate ---
-    # When an image_path rides along on context_pkg (via WP-3.3's
-    # /chat/multipart extra_context merge), decide whether the downstream
-    # model can see the image directly or whether a vision-capable extractor
-    # needs to run first. Mutates context_pkg in place; no-op when there's
-    # no image or when no vision-capable model is available (WP-4.4 UX).
-    try:
-        # requested_model is unresolved at this point in the shared path;
-        # selection already records the extractor slot for WP-4.3 to pick up,
-        # and the downstream resolver (run_gear3/run_gear4) checks
-        # context_pkg['vision_direct_pass'] for its own branch.
-        route_for_image_input(context_pkg, requested_model=None,
-                              execution_context=execution_context)
-    except Exception as exc:
-        # Fail-open: visual routing never blocks a legitimate pipeline run.
-        print(f"[visual-routing] gate skipped due to error: {exc}")
-
     # --- Resilience check: degradation path (Phase 14) ---
     degradation_signal = ""
     if RESILIENCE_AVAILABLE and gear >= 3:
@@ -11882,6 +12009,17 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 except Exception:
                     pass
             return terminal_value
+
+        image_input_error = _prepare_image_routing(
+            context_pkg,
+            [endpoint],
+            None,
+            context_pkg.get("cleaned_prompt", ""),
+            execution_context=execution_context,
+        )
+        if image_input_error:
+            turn_state["status"] = "error"
+            return image_input_error
 
         messages = [{"role": "system", "content": system_prompt}]
         messages.append({"role": "user", "content": context_pkg["cleaned_prompt"]})
@@ -13974,6 +14112,21 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
                 pass
         return diagnostic
 
+    raw_image_recipients = (
+        [depth_endpoint or breadth_endpoint]
+        if depth_endpoint is None or breadth_endpoint is None
+        else [depth_endpoint]
+    )
+    image_input_error = _prepare_image_routing(
+        context_pkg,
+        raw_image_recipients,
+        images,
+        context_pkg.get("raw_prompt", context_pkg.get("cleaned_prompt", "")),
+        execution_context=context_pkg.get("execution_context", "interactive"),
+    )
+    if image_input_error:
+        return image_input_error
+
     cleaned_prompt = context_pkg["cleaned_prompt"]
     contingencies_fired: list[str] = []
     step_health: dict[str, tuple[bool, str]] = {}
@@ -14841,6 +14994,16 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             except Exception:
                 pass
         return run_gear3(context_pkg, config, history, images=images, config_name=config_name)
+
+    image_input_error = _prepare_image_routing(
+        context_pkg,
+        [depth_endpoint, breadth_endpoint],
+        images,
+        context_pkg.get("raw_prompt", context_pkg.get("cleaned_prompt", "")),
+        execution_context=execution_context,
+    )
+    if image_input_error:
+        return image_input_error
 
     # parallel_safe is now a UI hint, not a control-flow gate. When False
     # (both analysts resolve to local endpoints on the same machine), the
@@ -17042,8 +17205,6 @@ def _call_codex_subscription(
     messages: list, endpoint: dict, images: list | None = None
 ) -> str:
     """Run one isolated ChatGPT-subscription turn through openai-codex."""
-    if images:
-        return "[Error codex-subscription: image input is not supported]"
     try:
         try:
             from orchestrator import codex_subscription
@@ -17055,6 +17216,18 @@ def _call_codex_subscription(
             "the Ora installer]"
         )
 
+    try:
+        codex_subscription.validate_image_input(
+            messages, images, endpoint.get("input_modalities"),
+        )
+    except codex_subscription.CodexSubscriptionError as exc:
+        if (
+            exc.kind in {"invalid_image_input", "text_only_image_input"}
+            and _current_v3_canvas_images(images)
+        ):
+            raise TerminalInputAbort(exc.safe_message) from None
+        return f"[Error codex-subscription input rejected: {exc.safe_message}]"
+
     _record_physical_model_call_config(
         endpoint,
         max_tokens=endpoint.get("max_tokens"),
@@ -17063,7 +17236,10 @@ def _call_codex_subscription(
     )
     try:
         result = codex_subscription.run_completion(
-            messages, endpoint.get("model") or endpoint.get("model_id") or ""
+            messages,
+            endpoint.get("model") or endpoint.get("model_id") or "",
+            images=images,
+            input_modalities=endpoint.get("input_modalities"),
         )
     except codex_subscription.CodexSubscriptionError as exc:
         if exc.kind in {"reauth_required", "not_connected"}:
@@ -17076,6 +17252,13 @@ def _call_codex_subscription(
                 "[Error codex-subscription rate-limited: try again after "
                 "the account usage window resets]"
             )
+        if (
+            exc.kind in {"invalid_image_input", "text_only_image_input"}
+            and _current_v3_canvas_images(images)
+        ):
+            raise TerminalInputAbort(exc.safe_message) from None
+        if exc.kind in {"invalid_image_input", "text_only_image_input"}:
+            return f"[Error codex-subscription input rejected: {exc.safe_message}]"
         return f"[Error codex-subscription: {exc.safe_message}]"
     except Exception:
         return "[Error codex-subscription: the connection is unavailable]"

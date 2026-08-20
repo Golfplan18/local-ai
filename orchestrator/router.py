@@ -1441,6 +1441,20 @@ class Router:
             v1["service"] = ep.get("service", "")
             v1["model"] = ep.get("model_id", "")
             v1["dispatch"] = ep.get("dispatch", "")
+            if ep.get("service") == "codex-subscription":
+                # Runtime SDK discovery is the capability authority for the
+                # subscription transport. Keep its modality fields on the v1
+                # endpoint that reaches boot.py; absent metadata remains
+                # image-blind by default.
+                input_modalities = list(ep.get("input_modalities") or ["text"])
+                v1["input_modalities"] = input_modalities
+                v1["output_modalities"] = list(
+                    ep.get("output_modalities") or ["text"]
+                )
+                v1["vision_capable"] = bool(
+                    ep.get("vision_capable")
+                    and "image" in input_modalities
+                )
             # Capacity metadata is part of the resolved endpoint, not a local-
             # only concern. Dropping it made every production API route look
             # like a 32k endpoint to the Dialogue packer; its real completion

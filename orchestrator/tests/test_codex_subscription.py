@@ -60,6 +60,16 @@ class _FakeThread:
         )
 
 
+class _FakeTextInput:
+    def __init__(self, text):
+        self.text = text
+
+
+class _FakeImageInput:
+    def __init__(self, url):
+        self.url = url
+
+
 class _FakeClient:
     def __init__(self):
         self.chatgpt_account = None
@@ -101,6 +111,8 @@ class _FakeClient:
 class _FakeSDK:
     ApprovalMode = types.SimpleNamespace(deny_all="deny-all")
     Sandbox = types.SimpleNamespace(read_only="read-only")
+    TextInput = _FakeTextInput
+    ImageInput = _FakeImageInput
 
     def __init__(self, client):
         self.client = client
@@ -207,7 +219,7 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
         self.assertEqual(self.client.logout_calls, 1)
         self.assertTrue(subscription.CODEX_HOME.is_dir())
 
-    def test_discovered_models_are_text_only_runtime_routes(self):
+    def test_discovered_models_preserve_sdk_image_modality(self):
         self._connect()
         self.client.model_rows = [
             types.SimpleNamespace(
@@ -215,6 +227,12 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
                 description="A coding model", hidden=False,
                 input_modalities=[types.SimpleNamespace(value="text")],
                 is_default=True,
+            ),
+            types.SimpleNamespace(
+                id="sdk-vision", model="gpt-vision",
+                display_name="GPT Vision", description="A vision model",
+                hidden=False, input_modalities=["image", "text"],
+                output_modalities=["text"], is_default=False,
             ),
             types.SimpleNamespace(
                 id="hidden", model="hidden", display_name="Hidden",
@@ -228,21 +246,53 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
             ),
         ]
         endpoints = subscription.model_endpoints()
-        self.assertEqual([e["id"] for e in endpoints], ["codex-subscription:sdk-gpt"])
-        endpoint = endpoints[0]
-        self.assertEqual(endpoint["model_id"], "gpt-native")
-        self.assertEqual(endpoint["dispatch"], "subscription")
-        self.assertEqual(endpoint["service"], "codex-subscription")
-        self.assertFalse(endpoint["vision_capable"])
-        self.assertFalse(endpoint["capabilities"]["tool_access"])
-        self.assertNotIn("context_window", endpoint)
+        by_id = {endpoint["id"]: endpoint for endpoint in endpoints}
+        self.assertEqual(set(by_id), {
+            "codex-subscription:sdk-gpt", "codex-subscription:sdk-vision",
+        })
+        text_endpoint = by_id["codex-subscription:sdk-gpt"]
+        self.assertEqual(text_endpoint["model_id"], "gpt-native")
+        self.assertEqual(text_endpoint["dispatch"], "subscription")
+        self.assertEqual(text_endpoint["service"], "codex-subscription")
+        self.assertFalse(text_endpoint["vision_capable"])
+        self.assertEqual(text_endpoint["input_modalities"], ["text"])
+        vision_endpoint = by_id["codex-subscription:sdk-vision"]
+        self.assertTrue(vision_endpoint["vision_capable"])
+        self.assertEqual(vision_endpoint["input_modalities"], ["text", "image"])
+        self.assertEqual(vision_endpoint["output_modalities"], ["text"])
+        self.assertFalse(vision_endpoint["capabilities"]["tool_access"])
+        self.assertNotIn("context_window", vision_endpoint)
+
+    def test_modality_change_invalidates_catalog_revision_once(self):
+        self._connect()
+        row = types.SimpleNamespace(
+            id="sdk-gpt", model="gpt-native", display_name="GPT Codex",
+            hidden=False, input_modalities=["text"], is_default=True,
+        )
+        self.client.model_rows = [row]
+        subscription.model_endpoints()
+        initial_revision = subscription.status()["catalog_revision"]
+        subscription.model_endpoints()
+        self.assertEqual(
+            subscription.status()["catalog_revision"], initial_revision,
+        )
+        row.input_modalities = ["text", "image"]
+        subscription.model_endpoints()
+        self.assertEqual(
+            subscription.status()["catalog_revision"], initial_revision + 1,
+        )
+        subscription.model_endpoints()
+        self.assertEqual(
+            subscription.status()["catalog_revision"], initial_revision + 1,
+        )
 
     def test_exact_counterparts_supply_metrics_and_selector_only_penny_costs(self):
         self._connect()
         self.client.model_rows = [
             types.SimpleNamespace(
                 id="sdk-old", model="gpt-old", display_name="GPT Old",
-                hidden=False, input_modalities=["text"], is_default=False,
+                hidden=False, input_modalities=["text", "image"],
+                is_default=False,
             ),
             types.SimpleNamespace(
                 id="sdk-new", model="gpt-new", display_name="GPT New",
@@ -306,8 +356,8 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
         self.assertEqual(enriched["metrics_inherited_from"], "openai/gpt-old")
         self.assertEqual(enriched["aa_coding_index"], 80)
         self.assertEqual(enriched["context_window"], 200000)
-        self.assertFalse(enriched["vision_capable"])
-        self.assertEqual(enriched["input_modalities"], ["text"])
+        self.assertTrue(enriched["vision_capable"])
+        self.assertEqual(enriched["input_modalities"], ["text", "image"])
         self.assertEqual(enriched["output_modalities"], ["text"])
         self.assertNotIn(
             "metrics_inherited_from",
@@ -359,6 +409,54 @@ class CodexSubscriptionAdapterTests(unittest.TestCase):
         self.assertEqual(run_kwargs["sandbox"], "read-only")
         self.assertEqual(run_kwargs["model"], "gpt-native")
 
+    def test_image_inference_uses_native_text_then_canvas_image_items(self):
+        self._connect()
+        canvas = {
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
+        }
+        result = subscription.run_completion(
+            [{"role": "user", "content": "Read the current canvas."}],
+            "gpt-native",
+            images=[canvas],
+            input_modalities=["text", "image"],
+        )
+        self.assertEqual(result["text"], "subscription answer")
+        run_input, _run_kwargs = self.client.run_call
+        self.assertEqual(len(run_input), 2)
+        self.assertIsInstance(run_input[0], _FakeTextInput)
+        self.assertIn("Read the current canvas.", run_input[0].text)
+        self.assertIsInstance(run_input[1], _FakeImageInput)
+        self.assertEqual(run_input[1].url, "data:image/png;base64,aW1hZ2U=")
+        self.assertTrue(canvas["_codex_subscription_image_submitted"])
+
+        with self.assertRaises(subscription.CodexSubscriptionError) as caught:
+            subscription.run_completion(
+                [{"role": "user", "content": "Read the current canvas."}],
+                "gpt-native",
+                images=[
+                    {"mime": "image/png", "base64": "dXBsb2Fk",
+                     "source": "upload"},
+                    canvas,
+                ],
+                input_modalities=["text", "image"],
+            )
+        self.assertEqual(caught.exception.kind, "invalid_image_input")
+
+    def test_image_inference_fails_closed_without_advertised_modality(self):
+        self._connect()
+        canvas = {
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
+        }
+        with self.assertRaises(subscription.CodexSubscriptionError) as caught:
+            subscription.run_completion(
+                [{"role": "user", "content": "Read the current canvas."}],
+                "gpt-native", images=[canvas],
+            )
+        self.assertEqual(caught.exception.kind, "text_only_image_input")
+        self.assertIsNone(self.client.run_call)
+
     def test_unauthorized_turn_forces_subsequent_reconnect_status(self):
         self._connect()
         self.client.run_error = RuntimeError("unauthorized: expired secret token-value")
@@ -387,7 +485,9 @@ class SubscriptionRoutingAndDispatchTests(unittest.TestCase):
         "status": "active", "enabled": True, "provider": "openai",
         "display_name": "GPT Codex", "service": "codex-subscription",
         "model_id": "gpt-native", "dispatch": "subscription",
-        "vision_capable": False, "capabilities": {},
+        "vision_capable": True,
+        "input_modalities": ["text", "image"],
+        "output_modalities": ["text"], "capabilities": {},
     }
 
     def test_router_merges_connected_runtime_model_and_preserves_dispatch(self):
@@ -400,12 +500,24 @@ class SubscriptionRoutingAndDispatchTests(unittest.TestCase):
         self.assertEqual(v1["model"], "gpt-native")
         self.assertEqual(v1["service"], "codex-subscription")
         self.assertEqual(v1["dispatch"], "subscription")
+        self.assertTrue(v1["vision_capable"])
+        self.assertEqual(v1["input_modalities"], ["text", "image"])
+        self.assertTrue(
+            boot.vision_capable_for_endpoint(v1),
+            "v1 conversion must retain SDK vision truth",
+        )
 
     def test_boot_dispatch_records_attempt_and_sdk_token_usage(self):
         endpoint = {
             "id": self.ENDPOINT["id"], "type": "api",
             "service": "codex-subscription", "model": "gpt-native",
             "dispatch": "subscription",
+            "vision_capable": True,
+            "input_modalities": ["text", "image"],
+        }
+        canvas = {
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
         }
         with mock.patch.object(
             subscription, "run_completion",
@@ -417,16 +529,173 @@ class SubscriptionRoutingAndDispatchTests(unittest.TestCase):
             boot, "_record_physical_model_call_config"
         ) as physical, mock.patch.object(boot, "_record_model_usage") as usage:
             result = boot._call_codex_subscription(
-                [{"role": "user", "content": "hello"}], endpoint
+                [{"role": "user", "content": "hello"}], endpoint,
+                images=[canvas],
             )
         self.assertEqual(result, "answer")
         run.assert_called_once_with(
-            [{"role": "user", "content": "hello"}], "gpt-native"
+            [{"role": "user", "content": "hello"}], "gpt-native",
+            images=[canvas], input_modalities=["text", "image"],
         )
         self.assertEqual(physical.call_args.kwargs["provider_attempt"], "codex-subscription")
         self.assertEqual(usage.call_args.kwargs["prompt_tokens"], 10)
         self.assertEqual(usage.call_args.kwargs["completion_tokens"], 4)
         self.assertEqual(usage.call_args.kwargs["cache_read_tokens"], 2)
+
+    def test_text_only_canvas_rejection_is_terminal_before_dispatch(self):
+        endpoint = {
+            **self.ENDPOINT,
+            "vision_capable": False,
+            "input_modalities": ["text"],
+        }
+        images = [{
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
+        }]
+        with mock.patch.object(
+            boot, "prepare_messages_with_continuity",
+            side_effect=lambda messages, *_args, **_kwargs: (messages, {}),
+        ), mock.patch.object(
+            mlx_mutex, "track_api_call", return_value=contextlib.nullcontext(),
+        ), mock.patch.object(
+            boot, "_record_physical_model_call_config",
+        ) as physical, mock.patch.object(
+            subscription, "run_completion",
+        ) as run, mock.patch.object(
+            endpoint_health, "record_failure",
+        ) as failure, mock.patch.object(
+            endpoint_health, "record_success",
+        ) as success:
+            with self.assertRaises(boot.TerminalInputAbort) as caught:
+                boot.call_model(
+                    [{"role": "user", "content": "Read this canvas."}],
+                    endpoint, images=images,
+                )
+        self.assertIn("text-only", caught.exception.safe_message)
+        physical.assert_not_called()
+        run.assert_not_called()
+        failure.assert_not_called()
+        success.assert_not_called()
+
+    def test_dynamic_fallback_input_rejection_aborts_without_degradation(self):
+        primary = {
+            "name": "primary", "type": "api", "service": "openrouter",
+            "model": "vendor/primary", "vision_capable": True,
+        }
+        fallback = {
+            "name": "fallback", "type": "api",
+            "service": "codex-subscription", "model": "gpt-native",
+            "vision_capable": False, "input_modalities": ["text"],
+        }
+        def dispatch(_messages, endpoint, images=None, **_kwargs):
+            if endpoint is primary:
+                return "[Error primary unavailable]"
+            self.assertIs(endpoint, fallback)
+            return boot._call_codex_subscription(
+                _messages, endpoint, images=images,
+            )
+
+        with mock.patch.object(
+            boot, "_run_model_with_tools", side_effect=dispatch,
+        ) as model_call, mock.patch.object(
+            boot, "_resolve_fallback_endpoint", return_value=fallback,
+        ), mock.patch.object(
+            boot, "_record_physical_model_call_config",
+        ) as physical, mock.patch.object(
+            subscription, "run_completion",
+        ) as run:
+            with self.assertRaises(boot.TerminalInputAbort) as caught:
+                boot._call_with_supplement(
+                    [{"role": "user", "content": "Read this canvas."}],
+                    primary, "analyst", images=[{
+                        "mime": "image/png", "base64": "aW1hZ2U=",
+                        "source": "v3_canvas_preview",
+                    }],
+                    context_pkg={}, slot="depth", gear=3,
+                )
+        self.assertIn("text-only", caught.exception.safe_message)
+        self.assertEqual(model_call.call_count, 2)
+        physical.assert_not_called()
+        run.assert_not_called()
+
+    def test_vision_canvas_skips_extractor_and_notice_requires_sdk_success(self):
+        context_pkg = {
+            "image_path": "/tmp/current-preview.png",
+            "cleaned_prompt": "Read this canvas.",
+        }
+        canvas = {
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
+        }
+        with mock.patch.object(
+            boot, "route_for_image_input", wraps=boot.route_for_image_input,
+        ) as route, mock.patch(
+            "visual_extraction.extract_spatial_from_image",
+        ) as extract:
+            error = boot._prepare_image_routing(
+                context_pkg, [self.ENDPOINT], [canvas], "Read this canvas.",
+            )
+        self.assertIsNone(error)
+        self.assertTrue(context_pkg["vision_direct_pass"])
+        self.assertIs(route.call_args.kwargs["requested_model"], self.ENDPOINT)
+        extract.assert_not_called()
+        self.assertEqual(
+            boot._append_codex_canvas_image_notice("Answer", [canvas]),
+            "Answer",
+        )
+        canvas["_codex_subscription_image_submitted"] = True
+        noticed = boot._append_codex_canvas_image_notice("Answer", [canvas])
+        self.assertEqual(
+            noticed,
+            "Answer\n\n" + boot.CODEX_CANVAS_IMAGE_NOTICE,
+        )
+        self.assertEqual(noticed.count(boot.CODEX_CANVAS_IMAGE_NOTICE), 1)
+
+    def test_server_terminal_surfaces_exact_notice_after_successful_image_call(self):
+        from server import app as server_app
+        import risk_gate
+
+        endpoint = {
+            **self.ENDPOINT,
+            "name": self.ENDPOINT["id"],
+            "model": self.ENDPOINT["model_id"],
+            "context_window": 100000,
+        }
+        canvas = {
+            "name": "preview.png", "mime": "image/png",
+            "base64": "aW1hZ2U=", "source": "v3_canvas_preview",
+        }
+
+        def successful_call(_messages, _endpoint, images=None):
+            self.assertEqual(images, [canvas])
+            canvas["_codex_subscription_image_submitted"] = True
+            return "Answer"
+
+        with mock.patch.object(server_app, "load_config", return_value={}), \
+             mock.patch.object(server_app, "get_endpoint", return_value=endpoint), \
+             mock.patch.object(server_app, "_direct_system_prompt",
+                               return_value="SYSTEM"), \
+             mock.patch.object(server_app, "call_model",
+                               side_effect=successful_call), \
+             mock.patch.object(risk_gate, "now_ts", return_value=1.0), \
+             mock.patch.object(risk_gate, "assign_tier",
+                               return_value={"risk_tier": "light"}), \
+             mock.patch.object(risk_gate, "evaluate_hold",
+                               return_value=(None, None)), \
+             mock.patch.object(risk_gate, "record_route_observed"):
+            chunks = list(server_app._direct_stream_impl(
+                "Read this canvas.", [], images=[canvas],
+            ))
+        events = [json.loads(chunk[6:]) for chunk in chunks]
+        response = [
+            event["text"] for event in events
+            if event.get("type") == "response"
+        ][-1]
+        self.assertEqual(
+            response,
+            "Answer\n\n" + boot.CODEX_CANVAS_IMAGE_NOTICE,
+        )
+        self.assertEqual(response.count(boot.CODEX_CANVAS_IMAGE_NOTICE), 1)
 
     def test_boot_maps_reauth_without_api_fallback(self):
         endpoint = {

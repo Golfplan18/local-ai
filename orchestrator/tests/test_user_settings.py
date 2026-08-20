@@ -548,7 +548,9 @@ class SettingsEndpointTests(unittest.TestCase):
             "status": "active", "enabled": True, "provider": "openai",
             "display_name": "GPT Codex", "description": "Subscription model",
             "service": "codex-subscription", "model_id": "gpt-native",
-            "dispatch": "subscription", "vision_capable": False,
+            "dispatch": "subscription", "vision_capable": True,
+            "input_modalities": ["text", "image"],
+            "output_modalities": ["text"],
             "aa_intelligence_index": 88,
             "output_tokens_per_second": 110,
             "metrics_inherited_from": "openai/gpt-native",
@@ -575,7 +577,9 @@ class SettingsEndpointTests(unittest.TestCase):
             model["subscription_transport"],
             "ChatGPT via the bundled Codex runtime",
         )
-        self.assertFalse(model["vision_capable"])
+        self.assertTrue(model["vision_capable"])
+        self.assertEqual(model["input_modalities"], ["text", "image"])
+        self.assertEqual(model["output_modalities"], ["text"])
         self.assertEqual(model["pricing"]["input_per_token"], 0)
         self.assertFalse(model["is_free"])
         self.assertEqual(model["aa_intelligence_index"], 88)

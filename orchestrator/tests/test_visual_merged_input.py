@@ -399,6 +399,7 @@ class VisualCheckpointAtomicityTests(unittest.TestCase):
         def invoke(*args, **kwargs):
             captured["extra_context"] = kwargs.get("extra_context")
             captured["submission_id"] = kwargs.get("submission_id")
+            captured["images"] = kwargs.get("images")
             return json.dumps({"status": "ok"})
 
         with mock.patch.object(self.server, "_invoke_pipeline", side_effect=invoke), \
@@ -424,6 +425,10 @@ class VisualCheckpointAtomicityTests(unittest.TestCase):
         )
         self.assertEqual(
             captured["extra_context"]["image_path"], payload["canvas_preview_path"],
+        )
+        self.assertEqual(
+            [image["source"] for image in captured["images"]],
+            ["v3_canvas_preview"],
         )
 
     def test_drawing_only_submit_reaches_pipeline_with_empty_message(self) -> None:
@@ -541,6 +546,10 @@ class VisualCheckpointAtomicityTests(unittest.TestCase):
         self.assertEqual(
             [base64.b64decode(image["base64"]) for image in captured["images"]],
             [attachment, self.png],
+        )
+        self.assertEqual(
+            [image["source"] for image in captured["images"]],
+            ["upload", "v3_canvas_preview"],
         )
 
     def test_pending_marker_failure_removes_checkpoint_and_skips_model(self) -> None:
