@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import subprocess
 import sys
@@ -281,13 +280,23 @@ def test_g1_23_records_preserve_submission_and_deferral_boundaries():
         assert expected_recovery in record
 
     evidence_path = ROOT / "outputs" / "g1-23" / "closeout-evidence.md"
-    # Re-pinned 2026-08-14. The original hash was taken at G1.23 closeout
-    # (94f10f07, 2026-07-26); f14ea5b0 (2026-07-31) rewrote one command line in
-    # this evidence file when server/server.py became server/app.py, so the pin
-    # has been stale — not the evidence — ever since.
-    assert hashlib.sha256(evidence_path.read_bytes()).hexdigest() == (
-        "6a9b07ff25b47a46b96592d2a48a80086e479ab612c6b0a3752e7b0881c7d0e9"
-    )
+    evidence = evidence_path.read_text(encoding="utf-8")
+    # Assert the recorded facts, not a whole-file hash. A byte pin here has
+    # already gone stale once for a reason that had nothing to do with the
+    # evidence: the packet was pinned at closeout (94f10f07, 2026-07-26), and
+    # f14ea5b0 (2026-07-31) reworded one command line in it when
+    # server/server.py became server/app.py, so the pin failed while the
+    # evidence was still true. It was re-pinned 2026-08-14, and the next
+    # rename would break it again. What the packet has to preserve is which
+    # commits it covers, what it decided, and what it explicitly did not
+    # claim — all of which survive an editorial edit.
+    assert expected_runtime in evidence
+    assert expected_recovery in evidence
+    assert "PASS with disclosed pricing limitation" in evidence
+    assert "NEEDS FIX \u2192 FIXED" in evidence
+    assert "STATIC PASS; LIVE EVIDENCE DEFERRED" in evidence
+    assert "does not perform or claim the live Windows proof in Phase 3" in evidence
+    assert "does not authorize a release-candidate declaration" in evidence
     assert "416 passed, 14 subtests passed" in report
     assert "201 passed, 12 subtests passed" in report
     assert "creates the attempt commit before compare-and-swap ref publication" in tracker
@@ -295,13 +304,19 @@ def test_g1_23_records_preserve_submission_and_deferral_boundaries():
     assert "da4f3f7c84c311551334d7928d7ea82987b2fc7c" not in report
 
     assert "G1.22A is neither accepted nor failed-complete" in tracker
-    # Assert the recorded fact, not one exact sentence. The Registry states
-    # this twice and still does; the literal phrasing drifted when the
-    # sentence was reworded ("G1.22A records its submitted pre-channel
-    # protection work, but is explicitly user-deferred and incomplete"),
-    # which failed the suite over word order rather than over substance.
-    assert "G1.22A" in registry
-    assert "explicitly user-deferred and incomplete" in registry
+    # Assert the recorded fact, not one exact sentence. This has now drifted
+    # twice on wording alone: the sentence was first reworded to "G1.22A
+    # records its submitted pre-channel protection work, but is explicitly
+    # user-deferred and incomplete", and on 2026-08-19 again to "G1.22A is
+    # user-deferred and incomplete after the security judgment workflow
+    # froze". Both times the substance was identical and the suite failed on
+    # word order. The Registry is a living document the user edits; pin what
+    # it has to say, not how it says it.
+    g1_22a_lines = [line for line in registry.splitlines() if "G1.22A" in line]
+    assert g1_22a_lines, "the Registry must still record G1.22A"
+    assert any("deferred" in line and "incomplete" in line
+               for line in g1_22a_lines), g1_22a_lines
+    assert not any("G1.22A is accepted" in line for line in g1_22a_lines)
     assert "shell-env-assignment-execution-bypass" in tracker
     assert "shell-env-assignment-execution-bypass" in registry
     assert "Working — Execution Review Soft-Launch Check 2026-07-26.md" in registry

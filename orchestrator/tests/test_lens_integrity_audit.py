@@ -32,9 +32,19 @@ class LensIntegrityAuditTests(unittest.TestCase):
         return next(row for row in self.report["modes"] if row["mode"] == mode_id)
 
     def test_counts_exclude_index_files(self):
+        """The audit counts every mode and lens file except the INDEX pages.
+
+        Counted against the directories themselves rather than two frozen
+        numbers: the guarantee here is that INDEX.md is excluded, and a
+        literal count re-fails every time a lens is written.
+        """
         summary = self.report["summary"]
-        self.assertEqual(summary["mode_count"], 64)
-        self.assertEqual(summary["lens_count"], 240)
+        modes = sorted((REPO_ROOT / "modes").glob("*.md"))
+        lenses = sorted((REPO_ROOT / "lenses").glob("*.md"))
+        self.assertIn("INDEX.md", [path.name for path in modes])
+        self.assertIn("INDEX.md", [path.name for path in lenses])
+        self.assertEqual(summary["mode_count"], len(modes) - 1)
+        self.assertEqual(summary["lens_count"], len(lenses) - 1)
 
     def test_all_lenses_have_picker_descriptions(self):
         summary = self.report["summary"]
