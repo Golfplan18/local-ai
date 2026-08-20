@@ -1561,7 +1561,6 @@ def bind(apply_changes: bool, min_confidence: str) -> None:
 
 _ARCHIVE_USER = re.compile(r"^###\s+User input\s*$", re.M)
 _ARCHIVE_ASSISTANT = re.compile(r"^###\s+Assistant response\s*$", re.M)
-_ARCHIVE_SECTION = re.compile(r"^##\s+\S", re.M)
 _ARCHIVE_TIMESTAMP = re.compile(r"^source_timestamp:\s*(\S+)\s*$", re.M)
 _ARCHIVE_DATE = re.compile(r"^date created:\s*(\S+)\s*$", re.M)
 _FILENAME_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})")
@@ -1588,12 +1587,19 @@ def _archive_timestamp(text: str, path: Path) -> str:
 def _parse_archive_pair(text: str) -> tuple[str, str]:
     """Split one archived pair file into its user and assistant halves.
 
-    The assistant half runs to the next H2 section, not the next H3: model
-    responses routinely contain their own "### Scene Architecture" style
-    headings, and stopping at those truncates the answer to its first
-    paragraph. Either half may legitimately be empty -- about 9% of archived
-    pairs have one side blank -- and an empty half is dropped rather than
-    written as an empty message.
+    The assistant half runs to the END OF FILE. Model responses carry their
+    own headings at every level -- "## NARRATIVE RECAP", "## Bottom Line",
+    "### Scene Architecture" -- and stopping at any of them truncates the
+    answer mid-thought. Stopping at the next H2 silently cut 31% of pairs,
+    some to 7% of their length, right where a heading draws its rule across
+    the page. Nothing structural follows the assistant section: across 3,000
+    sampled files the last H2 after it takes 769 distinct values, all of them
+    content ("Bottom Line", "Conclusion", "Summary"), with no shared trailer.
+
+    Each heading appears exactly once per file, so the user half is bounded
+    by the assistant heading with no ambiguity. Either half may legitimately
+    be empty -- about 9% of archived pairs have one side blank -- and an empty
+    half is dropped rather than written as an empty message.
     """
     marker = text.find("## Exchange")
     if marker < 0:
@@ -1604,9 +1610,7 @@ def _parse_archive_pair(text: str) -> tuple[str, str]:
     if not user_match or not assistant_match:
         return "", ""
     user = body[user_match.end() : assistant_match.start()].strip()
-    rest = body[assistant_match.end() :]
-    section = _ARCHIVE_SECTION.search(rest)
-    assistant = (rest[: section.start()] if section else rest).strip()
+    assistant = body[assistant_match.end() :].strip()
     return user, assistant
 
 
@@ -1646,11 +1650,16 @@ def hydrate(apply_changes: bool, limit: int | None) -> None:
     from orchestrator import conversation_memory
 
     bindings = json.loads((OUT_DIR / "bindings.json").read_text(encoding="utf-8"))
-    print(f"locating archive files for {len(bindings)} conversations ...", flush=True)
+    # Every archived conversation, not only the ones that earned a project.
+    # A conversation under no project is Commons, not nonexistent, and
+    # without an envelope it cannot be opened or found at all.
+    targets = sorted(load_segments())
+    print(f"locating archive files for {len(targets)} conversations ...", flush=True)
     locations = _archive_locations()
 
     stats = {
         "conversations": 0,
+        "envelopes_created": 0,
         "already_populated": 0,
         "no_archive_files": 0,
         "missing_files": 0,
@@ -1660,10 +1669,18 @@ def hydrate(apply_changes: bool, limit: int | None) -> None:
         "failed": 0,
     }
     empty_after: list[str] = []
-    for count, cid in enumerate(sorted(bindings)):
+    for count, cid in enumerate(targets):
         if limit and count >= limit:
             break
         stats["conversations"] += 1
+        if cid not in bindings and conversation_memory.load_conversation_json(cid) is None:
+            created = conversation_memory.ensure_conversation_envelope(
+                cid, project_ids=[], display_name="", sessions_root=conversation_memory._DEFAULT_SESSIONS_ROOT
+            )
+            if created is None:
+                stats["failed"] += 1
+                continue
+            stats["envelopes_created"] += 1
         pairs = locations.get(cid) or []
         if not pairs:
             stats["no_archive_files"] += 1
@@ -1721,6 +1738,11 @@ def hydrate(apply_changes: bool, limit: int | None) -> None:
             # waiting for attention.
             if _latest and not data.get("last_read_at"):
                 data["last_read_at"] = _latest
+            if not (data.get("display_name") or "").strip():
+                for entry in _messages:
+                    if entry.get("role") == "user" and entry.get("content"):
+                        data["display_name"] = " ".join(entry["content"].split())[:120]
+                        break
 
         try:
             written = conversation_memory._mutate_conversation_envelope(
