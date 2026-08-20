@@ -74,10 +74,6 @@ _CREDENTIAL_WORDS = re.compile(
     r"(?:^|[_:\-])(credential|secret|api[_-]?key|token|password)(?:$|[_:\-])",
     re.IGNORECASE,
 )
-_OUTBOUND_WORDS = re.compile(
-    r"(?:^|[_:\-])(publish|push|send|upload|deploy|post)(?:$|[_:\-])",
-    re.IGNORECASE,
-)
 _SELF_MODIFY_WORDS = re.compile(
     r"(?:^|[_:\-])(self[_-]?modif(?:y|ication)?|modify[_-]?runtime|rewrite[_-]?boot)(?:$|[_:\-])",
     re.IGNORECASE,
@@ -729,7 +725,31 @@ def classify_action(
     credential_action = bool(_CREDENTIAL_WORDS.search(normalized_action))
     credential = credential_action or sensitivity == "secret"
     self_modify = bool(_SELF_MODIFY_WORDS.search(normalized_action))
-    outbound_write = mutability == "external_write" or (egress == "external" and bool(_OUTBOUND_WORDS.search(normalized_action)))
+    # An effect that leaves this machine AND changes something outside it is
+    # an outbound write, whatever it is named. This deliberately does not
+    # consult the action name: the previous rule matched a nine-word list
+    # (publish|push|send|upload|deploy|post), so `post_issue` reached review
+    # while `create_issue` — identical egress, identical mutability, identical
+    # real-world effect — did not. Naming is chosen by whoever writes the tool
+    # and cannot decide whether the user is asked.
+    #
+    # Two carve-outs keep this from gating things that are not outbound acts,
+    # because a gate that fires constantly is a gate that gets turned off:
+    #   - Read-only external access (web_search, web_fetch, spawn_subagent) is
+    #     looking, not acting.
+    #   - An external interaction whose whole recorded effect is a local file
+    #     write is a download: `curl -o local.json http://u` brings data in.
+    #     Protected-config destinations are already refused by the separate
+    #     path check, and every genuinely outbound shell form declares itself
+    #     without help from this rule — `curl -T`, `curl -X POST -d`,
+    #     `git push` resolve to external_write, `scp`/`rsync` to irreversible.
+    # A caller that reports no selector at all gets no carve-out: it fails
+    # closed below on missing-exact-scope.
+    local_write_only = bool(exact_selectors) and all(
+        selector.startswith("path:") for selector in exact_selectors
+    )
+    outbound_write = mutability == "external_write" or (
+        egress == "external" and mutability != "read" and not local_write_only)
 
     protected_effect = (
         destructive or credential or self_modify or outbound_write
