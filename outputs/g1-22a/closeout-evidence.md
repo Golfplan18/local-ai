@@ -92,7 +92,7 @@ The focused suite proves:
 4. one exact reviewed effect succeeds once with authenticated pre-state, write-ahead record, active execution scope, post-state, and one terminal record;
 5. forged/unsigned/MAC-altered queue and approval state, direct token minting, changed arguments, changed selectors or pre-state, cross-Dialogue/Principal/scope use, replay, fabricated execution starts, and fabricated state identities fail without mutation;
 6. registered-manifest mutation, registration-time drift, and legacy unbound pointers remain unavailable until reviewed re-registration;
-7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational; **— NOT retired; re-pointed 2026-08-19 and currently unproven. See "Claim #7 is live at a different boundary" below.**
+7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational; **— re-pointed to `classify_action` and PROVEN 2026-08-19 at `c44c783089bd809e54ea98bdf30e3ee062bb008c`. See below.**
 8. record substitution, adjacent-digest rewriting, corrupt approval storage, audit-write failure, and concurrent terminal completion fail closed;
 9. direct credential store/delete cannot bypass the active receipt; failed deletion propagates and cannot report success; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
 10. exact, equivalent, pattern, recursive, symlink, and hardlink forms of approval-authority access are refused before file or shell execution, including a recursive root whose tree contains a later authority alias;
@@ -430,10 +430,35 @@ client — at which point tool naming alone decides whether an external effect
 is reviewed.
 
 **Disposition:** claim #7 stays in the matrix, re-pointed from
-`classify_governed_action` to `classify_action`'s outbound classification, and
-is **unproven** until a replacement test exists. It must not be marked passing
-on the strength of the deleted test, and it must not be retired on the strength
-of the deleted API.
+`classify_governed_action` to `classify_action`'s outbound classification.
+
+**Corrected and proven 2026-08-19 at `c44c783089bd809e54ea98bdf30e3ee062bb008c`.**
+The name test is gone. An effect is an outbound write when it leaves this
+machine and changes something outside it, whatever it is called; `_OUTBOUND_WORDS`
+had exactly one use and is deleted. Two carve-outs keep the gate from firing on
+things that are not outbound acts, because a gate that fires constantly is a
+gate that gets turned off: read-only external access (`web_search`,
+`web_fetch`, `spawn_subagent`) is looking rather than acting, and an external
+interaction whose whole recorded effect is a local file write is a download
+(`curl -o local.json http://u`) whose protected-config destinations are already
+refused by the separate path check. A caller reporting no selector gets no
+carve-out and fails closed on `missing-exact-scope`, unchanged.
+
+The nine-word list was contributing nothing on the shell surface in any case —
+every genuinely outbound shell form already declares itself: `curl -T`,
+`curl -X POST -d`, and `git push` resolve to `external_write`; `scp` and
+`rsync` to `irreversible`. The hole it left was on the MCP surface, where a
+server declares its own axes and can under-claim `reversible_write` for a tool
+that acts remotely.
+
+Proofs: `test_outbound_effects_require_review_independent_of_name` (neutral and
+formerly-privileged names classify identically),
+`test_read_only_external_access_is_not_an_outbound_write`, and
+`test_download_to_a_local_path_is_not_an_outbound_write`, all in
+`TestPolicyFloor`. Measured prompt impact is nil — classification outcomes are
+byte-identical before and after across all 13 registered tools and all 3
+configured MCP servers. Full orchestrator suite 5837 passed / 0 failed at
+baseline, 5840 passed / 0 failed after.
 
 ## Held boundaries and limitations
 
