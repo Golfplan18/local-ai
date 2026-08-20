@@ -209,6 +209,36 @@ class UserSettingsModuleTests(unittest.TestCase):
         with self.assertRaises(self._mod.SettingsError):
             self._mod.set_api_key("anthropic", "")
 
+    def test_every_provider_row_states_how_its_key_is_used(self):
+        """Set/Not set alone could not answer "is this billing me per call?"."""
+        rows = {r["provider"]: r for r in self._mod.list_api_key_status()}
+        for provider, row in rows.items():
+            self.assertTrue(row.get("transport"),
+                            f"{provider} row states no transport")
+            self.assertIn("metered", row["transport"],
+                          f"{provider} transport omits the billing model")
+        # A direct-dispatch vendor bills per token on the user's own key.
+        self.assertIn("Direct calls", rows["minimax"]["transport"])
+        # A provider with no direct dispatch rides OpenRouter.
+        self.assertIn("OpenRouter", rows["openrouter"]["transport"])
+        # Only the two providers with a subscription route can carry one, and
+        # the key is None rather than absent so the panel can branch on it.
+        for provider, row in rows.items():
+            self.assertIn("subscription_transport", row)
+            if provider not in ("anthropic", "openai"):
+                self.assertIsNone(row["subscription_transport"],
+                                  f"{provider} claims a subscription route")
+
+    def test_minimax_claims_no_key_format(self):
+        """MiniMax issues both eyJ… and sk-… keys.
+
+        The panel warns when a pasted key does not match key_prefix, so
+        naming either format told holders of the other that their working
+        key was malformed.
+        """
+        rows = {r["provider"]: r for r in self._mod.list_api_key_status()}
+        self.assertIsNone(rows["minimax"]["key_prefix"])
+
     def test_list_api_key_status_returns_all_providers(self):
         self._mod._set_api_key_storage("anthropic", "x")
         rows = self._mod.list_api_key_status()

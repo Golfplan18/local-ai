@@ -204,7 +204,10 @@ PROVIDERS: list[dict] = [
         "keyring_username": "minimax-api-key", "env_var": "MINIMAX_API_KEY",
         "signup_url": "https://platform.minimax.io/login",
         "console_url": "https://platform.minimax.io/user-center/basic-information/interface-key",
-        "key_prefix": "eyJ", "essential": False, "auto_activate": True,
+        # MiniMax has issued both a JWT key ("eyJ…") and, more recently, an
+        # opaque "sk-…" key. Claiming either one warns the holder of the other
+        # that their working key is malformed, so state no format at all.
+        "key_prefix": None, "essential": False, "auto_activate": True,
         "dispatch": "openai_compatible", "native_service": None,
         "base_url": "https://api.minimax.io/v1", "or_prefix": "minimax",
         "verifiable": True, "note": "International endpoint, OpenAI-compatible.",
@@ -405,6 +408,23 @@ def validate_key_format(provider_id: str, value: str) -> tuple[bool, str]:
     return True, "ok"
 
 
+def _transport_label(p: dict) -> str:
+    """Plain-English statement of how this provider's key is actually used.
+
+    The panel showed only set/unset, so a key could be present, valid and
+    metered while the user believed it was riding a subscription. This is
+    the metered half of that answer; ``list_api_key_status`` adds the
+    subscription half for the providers that have one.
+    """
+    dispatch = p.get("dispatch")
+    if dispatch == "native":
+        return "Direct calls to the vendor's own API — metered, billed per token"
+    if dispatch:
+        return ("Direct calls to the vendor's OpenAI-compatible API "
+                "— metered, billed per token")
+    return "Routed through OpenRouter — metered, billed per token"
+
+
 def ui_rows() -> list[dict]:
     """Per-provider rows for the settings payload (no secrets, no presence).
 
@@ -420,6 +440,7 @@ def ui_rows() -> list[dict]:
             "signup_url": p["signup_url"],
             "console_url": p["console_url"],
             "key_prefix": p.get("key_prefix"),
+            "transport": _transport_label(p),
             "essential": p.get("essential", False),
             "auto_activate": p.get("auto_activate", False),
             "verifiable": p.get("verifiable", False),

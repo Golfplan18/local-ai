@@ -380,6 +380,41 @@ def api_key_present(provider: str) -> bool:
         return False
 
 
+_SUBSCRIPTION_TRANSPORTS = {
+    "anthropic": "Claude subscription via the local Claude Code CLI",
+    "openai": "ChatGPT subscription via the bundled Codex runtime",
+}
+
+
+def _subscription_transport(provider_id: str) -> str | None:
+    """The subscription transport this provider also runs on, if any.
+
+    Only two providers have one, and only OpenAI's has to be discovered at
+    runtime — ``is_configured`` is a directory check, not a network call, so
+    this stays cheap enough for a settings render. Returns None when the
+    provider has no subscription route or it was never connected, which is
+    the honest answer: the key is doing all the work.
+    """
+    label = _SUBSCRIPTION_TRANSPORTS.get(provider_id)
+    if not label:
+        return None
+    if provider_id == "openai":
+        try:
+            try:
+                from . import codex_subscription
+            except ImportError:
+                import codex_subscription  # type: ignore
+            if not codex_subscription.is_configured():
+                return None
+        except Exception:
+            return None
+    elif provider_id == "anthropic":
+        import shutil
+        if not shutil.which("claude"):
+            return None
+    return label
+
+
 def list_api_key_status() -> list[dict]:
     """Return enriched per-provider rows for the settings panel.
 
@@ -393,6 +428,7 @@ def list_api_key_status() -> list[dict]:
     for row in _registry.ui_rows():
         row = dict(row)
         row["present"] = api_key_present(row["provider"])
+        row["subscription_transport"] = _subscription_transport(row["provider"])
         rows.append(row)
     return rows
 
