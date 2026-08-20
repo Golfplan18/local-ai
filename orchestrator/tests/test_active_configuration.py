@@ -474,15 +474,41 @@ class TestFreeLocalOverlay(_Fixture):
         self.assertEqual(gear3["breadth"]["primary"], "fast-b")
         self.assertTrue(config["diversity_override"])
 
-    def test_1m_and_vision_toggles_leave_incompatible_locals_out(self):
+    def test_vision_toggle_and_unusable_context_leave_locals_out(self):
+        config = self._cloud_free()
+        locals_ = [
+            self._local("text-big", 100, 40, "a", vision_capable="false"),
+            self._local("nan-big", 90, 35, "d", context_window=float("nan")),
+            self._local("eligible-small", 8, 5, "c"),
+        ]
+
+        self.module._apply_free_local_overlay(
+            config, local_models=locals_, system_ram_gb=128,
+            toggles={"vision_only": True},
+        )
+
+        # Vision-only rejects text-big; a non-finite context window rejects
+        # nan-big. Both big slots therefore stay on the cloud bake.
+        self.assertEqual(
+            config["cells"]["analysis"]["gear4"]["depth"]["primary"],
+            "cloud-big-1",
+        )
+        self.assertEqual(
+            config["cells"]["utility"]["step1_cleanup"]["primary"],
+            "eligible-small",
+        )
+
+    def test_1m_context_floor_does_not_exclude_locals(self):
+        """The 1M floor is a cloud control; it must not void the overlay.
+
+        No local model ships a ~1M window, so applying the floor here once
+        meant "never overlay a local" for every user with the toggle on —
+        while the cloud bake it overlays kept 128k picks.
+        """
         config = self._cloud_free()
         locals_ = [
             self._local("short-big", 100, 40, "a", context_window=899_999),
-            self._local("text-fast", 20, 10, "b", context_window=1_000_000,
-                        vision_capable="false"),
-            self._local("nan-big", 90, 35, "d", context_window=float("nan")),
-            self._local("eligible-small", 8, 5, "c",
-                        context_window=1_000_000),
+            self._local("short-small", 8, 5, "c", context_window=131_072),
         ]
 
         self.module._apply_free_local_overlay(
@@ -492,15 +518,11 @@ class TestFreeLocalOverlay(_Fixture):
 
         self.assertEqual(
             config["cells"]["analysis"]["gear4"]["depth"]["primary"],
-            "cloud-big-1",
-        )
-        self.assertEqual(
-            config["cells"]["analysis"]["gear3"]["depth"]["primary"],
-            "cloud-fast-1",
+            "short-big",
         )
         self.assertEqual(
             config["cells"]["utility"]["step1_cleanup"]["primary"],
-            "eligible-small",
+            "short-small",
         )
 
     def test_stale_disabled_and_inactive_models_are_excluded(self):

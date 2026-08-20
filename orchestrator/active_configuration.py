@@ -286,7 +286,6 @@ def _apply_free_local_overlay(
     installed = _installed_local_models(local_models)
     effective_toggles = toggles or {}
     vision_only = bool(effective_toggles.get("vision_only"))
-    min_context_1m = bool(effective_toggles.get("min_context_1m"))
     adversarial = bool(effective_toggles.get("adversarial_diversity"))
 
     try:
@@ -320,8 +319,15 @@ def _apply_free_local_overlay(
             continue
         if vision_only and model.get("vision_capable") is not True:
             continue
-        if min_context_1m and context_window < 900_000:
-            continue
+        # The 1M-context floor deliberately does NOT apply to installed
+        # locals. No local model ships a ~1M window — the largest here is
+        # 262k — so honouring the floor on this side is equivalent to "never
+        # overlay a local", which silently voids this whole function whenever
+        # the toggle is on. It is also enforced on locals only: the cloud
+        # bake this overlays does not re-select on the floor, so a Free
+        # preset routinely carries 128k cloud picks while a 262k local was
+        # rejected for being too short. The floor stays a cloud-selectivity
+        # control; RAM, vision and family diversity remain the local gates.
         if parameters_b > 50:
             category = "big"
         elif parameters_b >= 12:
