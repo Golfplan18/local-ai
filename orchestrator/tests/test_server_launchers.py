@@ -122,13 +122,6 @@ def _run_with_fake_python(tmp_path: Path, *args: str, overrides: dict[str, str] 
 
 
 
-_PRIMARY_CHECKOUT = Path(os.path.expanduser("~/ora")).resolve()
-_PRIMARY_CHECKOUT_SKIP_REASON = (
-    "launcher integration test requires the primary ~/ora checkout"
-    " (not a detached worktree)"
-)
-
-
 class TestServerLaunchers(unittest.TestCase):
     def setUp(self):
         # The launchers deliberately resolve symlinks (``pwd -P``), and on
@@ -139,7 +132,6 @@ class TestServerLaunchers(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp_path, ignore_errors=True)
 
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_foreground_launcher_exports_every_runtime_flag(self):
         completed, workspace, argv, child_env = _run_with_fake_python(
             self.tmp_path,
@@ -170,7 +162,6 @@ class TestServerLaunchers(unittest.TestCase):
         assert completed.returncode == 0, completed.stderr
         assert child_env["PORT"] == "6200"
 
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_no_oversight_is_stripped_without_losing_other_arguments(self):
         completed, workspace, argv, _ = _run_with_fake_python(
             self.tmp_path, "--scheduler", "--no-oversight", "--future-option"
@@ -183,7 +174,6 @@ class TestServerLaunchers(unittest.TestCase):
             "--future-option",
         ]
 
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_foreground_launcher_honors_activated_virtualenv_before_path_fallback(self):
         workspace = self.tmp_path / "ora root"
         (workspace / "server").mkdir(parents=True)
@@ -396,7 +386,6 @@ class TestServerLaunchers(unittest.TestCase):
         assert "cannot be applied while Ora is managed by launchd" in completed.stderr
         assert "Refusing to start on another port" in completed.stderr
 
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_interactive_start_blocks_legacy_server_from_exact_checkout(self):
         home = self.tmp_path / "home"
         workspace = home / "ora root"
@@ -664,7 +653,6 @@ class TestServerLaunchers(unittest.TestCase):
         assert child_env["ORA_HOME"] == str(real_home.resolve())
         assert argv[0] == str(real_home.resolve() / "server" / "app.py")
 
-    @unittest.skipUnless(ROOT == _PRIMARY_CHECKOUT, _PRIMARY_CHECKOUT_SKIP_REASON)
     def test_service_stop_kills_only_owned_python_server_not_path_decoys(self):
         home = self.tmp_path / "home"
         workspace = home / "ora root"
