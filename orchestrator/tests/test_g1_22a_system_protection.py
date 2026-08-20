@@ -75,6 +75,73 @@ class SystemProtectionBase(unittest.TestCase):
 
 
 class TestPolicyFloor(SystemProtectionBase):
+    def test_outbound_effects_require_review_independent_of_name(self):
+        """Adversarial proof #7, re-pointed at the surviving classifier.
+
+        The original proof tested this through ``classify_governed_action``,
+        removed with the governed Process kernel by 519294b1. The threat it
+        named outlived the API: until 2026-08-19 an external effect reached
+        review only if its name matched one of nine words, so ``post_issue``
+        was reviewed and ``create_issue`` was allowed on identical axes.
+        Naming is chosen by whoever writes the tool and must not decide
+        whether the user is asked.
+        """
+        neutral = (
+            "sync_record", "create_issue", "reconcile_remote_record",
+            "mcp_tracker_create_issue", "fetch_and_apply", "reconcile",
+        )
+        for action in neutral:
+            with self.subTest(action=action):
+                decision = protection.classify_action(
+                    action, selectors=["artifact:approved"],
+                    mutability="reversible_write", sensitivity="public",
+                    egress="external",
+                )
+                self.assertEqual(decision.outcome, "review", action)
+                self.assertEqual(decision.policy_code, "review-required", action)
+        # The formerly-privileged names must behave identically — the point is
+        # that naming carries no weight either way, not that it inverted.
+        for action in ("post_issue", "push_record", "publish_record"):
+            with self.subTest(action=action):
+                self.assertEqual(protection.classify_action(
+                    action, selectors=["artifact:approved"],
+                    mutability="reversible_write", sensitivity="public",
+                    egress="external",
+                ).outcome, "review", action)
+
+    def test_read_only_external_access_is_not_an_outbound_write(self):
+        """Closing the naming hole must not start prompting on web reads.
+
+        ``web_search``/``web_fetch``/``spawn_subagent`` declare external
+        egress with read mutability. Reaching the network to look is not
+        reaching it to act; if these gated, the gate would be turned off.
+        """
+        for action in ("web_search", "web_fetch", "spawn_subagent"):
+            with self.subTest(action=action):
+                decision = protection.classify_action(
+                    action, selectors=[], mutability="read",
+                    sensitivity="public", egress="external",
+                )
+                self.assertEqual(decision.outcome, "allow", action)
+
+    def test_download_to_a_local_path_is_not_an_outbound_write(self):
+        """A download brings data in; it does not act on the outside.
+
+        `curl -o local.json http://u` is external egress with a purely local
+        write target. Gating it would fire this gate on ordinary work without
+        protecting anything outbound — protected-config destinations are
+        refused by the separate path check, and every genuinely outbound
+        shell form (`curl -T`, `curl -X POST -d`, `git push`, `scp`, `rsync`)
+        declares external_write or irreversible and is caught without help
+        from the outbound rule.
+        """
+        decision = protection.classify_action(
+            "bash:curl", selectors=["path:/tmp/workspace/download.json"],
+            mutability="reversible_write", sensitivity="private",
+            egress="external",
+        )
+        self.assertEqual(decision.outcome, "allow")
+
     def test_dedicated_path_builders_reject_traversal_before_review(self):
         from orchestrator import active_configuration, project_registry
 
