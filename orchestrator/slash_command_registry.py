@@ -272,6 +272,21 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         keyboard_viable="Yes",
     ),
     SlashCommandSpec(
+        command="/dismiss",
+        category="Runtime",
+        where="server",
+        summary="Clear a review-queue card that can no longer be resolved.",
+        usage="/dismiss <index>",
+        mouse_path="Sidebar > Oversight > Review queue > card > Dismiss",
+        keyboard_viable="Yes",
+        notes=(
+            "For execution-gate cards whose approval request is already "
+            "spent: both Approve and Deny dead-end on those, so without this "
+            "the queue could only grow. A card that can still be resolved is "
+            "refused — dismissing is not a third verdict and grants nothing."
+        ),
+    ),
+    SlashCommandSpec(
         command="/trigger",
         aliases=("/triggers",),
         category="Runtime",

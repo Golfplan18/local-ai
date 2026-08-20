@@ -596,6 +596,13 @@ body.ora-auto-hide-controls .sidebar-collapsed-dashboard:not(:hover):not(:focus-
   border-color: var(--interactive-accent);
 }
 
+/* A card that has lost its authority — explanation, not an error. */
+.oversight-spent-note {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
 /* ── Scheduled (Triggers) ────────────────────────────────────────────── */
 
 .oversight-empty,

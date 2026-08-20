@@ -471,7 +471,19 @@ def _maybe_commit_gate_entry(queue_id: str, conversation_id: str,
         "[Task-gate Principal mismatch",
     )):
         return message
-    remove_by_id(entry.id)
+    # The authority is already spent by this point, so a failed removal is
+    # not recoverable by retrying — the card is now permanently unresolvable
+    # and the only honest thing to do is say so. Reporting "Approved." while
+    # the card silently survived is what left eleven dead entries in the live
+    # queue on 2026-08-11: removal is skipped in a Stealth context and
+    # returns False, and this call site discarded that.
+    if not remove_by_id(entry.id):
+        message += (
+            "\n\n⚠️ The decision was recorded, but this card could not be "
+            "removed from the review queue, so it will still be listed. It "
+            "can no longer be approved or denied — use Dismiss on the card "
+            "to clear it."
+        )
     _mark_conversation_resolved(conversation_id)
     return message
 

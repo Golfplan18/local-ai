@@ -264,6 +264,90 @@ def link_discussion(entry_id: str, conversation_id: str) -> bool:
     })
 
 
+GATE_KINDS = ("execution_gate", "task_gate")
+
+
+def gate_entry_is_spent(entry: "PausedEntry",
+                        principal_id: str = "principal:user") -> bool:
+    """Whether this gate card has lost the authority it was queued with.
+
+    A spent card cannot approve and cannot deny: both buttons dead-end at
+    "[Unauthenticated …]" because the runtime-issued approval request behind
+    it is gone or already consumed. It grants nothing, refuses nothing, and
+    only occupies the review queue.
+    """
+    if entry.kind not in GATE_KINDS:
+        return False
+    try:
+        import tool_events
+    except ImportError:  # pragma: no cover - package import context
+        from orchestrator import tool_events
+    record = {"id": entry.id, "kind": entry.kind, "event": entry.event,
+              "conversation_id": (entry.event or {}).get("conversation_id")}
+    return not tool_events.has_live_approval_request(
+        record, principal_id=principal_id)
+
+
+def dismiss_spent_gate_entry(
+    entry_id: str, principal_id: str = "principal:user",
+) -> tuple[bool, str]:
+    """Clear a gate card that can no longer be approved or denied.
+
+    This is deliberately NOT a third verdict. It refuses any card whose
+    approval request is still live, so it cannot be used to skip a review —
+    a live gate must still be approved or denied. It exists because without
+    it the review queue can only ever grow: before this, a card whose
+    authority was spent without the card being removed (a Stealth-context
+    removal skip, a crash between consuming and removing) was unresolvable
+    forever, and eleven of them sat in the live queue from 2026-08-11 until
+    they were archived by hand.
+
+    Returns ``(ok, message)``.
+    """
+    entry = find_paused_by_id(entry_id)
+    if entry is None:
+        return False, "No review-queue entry with that id."
+    if entry.kind not in GATE_KINDS:
+        return False, (
+            "Dismiss applies only to execution-gate cards. This entry is a "
+            "redefinition or escalation — resolve it with Approve, Deny, or "
+            "Discuss."
+        )
+    if not gate_entry_is_spent(entry, principal_id):
+        return False, (
+            "This card can still be approved or denied, so it will not be "
+            "dismissed. Dismiss is only for cards whose approval request is "
+            "already spent."
+        )
+    if not remove_by_id(entry_id):
+        return False, (
+            "The card could not be removed from the queue file. If this is "
+            "an Off Record Dialogue, queue removal is suppressed there — "
+            "retry from a Standard or Private Dialogue."
+        )
+    # A dismissal is a real decision about a real gate record, so it leaves a
+    # trace like every other gate decision does.
+    try:
+        try:
+            import tool_events
+        except ImportError:  # pragma: no cover - package import context
+            from orchestrator import tool_events
+        event = entry.event or {}
+        tool_events.record({
+            "event": "gate", "action": event.get("action", "unknown"),
+            "category": "execute", "mutability": "irreversible",
+            "sensitivity": "private", "egress": "none",
+            "gate": {
+                "decision": "dismissed",
+                "why": ("queue card dismissed: its approval request was "
+                        "already spent, so it could neither approve nor deny"),
+            },
+        })
+    except Exception as exc:  # never let the audit write block the cleanup
+        print(f"[oversight_queue] dismissal audit failed: {exc}", flush=True)
+    return True, "Dismissed. The card could no longer approve or deny anything."
+
+
 def remove_by_id(entry_id: str) -> bool:
     """Remove an entry by id. Used after successful resolution."""
     try:

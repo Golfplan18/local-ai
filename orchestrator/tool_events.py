@@ -1091,37 +1091,67 @@ def _discard_pending_approval(nonce: str) -> None:
     _with_approvals_lock(_do)
 
 
+def _pending_approval_matcher(record_dict: dict, *, principal_id: str):
+    """The exact identity a queue record's pending approval request must have.
+
+    Extracted so the read-only check below cannot drift from the consuming
+    one. A second hand-copied predicate that agreed today and disagreed after
+    one field was added would be worse than having no check at all: it would
+    offer to dismiss entries that are still live.
+    """
+    event = record_dict.get("event") or {}
+    event_principal = event.get("principal_id")
+    expected = {
+        "nonce": event.get("approval_nonce"),
+        "queue_id": record_dict.get("id") or record_dict.get("queue_id"),
+        "action": event.get("action"),
+        "args_hash": event.get("args_hash"),
+        "conversation_id": event.get("conversation_id"),
+        "review_request_digest": event.get("review_request_digest"),
+        "review_selectors": event.get("review_selectors") or [],
+        "queue_authority_digest": _queue_authority_digest(record_dict),
+    }
+
+    def matches(item: dict) -> bool:
+        if item.get("consumed"):
+            return False
+        if not (item.get("principal_id") == principal_id == event_principal):
+            return False
+        return all(item.get(key) == value for key, value in expected.items())
+
+    return matches
+
+
+def has_live_approval_request(record_dict: dict, *,
+                              principal_id: str = "principal:user") -> bool:
+    """Whether this queue record can still be approved or denied.
+
+    Read-only: it never consumes. False means every button on the card would
+    dead-end at "[Unauthenticated …]", because the request that authorized
+    the card is gone or already spent — the card can no longer grant or
+    refuse anything and is only occupying the review queue.
+    """
+    matches = _pending_approval_matcher(record_dict, principal_id=principal_id)
+    found = [False]
+
+    def _do():
+        data = _load_approvals_locked()
+        found[0] = any(matches(item) for item in data.get("pending", []))
+
+    _with_approvals_lock(_do)
+    return found[0]
+
+
 def _consume_pending_approval(
     record_dict: dict, *, principal_id: str,
 ) -> dict | None:
-    event = record_dict.get("event") or {}
-    nonce = event.get("approval_nonce")
-    queue_id = record_dict.get("id") or record_dict.get("queue_id")
-    action = event.get("action")
-    args_hash = event.get("args_hash")
-    conversation_id = event.get("conversation_id")
-    event_principal = event.get("principal_id")
-    review_request_digest = event.get("review_request_digest")
-    review_selectors = event.get("review_selectors") or []
-    queue_authority_digest = _queue_authority_digest(record_dict)
+    matches = _pending_approval_matcher(record_dict, principal_id=principal_id)
     consumed = [None]
 
     def _do():
         data = _load_approvals_locked()
         for item in data.get("pending", []):
-            if item.get("consumed"):
-                continue
-            if (
-                item.get("nonce") == nonce
-                and item.get("queue_id") == queue_id
-                and item.get("action") == action
-                and item.get("args_hash") == args_hash
-                and item.get("conversation_id") == conversation_id
-                and item.get("principal_id") == principal_id == event_principal
-                and item.get("review_request_digest") == review_request_digest
-                and item.get("review_selectors") == review_selectors
-                and item.get("queue_authority_digest") == queue_authority_digest
-            ):
+            if matches(item):
                 item["consumed"] = True
                 item["consumed_at"] = _now_iso()
                 consumed[0] = dict(item)

@@ -151,6 +151,7 @@ def run_runtime_command(
         "/queue": _cmd_queue,
         "/approve": _cmd_approve,
         "/deny": _cmd_deny,
+        "/dismiss": _cmd_dismiss,
         "/cleaning": _cmd_cleaning,
         "/news": _cmd_news,
         "/maintenance": _cmd_maintenance,
@@ -779,6 +780,42 @@ def _cmd_queue(args: list[str]) -> str:
         "archive/repoint handler; other request types require their own handler."
     )
     return "\n".join(lines)
+
+
+def _cmd_dismiss(args: list[str]) -> str:
+    """`/dismiss <index>` — clear a gate card that can no longer be resolved.
+
+    The keyboard escape hatch. The sidebar offers Dismiss too, but the exact
+    situation this exists for is a review queue that has become unusable, and
+    a fix reachable only through the surface that is stuck is not a fix.
+    """
+    if not args:
+        return ("Usage: /dismiss <index>  — see `/queue` for indices.\n"
+                "Dismiss clears an execution-gate card whose approval request "
+                "is already spent, so it can neither approve nor deny. A card "
+                "that can still be resolved is refused.")
+    try:
+        idx = int(args[0])
+    except ValueError:
+        return f"[/dismiss: `{args[0]}` is not a queue index.]"
+    try:
+        import json as _json
+        from oversight_actions import human_queue_path
+        from oversight_queue import dismiss_spent_gate_entry
+        queue_path = human_queue_path()
+        if not os.path.isfile(queue_path):
+            return "[/dismiss: the review queue is empty.]"
+        with open(queue_path) as f:
+            lines = [l for l in f if l.strip()]
+        if idx < 0 or idx >= len(lines):
+            return f"[/dismiss: no queue entry at index {idx}.]"
+        entry_id = _json.loads(lines[idx]).get("id")
+        if not entry_id:
+            return "[/dismiss: that queue entry carries no id.]"
+        ok, message = dismiss_spent_gate_entry(entry_id)
+        return message if ok else f"[/dismiss: {message}]"
+    except Exception as exc:
+        return f"[/dismiss: {exc}]"
 
 
 def _maybe_resolve_gate_entry_at(
