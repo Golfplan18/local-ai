@@ -32,6 +32,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -517,6 +518,7 @@ def refresh(
     models_dir: Path = DEFAULT_MODELS_DIR,
     routing_config: Path | None = DEFAULT_ROUTING_CONFIG,
     write: bool = False,
+    allow_shrink: bool = False,
 ) -> dict:
     """Run discovery and optionally rewrite the local_models section.
 
@@ -528,14 +530,31 @@ def refresh(
             "added": [ids present in discovered, not previous],
             "removed": [ids present in previous, not discovered],
             "wrote": bool,
+            "refused": str | None,   # why a requested write did not happen
         }
 
     When ``write=True``:
     - rewrites ``models_json`` with the new ``local_models`` array
     - preserves the ``commercial_models`` array and ALL top-level keys
-    - a successfully read empty directory writes an empty array
     - a missing or unreadable directory raises LocalModelDiscoveryError before
       any write, preserving the last-known-good inventory
+    - **a scan that finds FEWER models than the file already records refuses
+      the write** unless ``allow_shrink=True``, and says so loudly
+
+    That last rule exists because the missing-directory guard above only
+    covers a directory that cannot be read at all. A directory that reads
+    successfully but is not the real model store — a fresh git worktree whose
+    ``models/`` holds one unrelated entry, a half-mounted volume, a partially
+    synced machine — passes every existing check and silently replaces a good
+    inventory with a truncated one. Because ``models.json`` is machine-local
+    and gitignored there is no diff and no alarm; the damage surfaces much
+    later as unrelated routing failures ("required model input exceeds
+    endpoint-safe context capacity"), which is a very long way from the cause.
+
+    Growing or holding steady is always safe to write. Only shrinking needs a
+    human, because only shrinking can destroy a working configuration.
+    Deliberately removing a model is exactly the case ``allow_shrink`` (and
+    the CLI's ``--allow-shrink``) exists for.
     """
     discovered = reconcile_static_local_endpoints(
         scan_models_dir(models_dir),
@@ -562,9 +581,23 @@ def refresh(
         "added": sorted(new_ids - prev_ids),
         "removed": sorted(prev_ids - new_ids),
         "wrote": False,
+        "refused": None,
     }
 
     if not write:
+        return result
+
+    if len(discovered) < len(previous) and not allow_shrink:
+        result["refused"] = (
+            f"discovery found {len(discovered)} local model(s) where "
+            f"{os.fspath(models_json)} already records {len(previous)}; "
+            f"keeping the recorded inventory. Scanned {os.fspath(models_dir)}. "
+            f"Missing: {', '.join(result['removed']) or '(unnamed)'}. "
+            "If the removal is intentional, re-run with allow_shrink=True "
+            "(CLI: --write --allow-shrink)."
+        )
+        print(f"[local_model_discovery] REFUSED WRITE: {result['refused']}",
+              file=sys.stderr, flush=True)
         return result
 
     full_doc["local_models"] = discovered
@@ -606,12 +639,20 @@ def main() -> int:
         "--models-json", default=str(DEFAULT_MODELS_JSON),
         help="Path to models.json (default: ~/ora/config/models.json)",
     )
+    parser.add_argument(
+        "--allow-shrink", action="store_true",
+        help="Permit a write that records FEWER models than models.json "
+             "already holds. Without this, such a write is refused so a "
+             "partial or wrong models directory cannot silently truncate a "
+             "working inventory. Use it when the removal is deliberate.",
+    )
     args = parser.parse_args()
 
     result = refresh(
         models_json=Path(args.models_json),
         models_dir=Path(args.models_dir),
         write=args.write,
+        allow_shrink=args.allow_shrink,
     )
 
     print(f"Discovered: {len(result['discovered'])} model(s)")
@@ -626,6 +667,9 @@ def main() -> int:
         print(f"Removed: {', '.join(result['removed'])}")
     if args.write:
         print(f"Wrote: {result['wrote']}")
+        if result.get("refused"):
+            print(f"REFUSED: {result['refused']}")
+            return 1
     else:
         print("(dry-run; pass --write to update models.json)")
     return 0

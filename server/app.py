@@ -18509,6 +18509,13 @@ def _refresh_local_model_inventory() -> tuple[dict | None, str | None]:
                 routing_config=Path(_routing_config_path()),
                 write=True,
             )
+            # A refused write is not an error — the recorded inventory is
+            # intact, which is the point — but it must not read as a clean
+            # scan either, or the next person debugging their routing has no
+            # thread to pull.
+            if result.get("refused"):
+                print(f"[startup] local-model inventory NOT updated: "
+                      f"{result['refused']}", flush=True)
             # Retry the live Router after every authoritative scan. A failed
             # reload must not become permanent merely because models.json is
             # already current on the next pane load. False remains the
@@ -18753,11 +18760,18 @@ def local_model_trash():
             return _system_protection_error_response(receipt_error)
 
         try:
+            # The one sanctioned shrink. Ora has just moved this model to
+            # Trash itself, under an approved and receipted protection
+            # action, so the inventory is SUPPOSED to lose exactly that
+            # entry. Every other scan refuses to shrink, because a smaller
+            # scan result there means the directory is wrong, not the
+            # inventory.
             updated = _refresh(
                 models_json=Path(MODELS_JSON),
                 models_dir=LOCAL_MODELS_DIR,
                 routing_config=Path(_routing_config_path()),
                 write=True,
+                allow_shrink=True,
             )
         except Exception as exc:
             _reload_pipeline_router_after_config_change()

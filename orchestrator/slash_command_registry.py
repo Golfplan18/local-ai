@@ -181,6 +181,19 @@ COMMAND_SPECS: tuple[SlashCommandSpec, ...] = (
         usage="/project-tool <nexus> <tool-name> [<args-or-stdin-json>]",
         mouse_path="None",
         keyboard_viable="Yes",
+        status="blocked",
+        notes=(
+            "Currently refuses every invocation. The handler routes through "
+            "system_protection.authorize_server_action('project_tool_execute', "
+            "…), and that action has no entry in "
+            "SERVER_ACTION_SELECTOR_PREFIXES, so authorization is denied "
+            "before the tool runs. The denial is deliberate and test-asserted "
+            "(test_g1_22a_system_protection.py :: "
+            "test_opaque_server_and_slash_actions_have_no_adapter); writing "
+            "the missing adapter is G1.22A work, because it changes an "
+            "authority boundary. Until then, reach a project tool through a "
+            "Trigger, which carries its own exact-digest activation review."
+        ),
     ),
     SlashCommandSpec(
         command="/projects",
