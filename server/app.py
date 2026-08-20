@@ -11532,8 +11532,35 @@ def _browser_live_rows(query: str) -> list[dict]:
     return rows
 
 
+# The archive's own pair files use "### User input" / "### Assistant response";
+# the embedded chroma document for the same pair uses "**User:**" /
+# "**Assistant:**". Both reach this parser -- the file when it is on disk, the
+# document when it is not -- so both forms are handled. All 41,061 files in
+# ~/Documents/Commercial AI archives use the heading form; three use the bold
+# form. Without the heading form the parser fell through to its last resort
+# and returned the entire raw file, front matter and context sections
+# included, as a single assistant message.
+_PAIR_USER_HEADING = re.compile(r"^###\s+User input\s*$", re.M)
+_PAIR_ASSISTANT_HEADING = re.compile(r"^###\s+Assistant response\s*$", re.M)
+
+
 def _browser_parse_pair_markdown(text: str) -> tuple[str, str]:
     text = str(text or "")
+
+    exchange = text.find("## Exchange")
+    if exchange >= 0:
+        body = text[exchange + len("## Exchange") :]
+        user_heading = _PAIR_USER_HEADING.search(body)
+        assistant_heading = _PAIR_ASSISTANT_HEADING.search(body)
+        if user_heading and assistant_heading:
+            # The assistant half runs to the end of the file. Model responses
+            # carry their own headings at every level, so stopping at the next
+            # "##" cuts the answer mid-thought.
+            return (
+                body[user_heading.end() : assistant_heading.start()].strip(),
+                body[assistant_heading.end() :].strip(),
+            )
+
     user_match = re.search(
         r"\*\*User:\*\*\s*(.*?)(?=\n\*\*Assistant:\*\*|\Z)",
         text,

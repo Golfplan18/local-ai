@@ -200,5 +200,8 @@ data/conversation-projects/verify-input/
 data/conversation-projects/sweep-input-unretrieved/
 data/conversation-projects/sweep-input-all/
 data/conversation-projects/sweep-input-unbound/
+data/conversation-projects/title2-output/
+data/conversation-projects/title2-input/
+data/conversation-projects/title-input/
 data/conversation-projects/verify-works/
 data/conversation-projects/rerun-batches.json

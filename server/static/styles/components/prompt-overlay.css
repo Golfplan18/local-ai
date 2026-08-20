@@ -36,6 +36,17 @@
   min-width: 0;
 }
 
+/* The title takes whatever the controls on the right do not need, instead of
+   a fixed slice of it. A 280px cap truncated most dialogue titles well before
+   the pane ran out of room. */
+.output-pane-header-left {
+  flex: 1 1 auto;
+}
+
+.output-pane-header-right {
+  flex: 0 0 auto;
+}
+
 .output-pane-mode-icon {
   display: inline-flex;
   align-items: center;
@@ -56,7 +67,8 @@
 .output-pane-display-name {
   font-weight: 600;
   color: var(--text-normal);
-  max-width: 280px;
+  min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
