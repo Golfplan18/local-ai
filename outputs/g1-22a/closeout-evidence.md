@@ -87,12 +87,12 @@ This correction changes no channel, outbound, Persona, hardware, Windows-live, o
 The focused suite proves:
 
 1. whole protected roots, raw devices, channels, missing scope, unresolved/broad scope, generic authority source/state edits, and noncanonical credential identities are denied before effect;
-2. direct Process authority cannot grant protected effects while the issued Programming mutation contract remains available;
+2. *(retired 2026-08-19 — the governed Process engine and `classify_governed_action` were removed by `519294b1` on 2026-08-05. There is no Process authority left to grant protected effects, so this claim has no subject. Any equivalent obligation for the Programming vertical belongs to that vertical's own acceptance matrix, not this one.)* ~~direct Process authority cannot grant protected effects while the issued Programming mutation contract remains available;~~
 3. unknown tools, unknown shell effects, opaque slash/server actions, and legacy bulk apply paths fail closed;
 4. one exact reviewed effect succeeds once with authenticated pre-state, write-ahead record, active execution scope, post-state, and one terminal record;
 5. forged/unsigned/MAC-altered queue and approval state, direct token minting, changed arguments, changed selectors or pre-state, cross-Dialogue/Principal/scope use, replay, fabricated execution starts, and fabricated state identities fail without mutation;
 6. registered-manifest mutation, registration-time drift, and legacy unbound pointers remain unavailable until reviewed re-registration;
-7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational;
+7. semantically external aliases cannot downgrade review, while legitimate local reversible and exact governed Run controls remain operational; **— NOT retired; re-pointed 2026-08-19 and currently unproven. See "Claim #7 is live at a different boundary" below.**
 8. record substitution, adjacent-digest rewriting, corrupt approval storage, audit-write failure, and concurrent terminal completion fail closed;
 9. direct credential store/delete cannot bypass the active receipt; failed deletion propagates and cannot report success; registered provider status remains available without exposing a secret; exact receipted mutation succeeds; and arbitrary provider identities cannot resolve; and
 10. exact, equivalent, pattern, recursive, symlink, and hardlink forms of approval-authority access are refused before file or shell execution, including a recursive root whose tree contains a later authority alias;
@@ -380,6 +380,60 @@ Measured cost of the fail-closed posture: 12,688 recorded tool events contain
 56 shell command strings, none carrying a leading assignment; no Ora-internal
 caller emits one. Bare assignments (`FOO=bar`) and terminal `env` inspection
 are unaffected.
+
+## Matrix re-baselining 2026-08-19 — claim #2 retired, claim #7 is live at a different boundary
+
+The governed Process kernel was removed by `519294b1` on 2026-08-05, four days
+after this packet was sealed. That removal took `classify_governed_action`,
+`governed_process_runtime.py`, `test_governed_process_runtime.py`, and
+`TestPolicyFloor::test_semantic_external_effects_require_review_independent_of_name`
+with it. Those four references are dropped from the executable matrices above.
+
+**Claim #2 is retired.** It named an authority — direct Process authority —
+that no longer exists. Nothing inherited it. The claim has no subject.
+
+**Claim #7 is NOT retired.** Retiring it was considered and rejected on
+evidence. The deleted test exercised the threat through
+`classify_governed_action`, but the threat itself — an action escaping outbound
+review because of what it is *named* — is alive at the surviving
+`classify_action` boundary, and is now untested.
+
+`system_protection.py:751` computes:
+
+```python
+outbound_write = mutability == "external_write" or (
+    egress == "external" and bool(_OUTBOUND_WORDS.search(normalized_action)))
+```
+
+`_OUTBOUND_WORDS` (`:77–80`) is nine words: publish, push, send, upload,
+deploy, post. With identical axes (`egress=external`,
+`mutability=reversible_write`), the live classifier returns:
+
+| action | outcome |
+|---|---|
+| `mcp_tracker_post_issue` | deny — missing-exact-scope |
+| `mcp_tracker_push_record` | deny — missing-exact-scope |
+| `mcp_tracker_create_issue` | **allow** |
+| `mcp_tracker_sync_record` | **allow** |
+
+Same effect; the only difference is the verb in the name. `sync_record`,
+`create_issue`, and `reconcile_remote_record` — the three operations the
+deleted test asserted must reach review — are all `allow` today at
+`classify_action`.
+
+**Current exposure is latent, not active.** Both MCP servers configured with
+`egress: external` (`playwright`, `github`) also declare
+`mutability: external_write`, which sets `outbound_write` regardless of name.
+The gap opens when any server declares `egress: external` with
+`mutability: reversible_write` — an ordinary declaration for a read-write API
+client — at which point tool naming alone decides whether an external effect
+is reviewed.
+
+**Disposition:** claim #7 stays in the matrix, re-pointed from
+`classify_governed_action` to `classify_action`'s outbound classification, and
+is **unproven** until a replacement test exists. It must not be marked passing
+on the strength of the deleted test, and it must not be retired on the strength
+of the deleted API.
 
 ## Held boundaries and limitations
 
