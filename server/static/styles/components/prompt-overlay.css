@@ -4,13 +4,13 @@
    The output pane shows the response of the currently-displayed
    turn. The prompt that generated it isn't shown by default. An
    expander in the output pane header summons an overlay that
-   covers the input pane and the bridge strip, displaying the
-   prompt as read-only scrollable text.
+   covers the input pane, displaying the prompt as read-only
+   scrollable text while leaving the bridge controls available.
    ============================================================ */
 
 /* ─── Output pane header (item 8A) ─────────────────────────────
    Sits at the top of the output pane in the eye-flow region.
-   Carries mode icon, display name, navigation arrows around the
+   Carries mode icon, display name, compact turn navigation around the
    turn position, timestamp, and the prompt-overlay expand button.
    ─────────────────────────────────────────────────────────────── */
 
@@ -45,6 +45,12 @@
 
 .output-pane-header-right {
   flex: 0 0 auto;
+}
+
+.output-pane-turn-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .output-pane-mode-icon {
@@ -103,6 +109,7 @@
 .output-pane-turn-position {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  margin: 0 3px;
 }
 
 .output-pane-timestamp {
@@ -153,7 +160,7 @@ body.prompt-overlay-open .output-pane-expand-btn {
   top: 0;
   left: 0;
   right: 0;
-  /* height set by JS to match input-pane + bridge-strip */
+  /* height set by JS to match the input pane */
   height: 0;
   z-index: 10;
   background: var(--background-secondary);

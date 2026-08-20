@@ -20,17 +20,27 @@ try {
 var dom = new jsdom.JSDOM(
   '<!doctype html><html><body>' +
   '<div class="left-sidebar"><button class="sidebar-fork-thread-cmd" disabled>Fork</button></div>' +
+  '<div class="left-column">' +
   '<div class="output-pane">' +
   '  <span id="outputPaneDisplayName">Dialogue</span>' +
   '  <span id="outputPaneModeIcon"></span>' +
   '  <button id="outputPaneActionsBtn" hidden></button>' +
+  '  <button id="outputPaneNavFirst" aria-label="First turn">&laquo;</button>' +
   '  <button id="outputPaneNavBack"></button>' +
   '  <button id="outputPaneNavForward"></button>' +
+  '  <button id="outputPaneNavLast" aria-label="Last turn">&raquo;</button>' +
   '  <span id="outputPaneTurnPosition"></span>' +
   '  <span id="outputPaneTimestamp"></span>' +
+  '  <button id="outputPaneExpandBtn" disabled></button>' +
   '  <div class="output-content"></div>' +
   '</div>' +
   '<div class="input-pane"><textarea></textarea></div>' +
+  '<div id="bridgeStrip"></div>' +
+  '<div class="prompt-overlay" id="promptOverlay" aria-hidden="true">' +
+  '  <button id="promptOverlayCloseBtn"></button>' +
+  '  <div id="promptOverlayContent"></div>' +
+  '</div>' +
+  '</div>' +
   '</body></html>',
   { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'outside-only' }
 );
@@ -78,9 +88,9 @@ var envelopes = {
     display_name: 'Fork parent',
     messages: [
       { role: 'user', content: 'Parent question one' },
-      { role: 'assistant', content: 'Parent answer one' },
+      { role: 'assistant', content: 'Parent answer one', timestamp: '2024-03-02T12:34:00Z' },
       { role: 'user', content: 'Parent question two' },
-      { role: 'assistant', content: 'Parent answer two' },
+      { role: 'assistant', content: 'Parent answer two', timestamp: '2025-11-09T12:34:00Z' },
     ],
   },
   exitParent: {
@@ -308,6 +318,19 @@ vm.runInContext(
   fs.readFileSync(path.resolve(__dirname, '..', 'js', 'v3-conversation.js'), 'utf8'),
   context,
   { filename: 'v3-conversation.js' }
+);
+Object.defineProperty(w.document.querySelector('.input-pane'), 'offsetHeight', {
+  configurable: true,
+  value: 184,
+});
+Object.defineProperty(w.document.getElementById('bridgeStrip'), 'offsetHeight', {
+  configurable: true,
+  value: 37,
+});
+vm.runInContext(
+  fs.readFileSync(path.resolve(__dirname, '..', 'js', 'prompt-overlay.js'), 'utf8'),
+  context,
+  { filename: 'prompt-overlay.js' }
 );
 w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
 w.document.addEventListener('ora:conversation-tag-changed', function (event) {
@@ -1579,6 +1602,12 @@ async function runIndexLifecycleControlsTests() {
 }
 
 async function run() {
+  w.OraPromptOverlay.show('Overlay sizing prompt');
+  record('prompt overlay ends at the Inquiry pane without including the bridge strip',
+    w.document.getElementById('promptOverlay').style.height === '184px'
+      && w.document.getElementById('bridgeStrip').offsetHeight === 37);
+  w.OraPromptOverlay.hide();
+
   w.OraConversation.startFresh({ conversation_id: 'privacy-external', tag: '' });
   calls = [];
   var externalSubmits = 0;
@@ -1620,6 +1649,32 @@ async function run() {
     (await askPromise) === true && askSubmits === 1 && calls.length === 0);
 
   await w.OraConversation.load('fork-parent');
+  var navFirst = w.document.getElementById('outputPaneNavFirst');
+  var navBack = w.document.getElementById('outputPaneNavBack');
+  var navForward = w.document.getElementById('outputPaneNavForward');
+  var navLast = w.document.getElementById('outputPaneNavLast');
+  record('latest turn disables next/last while first/previous remain available',
+    !navFirst.disabled && !navBack.disabled && navForward.disabled && navLast.disabled
+      && navFirst.getAttribute('aria-label') === 'First turn' && navFirst.textContent === '\u00ab'
+      && navLast.getAttribute('aria-label') === 'Last turn' && navLast.textContent === '\u00bb');
+  navFirst.click();
+  record('first-turn control jumps to the first turn and flips boundary states',
+    w.OraConversation.getCurrentTurn().assistant.content === 'Parent answer one'
+      && w.document.querySelector('.output-content').textContent === 'Parent answer one'
+      && w.document.getElementById('outputPaneTurnPosition').textContent === '1 of 2'
+      && navFirst.disabled && navBack.disabled && !navForward.disabled && !navLast.disabled);
+  var expectedFirstDate = new Date('2024-03-02T12:34:00Z').toLocaleDateString(
+    undefined, { month: 'short', day: 'numeric', year: '2-digit' }
+  );
+  record('turn timestamp is a locale-aware short date without a time',
+    w.document.getElementById('outputPaneTimestamp').textContent === expectedFirstDate
+      && w.document.getElementById('outputPaneTimestamp').textContent.indexOf(':') === -1);
+  navLast.click();
+  record('last-turn control jumps to the final turn and restores final boundary states',
+    w.OraConversation.getCurrentTurn().assistant.content === 'Parent answer two'
+      && w.document.querySelector('.output-content').textContent === 'Parent answer two'
+      && w.document.getElementById('outputPaneTurnPosition').textContent === '2 of 2'
+      && !navFirst.disabled && !navBack.disabled && navForward.disabled && navLast.disabled);
   var privacyInput = w.document.querySelector('.input-pane textarea');
   privacyInput.value = 'My secret key is abc';
   w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);

@@ -4,7 +4,7 @@
  * Closes the navigation loop: when the sidebar dispatches
  * `ora:conversation-selected`, this module fetches the conversation,
  * renders its turns into the output pane (one turn at a time, with
- * forward/back navigation), wires the prompt overlay to show that
+ * first/previous/next/last navigation), wires the prompt overlay to show that
  * turn's user prompt, and restores the saved draft for the
  * conversation's left input area.
  *
@@ -16,7 +16,7 @@
  *     message; that's still one turn with `user: null`.
  *   - The output pane shows the assistant text of the current turn.
  *   - The prompt overlay shows the user prompt of the current turn.
- *   - Forward/back arrows move the turn cursor.
+ *   - First/previous/next/last controls move the turn cursor.
  *   - On submit, the inline script calls OraConversation.appendUser /
  *     appendAssistant to update state + re-render.
  *   - Drafts: keyed by conversation_id in localStorage; saved on input
@@ -152,8 +152,10 @@
   let displayName    = null;
   let modeIcon       = null;
   let actionsButton  = null;
+  let navFirst       = null;
   let navBack        = null;
   let navForward     = null;
+  let navLast        = null;
   let turnPosition   = null;
   let timestampEl    = null;
   let leftInput      = null;
@@ -164,8 +166,10 @@
     displayName   = document.getElementById('outputPaneDisplayName');
     modeIcon      = document.getElementById('outputPaneModeIcon');
     actionsButton = document.getElementById('outputPaneActionsBtn');
+    navFirst      = document.getElementById('outputPaneNavFirst');
     navBack       = document.getElementById('outputPaneNavBack');
     navForward    = document.getElementById('outputPaneNavForward');
+    navLast       = document.getElementById('outputPaneNavLast');
     turnPosition  = document.getElementById('outputPaneTurnPosition');
     timestampEl   = document.getElementById('outputPaneTimestamp');
     leftInput     = document.querySelector('.input-pane textarea');
@@ -238,10 +242,9 @@
     try {
       const d = new Date(iso);
       if (isNaN(d.getTime())) return iso;
-      // Short, locale-aware: Apr 29, 8:14 AM
-      return d.toLocaleString(undefined, {
-        month: 'short', day: 'numeric',
-        hour: 'numeric', minute: '2-digit',
+      // Short, locale-aware date with no time: Mar 2, 24 in en-US.
+      return d.toLocaleDateString(undefined, {
+        month: 'short', day: 'numeric', year: '2-digit',
       });
     } catch (e) {
       return iso;
@@ -313,8 +316,12 @@
         turnPosition.setAttribute('aria-label', `turn ${state.currentTurnIndex + 1} of ${total}`);
       }
     }
-    if (navBack)    navBack.disabled    = state.currentTurnIndex <= 0;
-    if (navForward) navForward.disabled = state.currentTurnIndex >= total - 1;
+    const atFirst = total === 0 || state.currentTurnIndex <= 0;
+    const atLast = total === 0 || state.currentTurnIndex >= total - 1;
+    if (navFirst)   navFirst.disabled   = atFirst;
+    if (navBack)    navBack.disabled    = atFirst;
+    if (navForward) navForward.disabled = atLast;
+    if (navLast)    navLast.disabled    = atLast;
 
     // Timestamp from current turn's assistant message (preferred) or
     // user message if no assistant yet.
@@ -966,8 +973,10 @@
     });
   };
 
+  const goFirst   = () => showTurn(0);
   const goBack    = () => showTurn(state.currentTurnIndex - 1);
   const goForward = () => showTurn(state.currentTurnIndex + 1);
+  const goLast    = () => showTurn(state.turns.length - 1);
 
   // ── Optimistic submit hooks ────────────────────────────────────────────
   // The inline submit handler calls these on send + completion so the
@@ -2004,8 +2013,10 @@
     refreshDOMRefs();
     initLifecycleSync();
 
+    if (navFirst)   navFirst.addEventListener('click', goFirst);
     if (navBack)    navBack.addEventListener('click', goBack);
     if (navForward) navForward.addEventListener('click', goForward);
+    if (navLast)    navLast.addEventListener('click', goLast);
 
     if (actionsButton) {
       actionsButton.addEventListener('click', (event) => {

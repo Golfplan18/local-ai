@@ -944,9 +944,9 @@
     </div>
     <!-- V3 design backlog item 8B: prompt overlay. Hidden by default;
          shown via the expand button in the output pane header below.
-         When active, sized by JS to cover the input pane and the bridge
-         strip exactly. Read-only display of the previous prompt for the
-         currently-viewed turn. -->
+         When active, sized by JS to cover only the input pane, leaving the
+         bridge controls available. Read-only display of the prompt for the
+         currently viewed turn. -->
     <div class="prompt-overlay" id="promptOverlay" aria-hidden="true">
       <div class="prompt-overlay-header">
         <span class="prompt-overlay-title">Prompt for this turn</span>
@@ -1000,11 +1000,10 @@
            role="dialog" aria-label="Framework setup" aria-modal="false"></div>
 
       <!-- V3 design backlog item 8A: output pane header. Mode icon and
-           display name on the left; navigation arrows around the turn
+           display name on the left; compact turn navigation around the turn
            position, timestamp, and prompt-overlay expander on the right.
-           Real data flow (display name from conversation.json, turn
-           position from 2B load endpoint, timestamp from chunk YAML)
-           wires in later. -->
+           The conversation loader supplies the display name, turn position,
+           and timestamp. -->
       <div class="pane-header output-pane-header">
         <div class="output-pane-header-left">
           <span class="output-pane-mode-icon" id="outputPaneModeIcon" aria-hidden="true"></span>
@@ -1015,11 +1014,17 @@
                   title="Dialogue actions" hidden>⋯</button>
         </div>
         <div class="output-pane-header-right">
-          <button class="output-pane-nav-btn" type="button" id="outputPaneNavBack"
-                  aria-label="Previous turn" disabled>&#8592;</button>
-          <span class="output-pane-turn-position" id="outputPaneTurnPosition" aria-label="turn 1 of 1">1 of 1</span>
-          <button class="output-pane-nav-btn" type="button" id="outputPaneNavForward"
-                  aria-label="Next turn" disabled>&#8594;</button>
+          <div class="output-pane-turn-nav" role="group" aria-label="Turn navigation">
+            <button class="output-pane-nav-btn" type="button" id="outputPaneNavFirst"
+                    aria-label="First turn" disabled>&laquo;</button>
+            <button class="output-pane-nav-btn" type="button" id="outputPaneNavBack"
+                    aria-label="Previous turn" disabled>&#8592;</button>
+            <span class="output-pane-turn-position" id="outputPaneTurnPosition" aria-label="turn 1 of 1">1 of 1</span>
+            <button class="output-pane-nav-btn" type="button" id="outputPaneNavForward"
+                    aria-label="Next turn" disabled>&#8594;</button>
+            <button class="output-pane-nav-btn" type="button" id="outputPaneNavLast"
+                    aria-label="Last turn" disabled>&raquo;</button>
+          </div>
           <span class="output-pane-timestamp" id="outputPaneTimestamp">—</span>
           <button class="output-pane-expand-btn" type="button" id="outputPaneExpandBtn"
                   aria-label="Show prompt for this turn" aria-expanded="false">

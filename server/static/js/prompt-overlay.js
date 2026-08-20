@@ -4,12 +4,8 @@
    The output pane shows the response of the currently-displayed
    turn. The prompt is hidden by default. Clicking the expand
    button in the output pane header summons an overlay that covers
-   the input pane and the bridge strip in the left column. The
-   overlay is read-only and scrollable.
-
-   Real conversation data flow (the 2B load endpoint) wires in
-   later. For now the overlay shows placeholder content so the
-   show / hide / size behavior is testable.
+   the input pane in the left column. The overlay is read-only and
+   scrollable.
 
    Public API on window.OraPromptOverlay:
      show(promptText)  — open the overlay; promptText optional,
@@ -28,10 +24,9 @@
   const overlayClose   = document.getElementById('promptOverlayCloseBtn');
   const expandBtn      = document.getElementById('outputPaneExpandBtn');
   const inputPane      = document.querySelector('.input-pane');
-  const bridge         = document.getElementById('bridgeStrip');
   const leftColumn     = document.querySelector('.left-column');
 
-  if (!overlay || !overlayContent || !expandBtn || !inputPane || !bridge || !leftColumn) {
+  if (!overlay || !overlayContent || !expandBtn || !inputPane || !leftColumn) {
     console.warn('[prompt-overlay] required elements missing; not initializing');
     return;
   }
@@ -41,29 +36,24 @@
     leftColumn.style.position = 'relative';
   }
 
-  // Placeholder content shown when no real prompt has been provided.
-  // Swap out via OraPromptOverlay.setPrompt() once the 2B load endpoint
-  // wires real conversation data into the page.
+  // Placeholder content shown when no prompt has been provided yet.
   const PLACEHOLDER_PROMPT = (
     'This is the prompt that generated the response currently shown in ' +
     'the Findings pane below.\n\n' +
-    'When real Dialogue data is wired in via the 2B load endpoint, ' +
-    'this overlay will display the actual prompt text from the chunk ' +
-    'file, with image references rendering inline.\n\n' +
-    'For now, this is placeholder text so the overlay show / hide / ' +
-    'resize behavior is testable. The overlay is read-only — you ' +
+    'Once a Dialogue turn is selected, this overlay displays that ' +
+    'turn\'s actual prompt text.\n\n' +
+    'The overlay is read-only — you ' +
     'cannot type into it.\n\n' +
     'Close with the ✕ button at the top right, the expander button in ' +
     'the Findings pane header, or by pressing Esc.'
   );
 
-  // Size the overlay to cover the input pane + bridge strip exactly.
+  // Size the overlay to cover the input pane exactly, leaving the bridge
+  // strip and its Inquiry controls available below it.
   // Called when opening, on window resize, and via ResizeObserver when
   // the bridge is dragged (which resizes the input pane).
   const sizeOverlay = () => {
-    const inputH  = inputPane.offsetHeight;
-    const bridgeH = bridge.offsetHeight;
-    overlay.style.height = (inputH + bridgeH) + 'px';
+    overlay.style.height = inputPane.offsetHeight + 'px';
   };
 
   const isOpen = () => overlay.classList.contains('is-open');
@@ -135,7 +125,6 @@
       if (isOpen()) sizeOverlay();
     });
     ro.observe(inputPane);
-    ro.observe(bridge);
   }
 
   // Public API.
