@@ -1556,6 +1556,199 @@ def bind(apply_changes: bool, min_confidence: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# hydrate
+# ---------------------------------------------------------------------------
+
+_ARCHIVE_USER = re.compile(r"^###\s+User input\s*$", re.M)
+_ARCHIVE_ASSISTANT = re.compile(r"^###\s+Assistant response\s*$", re.M)
+_ARCHIVE_SECTION = re.compile(r"^##\s+\S", re.M)
+_ARCHIVE_TIMESTAMP = re.compile(r"^source_timestamp:\s*(\S+)\s*$", re.M)
+_ARCHIVE_DATE = re.compile(r"^date created:\s*(\S+)\s*$", re.M)
+_FILENAME_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})")
+
+
+def _archive_timestamp(text: str, path: Path) -> str:
+    """When this pair happened, from the file's own front matter.
+
+    Without a timestamp on the messages the interface cannot date these
+    conversations: iter_conversations derives last_activity_at from the most
+    recent message that carries one, so undated imports sort below everything
+    and show no date at all.
+    """
+    match = _ARCHIVE_TIMESTAMP.search(text)
+    if match:
+        return match.group(1)
+    match = _FILENAME_DATE.search(path.name)
+    if match:
+        return f"{match.group(1)}T{match.group(2)}:{match.group(3)}:00"
+    match = _ARCHIVE_DATE.search(text)
+    return f"{match.group(1)}T00:00:00" if match else ""
+
+
+def _parse_archive_pair(text: str) -> tuple[str, str]:
+    """Split one archived pair file into its user and assistant halves.
+
+    The assistant half runs to the next H2 section, not the next H3: model
+    responses routinely contain their own "### Scene Architecture" style
+    headings, and stopping at those truncates the answer to its first
+    paragraph. Either half may legitimately be empty -- about 9% of archived
+    pairs have one side blank -- and an empty half is dropped rather than
+    written as an empty message.
+    """
+    marker = text.find("## Exchange")
+    if marker < 0:
+        return "", ""
+    body = text[marker + len("## Exchange") :]
+    user_match = _ARCHIVE_USER.search(body)
+    assistant_match = _ARCHIVE_ASSISTANT.search(body)
+    if not user_match or not assistant_match:
+        return "", ""
+    user = body[user_match.end() : assistant_match.start()].strip()
+    rest = body[assistant_match.end() :]
+    section = _ARCHIVE_SECTION.search(rest)
+    assistant = (rest[: section.start()] if section else rest).strip()
+    return user, assistant
+
+
+def _archive_locations() -> dict[str, list[tuple[int, str]]]:
+    """conversation_id -> [(turn_index, archive file path)], in turn order.
+
+    The vector index is the only thing that knows which archive files make up
+    a conversation; the files themselves are one pair each and carry no
+    conversation id.
+    """
+    collection = _collection()
+    found: dict[str, dict[int, str]] = defaultdict(dict)
+    offset = 0
+    while True:
+        page = collection.get(limit=5000, offset=offset, include=["metadatas"])
+        if not page["ids"]:
+            break
+        for meta in page["metadatas"]:
+            cid = meta.get("conversation_id")
+            turn = meta.get("turn_index")
+            path = meta.get("obsidian_path") or meta.get("chunk_path") or ""
+            if isinstance(cid, str) and isinstance(turn, int) and path:
+                found[cid].setdefault(turn, path)
+        offset += len(page["ids"])
+    return {cid: sorted(turns.items()) for cid, turns in found.items()}
+
+
+def hydrate(apply_changes: bool, limit: int | None) -> None:
+    """Fill each bound archive conversation's envelope with its actual turns.
+
+    Binding gave these conversations identity and project membership but left
+    ``messages`` empty, because their turns live in the markdown archive and
+    the vector index rather than in the envelope. That is enough to file a
+    conversation and not enough to read one: the interface renders the
+    envelope, so a filed conversation opened as a blank shell.
+    """
+    from orchestrator import conversation_memory
+
+    bindings = json.loads((OUT_DIR / "bindings.json").read_text(encoding="utf-8"))
+    print(f"locating archive files for {len(bindings)} conversations ...", flush=True)
+    locations = _archive_locations()
+
+    stats = {
+        "conversations": 0,
+        "already_populated": 0,
+        "no_archive_files": 0,
+        "missing_files": 0,
+        "unparsed_files": 0,
+        "messages": 0,
+        "written": 0,
+        "failed": 0,
+    }
+    empty_after: list[str] = []
+    for count, cid in enumerate(sorted(bindings)):
+        if limit and count >= limit:
+            break
+        stats["conversations"] += 1
+        pairs = locations.get(cid) or []
+        if not pairs:
+            stats["no_archive_files"] += 1
+            continue
+
+        messages: list[dict[str, Any]] = []
+        for turn, path in pairs:
+            file_path = Path(path).expanduser()
+            if not file_path.exists():
+                stats["missing_files"] += 1
+                continue
+            try:
+                text = file_path.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                stats["missing_files"] += 1
+                continue
+            user, assistant = _parse_archive_pair(text)
+            if not user and not assistant:
+                stats["unparsed_files"] += 1
+                continue
+            stamp = _archive_timestamp(text, file_path)
+            if user:
+                entry = {"role": "user", "content": user, "turn": turn}
+                if stamp:
+                    entry["timestamp"] = stamp
+                messages.append(entry)
+            if assistant:
+                entry = {"role": "assistant", "content": assistant, "turn": turn}
+                if stamp:
+                    entry["timestamp"] = stamp
+                messages.append(entry)
+
+        if not messages:
+            empty_after.append(cid)
+            continue
+        stats["messages"] += len(messages)
+
+        if not apply_changes:
+            continue
+
+        latest = ""
+        for entry in messages:
+            stamp = entry.get("timestamp") or ""
+            if stamp > latest:
+                latest = stamp
+
+        def fill(data: dict[str, Any], _messages=messages, _latest=latest) -> None:
+            if data.get("messages"):
+                raise _AlreadyPopulated
+            data["messages"] = _messages
+            # Mark imported history as read. The unread rule is "has an
+            # assistant turn and no read timestamp", so dating these without
+            # this would move all of them into Unread at once -- 3,132
+            # conversations the user lived through years ago, presented as
+            # waiting for attention.
+            if _latest and not data.get("last_read_at"):
+                data["last_read_at"] = _latest
+
+        try:
+            written = conversation_memory._mutate_conversation_envelope(
+                cid, conversation_memory._DEFAULT_SESSIONS_ROOT, fill
+            )
+        except _AlreadyPopulated:
+            stats["already_populated"] += 1
+            continue
+        if written is None:
+            stats["failed"] += 1
+        else:
+            stats["written"] += 1
+        if stats["written"] and stats["written"] % 250 == 0:
+            print(f"  {stats['written']} written ...", flush=True)
+
+    print(json.dumps(stats, indent=1))
+    if empty_after:
+        print(f"conversations that yielded no readable turns: {len(empty_after)}")
+        print("  " + ", ".join(empty_after[:8]))
+    if not apply_changes:
+        print("\ndry run - nothing written. Re-run with --apply.")
+
+
+class _AlreadyPopulated(Exception):
+    """Raised to abandon a mutation rather than overwrite a real conversation."""
+
+
+# ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
 
@@ -1590,6 +1783,10 @@ def main() -> int:
 
     p_collect = sub.add_parser("collect", help="validate judge output and assemble accepted set")
     p_collect.add_argument("--strict", action="store_true", help="exit non-zero if any batch is bad")
+
+    p_hydrate = sub.add_parser("hydrate", help="fill bound archive envelopes with their real turns")
+    p_hydrate.add_argument("--apply", action="store_true")
+    p_hydrate.add_argument("--limit", type=int)
 
     p_bind = sub.add_parser("bind", help="write conversation project membership")
     p_bind.add_argument("--apply", action="store_true")
@@ -1629,6 +1826,10 @@ def main() -> int:
 
     if args.command == "collect":
         collect(args.strict)
+        return 0
+
+    if args.command == "hydrate":
+        hydrate(args.apply, args.limit)
         return 0
 
     if args.command == "bind":
