@@ -1,0 +1,215 @@
+{
+  "batch": 23,
+  "placements": [
+    {
+      "candidate_id": "historical-9a6d740d3415#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Practical home improvement product selection; no sustained subject engagement."
+    },
+    {
+      "candidate_id": "historical-9a6d740d3415#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Paint selection advice for maintenance task; not subject-matter exploration."
+    },
+    {
+      "candidate_id": "historical-9a6d740d3415#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Single factual lookup of phone number; no engagement."
+    },
+    {
+      "candidate_id": "historical-9a7a09f59435#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Specific formal complaint document; not exploration of passion subject."
+    },
+    {
+      "candidate_id": "historical-9bb2fc33d1b1#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing and presenting conservative political arguments; tracking political frameworks."
+    },
+    {
+      "candidate_id": "historical-9bb2fc33d1b1#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple factual political information lookup, not analysis or tracking."
+    },
+    {
+      "candidate_id": "historical-9bb2fc33d1b1#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Historical fact lookup; no political analysis or engagement."
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analyzing relationship prospects; practicing empathetic understanding and connection."
+    },
+    {
+      "candidate_id": "historical-9c08ea4731f1#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting authentic communication to establish emotional safety and connection."
+    },
+    {
+      "candidate_id": "historical-9c23ffeed878#0",
+      "nexuses": ["publishing"],
+      "confidence": "medium",
+      "reason": "Creating reference guide on data visualization for public use and understanding."
+    },
+    {
+      "candidate_id": "historical-9c38f027b009#0",
+      "nexuses": ["technology", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Exploring local AI tools, model selection; testing technologies for personal cognitive work."
+    },
+    {
+      "candidate_id": "historical-9c43910b19a6#0",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Organizing materials and planning multiple publishing projects from existing work."
+    },
+    {
+      "candidate_id": "historical-9c93972e2dc5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Nobel Prize factual lookup; no sustained inquiry into the subject."
+    },
+    {
+      "candidate_id": "historical-9d398b7661de#0",
+      "nexuses": ["writing"],
+      "confidence": "medium",
+      "reason": "Analyzing TV adaptation; examining narrative choices and source-material fidelity."
+    },
+    {
+      "candidate_id": "historical-9d54ee10c6bb#0",
+      "nexuses": ["writing", "politics"],
+      "confidence": "high",
+      "reason": "Crafting economic/political book; refining chapter structure and thematic coherence."
+    },
+    {
+      "candidate_id": "historical-9d6fce0c12bf#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing attachment; no subject engagement."
+    },
+    {
+      "candidate_id": "historical-9d8b3839eac8#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Analyzing human psychology and motivation through power dynamics; examining self-interest."
+    },
+    {
+      "candidate_id": "historical-9d8b3839eac8#1",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Historical examples of power and human motivation; deepening understanding of human nature."
+    },
+    {
+      "candidate_id": "historical-9d8b3839eac8#2",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Framing power dynamics concepts; exploring themes of trust and influence."
+    },
+    {
+      "candidate_id": "historical-9d9664d2cde0#0",
+      "nexuses": ["technology", "prompt_engineering"],
+      "confidence": "high",
+      "reason": "Exploring AI personality and humor through prompt design; research on AI-human collaboration."
+    },
+    {
+      "candidate_id": "historical-9d9b5bf6d1ed#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Practical product shopping and pricing comparison; no sustained subject exploration."
+    },
+    {
+      "candidate_id": "historical-9d9b5bf6d1ed#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Cost efficiency calculations for purchasing decision; practical how-to only."
+    },
+    {
+      "candidate_id": "historical-9d9b5bf6d1ed#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Shopping and product sourcing; practical purchasing task, no subject engagement."
+    },
+    {
+      "candidate_id": "historical-9d9b5bf6d1ed#3",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Exploring filter materials and DIY construction; testing materials and airflow properties."
+    },
+    {
+      "candidate_id": "historical-9db3c1364c88#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "User formatting preference; administrative exchange."
+    },
+    {
+      "candidate_id": "historical-9dc44903e210#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Plant identification lookup; no ongoing botanical or ecological engagement."
+    },
+    {
+      "candidate_id": "historical-9e5089ca8b46#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Buddhist philosophy on suffering and consciousness; exploration of spiritual frameworks."
+    },
+    {
+      "candidate_id": "historical-9e593097d0b6#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical review of complaint document; specific grievance document work, not passion subject."
+    },
+    {
+      "candidate_id": "historical-9e593097d0b6#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Legal argument refinement for complaint; not sustained engagement with a passion subject."
+    },
+    {
+      "candidate_id": "historical-9ed5b61bd8e9#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing legal and political dimensions of government property rights and presidential power."
+    },
+    {
+      "candidate_id": "historical-9edc0713e404#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "User formatting preference; administrative exchange."
+    },
+    {
+      "candidate_id": "historical-9f4ba9d2077a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tourist/location information lookup; no subject-matter exploration."
+    },
+    {
+      "candidate_id": "historical-9f6072889e54#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting authentic dating messages; practicing empathetic communication and emotional connection."
+    },
+    {
+      "candidate_id": "historical-9f85be54b973#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "User formatting preference; administrative exchange."
+    },
+    {
+      "candidate_id": "historical-9fd6021163b4#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Conceptual definition lookup; no sustained engagement or subject exploration."
+    }
+  ]
+}

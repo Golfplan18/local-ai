@@ -1,0 +1,215 @@
+{
+  "batch": 35,
+  "placements": [
+    {
+      "candidate_id": "historical-e3933bcc8a68#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative preference statement, no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-e3c562b3342a#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking Republican blame-shifting tactics on ICE operations; political event analysis."
+    },
+    {
+      "candidate_id": "historical-e3d2e0bc70c0#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Exploring Bsharat et al. research on principled prompt engineering framework."
+    },
+    {
+      "candidate_id": "historical-e3e8210f8f21#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Sports analysis (Packers defensive philosophy), unrelated to any Passion."
+    },
+    {
+      "candidate_id": "historical-e3ec2b4b5fcd#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Implementing thematic framework for American Judas novel; character/theme development."
+    },
+    {
+      "candidate_id": "historical-e404ebc6a4dd#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating cross-platform messaging technology (iMessage/Pixel sync) for real workflow."
+    },
+    {
+      "candidate_id": "historical-e405b1949d95#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Character profile consistency review and narrative development for fiction."
+    },
+    {
+      "candidate_id": "historical-e469d996d259#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Handling medical malpractice crisis and legal strategy; not Passion exploration."
+    },
+    {
+      "candidate_id": "historical-e47d24a349d3#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Researching real person name/location to avoid fictional character collision."
+    },
+    {
+      "candidate_id": "historical-e47d24a349d3#1",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Exploring family genealogy and heritage connections (Paulson/Nevel relatives)."
+    },
+    {
+      "candidate_id": "historical-e4d8f13ef84c#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Single-word greeting with no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-e4ffced58369#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup (capital of France) with no engagement or exploration."
+    },
+    {
+      "candidate_id": "historical-e5140753776a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical malpractice complaint document review; legal crisis handling, not Passion."
+    },
+    {
+      "candidate_id": "historical-e5140753776a#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Strengthening medical negligence allegations; legal case work, not Passion pursuit."
+    },
+    {
+      "candidate_id": "historical-e5281a724532#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Travel planning (waterparks near Dublin); factual lookup without Passion engagement."
+    },
+    {
+      "candidate_id": "historical-e53c71b7dc1a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Link share with minimal context; no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-e63933cdc92c#0",
+      "nexuses": ["writing", "technology"],
+      "confidence": "high",
+      "reason": "Discussing AI's role in enabling entrepreneurship and personal writing practice; technology tools and creative work."
+    },
+    {
+      "candidate_id": "historical-e6b2424c255b#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Analyzing dating profile and crafting Hinge message; relationship formation practice."
+    },
+    {
+      "candidate_id": "historical-e6bf07345c24#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare contact information lookup; no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-e72b96aad656#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating GIMP and considering building custom image editing tools for real workflow."
+    },
+    {
+      "candidate_id": "historical-e7f684f28ada#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political activism through protest songs; healthcare activism and government critique themes."
+    },
+    {
+      "candidate_id": "historical-e7ffb1ecc74d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Home renovation (wall insulation/repair); construction project, not Passion pursuit."
+    },
+    {
+      "candidate_id": "historical-e7ffb1ecc74d#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Garage renovation design (crown molding); home project, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-e80e76065134#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump administration deportation policy and judicial oversight; political event tracking."
+    },
+    {
+      "candidate_id": "historical-e839349e3c6d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical RSS feed information lookup; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-e8589ad27226#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Troubleshooting Google Pixel interface customization; evaluating technology against real user needs."
+    },
+    {
+      "candidate_id": "historical-e85d5028c076#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Texas gerrymandering mathematics and electoral impact; political system analysis."
+    },
+    {
+      "candidate_id": "historical-e894c17c1b3a#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Implementing thematic framework (religious distortion) for American Jesus novel."
+    },
+    {
+      "candidate_id": "historical-e894c17c1b3a#1",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing Samuel Tito character arc and psychological profile for fiction."
+    },
+    {
+      "candidate_id": "historical-e8b8f494c94a#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking Kurdish geopolitical coordination and international backing in Iran."
+    },
+    {
+      "candidate_id": "historical-e8c8c81cf5a0#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing congressional decline and filibuster as structural political problem."
+    },
+    {
+      "candidate_id": "historical-e907ea091141#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative notice about missing image attachment; no substantive engagement."
+    },
+    {
+      "candidate_id": "historical-e9567d28d215#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Reference document production on CHIPS and Science Act; work output, not Passion practice."
+    },
+    {
+      "candidate_id": "historical-e9591bf14815#0",
+      "nexuses": ["relationships"],
+      "confidence": "high",
+      "reason": "Crafting Bumble dating messages; relationship formation and dating practice."
+    },
+    {
+      "candidate_id": "historical-e9744d957a63#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Exploring Big Bang nucleosynthesis and light element abundance; fundamental physics exploration."
+    }
+  ]
+}

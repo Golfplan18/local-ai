@@ -1,0 +1,249 @@
+{
+  "batch": 15,
+  "placements": [
+    {
+      "candidate_id": "historical-64d8e30a1e98#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text output preference setting; administrative, not Passion engagement"
+    },
+    {
+      "candidate_id": "historical-654cf8f91d67#0",
+      "nexuses": [
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Developing systematic procedures for capturing and summarizing AI chat sessions; testing collaboration methods"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Academic journal research task; not personal Passion engagement"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Academic manuscript editing; not creative writing Passion"
+    },
+    {
+      "candidate_id": "historical-65b690c9d4b5#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Academic reference maintenance task; not a Passion"
+    },
+    {
+      "candidate_id": "historical-65d50f7468a7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Brief diagram feedback; not substantive Passion engagement"
+    },
+    {
+      "candidate_id": "historical-661c9e58e6aa#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing Trump's tariff policies and economic consequences; tracking political claims with evidence"
+    },
+    {
+      "candidate_id": "historical-664907e9e9e5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Legal/medical case analysis; not a personal Passion"
+    },
+    {
+      "candidate_id": "historical-664907e9e9e5#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Detailed legal/medical case analysis; not a Passion"
+    },
+    {
+      "candidate_id": "historical-664907e9e9e5#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Legal case documentation; not a Passion"
+    },
+    {
+      "candidate_id": "historical-66684266af3d#0",
+      "nexuses": [
+        "technology",
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Exploring AI's impact on internet architecture and information economy; technology evaluation and scientific speculation"
+    },
+    {
+      "candidate_id": "historical-667cf28aa088#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing 25th Amendment constitutional requirements and political implications of Trump's fitness"
+    },
+    {
+      "candidate_id": "historical-668c6dc8fb26#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Analysis of religious marketing tactics; philosophical but not a registered Passion"
+    },
+    {
+      "candidate_id": "historical-6717bddf06be#0",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Character profile development and arc refinement using Character Initiation Framework"
+    },
+    {
+      "candidate_id": "historical-6786aeb9f18d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Interior design advice for wall art; not a Passion"
+    },
+    {
+      "candidate_id": "historical-6797f812bccb#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Greeting exchange; administrative only"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing Supreme Court redistricting decision and procedural manipulation in political context"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#1",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Developing fictional narrative about Supreme Court justices; writing craft planning"
+    },
+    {
+      "candidate_id": "historical-67dcee300975#2",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Crafting narrative motifs and dialogue techniques for fictional Supreme Court novel"
+    },
+    {
+      "candidate_id": "historical-69b1f29b6821#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical/administrative exchange about missing attachment"
+    },
+    {
+      "candidate_id": "historical-6a0e3c97519b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Privacy policy and unrelated news content; not user engagement with a Passion"
+    },
+    {
+      "candidate_id": "historical-6a8f8014b209#0",
+      "nexuses": [
+        "technology",
+        "prompt_engineering"
+      ],
+      "confidence": "high",
+      "reason": "Testing and exploring multimodal AI capabilities and local vision-language model implementation"
+    },
+    {
+      "candidate_id": "historical-6aa3dc7972ce#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text output preference setting; administrative"
+    },
+    {
+      "candidate_id": "historical-6ace41bdfa51#0",
+      "nexuses": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Practicing attentive interaction and understanding relationship compatibility in real dating context"
+    },
+    {
+      "candidate_id": "historical-6ad9899de056#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "News article content; not user's personal engagement"
+    },
+    {
+      "candidate_id": "historical-6b5de6463ced#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical support question about AI protocol adherence; not Passion engagement"
+    },
+    {
+      "candidate_id": "historical-6b6d9e90f09e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Brief diagram feedback; not substantive Passion engagement"
+    },
+    {
+      "candidate_id": "historical-6b7a9fdad28f#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Exploring Bell test quantum physics through modeling and graphical analysis; fundamental physics investigation"
+    },
+    {
+      "candidate_id": "historical-6bae25382808#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Instructions for creating citation infrastructure; not personal Passion engagement"
+    },
+    {
+      "candidate_id": "historical-6c0878e9dcb0#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text output preference; administrative"
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Tracking Trump administration's Greenland pressure on NATO ally; political event analysis"
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing historical precedents (Gadsden Purchase, Panama Canal) for territorial seizure patterns"
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#2",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political commentary and analysis of current geopolitical absurdity"
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#3",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing financial/economic implications of Trump's policies and geopolitical strategy"
+    },
+    {
+      "candidate_id": "historical-6cbb653157dc#4",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analyzing political commentary on Trump's geopolitical approach and establishment response"
+    }
+  ]
+}

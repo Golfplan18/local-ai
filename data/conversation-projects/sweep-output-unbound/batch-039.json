@@ -1,0 +1,125 @@
+{
+  "batch": 39,
+  "placements": [
+    {
+      "candidate_id": "historical-fc7f209fa1c1#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool role clarification; administrative exchange, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Household laundry advice; factual troubleshooting unrelated to any Passion."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup: T-Mobile pricing; no engagement or exploration."
+    },
+    {
+      "candidate_id": "historical-fc84a4d0296a#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup: superglue curing time; no analysis or engagement."
+    },
+    {
+      "candidate_id": "historical-fca7f461fc09#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Deliberate prose-style rewrite exercise in Hemingway's voice; refining writing craft and emotional effect."
+    },
+    {
+      "candidate_id": "historical-fce1fcd29980#0",
+      "nexuses": ["golf"],
+      "confidence": "high",
+      "reason": "Analysis of golfer swing mechanics and clubhead manipulation techniques; golf observation and design study."
+    },
+    {
+      "candidate_id": "historical-fd3cc53f11a5#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Developing outline for political analysis book; working through altruistic political framework."
+    },
+    {
+      "candidate_id": "historical-fd3cc53f11a5#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing left-wing and right-wing propaganda dissemination techniques; tracking political communication methods."
+    },
+    {
+      "candidate_id": "historical-fd3cc53f11a5#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Structuring political propaganda analysis into book chapters; strategic examination of political influence methods."
+    },
+    {
+      "candidate_id": "historical-fd73bb1914c9#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Requesting literary criticism of paper style, structure, and argumentation; refining writing craft."
+    },
+    {
+      "candidate_id": "historical-fd7625cff218#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Creating school exam prep materials for a child; practical homework support, not Passion exploration."
+    },
+    {
+      "candidate_id": "historical-fd9717bf1541#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Senate race dynamics and Trump endorsement impact; tracking political events and power mechanisms."
+    },
+    {
+      "candidate_id": "historical-fd9ff9fcb9b9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare factual lookup: Maroon 5 song popularity data; no engagement or analysis."
+    },
+    {
+      "candidate_id": "historical-fdd51f9513fc#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Personal philosophical reflection on masculine/feminine dynamics and how beliefs undermined marriage; exploring consciousness and compassionate interaction."
+    },
+    {
+      "candidate_id": "historical-fdd83017b937#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Formal legal complaint document; specific case matter, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-fdfc6429d8d9#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Researching Obsidian tool capabilities for Wikipedia integration; evaluating technology for enhanced workflow."
+    },
+    {
+      "candidate_id": "historical-fe4bc2e198a3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text-cleanup tool role clarification; administrative technical support."
+    },
+    {
+      "candidate_id": "historical-fec3c8ccc19d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Code block comparison request; technical troubleshooting unrelated to any Passion."
+    },
+    {
+      "candidate_id": "historical-ff0df933f699#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Image tool scope clarification; administrative technical exchange."
+    },
+    {
+      "candidate_id": "historical-ff2ead5edfa5#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical diagram request for velocity/tech-debt relationship; minimal engagement, no sustained exploration."
+    }
+  ]
+}

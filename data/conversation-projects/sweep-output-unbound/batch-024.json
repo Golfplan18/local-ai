@@ -1,0 +1,215 @@
+{
+  "batch": 24,
+  "placements": [
+    {
+      "candidate_id": "historical-9fdf7c8bd5d1#0",
+      "nexuses": ["writing_fiction", "politics"],
+      "confidence": "high",
+      "reason": "Developing satirical narrative on authoritarian decline; political ideology through character."
+    },
+    {
+      "candidate_id": "historical-a01bc98e63e9#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Text cleanup tool; administrative exchange without substantive Passion engagement."
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Legal complaint review for specific case; case-specific work, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-a04c8d290628#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Document exhibits organization; administrative legal work."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare lookup of rental regulations; single-fact lookup with no engagement."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Contact information lookup; bare fact retrieval."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#2",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump farm subsidy policy timeline and consequences; tracking political/economic events."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#3",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Product availability lookup; bare feature query."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#4",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Examining Washington Post article on immigration policy and labor-market mismatch; source-backed event tracking."
+    },
+    {
+      "candidate_id": "historical-a056ff48c539#5",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking federal court ruling on Medicaid process violations; evaluating policy impact through evidence."
+    },
+    {
+      "candidate_id": "historical-a05af1602606#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Sports relocation trivia; general interest, not property-principle engagement."
+    },
+    {
+      "candidate_id": "historical-a05af1602606#1",
+      "nexuses": ["property"],
+      "confidence": "high",
+      "reason": "Considering stadium redevelopment planning and infrastructure costs; real estate repurposing analysis."
+    },
+    {
+      "candidate_id": "historical-a074fc13d419#0",
+      "nexuses": ["writing_fiction", "insight"],
+      "confidence": "high",
+      "reason": "Analyzing character moral transformation and psychological state in film; craft + consciousness understanding."
+    },
+    {
+      "candidate_id": "historical-a074fc13d419#1",
+      "nexuses": ["writing_fiction", "insight"],
+      "confidence": "high",
+      "reason": "Examining ambiguous character demeanor and director's deliberate intention; narrative craft + psychological analysis."
+    },
+    {
+      "candidate_id": "historical-a074fc13d419#2",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Studying Kubrick's meticulous filmmaking control; learning craft from master filmmaker."
+    },
+    {
+      "candidate_id": "historical-a0864b90c02e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Missing image attachment notice; administrative clarification."
+    },
+    {
+      "candidate_id": "historical-a08a7c18ebe3#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Analyzing how AI agents interact with DMCA via circumvention; exploring tool capabilities and legal systems."
+    },
+    {
+      "candidate_id": "historical-a0951f5b61bc#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Dating profile text editing and message refinement; tactical text work, not Passion engagement."
+    },
+    {
+      "candidate_id": "historical-a0c6f3eac3f6#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Preference statement; administrative preference."
+    },
+    {
+      "candidate_id": "historical-a10fc818ba6b#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Observing hawk predation patterns and designing wildlife shelters; ecology and animal behavior analysis."
+    },
+    {
+      "candidate_id": "historical-a12d3d08f296#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Architectural tour lookup; bare information retrieval."
+    },
+    {
+      "candidate_id": "historical-a12d3d08f296#1",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Movie character trivia questions; factual lookups, not analytical engagement."
+    },
+    {
+      "candidate_id": "historical-a1c2e1083938#0",
+      "nexuses": ["writing_fiction"],
+      "confidence": "high",
+      "reason": "Developing complex character profile with psychological architecture for narrative; fiction character craft."
+    },
+    {
+      "candidate_id": "historical-a1cc65e399be#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Caffeine intake calculation and personal optimization math; tactical self-tracking."
+    },
+    {
+      "candidate_id": "historical-a1ced0cbf609#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Exploring first-order vs second-order thinking frameworks and causality; understanding thought systems."
+    },
+    {
+      "candidate_id": "historical-a23e1aec9736#0",
+      "nexuses": ["writing", "technology"],
+      "confidence": "high",
+      "reason": "Designing mobile work ritual for maintaining creative flow while traveling; writing practice + productivity systems."
+    },
+    {
+      "candidate_id": "historical-a2573171985b#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking RFK Jr's broken promises on vaccines; source-backed analysis of policy vs claims."
+    },
+    {
+      "candidate_id": "historical-a2573171985b#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Trump approval collapse and rise of anti-establishment progressives; tracking political movements."
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#0",
+      "nexuses": ["writing"],
+      "confidence": "high",
+      "reason": "Developing manuscript structure and prose revisions; writing craft and composition."
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#1",
+      "nexuses": ["publishing", "writing"],
+      "confidence": "high",
+      "reason": "Creating titles and page-count estimates for published work; publishing infrastructure + writing."
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#2",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Writing back-cover blurbs and front-matter endorsements; publishing materials development."
+    },
+    {
+      "candidate_id": "historical-a2fb72d2cec7#3",
+      "nexuses": ["publishing"],
+      "confidence": "high",
+      "reason": "Creating front-matter praise from AI for publication metadata; publishing preparation."
+    },
+    {
+      "candidate_id": "historical-a310ce1f4875#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Canada's trade-decoupling strategy and geopolitical pivot; tracking policy and international events."
+    },
+    {
+      "candidate_id": "historical-a310ce1f4875#1",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Examining European tariff negotiations and political standoff dynamics; tracking international political events."
+    },
+    {
+      "candidate_id": "historical-a3116b6f42ab#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Exploring Tibetan Buddhist teachings on altruistic aspiration and interconnectedness; spiritual philosophy + compassion."
+    }
+  ]
+}

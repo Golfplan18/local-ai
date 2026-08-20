@@ -1,0 +1,236 @@
+[
+ {
+  "kind": "unbound",
+  "batch": 1,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-001.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 2,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-002.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 3,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-003.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 4,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-004.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 5,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-005.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 6,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-006.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 7,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-007.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 8,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-008.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 9,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-009.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 10,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-010.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 11,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-011.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 12,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-012.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 13,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-013.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 14,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-014.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 15,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-015.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 16,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-016.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 17,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-017.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 18,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-018.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 19,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-019.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 20,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-020.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 21,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-021.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 22,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-022.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 23,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-023.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 24,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-024.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 25,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-025.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 26,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-026.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 27,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-027.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 28,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-028.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 29,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-029.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 30,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-030.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 31,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-031.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 32,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-032.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 33,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-033.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 34,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-034.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 35,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-035.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 36,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-036.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 37,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-037.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 38,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-038.json",
+  "count": 35
+ },
+ {
+  "kind": "unbound",
+  "batch": 39,
+  "path": "/Users/oracle/ora/data/conversation-projects/sweep-input-unbound/batch-039.json",
+  "count": 20
+ }
+]

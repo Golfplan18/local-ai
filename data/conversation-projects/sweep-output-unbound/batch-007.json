@@ -1,0 +1,215 @@
+{
+  "batch": 7,
+  "placements": [
+    {
+      "candidate_id": "historical-2d2ad3d3d119#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Medical/legal case analysis; no passion engagement detected."
+    },
+    {
+      "candidate_id": "historical-2d82bb00ce00#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative error message exchange; not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-2dbd3f56ab9a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative image attachment error; no passion engagement."
+    },
+    {
+      "candidate_id": "historical-2e245467f068#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Legal complaint document refinement; no passion engagement."
+    },
+    {
+      "candidate_id": "historical-2e2ccd77e6f3#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Testing oxygen concentrator against real personal environment; evaluating tool effectiveness."
+    },
+    {
+      "candidate_id": "historical-2e76fbe77c2a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Bare fact lookup request for study links; no engagement or analysis."
+    },
+    {
+      "candidate_id": "historical-2e9feab31d3b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Minimal administrative exchange."
+    },
+    {
+      "candidate_id": "historical-2ed424d525d0#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Evaluating ad blocker tools against real personal device needs; testing alternatives."
+    },
+    {
+      "candidate_id": "historical-2effcc23768e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual lookup about LLM capabilities; no systematic exploration of AI collaboration."
+    },
+    {
+      "candidate_id": "historical-2f549ebc64a6#0",
+      "nexuses": ["science"],
+      "confidence": "high",
+      "reason": "Deep investigation brainstorming quantum experiment correlations; testing hypotheses and mechanisms."
+    },
+    {
+      "candidate_id": "historical-2fcc4fe8e076#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple technical lookup about Tesla navigation; bare fact query."
+    },
+    {
+      "candidate_id": "historical-2fd35c57b38d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Buddhist text paraphrasing and SEO keyword work; no passion engagement."
+    },
+    {
+      "candidate_id": "historical-2fd67dab4bda#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Fact lookup about credit unions; no sustained engagement."
+    },
+    {
+      "candidate_id": "historical-2fd732e32542#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Test prompt message; administrative only."
+    },
+    {
+      "candidate_id": "historical-2fe5abdd6033#0",
+      "nexuses": ["insight", "relationships"],
+      "confidence": "high",
+      "reason": "Deep reflection on moral response to predatory harm and institutional failure; examining compassion vs retribution."
+    },
+    {
+      "candidate_id": "historical-2fe8d25422a5#0",
+      "nexuses": ["insight"],
+      "confidence": "high",
+      "reason": "Personal insight exploration: purging reflexive need for validation and understanding sovereignty in relationships."
+    },
+    {
+      "candidate_id": "historical-30012e9e1fd6#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Minimal administrative exchange."
+    },
+    {
+      "candidate_id": "historical-301499770ae3#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative role clarification exchange."
+    },
+    {
+      "candidate_id": "historical-30d2a80883c9#0",
+      "nexuses": ["relationships", "insight"],
+      "confidence": "high",
+      "reason": "Deep exploration of dating patterns, cost-benefit analysis, somatic discernment, and male authenticity in relationships."
+    },
+    {
+      "candidate_id": "historical-31d541a54ce7#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Minimal administrative exchange."
+    },
+    {
+      "candidate_id": "historical-3207afbd498a#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Tracking political event (ICE court ruling) and analyzing governmental justification for enforcement action."
+    },
+    {
+      "candidate_id": "historical-32ad56b040ed#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Reference report request on tax policy; no personal engagement or sustained analysis."
+    },
+    {
+      "candidate_id": "historical-32b3c16e3584#0",
+      "nexuses": ["prompt_engineering"],
+      "confidence": "high",
+      "reason": "Brainstorming systematic AI-assisted procedures for persistent memory and therapeutic collaboration with LLMs."
+    },
+    {
+      "candidate_id": "historical-32e4363cbe6b#0",
+      "nexuses": ["politics", "insight"],
+      "confidence": "high",
+      "reason": "Analyzing systemic economic constraints trapping women in marriages; examining political/structural causes of suffering."
+    },
+    {
+      "candidate_id": "historical-32e91ab1d422#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing Senate voting strategy and tactical maneuvering on funding bill."
+    },
+    {
+      "candidate_id": "historical-3327b90c4857#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Deep analysis of filibuster mechanics, history, rule changes, and reform proposals in political context."
+    },
+    {
+      "candidate_id": "historical-332fba426826#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative image attachment error exchange."
+    },
+    {
+      "candidate_id": "historical-3369fa27cbef#0",
+      "nexuses": ["technology"],
+      "confidence": "high",
+      "reason": "Testing vacuum accessory compatibility against real personal equipment; evaluating tool functionality and design."
+    },
+    {
+      "candidate_id": "historical-3369fa27cbef#1",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Analyzing Amazon marketplace platform design and deliberate opacity obscuring brand information."
+    },
+    {
+      "candidate_id": "historical-3369fa27cbef#2",
+      "nexuses": ["technology"],
+      "confidence": "medium",
+      "reason": "Exploring product concepts for displaying time cycles; brainstorming tool options for environment fit."
+    },
+    {
+      "candidate_id": "historical-33b18ed17c6d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Minimal administrative exchange."
+    },
+    {
+      "candidate_id": "historical-33bb3cbd0b48#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Factual lookup about AI business dealings; no sustained engagement."
+    },
+    {
+      "candidate_id": "historical-33f2f8e8f835#0",
+      "nexuses": ["politics"],
+      "confidence": "high",
+      "reason": "Analyzing political smear article and examining fear/threat dynamic in political rhetoric."
+    },
+    {
+      "candidate_id": "historical-344f753ad04f#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical explanation of XML; factual reference material, not sustained engagement."
+    },
+    {
+      "candidate_id": "historical-3454f505c896#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical log notation example; administrative only."
+    }
+  ]
+}

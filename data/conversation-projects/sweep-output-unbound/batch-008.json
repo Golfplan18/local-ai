@@ -1,0 +1,267 @@
+{
+  "batch": 8,
+  "placements": [
+    {
+      "candidate_id": "historical-34b41d0bf6cd#0",
+      "nexuses": [
+        "technology",
+        "publishing"
+      ],
+      "confidence": "medium",
+      "reason": "Exploration of AI democratization and its impact on software innovation, distributed knowledge."
+    },
+    {
+      "candidate_id": "historical-34b7b774cf40#0",
+      "nexuses": [
+        "politics",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Strategic analysis of publication risk under state surveillance; exploring personal safety and altruistic action."
+    },
+    {
+      "candidate_id": "historical-34d5cada489d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Sports fact lookup and historical playoff statistics; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-34f074a310df#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of constitutional interpretation as political weapon; examining legal frameworks for altruistic governance."
+    },
+    {
+      "candidate_id": "historical-3574cc860b33#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative bridge test; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-35c2aad75e2d#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Research into contemporary thought leaders on performance-based living and personal development."
+    },
+    {
+      "candidate_id": "historical-35d3b9bbbfd6#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Engaged exploration of fundamental physics: black hole thermodynamics and quantum effects."
+    },
+    {
+      "candidate_id": "historical-35d3b9bbbfd6#1",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Critical philosophical analysis of quantum gravity testability; questioning the value of untestable theories."
+    },
+    {
+      "candidate_id": "historical-35dd871f6185#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative error notification; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-35e6076f9826#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Practical legal/administrative reference on abuse reporting; not exploratory engagement."
+    },
+    {
+      "candidate_id": "historical-35e9a8cf7e55#0",
+      "nexuses": [
+        "insight",
+        "relationships"
+      ],
+      "confidence": "high",
+      "reason": "Deep exploration of scarcity as root of suffering and trauma; discussion of neuroplasticity and healing in relationships."
+    },
+    {
+      "candidate_id": "historical-35f0011b984a#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Tool role clarification; technical/administrative, no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-35faa8bc4ca2#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Simple fact lookup about solar measurements; no sustained engagement or analysis."
+    },
+    {
+      "candidate_id": "historical-35faa8bc4ca2#1",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "high",
+      "reason": "Engaged exploration of quantum mechanics interpretations, specifically de Broglie-Bohm pilot-wave theory."
+    },
+    {
+      "candidate_id": "historical-3608f25e09b5#0",
+      "nexuses": [
+        "relationships",
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Personal experience managing family member's health; exploring adaptation, wellbeing, and supportive interaction."
+    },
+    {
+      "candidate_id": "historical-3612379e0659#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Scholarly research planning on Christian Nationalism; tracking political movements and religious-political frameworks."
+    },
+    {
+      "candidate_id": "historical-366bf448a69e#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative formatting request; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-368768ae0a46#0",
+      "nexuses": [
+        "science"
+      ],
+      "confidence": "medium",
+      "reason": "Historical exploration of scientific investigation; engaging with UFO research as scientific history."
+    },
+    {
+      "candidate_id": "historical-36a3f05cdd9d#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical support for social media account recovery; not any Passion."
+    },
+    {
+      "candidate_id": "historical-36b2e7bfd58b#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative clarification about missing image; no Passion engagement."
+    },
+    {
+      "candidate_id": "historical-36bb62e4e803#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Political analysis of international negotiations and strategic decision-making; tracking geopolitical events."
+    },
+    {
+      "candidate_id": "historical-36f4aa660a61#0",
+      "nexuses": [
+        "writing_fiction"
+      ],
+      "confidence": "high",
+      "reason": "Fiction outline with character introduction, scene goals, and narrative structure work."
+    },
+    {
+      "candidate_id": "historical-370eeee70fdb#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of government enforcement policy and moral implications; tracking political events and their consequences."
+    },
+    {
+      "candidate_id": "historical-3721daae62c2#0",
+      "nexuses": [
+        "insight"
+      ],
+      "confidence": "high",
+      "reason": "Personal reflection on mind management, focus, and creative optimization; understanding cognition."
+    },
+    {
+      "candidate_id": "historical-379992ee0ebb#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Financial market analysis; not aligned with defined Passions."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#0",
+      "nexuses": [
+        "politics",
+        "writing"
+      ],
+      "confidence": "high",
+      "reason": "Political economic analysis published on Substack; crafting persuasive political commentary."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#1",
+      "nexuses": [
+        "politics",
+        "publishing"
+      ],
+      "confidence": "high",
+      "reason": "Strategic distribution of political content across platforms; publishing altruistic political analysis."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#2",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Technical platform troubleshooting for content distribution; not exploratory engagement with any Passion."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#3",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Geopolitical analysis of Venezuela, power structures, and military dynamics."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#4",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of complex geopolitical border negotiations and competing actors in Venezuela conflict."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#5",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of executive legal authority and credit-market policy strategy in pursuit of political goals."
+    },
+    {
+      "candidate_id": "historical-3812c48194e2#6",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of proxy war dynamics, mercenary conflicts, and resource extraction; understanding geopolitical patterns."
+    },
+    {
+      "candidate_id": "historical-384166babaff#0",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Geopolitical analysis of China's strategy; critique of imperial realpolitik and moral implications of statecraft."
+    },
+    {
+      "candidate_id": "historical-384166babaff#1",
+      "nexuses": [
+        "politics"
+      ],
+      "confidence": "high",
+      "reason": "Analysis of geopolitical power shifts and international relations; tracking how Trump policies affect global positioning."
+    },
+    {
+      "candidate_id": "historical-38c4697c2682#0",
+      "nexuses": [],
+      "confidence": "high",
+      "reason": "Administrative formatting request; no Passion engagement."
+    }
+  ]
+}

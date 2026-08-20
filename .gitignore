@@ -199,5 +199,6 @@ data/conversation-projects/judge-input/
 data/conversation-projects/verify-input/
 data/conversation-projects/sweep-input-unretrieved/
 data/conversation-projects/sweep-input-all/
+data/conversation-projects/sweep-input-unbound/
 data/conversation-projects/verify-works/
 data/conversation-projects/rerun-batches.json
