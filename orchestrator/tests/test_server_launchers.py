@@ -217,7 +217,7 @@ def _bat_stop_outcome(source: str, code: int) -> dict:
 
 
 def _load_server_port_contract():
-    """Load only server.py's port helpers, not its 17k-line runtime graph."""
+    """Load only app.py's port helpers, not its 21k-line runtime graph."""
     tree = ast.parse(SERVER.read_text(encoding="utf-8"), filename=str(SERVER))
     wanted_assignments = {"_SERVER_HOST", "_DEFAULT_SERVER_PORTS"}
     wanted_defs = {"ServerPortError", "_port_is_available", "_select_server_port"}
@@ -530,9 +530,16 @@ class TestServerLaunchers(unittest.TestCase):
         assert correct.returncode == 0
 
     def test_windows_launchers_only_name_server_files_that_exist(self):
-        """start.bat launched `server\\server.py`, which has never existed.
+        """start.bat launched `server\\server.py` for three weeks after it was renamed.
 
-        The suite passed anyway, because nothing checked the launch target
+        That path was correct when start.bat was written (d8704d5b,
+        2026-04-27): `server/server.py` had shipped since the initial commit.
+        The rename to `server/app.py` (f14ea5b0, 2026-07-31) swept 95 files,
+        including start.sh, stop.sh, run-ora-server.sh and ora-launchd.sh —
+        every launcher except the two batch scripts. Windows broke that day
+        and stayed broken until the repair on 2026-08-21.
+
+        The suite passed throughout, because nothing checked the launch target
         against the filesystem. Every server file either batch script names —
         the one it launches and the one its failure message tells the user to
         run by hand — has to be a real file in this checkout.

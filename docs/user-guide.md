@@ -50,8 +50,11 @@ You need:
 
 - Git
 - Python 3.11 or newer
+- Node.js and npm (the installer sets up Ora's three pinned MCP servers and their browser, and stops if these are missing)
 - At least 5 GB free disk for a source install
-- Internet access (to GitHub and the model-catalog sources)
+- Internet access to GitHub, PyPI, the npm registry, and Playwright's browser CDN — the installer fetches the pinned MCP servers and their exact Chromium from the last two, and stops if either is unreachable. The model-catalog sources are wanted but not required: if OpenRouter is unreachable the install falls back to the catalog packaged with the checkout.
+
+You do not need an existing vault, and you do not need Pandoc or Typst. The installer creates the vault when there is none, and downloads the two converters Word and PDF export need when the machine has none.
 
 Optional but useful: an OpenRouter API key (broad cloud-model access), a Tavily key (web search), an Artificial Analysis key (better model-selector data). None are required to finish the install — you add them later.
 
@@ -72,7 +75,7 @@ There is no packaged one-click installer. The install is a source install: you c
    ```bash
    python3 scripts/install.py --profile solo
    ```
-   The installer runs seven steps (preflight → profile → catalog refresh → registry sync → auto-populate → smoke test → API orientation). It is safe to re-run.
+   The installer runs nine steps (pre-flight, which also creates the vault → Python dependencies → Word/PDF converters → profile → catalog refresh → registry sync → user pipeline and the four model presets → smoke test → API orientation). It is safe to re-run.
 3. Install the recommended per-user supervised service:
    ```bash
    ./scripts/ora-launchd.sh install

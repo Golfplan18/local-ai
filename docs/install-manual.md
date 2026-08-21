@@ -41,15 +41,59 @@ You want Python 3.11 or newer. On Windows:
 py -3 --version
 ```
 
-### 3. Refresh the OpenRouter model catalog
+### 3. Install the Python dependencies
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Nothing else in the repo installs these, and the server imports `flask`, `requests`, `chromadb`, `keyring`, `openai`, and `yaml` at module scope. If pip refuses with `externally-managed-environment` (Homebrew and most distro Pythons are PEP 668 managed), create the isolated environment the launchers prefer instead:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python3 -m pip install -r requirements.txt
+```
+
+The script also installs the three pinned MCP servers from `mcp-runtime/package-lock.json` and their exact Playwright browser, which needs Node.js and npm:
+
+```bash
+cd mcp-runtime && npm ci --ignore-scripts --no-audit --no-fund && cd ..
+PLAYWRIGHT_BROWSERS_PATH=0 node mcp-runtime/node_modules/playwright-core/cli.js install chromium
+```
+
+`PLAYWRIGHT_BROWSERS_PATH=0` is not optional. It puts Chromium inside the package's own `.local-browsers` directory instead of the shared per-user cache, and Ora accepts only the package-local copy — both `install.py` and `orchestrator/mcp_client.py` re-resolve the browser with that variable set and refuse it if it lands anywhere else.
+
+### 4. Create the vault if you do not have one
+
+The script creates the vault when the resolved vault path does not exist, and never writes into an existing one. That path is `~/Documents/vault` unless `ORA_VAULT` or `ORA_DOCUMENTS` moves it. By hand, that is:
+
+```bash
+mkdir -p ~/Documents/vault/"Projects/Ora" \
+         ~/Documents/vault/Sessions \
+         ~/Documents/vault/Engrams \
+         ~/Documents/vault/Resources \
+         ~/Documents/vault/Administration
+```
+
+If you already have a vault, skip this — leave it exactly as it is.
+
+### 5. Install the Word/PDF converters
+
+```bash
+python3 scripts/converters.py
+```
+
+Ora renders Word (`.docx`) and PDF by handing markdown to Pandoc, with Typst as the PDF engine. This uses whatever the machine already has and otherwise downloads the publishers' pinned, checksum-verified releases into `data/converters/bin`. Add `--dry-run` to see what it would do without changing anything. Skipping this step costs you Word and PDF export and nothing else.
+
+### 6. Refresh the OpenRouter model catalog
 
 ```bash
 python3 scripts/refresh-catalog.py
 ```
 
-Writes `config/model-catalog.json` and `data/model-catalog-changes.jsonl`. This does not require an OpenRouter key because the model-list endpoint is public.
+Writes `config/model-catalog.json` and `data/model-catalog-changes.jsonl`. This does not require an OpenRouter key because the model-list endpoint is public. A catalog already ships in the repository, so if OpenRouter is unreachable you can skip this step and carry on against the packaged copy — the picks will simply be as current as that file's date.
 
-### 4. Sync the model registry
+### 7. Sync the model registry
 
 ```bash
 python3 scripts/sync_model_registry.py sync --no-probe
@@ -59,15 +103,27 @@ Writes `config/model-registry.json` from OpenRouter, LiteLLM, Chatbot Arena, and
 
 If you intentionally want empirical vision probes and already have an OpenRouter key, omit `--no-probe`.
 
-### 5. Auto-populate the user pipeline
+### 8. Auto-populate the user pipeline and bake the presets
 
 ```bash
-python3 scripts/auto-populate-configuration.py optimum user-pipeline
+python3 scripts/auto-populate-configuration.py budget user-pipeline
 ```
 
-Writes `config/configurations/user-pipeline.json`.
+Writes `config/configurations/user-pipeline.json` from the **Budget** preset. The valid preset names are `premium`, `budget`, `speed`, and `free`; there is no "optimum".
 
-### 6. Create the Free smoke-test configuration
+The script also bakes the four preset cards the Models pane shows. Free is the only one that mixes locally installed models into its picks, and the code that does it refuses to guess: with no `config/models.json` it raises rather than route to a model that may not be on disk. That file is machine-local and never committed, so a fresh clone has none and a bake run on its own gets three cards and an error where Free should be. Record the inventory first, exactly as the installer and the Models pane both do, and then bake:
+
+```bash
+mkdir -p ~/ora/models
+python3 -m orchestrator.local_model_discovery --write
+python3 -c "from orchestrator import active_configuration as ac; print(ac.bake_missing_presets(force=True, log=print))"
+```
+
+Finding no local models is an ordinary answer, not a failure: the scan records an empty inventory and Free keeps its cloud picks. All four names should come back from the bake — `['free', 'budget', 'speed', 'premium']`.
+
+Without this, the cards are baked the first time you open Settings → Models instead; that pane runs the same scan before it bakes.
+
+### 9. Create the Free smoke-test configuration
 
 ```bash
 python3 scripts/auto-populate-configuration.py free smoke-test-free
@@ -75,7 +131,7 @@ python3 scripts/auto-populate-configuration.py free smoke-test-free
 
 This verifies that the free preset can produce a concrete configuration. If you have no OpenRouter key, this is the manual smoke-test fallback.
 
-### 7. Optional live OpenRouter smoke test
+### 10. Optional live OpenRouter smoke test
 
 Only run this if you have an OpenRouter key in the environment:
 
@@ -109,7 +165,7 @@ print(urllib.request.urlopen(req, timeout=45).read().decode('utf-8')[:500])
 
 Free models are rate-limited and sometimes unavailable. A valid key with an unavailable free model is not the same thing as a broken install.
 
-### 8. Start the server
+### 11. Start the server
 
 On macOS, the recommended durable start installs and verifies the per-user
 launchd service:
@@ -119,8 +175,8 @@ launchd service:
 ```
 
 On Linux/WSL, or for a deliberately unsupervised macOS session, use
-`./start.sh`. Open the origin for the exact health port it reports (5000–5010),
-rather than assuming port 5000 is free.
+`./start.sh`; on Windows, use `start.bat`. Open the origin for the exact health
+port it reports (5000–5010), rather than assuming port 5000 is free.
 
 ---
 

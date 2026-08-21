@@ -5,7 +5,7 @@ What to do when `scripts/install.py` or `scripts/install-server.sh` fails partwa
 The companion docs:
 
 - **`install-guide.md`** — the happy-path walkthrough
-- **`install-manual.md`** — eight-command fallback when the script itself is broken
+- **`install-manual.md`** — manual command fallback when the script itself is broken
 - **`install-testing.md`** — formal test protocol
 
 ---
@@ -14,13 +14,13 @@ The companion docs:
 
 ### 1. Read `install.log`
 
-`scripts/install.py` writes structured output to stdout that's worth capturing:
+`scripts/install.py` writes every line it prints to `~/ora/install.log` itself — you do not need to redirect anything. Read it after a failed run:
 
 ```bash
-python3 scripts/install.py --profile solo 2>&1 | tee ~/ora/install.log
+tail -n 60 ~/ora/install.log
 ```
 
-Re-running with the log redirected makes failure diagnosis much easier. The log ends with one of:
+The file is appended to across runs, so the last run's output is at the end. The log ends with one of:
 
 - `INSTALL_COMPLETE: 0 warnings, 0 errors` — success
 - A step that exited non-zero — that's where to look
@@ -51,7 +51,7 @@ python3 scripts/install.py --profile solo --dry-run
 python3 scripts/install.py --reset
 ```
 
-Clears `~/ora/install-state.json`. Next run starts from scratch. **Doesn't undo file-level changes** — if Step 5 wrote `config/configurations/user-pipeline.json`, that file stays. `--reset` just makes the installer forget it's already done.
+Deletes `~/ora/install-state.json` **and** `~/ora/install.log`, then writes its own one-line confirmation into a fresh log — so everything the failed run recorded above is gone. Copy anything you still need out of `install.log` before you run this. Next run starts from scratch. **Doesn't undo file-level changes** — if Step 7 wrote `config/configurations/user-pipeline.json`, that file stays. `--reset` just makes the installer forget it's already done.
 
 ---
 
@@ -78,15 +78,23 @@ If you've installed a newer Python but `python3 --version` still shows 3.9, your
 
 Free up disk. Most likely culprits: old Xcode CLI tools, large iCloud caches, abandoned Docker volumes. The installer wants 5 GB for the install itself; local models on top add 20-80 GB per model.
 
-#### "OpenRouter API unreachable"
+#### "Cannot reach OpenRouter"
 
-Network issue. Check:
+**This is a warning, not a failure.** Pre-flight reports it and the install continues; Step 5 falls back to the model catalog packaged with this checkout, and only halts if that packaged catalog is missing or unusable. Every preset and the user pipeline bake correctly from the packaged copy, so the cost of installing during an outage is that models released since the packaged catalog's date are missing, and prices, context windows, and rankings are as of that date.
+
+If you would rather fix the network first, check:
 
 ```bash
 curl -I https://openrouter.ai/api/v1/models
 ```
 
-If that fails too, you've got a connectivity problem (DNS, firewall, VPN). Fix the network and re-run. The catalog endpoint does not require an API key.
+If that fails too, you've got a connectivity problem (DNS, firewall, VPN). The catalog endpoint does not require an API key. Once the network is back, `python3 scripts/refresh-catalog.py` brings the catalog current without re-running the whole install.
+
+#### "Could not create the vault at …"
+
+Pre-flight creates the vault when the resolved vault path does not exist — the root plus `Projects/Ora`, `Sessions`, `Engrams`, `Resources`, and `Administration`. An existing vault is left exactly as it is and is never written into. Creation failure halts the install, and the installer removes the directories it had just made so a re-run starts clean; anything it could not remove is named in the log. Check the parent directory's permissions and free space, then re-run with `--resume`. If the log says a path was left in place, look at it before re-running.
+
+Setting `ORA_VAULT` to an existing vault is the other way past this — the installer then reports that vault and leaves it alone.
 
 #### "Write permission denied at /Users/.../ora"
 
@@ -99,7 +107,39 @@ chown -R "$USER:staff" ~/ora 2>/dev/null   # macOS
 chown -R "$USER:$USER" ~/ora               # Linux
 ```
 
-### Step 2 — Profile selection
+### Step 2 — Python dependencies
+
+#### "pip install failed"
+
+The step installs `requirements.txt` with the same interpreter that is running the installer, and prints the exact command it used so you can retry it by hand. Read the pip error first — a specific package failing is usually a network or wheel-build problem, not an Ora problem.
+
+If pip refuses with `externally-managed-environment`, the installer has already handled it: Homebrew and most distro Pythons are PEP 668 managed, so it creates an isolated `.venv/` and installs there instead. `run-ora-server.sh` prefers that `.venv/` automatically. A failure to *create* the venv is fatal — check disk space and permissions in the checkout.
+
+#### "Node.js and npm are required for the three shipped MCP servers"
+
+This halts the install. The step installs the exact lock in `mcp-runtime/package-lock.json` and its matching Playwright Chromium, and neither works without `node` and `npm` on `PATH`. Install Node.js, confirm `node --version` and `npm --version` answer, then re-run with `--resume`.
+
+### Step 3 — Document converters
+
+#### "Converters were not fully provisioned"
+
+**This never halts the install.** Ora renders Word (`.docx`) and PDF through Pandoc, with Typst as the PDF engine; a failure here costs you those two export formats and nothing else. The installer prints the cause and continues, and the step is not recorded as complete, so `--resume` retries it.
+
+Retry it on its own without re-running the install:
+
+```bash
+python3 scripts/install.py converters
+```
+
+To see what it would do without changing anything:
+
+```bash
+python3 scripts/converters.py --dry-run
+```
+
+It uses a Pandoc or Typst the machine already has and otherwise downloads the publishers' pinned, checksum-verified releases into `data/converters/bin`. No package manager is required, and an archive whose checksum does not match never reaches the disk.
+
+### Step 4 — Deployment profile selection
 
 If you pass `--profile hybrid` or `--profile organization`, the installer exits with:
 
@@ -107,36 +147,38 @@ If you pass `--profile hybrid` or `--profile organization`, the installer exits 
 
 Hybrid and Organization profiles are reserved in `DEPLOYMENT_PROFILES` but disabled pending network-discovery and concurrency validation. Use `--profile solo` for the desktop install. For server installs, use `scripts/install-server.sh` instead.
 
-### Step 3 — Catalog refresh
+### Step 5 — Catalog refresh
 
-#### "Catalog refresh failed"
+#### "Catalog refresh did not complete"
 
 The desktop installer fetches the public OpenRouter model list. This step does not require `OPENROUTER_API_KEY`.
 
-Common causes:
+**A refresh that does not complete is not, by itself, an install failure.** A model catalog ships in the repository, so the refresh makes it current rather than bringing it into existence. Whatever the cause — an outage, a rate limit, a network problem, a missing `scripts/refresh-catalog.py`, or a 120-second timeout — the installer prints the reason in full, falls back to the packaged catalog, says what is stale about it, and carries on. Everything downstream (the user pipeline, the four presets, the smoke test) bakes from that file exactly as it would from a fresh one.
 
-- OpenRouter catalog outage or rate limit. Wait a minute and re-run.
-- Network, DNS, firewall, or VPN issue. Confirm `curl -I https://openrouter.ai/api/v1/models` works.
-- A local Python dependency error. Read the stderr and install the missing package if one is named.
+Common causes worth reading the printed reason for:
 
-#### "Catalog refresh failed (exit N)"
+- **OpenRouter catalog outage or rate limit.** Wait 60 seconds.
+- **Network, DNS, firewall, or VPN issue.** Confirm `curl -I https://openrouter.ai/api/v1/models` works.
+- **Python dependency or import error.** Read the stderr and install the missing package, or use the same Python binary the installer uses.
 
-The refresh subprocess errored. Look at the stderr in the installer output. Common causes:
-
-- **OpenRouter catalog rate limit.** Wait 60 seconds and re-run.
-- **Network blip.** Re-run.
-- **Python dependency/import error.** Install the missing dependency or use the same Python binary the installer uses.
-
-#### "Catalog refresh timed out after 120s"
-
-Slow network or upstream catalog hiccup. Re-run; if it times out twice in a row, run the refresh directly to see the actual error:
+Once the network is back, get a current catalog without re-running the install:
 
 ```bash
 cd ~/ora
 python3 scripts/refresh-catalog.py
 ```
 
-### Step 4 — Model registry sync
+#### "There is no catalog to fall back on"
+
+This one *does* halt the install, and it is the only way Step 5 halts. It means the packaged catalog is missing, unreadable, holds no models, or holds no entry with a model id — so there is nothing for the later steps to pick from. Check the file:
+
+```bash
+python3 -c "import json; c = json.load(open('config/model-catalog.json')); print('models:', len(c.get('models', [])))"
+```
+
+Restore `config/model-catalog.json` (a clean clone ships one) and re-run with `--resume`.
+
+### Step 6 — Model registry sync
 
 #### "Registry sync failed"
 
@@ -148,31 +190,48 @@ python3 scripts/sync_model_registry.py sync
 
 Artificial Analysis is optional. The install path uses public Chatbot Arena/OpenRouter/LiteLLM data by default; an AA key can improve model-selector data after install but is not required.
 
-### Step 5 — Auto-populate
+### Step 7 — User pipeline and presets
+
+This step does two things: it writes `config/configurations/user-pipeline.json` from the **Budget** preset — the configuration Ora actually serves requests from — and then bakes the four preset cards the Models pane shows (Free, Budget, Speed, Premium) through the runtime's own baker.
 
 #### "Auto-populate failed"
 
-The most common cause: the catalog from Step 3 is empty or malformed. Verify:
+The most common cause: the catalog is empty or malformed. Verify:
 
 ```bash
 python3 -c "import json; c = json.load(open('config/model-catalog.json')); print('models:', len(c.get('models', [])))"
 ```
 
-If `models: 0`, re-run Step 4 (catalog refresh) — something broke the catalog. If model count looks healthy (~300+), look at the auto-populate stderr for the actual error.
+If `models: 0`, re-run Step 5 (catalog refresh) — something broke the catalog. If model count looks healthy (~300+), look at the auto-populate stderr for the actual error.
 
 You can re-run auto-populate directly:
 
 ```bash
-python3 scripts/auto-populate-configuration.py optimum user-pipeline
+python3 scripts/auto-populate-configuration.py budget user-pipeline
 ```
 
-Add `--verbose` if it's available, or just inspect the output configuration file:
+The valid preset names are `premium`, `budget`, `speed`, and `free`. There is no "optimum" preset — older docs named one, and passing it fails with `Unknown preset: optimum`.
+
+Inspect the output configuration file:
 
 ```bash
 cat config/configurations/user-pipeline.json
 ```
 
-### Step 6 — Smoke test
+#### "These presets do not exist after the bake" / "baked with no model in any slot"
+
+Both halt the install on purpose. Ora promises a card for each of Free, Budget, Speed, and Premium in Settings → Models; a preset that is absent, or that exists with a model in none of its five slots, is a blank card the pipeline cannot run from, so the installer stops rather than report success over it. The same test is applied to `user-pipeline` itself.
+
+The message names the catalog those picks came from and how many models it held. A catalog that never refreshed is the usual cause:
+
+```bash
+python3 scripts/refresh-catalog.py
+python3 scripts/install.py --profile solo --resume
+```
+
+A preset that filled *some* of its slots is the genuinely partial case: it warns and the install finishes. Fill the empty slots in Settings → Models, or refresh the catalog and re-bake from the pane's Refresh button.
+
+### Step 8 — Smoke test
 
 #### "Smoke test failed"
 
@@ -208,7 +267,7 @@ python3 scripts/install.py --profile solo --resume
 
 That message is not an install failure. The configuration passed, but the live free-model test did not complete. Add OpenRouter credits/payment or direct provider keys for reliable daily model access.
 
-### Step 7 — External APIs orientation
+### Step 9 — ChatGPT and External APIs orientation
 
 This step is informational. If a browser page fails to open automatically, copy the link from the log and paste it into your browser. You can also skip it and add keys later in Settings -> External APIs.
 

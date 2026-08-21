@@ -6,7 +6,7 @@ The companion docs:
 
 - **`install-guide.md`** — happy-path walkthrough
 - **`install-recovery.md`** — recover from a partial install failure
-- **`install-manual.md`** — eight-command manual fallback
+- **`install-manual.md`** — manual command fallback
 
 ---
 
@@ -51,20 +51,26 @@ python3 uninstall/uninstall.py
 
 Multi-step typed-DELETE confirmation. Removes:
 
-- `~/ora/.venv/`
-- Generated config files (`config/configurations/user-pipeline-auto.json`, `config/model-catalog.json`)
-- Cache directories
+- `install-state.json` and `install.log`
+- Every `*.json` in `config/configurations/` — the user pipeline, the four baked presets, the smoke-test configuration, and any saved custom
+- Rebuildable runtime data: the ChromaDB index, pipeline traces, oversight journals, the processing manifest, and the cache directory
 - Optional: downloaded local models (opt-in flag — preserved by default)
 - Optional: conversation history (opt-in flag — preserved by default)
+- Optional: the downloaded Word/PDF converters in `data/converters/` (opt-in flag — preserved by default, because `python3 scripts/install.py converters` fetches them again)
 
-Defense-in-depth hard-preserve: never touches the vault (`~/Documents/vault/`), source tree (`~/ora/`'s git checkout), or the uninstaller itself.
+`config/model-catalog.json` is deliberately **preserved**: it ships in the repository and is what an install falls back on when OpenRouter is unreachable. Deleting it would leave the checkout unable to install offline. Use `git checkout -- config/model-catalog.json` if you also want the refreshed data gone.
+
+Defense-in-depth hard-preserve: never touches the vault, the source tree, or the uninstaller itself.
+
+Two things the uninstaller leaves behind that a *clean-state* cycle needs gone: the `.venv/` the installer creates on a PEP 668 interpreter, and `mcp-runtime/node_modules/` with its Playwright browser. Remove those by hand, or use a snapshot revert, if the point of the cycle is to exercise steps 2 and 3 from nothing.
 
 Flags:
 
 ```bash
 python3 uninstall/uninstall.py --dry-run         # preview without changing anything
-python3 uninstall/uninstall.py --include-models  # also remove downloaded HuggingFace models
-python3 uninstall/uninstall.py --include-conversations  # also remove ~/Documents/conversations/
+python3 uninstall/uninstall.py --include-models  # also remove downloaded local models
+python3 uninstall/uninstall.py --include-conversations  # also remove the conversation store
+python3 uninstall/uninstall.py --include-converters     # also remove data/converters/ (Pandoc + Typst)
 ```
 
 ---
@@ -105,13 +111,15 @@ Artificial Analysis is optional. Do not require `AA_API_KEY` for a clean install
 #### Mac
 
 ```bash
-python3 scripts/install.py --profile solo 2>&1 | tee ~/ora/install.log
+python3 scripts/install.py --profile solo
 ```
+
+The installer writes every line to `~/ora/install.log` itself; no redirection is needed.
 
 #### Linux server
 
 ```bash
-./scripts/install-server.sh 2>&1 | tee ~/ora/install.log
+./scripts/install-server.sh 2>&1 | tee ~/ora/install-server.log
 ```
 
 (Or `install-bootstrap-linux.sh` once that exists; today it's the same script.)
@@ -123,7 +131,7 @@ Watch for:
 - **Unclear prompts** — note them. Friction points are install-quality bugs.
 - **Errors** — note the step, capture the stderr, screenshot if possible.
 - **Time per step** — the installer logs timestamps; eyeballing the gaps tells you which steps are slow.
-- **API orientation clarity** — Step 7 should explain OpenRouter, Tavily, Artificial Analysis, search alternatives, direct providers, and speech/image providers without making them required.
+- **API orientation clarity** — Step 9 should explain the optional ChatGPT sign-in route plus OpenRouter, Tavily, Artificial Analysis, search alternatives, direct providers, and speech/image providers without making them required.
 
 ### 6. Verify pass criteria
 
@@ -131,10 +139,13 @@ A clean install means **all** of these are true:
 
 - [ ] Script completed without manual intervention beyond profile selection and optional API-link prompts.
 - [ ] `~/ora/install.log` ends with `INSTALL_COMPLETE: 0 warnings, 0 errors`.
-- [ ] Smoke test passed (Step 6/7 for desktop, the `install_server_smoke.py` run for Linux server).
+- [ ] Smoke test passed (Step 8 for desktop, the `install_server_smoke.py` run for Linux server).
+- [ ] On a machine with no vault, the vault exists afterwards with `Projects/Ora`, `Sessions`, `Engrams`, `Resources`, and `Administration`. On a machine that already had one, it is byte-for-byte unchanged.
+- [ ] Word (`.docx`) and PDF export work from a machine that started with neither Pandoc nor Typst and no package manager. A converter failure must warn and continue, never halt.
+- [ ] All four preset cards — Free, Budget, Speed, Premium — exist after the install with at least one model filled, and so does `user-pipeline`. None of them is first baked by opening the Models pane.
 - [ ] No-key mode skips the live OpenRouter call and still completes.
 - [ ] Keyed mode fails on invalid OpenRouter auth but does not fail merely because free models are rate-limited/unavailable.
-- [ ] Browser opens to `localhost:5000` and the V3 UI renders (Mac install only — server install doesn't bind Flask publicly).
+- [ ] The origin for the exact `Health:` URL the launcher prints renders the V3 UI (normally `localhost:5000`, but 5001–5010 may be selected — Mac install only; the server install doesn't bind Flask publicly).
 - [ ] First conversation can be started within:
   - **30 seconds** of script completing — for cloud / API-only profiles
   - **60 seconds + download time** — for profiles that include local models
@@ -197,7 +208,7 @@ The install script materializes whatever's on `main` at install time. You can co
 **Install bugs vs Ora-side bugs are distinguishable:**
 
 - **Install bugs** error during script execution. Failure shows up in `install.log`.
-- **Ora-side bugs** error during the smoke test (step 6/7) or first conversation. Failure shows up in chat-server stderr or the V3 UI.
+- **Ora-side bugs** error during the smoke test (Step 8) or first conversation. Failure shows up in chat-server stderr or the V3 UI.
 
 When triaging a failed cycle, the location of the failure tells you which side to fix.
 

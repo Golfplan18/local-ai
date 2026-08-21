@@ -33,8 +33,11 @@ Required:
 
 - Git
 - Python 3.11+
+- Node.js and npm — Step 2 installs the three pinned MCP servers and their exact Playwright browser from the repository lock, and halts if `node` or `npm` is missing
 - At least 5 GB free disk for the source install
-- Internet access to GitHub, OpenRouter's catalog endpoint, and public model-metadata sources
+- Internet access to GitHub, PyPI, the npm registry, and Playwright's browser CDN — Step 2 fetches the pinned MCP servers from the registry whenever the local npm cache is cold and then downloads their exact Chromium, and a failure at either one halts the install. OpenRouter's catalog endpoint and the public model-metadata sources are wanted but not required: if OpenRouter is unreachable, the install falls back to the model catalog packaged with the checkout and continues.
+
+You do not need an existing vault, and you do not need Pandoc, Typst, Homebrew, WinGet, or Chocolatey. The installer creates the vault when there is none and downloads the two converters when the machine has none.
 
 Optional but recommended:
 
@@ -43,7 +46,7 @@ Optional but recommended:
 - Artificial Analysis API key for improved model-selector data
 - Direct provider keys if you already use Anthropic, OpenAI, Google, Mistral, DeepSeek, Qwen, or similar
 
-Keys are not required for the core script to complete. Add them during Step 7's orientation or later in **Settings -> External APIs**. Keys are stored in the system keychain by the settings UI, not in plaintext config files.
+Keys are not required for the core script to complete. Add them during Step 9's orientation or later in **Settings -> External APIs**. Keys are stored in the system keychain by the settings UI, not in plaintext config files.
 
 OpenRouter is strongly recommended but optional. Free models are rate-limited and sometimes unavailable; paid models need credits/payment. Direct provider keys can skip OpenRouter's roughly 5.5% gateway markup for those providers' own models.
 
@@ -133,15 +136,17 @@ WSL usually makes Python tooling simpler, but browser and file integration can f
 
 ## What `scripts/install.py` does
 
-The desktop source installer runs seven steps:
+The desktop source installer runs nine steps:
 
-1. **Preflight checks** — Python version, disk space, OpenRouter catalog reachability, and repo write permissions.
-2. **Deployment profile selection** — Solo is supported; Hybrid and Organization return a clear "not yet" message.
-3. **Catalog refresh** — fetches OpenRouter operational fields and writes `config/model-catalog.json`.
-4. **Model registry sync** — builds `config/model-registry.json` from OpenRouter, LiteLLM, Chatbot Arena, and optional probe data. Artificial Analysis is optional, not an install gate.
-5. **Auto-populate** — writes `config/configurations/user-pipeline.json` from the Optimum preset.
-6. **Smoke test** — generates a Free configuration. If an OpenRouter key is present, the script tries one tiny live chat round-trip. Without a key, it validates config and tells the user to add keys later. If a key is rejected, the install fails so the user can fix it.
-7. **External APIs orientation** — explains the optional provider set and offers official links.
+1. **Pre-flight checks** — Python version, disk space, repo write permissions, the resolved storage roots, and whether OpenRouter is answering. An unreachable OpenRouter is reported, not fatal. This step also **creates the vault** when the resolved vault path does not exist yet — the root plus `Projects/Ora`, `Sessions`, `Engrams`, `Resources`, and `Administration`. An existing vault is reported and left exactly as it is; nothing is written into one.
+2. **Python dependencies** — installs `requirements.txt`, plus the pinned MCP runtime and its exact Playwright browser. If the interpreter is externally managed (PEP 668), it falls back to an isolated `.venv/`.
+3. **Document converters** — Word (`.docx`) and PDF export run through Pandoc, with Typst as the PDF engine. Neither ships in the repository, so the installer uses whatever the machine already has and otherwise downloads the publishers' own pinned, checksum-verified releases into `data/converters/bin`. No package manager is needed. This step never halts the install: only Word and PDF export depend on it, so a failure prints the cause and the retry command `python3 scripts/install.py converters` and the install carries on.
+4. **Deployment profile selection** — Solo is supported; Hybrid and Organization return a clear "not yet" message.
+5. **Catalog refresh** — fetches OpenRouter operational fields and writes `config/model-catalog.json`. A copy of that catalog ships in the repository, so the refresh makes it current rather than bringing it into existence. A refresh that cannot complete falls back to the packaged copy, says what is stale about it, and the install continues; it halts here only when no usable catalog exists at all.
+6. **Model registry sync** — builds `config/model-registry.json` from OpenRouter, LiteLLM, Chatbot Arena, and optional probe data. Artificial Analysis is optional, not an install gate.
+7. **User pipeline and presets** — writes `config/configurations/user-pipeline.json` from the **Budget** preset, then bakes all four presets the Models pane shows: Free, Budget, Speed, and Premium. A promised preset that is missing afterwards — or that exists with a model in none of its slots — halts the install and names which one and why. The user pipeline is read back against the same test, because that is the configuration Ora serves requests from.
+8. **Smoke test** — generates a Free configuration. If an OpenRouter key is present, the script tries one tiny live chat round-trip. Without a key, it validates config and tells the user to add keys later. If a key is rejected, the install fails so the user can fix it.
+9. **External APIs orientation** — explains the optional ChatGPT subscription route and the optional provider set, and offers official links.
 
 The script is idempotent and resumable:
 

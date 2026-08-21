@@ -20,7 +20,7 @@ Everything the system needs to run on any machine:
 
 | Directory | Contents |
 |---|---|
-| `installer/` | Legacy natural-language installer layers — retained for architecture/specification and future G3.32 update |
+| `installer/macos/` | The launchd plist template and app-launcher shim `scripts/ora-launchd.sh` installs |
 | `orchestrator/` | Pipeline engine and tool implementations |
 | `server/` | V3 interface (Flask, browser UI, component styles/scripts, and theme packages) |
 | `frameworks/` | Framework library (thinking tools for AI) |
@@ -60,7 +60,7 @@ cd ~/ora
 python3 scripts/install.py --profile solo
 ```
 
-Follow `docs/install-guide.md` for the source-install path. The `installer/install-manifest.md` layer set is not the live installer today; it is a legacy natural-language specification target scheduled for G3.32 reconciliation.
+Follow `docs/install-guide.md` for the source-install path. `scripts/install.py` is the only desktop installer; the legacy natural-language layer set that used to sit under `installer/` was retired and only `installer/macos/` remains.
 
 ### 2. Use It
 

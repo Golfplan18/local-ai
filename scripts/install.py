@@ -20,7 +20,9 @@ Steps the script performs in order:
      half-built vault.
   2. Python dependencies from requirements.txt, plus the pinned MCP runtime
      and its exact Playwright browser. Falls back to an isolated .venv/ when
-     the interpreter is PEP 668 externally managed.
+     the interpreter is PEP 668 externally managed. The MCP half needs Node
+     and npm on PATH and halts the install without them, so they are as much
+     a prerequisite as Python is.
   3. Document converters — Ora renders Word (.docx) and PDF by handing its
      markdown to Pandoc, with Typst as the PDF engine. Neither program ships
      in this repository (Pandoc is GPL; vendoring it would be redistribution),
