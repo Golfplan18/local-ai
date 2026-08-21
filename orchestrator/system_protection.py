@@ -834,6 +834,30 @@ def classify_tool_call(
             "deny", "unclassified tool effect fails closed", action,
             tuple(), "unclassified-effect",
         )
+    if tool_name.startswith("mcp_"):
+        mcp_action = axes.get("_mcp_action")
+        mcp_selectors = axes.get("_mcp_selectors")
+        mcp_destructive = axes.get("_mcp_destructive")
+        if (
+            mcp_action != tool_name
+            or not isinstance(mcp_selectors, (tuple, list))
+            or not mcp_selectors
+            or not all(isinstance(selector, str) and selector for selector in mcp_selectors)
+            or not isinstance(mcp_destructive, bool)
+        ):
+            return PolicyDecision(
+                "deny", "MCP call lacks an exact configured authority binding",
+                action, tuple(), "unclassified-mcp-effect",
+            )
+        return classify_action(
+            str(mcp_action),
+            selectors=tuple(mcp_selectors),
+            mutability=str(axes.get("mutability") or "irreversible"),
+            sensitivity=str(axes.get("sensitivity") or "secret"),
+            egress=str(axes.get("egress") or "external"),
+            surface="tool_dispatcher",
+            destructive_intent=mcp_destructive,
+        )
     if tool_name in {"file_read", "file_write", "file_edit"}:
         path = parameters.get("path", parameters.get("file_path"))
         if path:

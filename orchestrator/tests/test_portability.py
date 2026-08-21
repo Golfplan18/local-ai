@@ -284,11 +284,11 @@ class TestMcpStdioWindowsPortability(unittest.TestCase):
         import types
         import mcp_client
         r, w = os.pipe()
-        # Reader mode mirrors what connect() gives the subprocess pipe:
-        # UTF-8 pinned, errors="replace".
+        # Reader mode mirrors connect(): binary so byte limits and strict
+        # UTF-8 validation happen before JSON parsing.
         conn = mcp_client.MCPConnection(name="test-pipe", command="unused")
         conn.process = types.SimpleNamespace(
-            stdout=os.fdopen(r, "r", encoding="utf-8", errors="replace"))
+            stdout=os.fdopen(r, "rb"))
         conn._start_reader()
         writer = os.fdopen(w, "wb" if binary_writer else "w")
 
@@ -345,7 +345,6 @@ class TestMcpStdioWindowsPortability(unittest.TestCase):
             writer.write(json.dumps(
                 {"jsonrpc": "2.0", "method": "notifications/progress",
                  "params": {}}) + "\n")
-            writer.write("not-json\n")
             writer.write(json.dumps(
                 {"jsonrpc": "2.0", "id": 2, "result": {"tools": []}}) + "\n")
             writer.flush()
@@ -378,34 +377,26 @@ class TestMcpStdioWindowsPortability(unittest.TestCase):
             self.assertIsNone(conn._recv(timeout=30))
             self.assertLess(time.time() - start, 1.0)
 
-    def test_bad_bytes_do_not_kill_receive_path(self):
-        # Adversarial fold: one malformed line from a healthy server must
-        # not end the reader thread — the next valid response still lands.
-        import json
+    def test_bad_bytes_fail_connection_before_json_parse(self):
         conn, writer = self._make_pipe_connection(binary_writer=True)
         try:
             writer.write(b"\xff\xfe garbage \x9d\n")
-            writer.write(json.dumps(
-                {"jsonrpc": "2.0", "id": 3,
-                 "result": {"alive": True}}).encode("utf-8") + b"\n")
             writer.flush()
-            msg = conn._recv(timeout=5)
-            self.assertIsNotNone(msg)
-            self.assertEqual(msg["result"], {"alive": True})
+            with self.assertRaisesRegex(Exception, "invalid UTF-8"):
+                conn._recv(timeout=5)
         finally:
             writer.close()
 
-    def test_popen_pins_utf8_with_replace(self):
-        # Adversarial fold: bare text=True decodes with the locale ANSI
-        # codepage on Windows Python <= 3.14; MCP stdio is UTF-8 by spec.
+    def test_popen_uses_binary_stdio_for_predecode_byte_bounds(self):
         import mcp_client
         with mock.patch.object(mcp_client.subprocess, "Popen",
                                side_effect=RuntimeError("stop")) as m:
             conn = mcp_client.MCPConnection(name="t", command="unused")
             self.assertFalse(conn.connect())
         kwargs = m.call_args.kwargs
-        self.assertEqual(kwargs.get("encoding"), "utf-8")
-        self.assertEqual(kwargs.get("errors"), "replace")
+        self.assertIs(kwargs.get("text"), False)
+        self.assertNotIn("encoding", kwargs)
+        self.assertNotIn("errors", kwargs)
 
     def test_recv_queue_is_bounded(self):
         # Adversarial fold: an unbounded queue replaced the OS pipe's

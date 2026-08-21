@@ -19,6 +19,7 @@ test_dispatcher_windows_live.py.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shlex
@@ -26,6 +27,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from types import SimpleNamespace
 
 from pathlib import Path
 _ORCH = Path(__file__).resolve().parent.parent
@@ -917,6 +919,54 @@ class TestMCPGateClosure(DispatchBase):
         tool_events.reset_mcp_axes_cache()
         dispatcher.dispatch("mcp_unknownsrv_x", {})
         self.assertTrue(any(e.get("event") == "gate" for e in self._events()))
+
+    def test_mcp_error_shapes_fail_protection_receipt_and_durable_event(self):
+        params = {
+            "owner": "ora", "repo": "runtime", "title": "Bound title",
+            "body": "Bound body",
+        }
+        policy = SimpleNamespace(
+            outcome="review", action="mcp_github_create_issue",
+            selectors=("github:repo/ora/runtime",),
+            policy_code="review-required", reason="review",
+        )
+        for payload in (
+            {"error": "server rejected the call"},
+            {"isError": True, "content": [{"type": "text", "text": "rejected"}]},
+        ):
+            with self.subTest(payload=payload):
+                dispatcher.reset_consecutive()
+                client = mock.Mock()
+                client.call_mcp_tool.return_value = payload
+                complete = mock.Mock()
+                with mock.patch.object(dispatcher, "_mcp_client", client), \
+                     mock.patch.object(dispatcher.system_protection, "classify_tool_call", return_value=policy), \
+                     mock.patch.object(dispatcher.system_protection, "capture_selector_identity", return_value={"kind": "logical"}), \
+                     mock.patch.object(dispatcher.system_protection, "prepare_protection_request", return_value=({"selectors": list(policy.selectors)}, "digest")), \
+                     mock.patch.object(dispatcher.tool_events, "gate", return_value=tool_events.GateDecision(True, "approved", "fixture", approval_id="approval")), \
+                     mock.patch.object(dispatcher.system_protection, "begin_execution", return_value=mock.sentinel.execution), \
+                     mock.patch.object(dispatcher.system_protection, "protected_effect", return_value=contextlib.nullcontext()), \
+                     mock.patch.object(dispatcher.system_protection, "complete_execution", complete):
+                    result = dispatcher.dispatch(
+                        "mcp_github_create_issue", params,
+                    )
+                self.assertTrue(result.startswith("[MCP error"), result)
+                self.assertFalse(complete.call_args.kwargs["ok"])
+                event = [e for e in self._events() if e["event"] == "mcp"][-1]
+                self.assertFalse(event["exit"]["ok"])
+                self.assertFalse(event["mutated"])
+
+    def test_successful_mcp_json_payload_is_unchanged(self):
+        payload = {"content": [{"type": "text", "text": "ok"}]}
+        client = mock.Mock()
+        client.call_mcp_tool.return_value = payload
+        with mock.patch.object(dispatcher, "_mcp_client", client):
+            result = dispatcher.dispatch(
+                "mcp_playwright_browser_snapshot", {},
+            )
+        self.assertEqual(result, json.dumps(payload))
+        event = [e for e in self._events() if e["event"] == "mcp"][-1]
+        self.assertTrue(event["exit"]["ok"])
 
 
 if __name__ == "__main__":

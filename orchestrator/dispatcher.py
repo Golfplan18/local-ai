@@ -496,6 +496,17 @@ def set_mcp_client(client):
     _mcp_client = client
 
 
+def _normalize_mcp_result(result, result_str: str) -> tuple[str, bool]:
+    """Make both MCP failure result shapes explicit to downstream receipts."""
+
+    if not isinstance(result, dict):
+        return result_str, False
+    failed = "error" in result or result.get("isError") is True
+    if not failed:
+        return result_str, False
+    return f"[MCP error — {result_str}]", True
+
+
 # ── Main dispatch function ────────────────────────────────────────────────
 
 def _resolve_call_axes(tool_name: str, entry: dict | None,
@@ -512,7 +523,14 @@ def _resolve_call_axes(tool_name: str, entry: dict | None,
     shell_profile = None
 
     if tool_name.startswith("mcp_"):
-        return tool_events.mcp_axes(tool_name), None, None
+        resolved = tool_events.mcp_policy(tool_name, parameters)
+        parameters.clear()
+        parameters.update(resolved["parameters"])
+        axes = dict(resolved["axes"])
+        axes["_mcp_action"] = resolved["action"]
+        axes["_mcp_selectors"] = resolved["selectors"]
+        axes["_mcp_destructive"] = resolved["destructive"]
+        return axes, None, None
 
     axes = {"category": entry.get("category", "execute"),
             "mutability": entry.get("mutability", "irreversible"),
@@ -746,6 +764,20 @@ def dispatch(tool_name: str, parameters: dict,
             tool_events.record(refusal_event)
             return f"[SYSTEM PROTECTION — {exc}]"
 
+    if is_mcp:
+        try:
+            resolved_mcp = tool_events.mcp_policy(tool_name, parameters)
+            parameters = dict(resolved_mcp["parameters"])
+        except Exception as exc:
+            tool_events.record({
+                "event": "gate", "action": tool_name, "category": "execute",
+                **tool_events.FAIL_CLOSED,
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "invalid MCP authority scope"},
+                "enforcement_model": "in_harness",
+            })
+            return f"[SYSTEM PROTECTION — {exc}]"
+
     # Consecutive call check (includes MCP tools now)
     warning = _check_consecutive(tool_name)
     if warning and _consecutive_count >= 8:
@@ -958,6 +990,7 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Execute
     result = None
+    execution_error = False
     try:
         effect_context = (
             system_protection.protected_effect(protection_execution)
@@ -985,11 +1018,16 @@ def dispatch(tool_name: str, parameters: dict,
             result_str = json.dumps(result)
         else:
             result_str = str(result)
+        if is_mcp:
+            result_str, execution_error = _normalize_mcp_result(
+                result, result_str,
+            )
     except Exception as e:
         result_str = f"[Tool error — {tool_name}: {e}]"
+        execution_error = True
 
     if protection_execution is not None:
-        protected_ok = not result_str.startswith((
+        protected_ok = not execution_error and not result_str.startswith((
             "[Tool error", "[MCP error", "[MCP unavailable", "[Permission",
             "[Path validation",
         ))
@@ -1022,9 +1060,10 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Machine-readable tool event (the dispatch-signal substrate).
     try:
-        error = result_str.startswith(("[Tool error", "[MCP error",
-                                       "[MCP unavailable", "[Permission",
-                                       "[Path validation"))
+        error = execution_error or result_str.startswith((
+            "[Tool error", "[MCP error", "[MCP unavailable", "[Permission",
+            "[Path validation",
+        ))
         # Shell results are dicts with a returncode — string matching on
         # the serialized JSON would misreport a failed command as ok.
         if tool_name == "bash_execute" and isinstance(result, dict):

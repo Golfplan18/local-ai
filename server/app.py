@@ -21519,6 +21519,13 @@ if __name__ == "__main__":
         print(f"MCP tools: {mcp_count}")
     print("Press Ctrl+C to stop.")
 
+    def _shutdown_mcp():
+        try:
+            from mcp_client import shutdown as _stop_mcp
+            _stop_mcp()
+        finally:
+            set_mcp_client(None)
+
     def _shutdown_handler(sig, frame):
         fire_hooks("session_end")
         # Clear sidebar windows on shutdown
@@ -21529,6 +21536,10 @@ if __name__ == "__main__":
         try:
             from bash_execute import cleanup_all
             cleanup_all()
+        except Exception:
+            pass
+        try:
+            _shutdown_mcp()
         except Exception:
             pass
         raise SystemExit(0)
@@ -21588,4 +21599,7 @@ if __name__ == "__main__":
     except Exception as _e:
         print(f"[startup] icon-set rebuild failed: {_e}")
 
-    app.run(host=_SERVER_HOST, port=port, debug=False, threaded=True)
+    try:
+        app.run(host=_SERVER_HOST, port=port, debug=False, threaded=True)
+    finally:
+        _shutdown_mcp()

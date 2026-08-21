@@ -10210,6 +10210,8 @@ def _reset_perspective_caches() -> None:
 # call them; ``_get_mcp_tool_catalog`` formats the live tool list as a
 # markdown block injected into the analyst's system prompt.
 
+_MCP_PROMPT_CATALOG_MAX_BYTES = 32 * 1024
+
 
 def _get_mcp_tool_catalog() -> str:
     """Return a markdown catalog of currently-available MCP tools.
@@ -10312,7 +10314,12 @@ def _get_mcp_tool_catalog() -> str:
             parts.append(line)
         parts.append("")
 
-    return "\n".join(parts).strip()
+    rendered = "\n".join(parts).strip()
+    if len(rendered.encode("utf-8")) > _MCP_PROMPT_CATALOG_MAX_BYTES:
+        print("[mcp_catalog] rendered catalog exceeded its byte limit",
+              file=sys.stderr, flush=True)
+        return ""
+    return rendered
 
 
 def _images_for_endpoint(images, endpoint):
