@@ -27,6 +27,7 @@ import os
 import re
 import threading
 from pathlib import Path
+from typing import Callable
 
 try:
     from . import runtime_paths as rp
@@ -54,6 +55,47 @@ HARD_RAM_CAP_RATIO = 0.85
 
 _lock = threading.RLock()
 _LOCAL_MODELS_UNSET = object()
+
+# Why the most recent bake attempt did not produce a given preset, keyed by
+# preset name.
+#
+# A preset the Models pane cannot show used to arrive as a bare ``null`` with
+# no cause attached: "never attempted" and "the picker raised" were the same
+# blank card. ``bake_missing_presets`` now writes the exact reason here and
+# clears it the moment that preset exists, so ``list_configurations`` can hand
+# the pane something to print. It is a cache of the last attempt, not a record
+# to keep — the pane re-attempts every missing preset on every load, so a
+# fresh cause replaces the old one on each pass.
+_bake_errors: dict[str, str] = {}
+
+
+def _print_line(message: str) -> None:
+    """Where a bake's prose goes when the caller does not say otherwise.
+
+    Under the server — which is nearly always — stdout *is* the log, so a
+    plain print is the right and only dependency-free answer. Callers that
+    keep a log of their own, such as the installer, hand ``bake_missing_presets``
+    a writer instead of relying on where this happens to land.
+    """
+    print(message, flush=True)
+
+
+def preset_bake_errors() -> dict[str, str]:
+    """Return the exact per-preset causes left by the last bake attempt.
+
+    Keys are preset names; values are single-line human-readable causes
+    (``"ValueError: Unknown preset: speed…"``, ``"config/model-catalog.json is
+    missing"``). An entry is cleared the moment a bake produces that preset,
+    or finds it already there and leaves it alone.
+
+    One case leaves an entry against a preset that is perfectly fine: when a
+    bake cannot start at all — no catalog, no preset definitions, no picker —
+    the cause is recorded against every preset that bake had selected,
+    including any that already exist on disk, because nothing was attempted
+    for any of them. ``list_configurations`` reports a cause only for a slot
+    that is actually empty, so those extra entries never reach the pane.
+    """
+    return dict(_bake_errors)
 
 
 def _get_system_ram_gb() -> float:
@@ -668,6 +710,7 @@ def bake_missing_presets(
     force: bool = False,
     *,
     preset_names: tuple[str, ...] | list[str] | None = None,
+    log: Callable[[str], None] | None = None,
 ) -> list:
     """Run the auto-populate engine for any preset that doesn't have a
     configuration file on disk.
@@ -686,34 +729,91 @@ def bake_missing_presets(
     Returns the list of preset names that were baked (empty when
     everything was already present). When ``force=True``, re-bakes
     every preset regardless of file existence — used by
-    set_preset_toggles to refresh picks after a toggle flip.
+    set_preset_toggles to refresh picks after a toggle flip, and by the
+    installer once it has settled which catalog the machine will use.
+    A forced bake that lands on top of an existing preset file logs one
+    line naming that file, because it replaces whatever was in it —
+    including slots the user picked by hand.
+
+    Nothing here fails silently. Every reason a preset can come out
+    missing — an absent catalog, an unreadable one, a picker that raised
+    on one preset alone — is recorded against that preset name in
+    ``preset_bake_errors()`` and written out as a line of prose, so the
+    caller and the Models pane can both say *why* a card is empty.
+
+    ``log`` is where those lines go. Left alone they are printed, which
+    under the server is exactly right — stdout is the server log. The
+    installer calls this in-process, though, where printing lands on the
+    terminal and nowhere else, and install.log is the file the install
+    tells the user to read afterwards; a warning that a forced bake has
+    just overwritten hand-picked slots is worth little if it is missing
+    from there. So the installer passes its own writer and the same lines
+    reach both. Nothing about *when* a line is written depends on this —
+    only where it goes.
     """
+    say = log if log is not None else _print_line
+    if preset_names is None:
+        selected_presets = list(PRESET_ORDER)
+    else:
+        requested = set(preset_names)
+        unknown = requested.difference(PRESET_ORDER)
+        if unknown:
+            raise ValueError(f"unknown preset names: {sorted(unknown)!r}")
+        selected_presets = [name for name in PRESET_ORDER if name in requested]
+
+    def _abort(reason: str) -> list:
+        """Record one whole-bake failure against every preset it stopped."""
+        for name in selected_presets:
+            _bake_errors[name] = reason
+        say(f"[presets] bake could not run — {reason}")
+        return []
+
     presets_path = ORA_HOME / "config" / "configuration-presets.json"
     catalog_path = _catalog_path()
-    if not presets_path.exists() or not catalog_path.exists():
-        return []
+    if not presets_path.exists():
+        return _abort(f"preset definitions are missing: {presets_path}")
+    if not catalog_path.exists():
+        return _abort(
+            f"the model catalog is missing: {catalog_path}. Run "
+            f"`python3 scripts/refresh-catalog.py` to fetch it."
+        )
 
     # Dynamic import — the script's hyphen-in-filename means we can't
     # do a normal `import auto_populate_configuration`.
     import importlib.util
     script_path = ORA_HOME / "scripts" / "auto-populate-configuration.py"
     if not script_path.exists():
-        return []
+        return _abort(f"the model picker is missing: {script_path}")
     spec = importlib.util.spec_from_file_location(
         "_ora_auto_populate", str(script_path))
     ap_module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(ap_module)
-    except Exception:
-        return []
+    except Exception as exc:
+        return _abort(
+            f"the model picker at {script_path} would not load — "
+            f"{type(exc).__name__}: {exc}"
+        )
 
-    with open(catalog_path) as f:
-        catalog_data = json.load(f)
-    catalog = list(catalog_data.get("models", []) or [])
+    try:
+        with open(catalog_path) as f:
+            catalog_data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return _abort(
+            f"the model catalog at {catalog_path} could not be read — "
+            f"{type(exc).__name__}: {exc}"
+        )
+    catalog = list((catalog_data or {}).get("models", []) or [])
     if not catalog:
-        return []
-    with open(presets_path) as f:
-        presets_config = json.load(f)
+        return _abort(f"the model catalog at {catalog_path} lists no models")
+    try:
+        with open(presets_path) as f:
+            presets_config = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return _abort(
+            f"the preset definitions at {presets_path} could not be read — "
+            f"{type(exc).__name__}: {exc}"
+        )
 
     global_toggles = get_preset_toggles()
     vision_only = global_toggles["vision_only"]
@@ -802,15 +902,6 @@ def bake_missing_presets(
                     or candidate.get("forced_reasoning") is True):
                 reasoning_model_ids.add(model_id)
 
-    if preset_names is None:
-        selected_presets = PRESET_ORDER
-    else:
-        requested = set(preset_names)
-        unknown = requested.difference(PRESET_ORDER)
-        if unknown:
-            raise ValueError(f"unknown preset names: {sorted(unknown)!r}")
-        selected_presets = [name for name in PRESET_ORDER if name in requested]
-
     baked: list = []
     for preset_name in selected_presets:
         # Skip if a config file already claims this preset, unless
@@ -818,7 +909,21 @@ def bake_missing_presets(
         target_path = _config_path(preset_name, for_write=True)
         already = target_path.exists() or _existing_for_lineage(preset_name)
         if already and not force:
+            # The preset exists, so whatever went wrong last time no
+            # longer describes the card the user is looking at.
+            _bake_errors.pop(preset_name, None)
             continue
+        if force and target_path.exists():
+            # Regenerating over an existing file is the intent of force —
+            # a toggle flip or an install has just changed which models are
+            # eligible, and the picks have to be redone. What was wrong was
+            # doing it in silence: someone who hand-picked models into this
+            # preset loses them here, and until now nothing said so.
+            say(
+                f"[presets] {preset_name}: replacing the existing configuration "
+                f"at {target_path} with freshly picked models — any hand-picked "
+                f"slots in it are overwritten"
+            )
         try:
             config = ap_module.populate_configuration(
                 preset_name, catalog, presets_config,
@@ -869,10 +974,16 @@ def bake_missing_presets(
                 )
             _save_config(preset_name, config)
             baked.append(preset_name)
-        except Exception:
-            # Per-preset failures are isolated — keep going so a single
-            # bad preset doesn't block the others. The pane will show
-            # the failed one as a placeholder card.
+            _bake_errors.pop(preset_name, None)
+        except Exception as exc:
+            # Per-preset failures stay isolated — one bad preset must not
+            # block the other three. What changed is that the cause is
+            # kept: it goes to the server log and into preset_bake_errors,
+            # so the card the pane draws for this preset names the reason
+            # instead of shrugging.
+            cause = f"{type(exc).__name__}: {exc}"
+            _bake_errors[preset_name] = cause
+            say(f"[presets] {preset_name} did not bake — {cause}")
             continue
     return baked
 
@@ -1095,6 +1206,7 @@ def list_configurations() -> dict:
           "speed":   <summary> | null,
           "premium": <summary> | null,
         },
+        "preset_errors": {"<preset>": "<exact cause>", ...},
         "customs": [<summary>, ...],
         "active_name": "<name>",
         "active_toggles": {<resolved toggles>},
@@ -1104,6 +1216,12 @@ def list_configurations() -> dict:
     the preset name; we prefer the canonical-named file (``free.json``,
     ``budget.json``, etc.) and fall back to any file carrying that
     lineage tag. ``null`` when no file claims that lineage.
+
+    ``preset_errors`` carries one line per ``null`` slot saying why the
+    last bake attempt did not fill it — an absent catalog, an unreadable
+    one, or the exact exception the picker raised for that preset. A slot
+    that has a summary never appears there, and a slot that is null with
+    no recorded attempt is simply absent.
 
     Customs are any configuration files NOT matched as a preset and
     not in SYSTEM_CONFIGS (background-default is the automation-side
@@ -1117,6 +1235,7 @@ def list_configurations() -> dict:
     if not readable_dirs:
         return {
             "presets": {p: None for p in PRESET_ORDER},
+            "preset_errors": _errors_for_missing({p: None for p in PRESET_ORDER}),
             "customs": [],
             "active_name": get_active_name(),
             "active_toggles": _empty_toggles(),
@@ -1169,9 +1288,20 @@ def list_configurations() -> dict:
 
     return {
         "presets": presets,
+        "preset_errors": _errors_for_missing(presets),
         "customs": customs,
         "active_name": active_name,
         "active_toggles": active_toggles,
+    }
+
+
+def _errors_for_missing(presets: dict) -> dict:
+    """Pair every empty preset slot with the cause its last bake recorded."""
+    errors = preset_bake_errors()
+    return {
+        name: errors[name]
+        for name, summary in presets.items()
+        if summary is None and name in errors
     }
 
 
@@ -1529,6 +1659,7 @@ __all__ = [
     "get_preset_toggles",
     "set_preset_toggles",
     "bake_missing_presets",
+    "preset_bake_errors",
     "list_configurations",
     "duplicate_configuration",
     "create_blank_configuration",

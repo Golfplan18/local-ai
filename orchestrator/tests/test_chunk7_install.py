@@ -8,10 +8,13 @@ machine work correctly.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -988,6 +991,696 @@ class TestConverterInstallStep(unittest.TestCase):
         self.assertIn('("converters",     step_converters,', source)
         self.assertLess(source.index('("dependencies",   step_dependencies'),
                         source.index('("converters",     step_converters'))
+
+
+# ─── Catalog outage policy + promised presets ────────────────────────────
+
+
+class TestCatalogBaseline(unittest.TestCase):
+    """What counts as a catalog the install can fall back on."""
+
+    def _baseline_at(self, path):
+        with mock.patch.dict(os.environ, {"ORA_MODEL_CATALOG_PATH": str(path)}):
+            return install._catalog_baseline()
+
+    def test_the_catalog_this_repository_ships_is_usable(self):
+        # The whole policy rests on a clean clone already carrying a catalog
+        # good enough to fill every preset. If that stops being true, an
+        # offline install stops working and this is where it shows up.
+        usable, description = install._catalog_baseline()
+        self.assertTrue(usable, description)
+        self.assertRegex(description, r"^\d+ models \(\d+ free, \d+ with an intelligence score\)")
+
+    def test_a_missing_catalog_is_not_a_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            usable, description = self._baseline_at(Path(tmp) / "gone.json")
+            self.assertFalse(usable)
+            self.assertIn("there is no catalog at", description)
+
+    def test_an_unreadable_catalog_names_the_read_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "model-catalog.json"
+            path.write_text('{"models": [', encoding="utf-8")
+            usable, description = self._baseline_at(path)
+            self.assertFalse(usable)
+            self.assertIn("could not be read", description)
+            self.assertIn("JSONDecodeError", description)
+
+    def test_a_catalog_with_no_models_is_not_a_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "model-catalog.json"
+            path.write_text('{"models": []}', encoding="utf-8")
+            usable, description = self._baseline_at(path)
+            self.assertFalse(usable)
+            self.assertIn("lists no models", description)
+
+    def test_entries_without_an_id_do_not_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "model-catalog.json"
+            path.write_text('{"models": [{"display_name": "x"}]}', encoding="utf-8")
+            usable, description = self._baseline_at(path)
+            self.assertFalse(usable)
+            self.assertIn("carries a model id", description)
+
+
+class TestCatalogOutagePolicy(unittest.TestCase):
+    """Pre-flight and step 5 must tell the user the same story."""
+
+    def _transcript(self, fn, *args, **kwargs):
+        lines = []
+        with mock.patch.object(install, "log", side_effect=lines.append):
+            result = fn(*args, **kwargs)
+        return result, "\n".join(lines)
+
+    def test_preflight_and_step_five_quote_one_policy(self):
+        _, preflight = self._transcript(install._log_catalog_outage_policy)
+        _, step_five = self._transcript(
+            install.step_catalog_refresh, {"steps_completed": []}, True)
+        self.assertIn(install.CATALOG_OUTAGE_POLICY, preflight)
+        self.assertIn(install.CATALOG_OUTAGE_POLICY, step_five)
+
+    def test_preflight_says_an_outage_is_survivable_when_a_baseline_exists(self):
+        _, transcript = self._transcript(install._log_catalog_outage_policy)
+        self.assertIn("does not stop the install", transcript)
+        self.assertIn("packaged catalog is usable", transcript)
+        self.assertNotIn("will halt the install", transcript)
+
+    def test_preflight_predicts_the_halt_when_no_baseline_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(
+                os.environ,
+                {"ORA_MODEL_CATALOG_PATH": str(Path(tmp) / "gone.json")},
+            ):
+                _, transcript = self._transcript(install._log_catalog_outage_policy)
+        self.assertIn("no usable catalog to fall back on", transcript)
+        self.assertIn("step 5 will halt the install", transcript)
+
+    def test_a_failed_refresh_continues_on_a_usable_baseline(self):
+        state = {"steps_completed": []}
+        failed = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="",
+            stderr="[refresh-catalog] OpenRouter fetch failed. Aborting.",
+        )
+        with mock.patch.object(install.subprocess, "run", return_value=failed), \
+                mock.patch.object(install, "save_state"):
+            ok, transcript = self._transcript(
+                install.step_catalog_refresh, state, False)
+        self.assertTrue(ok)
+        self.assertIn("catalog", state["steps_completed"])
+        self.assertIn("OpenRouter fetch failed", transcript)
+        self.assertIn("Continuing on the catalog packaged with this checkout", transcript)
+        self.assertIn(install.CATALOG_REFRESH_RETRY_COMMAND, transcript)
+
+    def test_a_failed_refresh_halts_once_when_there_is_no_baseline(self):
+        state = {"steps_completed": []}
+        failed = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="", stderr="boom")
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "model-catalog.json"
+            with mock.patch.dict(os.environ, {"ORA_MODEL_CATALOG_PATH": str(missing)}), \
+                    mock.patch.object(install.subprocess, "run", return_value=failed), \
+                    mock.patch.object(install, "save_state"):
+                ok, transcript = self._transcript(
+                    install.step_catalog_refresh, state, False)
+        self.assertFalse(ok)
+        self.assertNotIn("catalog", state["steps_completed"])
+        self.assertIn("There is no catalog to fall back on", transcript)
+        self.assertIn(str(missing), transcript)
+
+    def test_a_timeout_takes_the_same_fallback_as_an_outage(self):
+        state = {"steps_completed": []}
+        with mock.patch.object(
+            install.subprocess, "run",
+            side_effect=subprocess.TimeoutExpired(cmd="refresh", timeout=120),
+        ), mock.patch.object(install, "save_state"):
+            ok, transcript = self._transcript(
+                install.step_catalog_refresh, state, False)
+        self.assertTrue(ok)
+        self.assertIn("did not finish within 120s", transcript)
+        self.assertIn("Continuing on the catalog packaged with this checkout", transcript)
+
+
+class TestPromisedPresets(unittest.TestCase):
+    """Ora promises four preset cards; the install has to deliver all four."""
+
+    def test_every_source_names_the_same_four_presets(self):
+        from orchestrator import active_configuration as ac
+        from orchestrator import runtime_paths as rp
+        declared = json.loads(
+            (REPO_ROOT / "config" / "configuration-presets.json").read_text()
+        )["presets"]
+        pane_source = (REPO_ROOT / "server" / "static" / "models-pane.js").read_text()
+        pane_order = re.search(
+            r"var PRESET_ORDER = \[([^\]]*)\];", pane_source).group(1)
+        pane_names = re.findall(r"'([a-z]+)'", pane_order)
+        self.assertEqual(set(declared), {"free", "budget", "speed", "premium"})
+        self.assertEqual(set(rp.PRESET_NAMES), set(declared))
+        self.assertEqual(set(ac.PRESET_ORDER), set(declared))
+        self.assertEqual(pane_names, list(ac.PRESET_ORDER))
+
+    def _bake_transcript(self, listing, baked=None, *, catalogs=None):
+        """Run the preset half against a canned listing, capturing what it says.
+
+        ``catalogs`` is ``(picker_path, baker_path)`` when the test wants the
+        two halves of step 7 to disagree about which catalog they read.
+        """
+        from orchestrator import active_configuration as ac
+        lines = []
+        patches = [
+            mock.patch.object(install, "_refresh_local_model_inventory",
+                              return_value=None),
+            mock.patch.object(ac, "bake_missing_presets",
+                              return_value=baked or []),
+            mock.patch.object(ac, "list_configurations", return_value=listing),
+            mock.patch.object(install, "log", side_effect=lines.append),
+        ]
+        if catalogs:
+            picker, baker = catalogs
+            patches.append(mock.patch.dict(
+                os.environ, {"ORA_MODEL_CATALOG_PATH": str(picker)}))
+            patches.append(mock.patch.object(
+                ac, "_catalog_path", return_value=Path(baker)))
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            ok = install._bake_promised_presets()
+        return ok, "\n".join(lines)
+
+    @staticmethod
+    def _summary(name, incomplete=False):
+        return {"name": name, "big1": "big", "fast1": "fast", "small": "small",
+                "incomplete": incomplete}
+
+    def test_all_four_present_is_a_pass(self):
+        from orchestrator import active_configuration as ac
+        listing = {
+            "presets": {n: self._summary(n) for n in ac.PRESET_ORDER},
+            "preset_errors": {},
+        }
+        ok, transcript = self._bake_transcript(listing, baked=list(ac.PRESET_ORDER))
+        self.assertTrue(ok)
+        self.assertIn("All 4 promised presets exist", transcript)
+
+    def test_a_missing_preset_halts_and_names_its_cause(self):
+        from orchestrator import active_configuration as ac
+        presets = {n: self._summary(n) for n in ac.PRESET_ORDER}
+        presets["speed"] = None
+        listing = {
+            "presets": presets,
+            "preset_errors": {"speed": "ValueError: no candidate met the floor"},
+        }
+        ok, transcript = self._bake_transcript(listing)
+        self.assertFalse(ok)
+        self.assertIn("do not exist after the bake: speed", transcript)
+        self.assertIn("ValueError: no candidate met the floor", transcript)
+
+    def test_an_incomplete_preset_is_flagged_but_does_not_halt(self):
+        from orchestrator import active_configuration as ac
+        presets = {n: self._summary(n) for n in ac.PRESET_ORDER}
+        presets["speed"] = self._summary("speed", incomplete=True)
+        listing = {"presets": presets, "preset_errors": {}}
+        ok, transcript = self._bake_transcript(listing, baked=list(ac.PRESET_ORDER))
+        self.assertTrue(ok)
+        self.assertIn("Some slots came out empty", transcript)
+
+    # ── A preset file with no model in it is not a preset ──────────────
+    #
+    # The bake writes a file whenever the picker returns without raising, and
+    # on a catalog holding nothing usable the picker returns cleanly with
+    # every slot empty. That used to read as four warnings followed by "All 4
+    # promised presets exist" and a clean INSTALL_COMPLETE, over four blank
+    # cards and a pipeline with nothing to call.
+
+    @staticmethod
+    def _empty_summary(name):
+        return {"name": name, "big1": None, "big2": None, "fast1": None,
+                "fast2": None, "small": None, "incomplete": True}
+
+    @staticmethod
+    def _summary_missing_one_slot(name):
+        """The genuinely thin case: a catalog that fills most slots but has
+        no candidate for one of them. Ordinary incompleteness, not a halt."""
+        return {"name": name, "big1": "big", "big2": None, "fast1": None,
+                "fast2": None, "small": "small", "incomplete": True}
+
+    def test_a_bake_that_fills_nothing_at_all_halts_the_install(self):
+        from orchestrator import active_configuration as ac
+        listing = {
+            "presets": {n: self._empty_summary(n) for n in ac.PRESET_ORDER},
+            "preset_errors": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            junk = Path(tmp) / "model-catalog.json"
+            junk.write_text(
+                json.dumps({"models": [{"id": "junk/not-a-real-model"}]}),
+                encoding="utf-8")
+            with mock.patch.dict(os.environ, {"ORA_MODEL_CATALOG_PATH": str(junk)}):
+                ok, transcript = self._bake_transcript(
+                    listing, baked=list(ac.PRESET_ORDER))
+        self.assertFalse(ok)
+        self.assertIn(
+            "baked with no model in any slot: free, budget, speed, premium",
+            transcript)
+        # The message has to name the real problem — the catalog behind the
+        # picks — not just the presets that came out of it.
+        self.assertIn("They were picked from a catalog holding 1 models", transcript)
+        self.assertIn("Get a current one with", transcript)
+        self.assertIn(install.CATALOG_REFRESH_RETRY_COMMAND, transcript)
+        self.assertNotIn("promised presets exist", transcript)
+
+    # ── The halt has to describe the catalog the presets came out of ───
+    #
+    # The two halves of step 7 resolve the catalog differently, so on a
+    # machine with a runtime overlay the presets are picked from a file the
+    # picker CLI never opens. A halt that described the picker's file instead
+    # told the user their four blank presets came from a 296-model catalog,
+    # named no path at all, and sent them to a refresh that rewrites the file
+    # that was already fine — straight back into the identical halt.
+
+    def test_an_empty_preset_halt_describes_the_catalog_the_baker_read(self):
+        from orchestrator import active_configuration as ac
+        listing = {
+            "presets": {n: self._empty_summary(n) for n in ac.PRESET_ORDER},
+            "preset_errors": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            picker = Path(tmp) / "config" / "model-catalog.json"
+            picker.parent.mkdir(parents=True)
+            picker.write_text(json.dumps({"models": [
+                {"id": f"vendor/model-{i}", "aa_intelligence_index": 40}
+                for i in range(12)
+            ]}), encoding="utf-8")
+            baker = Path(tmp) / "data" / "runtime" / "config" / "model-catalog.json"
+            baker.parent.mkdir(parents=True)
+            baker.write_text(
+                json.dumps({"models": [{"id": "junk/not-a-real-model"}]}),
+                encoding="utf-8")
+            ok, transcript = self._bake_transcript(
+                listing, baked=list(ac.PRESET_ORDER), catalogs=(picker, baker))
+        self.assertFalse(ok)
+        # The baker's one-model file, not the picker's healthy dozen.
+        self.assertIn("They were picked from a catalog holding 1 models", transcript)
+        self.assertNotIn("12 models", transcript)
+
+    def test_an_empty_preset_halt_names_both_catalogs_when_they_disagree(self):
+        from orchestrator import active_configuration as ac
+        listing = {
+            "presets": {n: self._empty_summary(n) for n in ac.PRESET_ORDER},
+            "preset_errors": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            picker = Path(tmp) / "config" / "model-catalog.json"
+            picker.parent.mkdir(parents=True)
+            picker.write_text(
+                json.dumps({"models": [{"id": "fine/model"}]}), encoding="utf-8")
+            baker = Path(tmp) / "data" / "runtime" / "config" / "model-catalog.json"
+            ok, transcript = self._bake_transcript(
+                listing, baked=list(ac.PRESET_ORDER), catalogs=(picker, baker))
+        self.assertFalse(ok)
+        self.assertIn("read different", transcript)
+        self.assertIn(f"The picker read {picker}", transcript)
+        self.assertIn(f"the preset baker read {baker}", transcript)
+        # And it says which half is the one that still looks fine, so the
+        # healthy user-pipeline line printed above is not read as a
+        # contradiction.
+        self.assertIn("The user-pipeline line above can look healthy", transcript)
+
+    def test_one_catalog_for_both_halves_says_nothing_about_a_split(self):
+        from orchestrator import active_configuration as ac
+        listing = {
+            "presets": {n: self._empty_summary(n) for n in ac.PRESET_ORDER},
+            "preset_errors": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "model-catalog.json"
+            shared.write_text(
+                json.dumps({"models": [{"id": "junk/not-a-real-model"}]}),
+                encoding="utf-8")
+            ok, transcript = self._bake_transcript(
+                listing, baked=list(ac.PRESET_ORDER), catalogs=(shared, shared))
+        self.assertFalse(ok)
+        self.assertIn("no model in any slot", transcript)
+        self.assertNotIn("different catalog files", transcript)
+        self.assertNotIn("The picker read", transcript)
+
+    def test_one_empty_preset_among_four_halts_and_names_only_that_one(self):
+        from orchestrator import active_configuration as ac
+        presets = {n: self._summary(n) for n in ac.PRESET_ORDER}
+        presets["premium"] = self._empty_summary("premium")
+        ok, transcript = self._bake_transcript(
+            {"presets": presets, "preset_errors": {}},
+            baked=list(ac.PRESET_ORDER))
+        self.assertFalse(ok)
+        halt_line = [line for line in transcript.split("\n")
+                     if "baked with no model in any slot" in line]
+        self.assertEqual(
+            halt_line,
+            ["  ✗ These presets baked with no model in any slot: premium"])
+
+    def test_a_thin_catalog_that_leaves_one_slot_empty_still_finishes(self):
+        # The line between "thin" and "absent": Free has a big model and a
+        # small model but nothing for its fast slot. That is the warning it
+        # has always been, and the install completes.
+        from orchestrator import active_configuration as ac
+        presets = {n: self._summary(n) for n in ac.PRESET_ORDER}
+        presets["free"] = self._summary_missing_one_slot("free")
+        ok, transcript = self._bake_transcript(
+            {"presets": presets, "preset_errors": {}},
+            baked=list(ac.PRESET_ORDER))
+        self.assertTrue(ok)
+        self.assertIn("⚠ free: big big · fast — · small small", transcript)
+        self.assertIn("Some slots came out empty", transcript)
+        self.assertIn("All 4 promised presets exist", transcript)
+        self.assertNotIn("no model in any slot", transcript)
+
+    def test_one_filled_slot_anywhere_is_enough_to_count_as_baked(self):
+        # Whatever the card shows a model in — big, fast, small, or one of
+        # the second-column slots — the preset exists and can be repaired
+        # from the pane. Only a file with nothing in it is treated as absent.
+        for slot in install.CARD_SLOTS:
+            summary = self._empty_summary("speed")
+            summary[slot] = "some/model"
+            self.assertEqual(install._card_picks(summary), ["some/model"], slot)
+        self.assertEqual(install._card_picks(self._empty_summary("speed")), [])
+
+    def test_step_seven_is_still_the_seventh_step(self):
+        source = (REPO_ROOT / "scripts" / "install.py").read_text(encoding="utf-8")
+        self.assertIn('("autopopulate",   step_autopopulate,', source)
+        self.assertIn("Step 7/9:", source)
+        self.assertIn("_bake_promised_presets()", source)
+
+
+class TestActiveConfiguration(unittest.TestCase):
+    """The same honesty test, applied to the configuration Ora runs on.
+
+    Step 7 fills ``user-pipeline`` through the picker CLI and bakes the four
+    preset cards through the runtime's baker, and the two do not find the model
+    catalog the same way — the CLI takes ORA_MODEL_CATALOG_PATH or this
+    checkout's ``config/model-catalog.json``, the baker prefers a runtime
+    overlay copy when one exists. A stale overlay therefore lets the presets
+    bake perfectly out of one catalog while ``user-pipeline`` is picked out of
+    another and comes out blank — and ``user-pipeline`` is the one the pipeline
+    actually runs on.
+    """
+
+    @staticmethod
+    def _summary(**slots):
+        base = {"name": install.ACTIVE_CONFIGURATION, "big1": None, "big2": None,
+                "fast1": None, "fast2": None, "small": None, "incomplete": True}
+        base.update(slots)
+        return base
+
+    def _verify_transcript(self, listing, *, catalogs=None):
+        """Run the read-back against a canned listing, capturing what it says.
+
+        ``catalogs`` is ``(picker_path, baker_path)`` when the test wants the
+        two halves of step 7 to disagree about which catalog they read.
+        """
+        from orchestrator import active_configuration as ac
+        lines = []
+        patches = [
+            mock.patch.object(ac, "list_configurations", return_value=listing),
+            mock.patch.object(install, "log", side_effect=lines.append),
+        ]
+        if catalogs:
+            picker, baker = catalogs
+            patches.append(mock.patch.dict(
+                os.environ, {"ORA_MODEL_CATALOG_PATH": str(picker)}))
+            patches.append(mock.patch.object(
+                ac, "_catalog_path", return_value=Path(baker)))
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            ok = install._verify_active_configuration()
+        return ok, "\n".join(lines)
+
+    def test_a_populated_active_configuration_passes(self):
+        listing = {"presets": {}, "customs": [self._summary(
+            big1="big", fast1="fast", small="small", incomplete=False)]}
+        ok, transcript = self._verify_transcript(listing)
+        self.assertTrue(ok)
+        self.assertIn("✓ user-pipeline: big big · fast fast · small small",
+                      transcript)
+        self.assertNotIn("no model in any slot", transcript)
+
+    def test_an_empty_active_configuration_halts_the_install(self):
+        listing = {"presets": {}, "customs": [self._summary()]}
+        with tempfile.TemporaryDirectory() as tmp:
+            junk = Path(tmp) / "model-catalog.json"
+            junk.write_text(
+                json.dumps({"models": [{"id": "junk/not-a-real-model"}]}),
+                encoding="utf-8")
+            with mock.patch.dict(os.environ, {"ORA_MODEL_CATALOG_PATH": str(junk)}):
+                ok, transcript = self._verify_transcript(listing)
+        self.assertFalse(ok)
+        self.assertIn(
+            "This configuration was picked with no model in any slot: "
+            "user-pipeline", transcript)
+        # It has to name the real cause — the catalog behind the picks — and
+        # the one command that gets a current one.
+        self.assertIn("It was picked from a catalog holding 1 models", transcript)
+        self.assertIn(install.CATALOG_REFRESH_RETRY_COMMAND, transcript)
+        # And say why this one matters more than any single preset.
+        self.assertIn("the configuration Ora serves", transcript)
+
+    def test_the_halt_names_both_catalogs_when_the_two_halves_disagree(self):
+        # The reported case: a stale runtime overlay, presets baked from it,
+        # user-pipeline picked from the checkout's own copy and blank.
+        listing = {"presets": {}, "customs": [self._summary()]}
+        with tempfile.TemporaryDirectory() as tmp:
+            picker = Path(tmp) / "config" / "model-catalog.json"
+            picker.parent.mkdir(parents=True)
+            picker.write_text(
+                json.dumps({"models": [{"id": "stale/model"}]}), encoding="utf-8")
+            baker = Path(tmp) / "data" / "runtime" / "config" / "model-catalog.json"
+            ok, transcript = self._verify_transcript(
+                listing, catalogs=(picker, baker))
+        self.assertFalse(ok)
+        self.assertIn("read different catalog files", transcript)
+        self.assertIn(f"The picker read {picker}", transcript)
+        self.assertIn(f"the preset baker read {baker}", transcript)
+
+    def test_one_catalog_for_both_halves_says_nothing_about_a_split(self):
+        listing = {"presets": {}, "customs": [self._summary()]}
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "model-catalog.json"
+            shared.write_text(
+                json.dumps({"models": [{"id": "stale/model"}]}), encoding="utf-8")
+            ok, transcript = self._verify_transcript(
+                listing, catalogs=(shared, shared))
+        self.assertFalse(ok)
+        self.assertIn("no model in any slot", transcript)
+        self.assertNotIn("different catalog files", transcript)
+
+    def test_a_partly_filled_active_configuration_still_finishes(self):
+        # The line between "thin" and "absent" is the same one the presets
+        # draw: a big model and a small model but nothing for fast is the
+        # warning it has always been, and the install completes.
+        listing = {"presets": {}, "customs": [self._summary(
+            big1="big", small="small", incomplete=True)]}
+        ok, transcript = self._verify_transcript(listing)
+        self.assertTrue(ok)
+        # Flagged exactly the way a thin preset card is, and it still passes.
+        self.assertIn("⚠ user-pipeline: big big · fast — · small small",
+                      transcript)
+        self.assertIn("Some slots came out empty", transcript)
+        self.assertNotIn("no model in any slot", transcript)
+
+    def test_one_filled_slot_anywhere_is_enough(self):
+        for slot in install.CARD_SLOTS:
+            listing = {"presets": {},
+                       "customs": [self._summary(**{slot: "some/model"})]}
+            ok, _transcript = self._verify_transcript(listing)
+            self.assertTrue(ok, slot)
+
+    def test_an_absent_active_configuration_halts_too(self):
+        listing = {"presets": {}, "customs": [
+            {"name": "something-else", "big1": "big"}]}
+        ok, transcript = self._verify_transcript(listing)
+        self.assertFalse(ok)
+        self.assertIn("user-pipeline does not exist after the picker ran",
+                      transcript)
+
+    def test_it_is_found_even_when_adopted_into_a_preset_slot(self):
+        # user-pipeline carries preset_lineage "budget"; with no budget.json of
+        # its own it can be adopted into that preset slot instead of appearing
+        # among the customs. It still has to be checked.
+        listing = {"presets": {"budget": self._summary()}, "customs": []}
+        ok, transcript = self._verify_transcript(listing)
+        self.assertFalse(ok)
+        self.assertIn("no model in any slot: user-pipeline", transcript)
+
+    def test_an_unreadable_listing_halts_rather_than_passes(self):
+        from orchestrator import active_configuration as ac
+        lines = []
+        with mock.patch.object(ac, "list_configurations",
+                               side_effect=OSError("disk gone")), \
+                mock.patch.object(install, "log", side_effect=lines.append):
+            ok = install._verify_active_configuration()
+        self.assertFalse(ok)
+        self.assertIn("Could not read user-pipeline back", "\n".join(lines))
+
+    def test_presets_and_the_active_configuration_share_one_rule(self):
+        # There is one emptiness test and one halt message, and both halves of
+        # step 7 go through them — not two guards that have to be kept in step.
+        source = (REPO_ROOT / "scripts" / "install.py").read_text(encoding="utf-8")
+        self.assertEqual(source.count("def _card_picks("), 1)
+        self.assertEqual(source.count("def _report_no_model_in_any_slot("), 1)
+        self.assertEqual(source.count("def _catalog_split_note("), 1)
+        for half in ("def _bake_promised_presets(",
+                     "def _verify_active_configuration("):
+            body = source.split(half)[1].split("\ndef ")[0]
+            self.assertIn("_card_picks(", body, half)
+            self.assertIn("_report_no_model_in_any_slot(", body, half)
+            # Each half names the catalog its own picks came from, and each
+            # reaches for the same split note when the two disagree. A half
+            # that leaves either to the default is the half that ends up
+            # describing somebody else's file.
+            self.assertIn("catalog=", body, half)
+            self.assertIn("_catalog_split_note(", body, half)
+        # And step 7 actually runs the read-back.
+        self.assertIn("_verify_active_configuration()", source)
+
+    def test_the_step_runs_the_read_back_after_the_presets(self):
+        source = (REPO_ROOT / "scripts" / "install.py").read_text(encoding="utf-8")
+        step = source.split("def step_autopopulate(")[1]
+        self.assertLess(step.index("_bake_promised_presets()"),
+                        step.index("_verify_active_configuration()"))
+
+
+class TestBakerLinesReachTheInstallLog(unittest.TestCase):
+    """What the preset baker says has to survive into install.log.
+
+    The installer calls the baker in-process, so the two lines only it can
+    write — why a preset did not bake, and the warning that a forced bake has
+    just overwritten hand-picked slots — landed on the terminal and stopped
+    there. install.log is the file the install points the user at when
+    something has gone wrong, and the replacement warning exists precisely so
+    a destructive act is on the record; missing from that file, it was doing
+    half its job.
+    """
+
+    def test_a_relayed_line_is_written_to_install_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "install.log"
+            with mock.patch.object(install, "LOG_PATH", log_path):
+                install._relay_baker_line(
+                    "[presets] speed: replacing the existing configuration")
+            written = log_path.read_text(encoding="utf-8")
+        self.assertIn("[presets] speed: replacing the existing configuration",
+                      written)
+        # Indented to sit with the ✓ and ⚠ lines of the step around it.
+        self.assertRegex(written, r"^\[[0-9:]{8}\]   \[presets\] ")
+
+    def test_the_bake_is_handed_that_relay_rather_than_left_to_print(self):
+        from orchestrator import active_configuration as ac
+        seen = {}
+
+        def _capture(force=False, **kwargs):
+            seen.update(kwargs)
+            seen["force"] = force
+            return []
+
+        with mock.patch.object(install, "_refresh_local_model_inventory",
+                               return_value=None), \
+                mock.patch.object(ac, "bake_missing_presets",
+                                  side_effect=_capture), \
+                mock.patch.object(ac, "list_configurations",
+                                  return_value={"presets": {}, "preset_errors": {}}), \
+                mock.patch.object(install, "log"):
+            install._bake_promised_presets()
+        self.assertTrue(seen.get("force"))
+        self.assertIs(seen.get("log"), install._relay_baker_line)
+
+    def test_both_lost_messages_travel_the_relay_end_to_end(self):
+        """Drive the real baker with a stub picker and read install.log back.
+
+        Not a mocked return value: a preset file is on disk, ``force=True``
+        replaces it, and the picker raises for one preset. Those are the exact
+        two lines that used to go nowhere.
+        """
+        from orchestrator import active_configuration as ac
+
+        class _AP:
+            @staticmethod
+            def registry_crossref(path=None):
+                return {}
+
+            @staticmethod
+            def populate_configuration(preset_name, catalog, presets, **kwargs):
+                if preset_name == "premium":
+                    raise ValueError("no candidate met the floor")
+                return {
+                    "preset_lineage": preset_name,
+                    "cells": {
+                        "utility": {"step1_cleanup": {"primary": "small",
+                                                      "fallback": []}},
+                        "analysis": {
+                            "gear4": {"depth": {"primary": "big", "fallback": []},
+                                      "breadth": None},
+                            "gear3": {"depth": {"primary": "fast", "fallback": []},
+                                      "breadth": None},
+                        },
+                        "post_analysis": {},
+                    },
+                }
+
+        seeded = {
+            "name": "premium", "preset_lineage": "premium",
+            "cells": {
+                "utility": {"step1_cleanup": {"primary": "chosen/by-hand",
+                                              "fallback": []}},
+                "analysis": {
+                    "gear4": {"depth": {"primary": "chosen/by-hand",
+                                        "fallback": []}, "breadth": None},
+                    "gear3": {"depth": {"primary": "chosen/by-hand",
+                                        "fallback": []}, "breadth": None},
+                },
+                "post_analysis": {},
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / "config" / "configurations").mkdir(parents=True)
+            (home / "scripts").mkdir()
+            (home / "config" / "configuration-presets.json").write_text(
+                json.dumps({"presets": {}}), encoding="utf-8")
+            (home / "config" / "model-catalog.json").write_text(
+                json.dumps({"models": [{"id": "m"}]}), encoding="utf-8")
+            (home / "scripts" / "auto-populate-configuration.py").write_text(
+                "# stub\n", encoding="utf-8")
+            (home / "config" / "configurations" / "premium.json").write_text(
+                json.dumps(seeded), encoding="utf-8")
+            log_path = home / "install.log"
+
+            import importlib.util as ilu
+            fake_spec = type("S", (), {"loader": type(
+                "L", (), {"exec_module": staticmethod(lambda m: None)})()})
+            with mock.patch.object(install, "LOG_PATH", log_path), \
+                    mock.patch.object(ac, "ORA_HOME", home), \
+                    mock.patch.object(ac, "CONFIGURATIONS_DIR",
+                                      home / "config" / "configurations"), \
+                    mock.patch.object(ac, "DATA_DIR", home / "data"), \
+                    mock.patch.object(ilu, "spec_from_file_location",
+                                      lambda name, path: fake_spec()), \
+                    mock.patch.object(ilu, "module_from_spec", lambda spec: _AP), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                ac._bake_errors.clear()
+                try:
+                    ac.bake_missing_presets(force=True,
+                                            log=install._relay_baker_line)
+                finally:
+                    ac._bake_errors.clear()
+            written = log_path.read_text(encoding="utf-8")
+
+        self.assertIn("[presets] premium: replacing the existing configuration",
+                      written)
+        self.assertIn("any hand-picked slots in it are overwritten", written)
+        self.assertIn("[presets] premium did not bake — "
+                      "ValueError: no candidate met the floor", written)
+        # One line per replaced file, not one per preset considered.
+        self.assertEqual(written.count("replacing the existing configuration"), 1)
 
 
 if __name__ == "__main__":
