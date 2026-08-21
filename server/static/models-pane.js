@@ -710,17 +710,28 @@
     var label = PRESET_LABELS[presetName] || presetName;
 
     if (!summary) {
-      // Preset hasn't been baked yet — show a placeholder card with
-      // the same dimensions as a real one so the row stays aligned.
+      // Preset has no configuration behind it — show a placeholder card
+      // with the same dimensions as a real one so the row stays aligned.
+      // The server records exactly why each empty slot is empty
+      // (active_configuration.preset_bake_errors), so the card says the
+      // cause rather than leaving the user to guess at a blank.
+      var errors = (_configs && _configs.preset_errors) || {};
+      var cause = errors[presetName] || '';
+      var body = cause
+        ? ('<p class="ora-models-empty-msg">Could not be generated: '
+             + _esc(cause) + '</p>'
+           + '<p class="ora-models-empty-msg">Fix the cause above, then use '
+           + 'Refresh in the header to try again.</p>')
+        : ('<p class="ora-models-empty-msg">Not generated yet. Use Refresh in '
+           + 'the header to bake this preset.</p>');
       return ''
-        + '<div class="ora-models-card ora-models-card-empty" data-preset="' + presetName + '">'
+        + '<div class="ora-models-card ora-models-card-empty" data-preset="' + presetName + '"'
+        +   (cause ? ' title="' + _esc(cause) + '"' : '') + '>'
         +   '<header class="ora-models-card-header">'
         +     '<span class="ora-models-card-title">' + _esc(label) + '</span>'
         +   '</header>'
         +   '<div class="ora-models-card-body">'
-        +     '<p class="ora-models-empty-msg">Not yet generated. The next '
-        +       'registry refresh bakes this preset; refresh now from the '
-        +       'header (coming in step 14).</p>'
+        +     body
         +   '</div>'
         + '</div>';
     }

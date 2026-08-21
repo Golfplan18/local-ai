@@ -8,12 +8,16 @@ operators get a clear "not yet" message instead of a silent shape change.
 
 Steps the script performs in order:
 
-  1. Pre-flight: Python 3.11+, ≥5GB disk, OpenRouter catalog reachable,
-     write perms. Also creates the vault when the resolved vault path does
-     not exist yet — root plus the folder skeleton the runtime reads. An
-     existing vault is reported and left untouched; nothing is ever written
-     into one. A creation that fails part-way removes the directories it
-     just made, so a re-run never inherits a half-built vault.
+  1. Pre-flight: Python 3.11+, ≥5GB disk, write perms, and a look at whether
+     OpenRouter is answering. An outage there is reported, not fatal, and the
+     report states the same policy step 5 implements (CATALOG_OUTAGE_POLICY):
+     the install falls back to the catalog packaged with this checkout, and
+     halts only if there is no usable one. Also creates the vault when the
+     resolved vault path does not exist yet — root plus the folder skeleton
+     the runtime reads. An existing vault is reported and left untouched;
+     nothing is ever written into one. A creation that fails part-way
+     removes the directories it just made, so a re-run never inherits a
+     half-built vault.
   2. Python dependencies from requirements.txt, plus the pinned MCP runtime
      and its exact Playwright browser. Falls back to an isolated .venv/ when
      the interpreter is PEP 668 externally managed.
@@ -27,8 +31,11 @@ Steps the script performs in order:
      it, so a failure prints the cause and one retry command and moves on.
   4. Deployment profile selection (Solo today; Hybrid / Organization future)
   5. Catalog refresh — fetches OpenRouter operational fields and writes
-     config/model-catalog.json (legacy snapshot, still consumed by
-     auto-populate-configuration).
+     config/model-catalog.json, the file the model picker reads. A copy of
+     that catalog ships in the repository, so the refresh makes it current
+     rather than bringing it into existence: a refresh that cannot complete
+     falls back to the packaged copy, says what is stale about it, and the
+     install carries on. It halts here only when no usable catalog exists.
   6. Model-registry sync — fetches OpenRouter + LiteLLM + Chatbot Arena
       and runs the empirical vision-capability probe, writing
       config/model-registry.json. This replaces the prior Artificial
@@ -37,8 +44,16 @@ Steps the script performs in order:
       verified rather than trusted from any single provider's metadata.
       An optional AA key improves the registry path after install, but it is
       not required for installation.
-  7. Auto-populate user-pipeline configuration from the Budget preset.
-  8. Smoke test: populate the Free configuration, then make one tiny
+  7. Auto-populate the user-pipeline configuration from the Budget preset,
+     then bake all four presets the Models pane promises — Free, Budget,
+     Speed and Premium — through the runtime's own baker. A promised preset
+     that does not exist afterwards — or that exists with a model in none of
+     its slots, which is the same blank card by another route — halts the
+     install, naming which one and why, instead of leaving it for the user
+     to find later. The user-pipeline is read back against that same test,
+     because the two halves do not resolve the model catalog identically and
+     it is the configuration Ora actually serves requests from.
+  8. Smoke test: populate a throwaway Free configuration, then make one tiny
      OpenRouter chat round-trip when a key is already available. Without a
      key, the smoke test validates config and tells the user to add keys
      later in Settings → External APIs.
@@ -90,6 +105,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+# Settle ORA_HOME before the first orchestrator import, by the same rule the
+# launchers use and ``_converter_environment`` applies to child processes: a
+# setting that names a path wins, and a missing, empty or whitespace-only one
+# becomes this clone. ``runtime_paths`` bakes its roots the moment it is
+# imported and answers "$HOME/ora" when nobody has set the variable, so an
+# installer running from a clone anywhere else would otherwise read and write
+# another checkout's presets and catalogs while claiming to install this one.
+if not os.environ.get("ORA_HOME", "").strip():
+    os.environ["ORA_HOME"] = str(REPO_ROOT)
+
 from orchestrator import network_policy
 
 STATE_PATH = REPO_ROOT / "install-state.json"
@@ -97,6 +123,99 @@ LOG_PATH = REPO_ROOT / "install.log"
 COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"
 # The one line a user retypes when Word/PDF converters did not download.
 CONVERTER_RETRY_COMMAND = "python3 scripts/install.py converters"
+
+# ─── What an OpenRouter outage does to the install ───────────────────────
+#
+# Ora ships a model catalog inside the repository (config/model-catalog.json).
+# A fresh clone therefore already knows which models exist, what they cost and
+# how they rank; step 5's refresh is how that knowledge becomes *current*, not
+# how it comes into existence. Every preset in the Models pane bakes correctly
+# from the packaged copy alone, with no network at all.
+#
+# So the install's answer to a provider outage is written once, here, and
+# quoted by both pre-flight and step 5 — the two used to disagree, pre-flight
+# calling an outage survivable and step 5 halting the install on it.
+CATALOG_OUTAGE_POLICY = (
+    "An unreachable OpenRouter does not stop the install: step 5 falls back to "
+    "the model catalog packaged with this checkout. The install halts there "
+    "only if that packaged catalog is missing or unusable."
+)
+# The one line a user retypes to get a current catalog once the network is back.
+CATALOG_REFRESH_RETRY_COMMAND = "python3 scripts/refresh-catalog.py"
+
+
+def _catalog_path() -> Path:
+    """The catalog file everyone in this chain agrees on.
+
+    ``refresh-catalog.py`` writes it, ``auto-populate-configuration.py`` reads
+    it and the runtime's preset baker reads it, and all three honor
+    ``ORA_MODEL_CATALOG_PATH``. Resolving it the same way here is what lets
+    pre-flight and step 5 talk about the same file the refresh would replace.
+    """
+    override = os.environ.get("ORA_MODEL_CATALOG_PATH", "").strip()
+    return Path(override) if override else REPO_ROOT / "config" / "model-catalog.json"
+
+
+def _catalog_baseline(path: Path | None = None) -> tuple[bool, str]:
+    """Is there a usable model catalog on disk, and what is in it?
+
+    Returns ``(usable, description)``. "Usable" is deliberately the low bar
+    the rest of the install actually needs — a readable JSON object holding at
+    least one model with an id — because that is the whole of what the model
+    picker requires to fill a preset. The description is one plain line for
+    the install log: what the catalog holds and how old it is when it can be
+    used, and the exact reason it cannot be when it cannot.
+
+    ``path`` says which catalog to describe, and defaults to the one the
+    picker CLI reads. Step 7's preset half hands in the baker's own resolved
+    path instead: a message about picks that came out empty has to describe
+    the file those picks actually came from, and on a machine with a runtime
+    overlay that is not the same file.
+    """
+    path = _catalog_path() if path is None else path
+    if not path.exists():
+        return False, f"there is no catalog at {path}"
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, (
+            f"the catalog at {path} could not be read "
+            f"({type(exc).__name__}: {exc})"
+        )
+    models = (data or {}).get("models") if isinstance(data, dict) else None
+    if not isinstance(models, list) or not models:
+        return False, f"the catalog at {path} lists no models"
+    usable = [
+        m for m in models
+        if isinstance(m, dict) and str(m.get("id") or "").strip()
+    ]
+    if not usable:
+        return False, f"no entry in the catalog at {path} carries a model id"
+    free = sum(1 for m in usable if m.get("is_free"))
+    scored = sum(1 for m in usable if m.get("aa_intelligence_index") is not None)
+    refreshed = str((data.get("_refreshed_at") or "")).strip() or "an unrecorded date"
+    return True, (
+        f"{len(usable)} models ({free} free, {scored} with an intelligence "
+        f"score), last refreshed {refreshed}"
+    )
+
+
+def _log_catalog_outage_policy() -> None:
+    """State the outage policy and where this checkout stands under it.
+
+    Pre-flight calls this to predict what step 5 will do; step 5 runs the same
+    baseline check to do it. One statement from one place, so an install can
+    never promise a survivable outage and then halt on one.
+    """
+    log(f"    {CATALOG_OUTAGE_POLICY}")
+    usable, description = _catalog_baseline()
+    if usable:
+        log(f"    This checkout's packaged catalog is usable: {description}.")
+    else:
+        log(f"    This checkout has no usable catalog to fall back on: {description}.")
+        log("    If the refresh cannot complete, step 5 will halt the install.")
+
 
 DEPLOYMENT_PROFILES = {
     "solo": {
@@ -632,17 +751,22 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
     except OSError as exc:
         log(f"  ⚠ Disk space check failed: {exc}")
 
-    # OpenRouter reachable
+    # OpenRouter reachable.
+    #
+    # A bad answer here is a warning rather than a failure, and the warning
+    # states the policy step 5 actually implements — both come from
+    # CATALOG_OUTAGE_POLICY, so the prediction and the behavior are one thing.
     try:
         req = urllib.request.Request("https://openrouter.ai/api/v1/models", headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status == 200:
                 log("  ✓ OpenRouter API reachable (no auth needed for catalog)")
             else:
-                log(f"  ⚠ OpenRouter returned status {resp.status}; catalog refresh may fail")
+                log(f"  ⚠ OpenRouter returned status {resp.status}; the step 5 catalog refresh may not complete")
+                _log_catalog_outage_policy()
     except (urllib.error.URLError, OSError) as exc:
-        log(f"  ⚠ Cannot reach OpenRouter ({exc}); install can continue but catalog refresh will fail")
-        # Don't block on this — install may proceed without immediate catalog refresh
+        log(f"  ⚠ Cannot reach OpenRouter ({exc})")
+        _log_catalog_outage_policy()
 
     # Write perms
     try:
@@ -933,7 +1057,48 @@ def _open_provider_page(url: str) -> bool:
         return False
 
 
+def _catalog_refresh_fallback(state: dict, reason: str) -> bool:
+    """Apply the outage policy after a refresh that did not complete.
+
+    Returns True when the install may carry on against the catalog already in
+    the checkout, False when there is nothing to carry on with. Either way the
+    reason the refresh failed is printed once, in full, so nobody has to guess
+    whether it was the network, the script or the machine.
+    """
+    log(f"  ⚠ Catalog refresh did not complete — {reason}")
+    usable, description = _catalog_baseline()
+    if not usable:
+        log(f"  ✗ There is no catalog to fall back on: {description}.")
+        log("    Every later step picks models out of that file, so the install")
+        log("    cannot produce a working configuration without it. Restore")
+        log("    config/model-catalog.json (a clean clone ships one), then re-run")
+        log("    with --resume.")
+        return False
+    log(f"  ✓ Continuing on the catalog packaged with this checkout: {description}.")
+    log("    What this costs you: models released since that date are missing, and")
+    log("    prices, context windows and rankings are as of that date. Nothing else")
+    log("    changes — presets, the user pipeline and the smoke test all bake from")
+    log("    this file exactly as they would from a fresh one.")
+    log(f"    When the network is back, run: {CATALOG_REFRESH_RETRY_COMMAND}")
+    state["steps_completed"].append("catalog")
+    save_state(state)
+    return True
+
+
 def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
+    """Bring config/model-catalog.json up to date from OpenRouter.
+
+    The refresh is how the catalog becomes current; it is not how the catalog
+    comes to exist. One ships in the repository, and it is enough on its own to
+    fill every preset and the user pipeline.
+
+    So this step follows CATALOG_OUTAGE_POLICY, the same statement pre-flight
+    prints: a refresh that cannot complete — no network, a provider outage, a
+    missing script, a timeout — falls back to the packaged catalog and says
+    plainly what is stale about it. The install stops here only when there is
+    no usable packaged catalog to fall back on, and it says which of those two
+    it is rather than reporting one failure as the other.
+    """
     log("Step 5/9: Catalog refresh (OpenRouter operational fields)")
     log("")
 
@@ -955,31 +1120,34 @@ def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
 
     if dry_run:
         log("  [dry-run] would run scripts/refresh-catalog.py")
+        log(f"  [dry-run] if that refresh could not complete: {CATALOG_OUTAGE_POLICY}")
         return True
     script = REPO_ROOT / "scripts" / "refresh-catalog.py"
     if not script.exists():
-        log(f"  ✗ {script} missing")
-        return False
+        return _catalog_refresh_fallback(
+            state, f"{script} is missing from this checkout")
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
             cwd=str(REPO_ROOT),
             capture_output=True, text=True, timeout=120,
         )
-        if result.returncode == 0:
-            log("  ✓ Catalog refresh succeeded")
-            for line in result.stdout.strip().split("\n"):
-                if line.strip():
-                    log(f"    {line}")
-            state["steps_completed"].append("catalog")
-            save_state(state)
-            return True
-        log(f"  ✗ Catalog refresh failed (exit {result.returncode})")
-        log(f"    stderr: {result.stderr.strip()}")
-        return False
     except subprocess.TimeoutExpired:
-        log("  ✗ Catalog refresh timed out after 120s")
-        return False
+        return _catalog_refresh_fallback(
+            state, "scripts/refresh-catalog.py did not finish within 120s")
+    if result.returncode == 0:
+        log("  ✓ Catalog refresh succeeded")
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():
+                log(f"    {line}")
+        state["steps_completed"].append("catalog")
+        save_state(state)
+        return True
+    detail = (result.stderr or result.stdout or "").strip().splitlines()
+    reason = f"scripts/refresh-catalog.py exited {result.returncode}"
+    if detail:
+        reason += f" — {detail[-1].strip()}"
+    return _catalog_refresh_fallback(state, reason)
 
 
 def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
@@ -1039,10 +1207,359 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
         return True
 
 
+def _refresh_local_model_inventory() -> str | None:
+    """Record which local models this machine actually has.
+
+    The Free preset is the only one that mixes locally installed models into
+    its picks, and the code that does it refuses to guess: with no inventory
+    file it raises rather than route to a model that may not be on disk. The
+    Models pane therefore scans before it bakes, and so does this — same
+    module, same call — otherwise a machine that has never downloaded a local
+    model could not bake Free at all.
+
+    A machine with no local models is a perfectly ordinary answer, not a
+    failure: the scan simply records an empty inventory and Free keeps its
+    cloud picks. Returns None on success, or the reason the scan failed.
+    """
+    try:
+        from orchestrator import local_model_discovery, runtime_paths
+        # `install.py models` downloads into this directory; on a fresh clone
+        # it does not exist yet, and the scanner will not invent it.
+        runtime_paths.local_models_dir().mkdir(parents=True, exist_ok=True)
+        result = local_model_discovery.refresh(write=True)
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+    found = len(result.get("discovered") or [])
+    refused = result.get("refused")
+    if refused:
+        log(f"  ⚠ Local-model inventory not updated: {refused}")
+        return None
+    log(f"  ✓ Local-model inventory recorded: {found} installed locally")
+    return None
+
+
+def _relay_baker_line(message: str) -> None:
+    """Put a line the preset baker wrote into the install transcript.
+
+    The baker runs in-process here rather than as a subprocess, so anything it
+    writes for itself goes to the installer's terminal and stops there — while
+    install.log, the file the install tells the user to open afterwards, never
+    hears about it. That matters most for the one line saying a forced bake has
+    just replaced an existing preset and overwritten any slots picked by hand:
+    a warning about a destructive act that is missing from the record of the
+    install only half-exists.
+
+    So the baker's lines go through ``log`` like every other line of this step,
+    indented to sit at the same level as the ✓ and ⚠ lines around them.
+    """
+    log(f"  {message}")
+
+
+# The slots a configuration card puts a model in, in the order the card reads
+# them. They are also the whole of what a configuration is *for*: the models
+# the pipeline calls when that configuration is the one in use.
+CARD_SLOTS = ("big1", "big2", "fast1", "fast2", "small")
+
+# The configuration step 7 fills and Ora then serves requests from. Named once
+# so the picker call and the read-back that checks it can never end up talking
+# about different configurations.
+ACTIVE_CONFIGURATION = "user-pipeline"
+
+
+def _card_picks(summary: dict) -> list[str]:
+    """The models a baked configuration actually put in its slots.
+
+    Empty means the bake produced a file with a model in none of them — a card
+    with nothing on it, and a configuration the pipeline cannot run from.
+    """
+    return [
+        str(summary.get(slot)).strip()
+        for slot in CARD_SLOTS
+        if str(summary.get(slot) or "").strip()
+    ]
+
+
+def _report_no_model_in_any_slot(
+    names: list[str],
+    *,
+    headline: str,
+    subject: str,
+    consequence: tuple[str, ...],
+    catalog: Path | None = None,
+) -> None:
+    """Say why the install is stopping over a configuration holding nothing.
+
+    One message for both halves of step 7. A preset card and the active
+    user-pipeline fail the same test — a file that exists with a model in none
+    of its slots — for the same reason, so the install says it in the same
+    words: what came out empty, what was in the catalog it was picked from,
+    what that leaves the user with, and the one command that gets a current
+    catalog. Only the subject of the sentence changes.
+
+    ``catalog`` is the file the picks in question came out of, and each half
+    passes its own: the picker CLI's for ``user-pipeline``, the runtime
+    baker's for the preset cards. Describing the wrong one is how this
+    message once told a user their presets came from a 296-model catalog when
+    they had come from a one-model file nobody named.
+    """
+    log(f"  ✗ {headline}: {', '.join(names)}")
+    _usable, catalog_description = _catalog_baseline(catalog)
+    log(f"    {subject} picked from a catalog holding {catalog_description}.")
+    for line in consequence:
+        log(f"    {line}")
+    log("    Picks come from that catalog, narrowed by the model registry")
+    log("    step 6 syncs; a catalog that never refreshed is the usual cause.")
+    log(f"    Get a current one with `{CATALOG_REFRESH_RETRY_COMMAND}` (it")
+    log("    needs OpenRouter reachable), then re-run the install with --resume.")
+
+
+def _bake_promised_presets() -> bool:
+    """Create every preset the install promises, through the runtime's baker.
+
+    Ora promises four model presets — Free, Budget, Speed and Premium. They
+    are declared in ``config/configuration-presets.json``, named in
+    ``runtime_paths.PRESET_NAMES`` and in ``active_configuration.PRESET_ORDER``,
+    and the Models pane draws one card per name.
+
+    Until now the install created none of them. It produced a Budget-derived
+    user pipeline and a Free smoke-test copy, and left the four cards to be
+    baked the first time somebody opened the Models pane — where Speed had no
+    file at all, Premium showed whatever snapshot happened to be committed to
+    the repository, and a bake that failed became a blank card with no reason
+    on it.
+
+    This uses ``bake_missing_presets``, the very call the Models pane makes,
+    rather than a second mechanism that could drift from it. ``force=True``
+    because the install has just settled which catalog this machine will use:
+    every preset should be picked from that catalog, not inherited from a
+    snapshot committed months earlier.
+
+    Returns False — halting the install — when a promised preset is absent
+    after the bake, or present with a model in none of its slots. Anything
+    between those and a full house is reported as a warning and finishes.
+    """
+    try:
+        from orchestrator import active_configuration as ac
+    except Exception as exc:
+        log(f"  ✗ Could not load the preset baker: {type(exc).__name__}: {exc}")
+        return False
+
+    promised = list(ac.PRESET_ORDER)
+    log(f"  · Baking the presets the Models pane shows: {', '.join(promised)}")
+    inventory_error = _refresh_local_model_inventory()
+    if inventory_error:
+        log(f"  ⚠ Local-model scan failed ({inventory_error});"
+            " Free will bake from cloud models only.")
+    try:
+        ac.bake_missing_presets(force=True, log=_relay_baker_line)
+    except Exception as exc:
+        log(f"  ✗ The preset bake failed outright: {type(exc).__name__}: {exc}")
+        return False
+
+    listing = ac.list_configurations()
+    summaries = listing.get("presets") or {}
+    causes = listing.get("preset_errors") or {}
+    missing = [name for name in promised if not summaries.get(name)]
+    if missing:
+        log(f"  ✗ These presets do not exist after the bake: {', '.join(missing)}")
+        for name in missing:
+            log(f"      {name}: {causes.get(name) or 'no cause recorded'}")
+        log("    Ora promises a card for each of these in Settings → Models, so")
+        log("    the install stops rather than finish with one of them absent.")
+        return False
+
+    # A preset file can exist and still hold nothing. The bake writes one
+    # whenever the picker returns without raising, and on a catalog with no
+    # model the picker returns cleanly with every slot empty — which is how
+    # this step used to print four warnings and then "All 4 promised presets
+    # exist" over four blank cards.
+    #
+    # An empty preset is not a thin preset, it is an absent one: the card
+    # shows nothing and the pipeline it feeds has nothing to call. So it fails
+    # exactly as a missing preset does, above. A preset that filled some of
+    # its slots and not others is the genuinely partial case and still passes,
+    # with the warning further down.
+    empty = [name for name in promised if not _card_picks(summaries[name] or {})]
+    if empty:
+        # Ask the baker's own resolver which catalog it read, exactly as the
+        # user-pipeline read-back does. These picks came out of the baker's
+        # file, so that is the file this message has to describe and name —
+        # describing the picker's instead once told a user their empty presets
+        # came from a 296-model catalog and sent them to refresh the one file
+        # that was already fine.
+        baker_catalog = ac._catalog_path()
+        _report_no_model_in_any_slot(
+            empty,
+            headline="These presets baked with no model in any slot",
+            subject="They were",
+            consequence=(
+                "Nothing in it reached those presets' slots, so their cards in",
+                "Settings → Models would be blank and nothing could run from",
+                "them. That is the same outcome as a preset that never baked, so",
+                "the install stops here rather than report success over it.",
+            ) + _catalog_split_note(
+                baker_catalog,
+                lead=(
+                    "The user-pipeline line above can look healthy while these are",
+                    "empty, because the two halves of this step read different",
+                    "catalog files.",
+                ),
+            ),
+            catalog=baker_catalog,
+        )
+        return False
+
+    for name in promised:
+        summary = summaries[name] or {}
+        incomplete = bool(summary.get("incomplete"))
+        log(f"  {'⚠' if incomplete else '✓'} {name}: "
+            f"big {summary.get('big1') or '—'} · "
+            f"fast {summary.get('fast1') or '—'} · "
+            f"small {summary.get('small') or '—'}")
+        if incomplete:
+            log("      Some slots came out empty — the catalog held no candidate")
+            log("      that fits this preset's rules. Pick models for the empty")
+            log("      slots in Settings → Models, or refresh the catalog and")
+            log("      re-bake from the pane's Refresh button.")
+    log(f"  ✓ All {len(promised)} promised presets exist: {', '.join(promised)}")
+    return True
+
+
+def _catalog_split_note(baker_catalog: Path, *, lead: tuple[str, ...]) -> tuple[str, ...]:
+    """Name both catalogs when step 7's two halves did not read the same one.
+
+    Step 7's two halves do not find the model catalog the same way. The picker
+    CLI takes ``ORA_MODEL_CATALOG_PATH`` or this checkout's own
+    ``config/model-catalog.json``; the runtime's preset baker prefers the
+    runtime overlay copy under ``data/runtime/`` whenever one is there — and
+    one is there on any machine that has run Ora and refreshed its models.
+
+    Normally both land on the same file and there is nothing to say. When they
+    do not, one half can produce a perfectly healthy result out of one catalog
+    while the other comes out blank from the other, and whichever half is
+    halting has to say so — otherwise the user reads a halt sitting directly
+    beside a success and has no way to see that both are true. Naming both
+    files is also the only thing that tells them which one to repair: the
+    refresh command below rewrites the picker's copy and never touches the
+    overlay, so a user pointed at the wrong file simply re-runs into the same
+    halt.
+
+    ``lead`` is the one sentence that differs — which half is empty and which
+    looks fine — because that is the only part of this note the two halves
+    cannot share.
+    """
+    picker_catalog = _catalog_path()
+    if picker_catalog == baker_catalog:
+        return ()
+    return lead + (
+        f"The picker read {picker_catalog};",
+        f"the preset baker read {baker_catalog}.",
+    )
+
+
+def _verify_active_configuration() -> bool:
+    """Hold the configuration Ora serves from to the presets' own standard.
+
+    The presets are read back after they bake and the install halts on one that
+    exists with a model in no slot. ``user-pipeline`` had no such read-back,
+    and it is the configuration the pipeline actually runs on — so an install
+    could report ``INSTALL_COMPLETE`` over a Models pane with four healthy
+    cards and a running configuration that cannot answer a single prompt.
+
+    It is the same rule, so it is the same check and the same message: an
+    entirely empty configuration halts, a partly filled one is the genuinely
+    thin case and finishes with a warning.
+
+    The read-back goes through the runtime's own reader rather than opening the
+    file the picker just wrote, so what gets checked is the file the server
+    will actually read — which, for this name, may be a runtime overlay copy
+    sitting on top of it.
+    """
+    try:
+        from orchestrator import active_configuration as ac
+        listing = ac.list_configurations()
+    except Exception as exc:
+        log(f"  ✗ Could not read {ACTIVE_CONFIGURATION} back: "
+            f"{type(exc).__name__}: {exc}")
+        return False
+
+    # It normally lands among the customs, but a configuration carrying a
+    # preset lineage can be adopted into a preset slot when that preset has no
+    # file of its own, so look everywhere rather than in the expected bucket.
+    candidates = list(listing.get("customs") or [])
+    candidates.extend(s for s in (listing.get("presets") or {}).values() if s)
+    summary = next(
+        (s for s in candidates if (s or {}).get("name") == ACTIVE_CONFIGURATION),
+        None,
+    )
+    if summary is None:
+        log(f"  ✗ {ACTIVE_CONFIGURATION} does not exist after the picker ran.")
+        log("    Ora serves requests from it, so the install stops here rather")
+        log("    than finish without the configuration it just promised.")
+        return False
+
+    if not _card_picks(summary):
+        # Ask the baker's own resolver where it read its catalog rather than
+        # restating its rule here — a second copy of that rule is exactly the
+        # kind of drift this guard exists to catch.
+        baker_catalog = ac._catalog_path()
+        _report_no_model_in_any_slot(
+            [ACTIVE_CONFIGURATION],
+            headline="This configuration was picked with no model in any slot",
+            subject="It was",
+            consequence=(
+                f"{ACTIVE_CONFIGURATION} is the configuration Ora serves",
+                "requests from, so an empty one is not a thin install — it is",
+                "an install that cannot answer a single prompt. That is the",
+                "same outcome as a preset with nothing in it, so it stops the",
+                "install the same way rather than report success over it.",
+            ) + _catalog_split_note(
+                baker_catalog,
+                lead=(
+                    "The preset cards above can look healthy while this one is empty,",
+                    "because the two halves of this step read different catalog files.",
+                ),
+            ),
+            catalog=_catalog_path(),
+        )
+        return False
+
+    # Reported exactly as a preset card is, because it is the same read of the
+    # same slots: the models it holds on one line, and the same warning under
+    # it when some of them came out empty.
+    incomplete = bool(summary.get("incomplete"))
+    log(f"  {'⚠' if incomplete else '✓'} {ACTIVE_CONFIGURATION}: "
+        f"big {summary.get('big1') or '—'} · "
+        f"fast {summary.get('fast1') or '—'} · "
+        f"small {summary.get('small') or '—'}")
+    if incomplete:
+        log("      Some slots came out empty — the catalog held no candidate")
+        log("      that fits them. Pick models for the empty slots in")
+        log("      Settings → Models, or refresh the catalog and re-run the")
+        log("      install with --resume.")
+    return True
+
+
 def step_autopopulate(state: dict, dry_run: bool) -> bool:
-    log("Step 7/9: Auto-populate user-pipeline configuration (Budget preset)")
+    """Fill the user's pipeline and every preset the Models pane promises.
+
+    Two halves: the running pipeline (``user-pipeline``, Budget rules) through
+    the picker CLI, and the four preset cards through the runtime's own baker.
+    The step fails if a promised preset does not exist afterwards, or exists
+    with nothing in it, naming which one and why — a preset the install
+    promised and did not deliver is not a success, and neither is an empty one.
+
+    Both halves are then held to that one standard, because both halves can
+    fail it. They resolve the model catalog by different rules, so a stale
+    runtime overlay can have them picking from different files; the presets
+    are read back after they bake and ``user-pipeline`` is read back too. It
+    matters more than any single preset — it is what Ora serves requests from.
+    """
+    log("Step 7/9: User-pipeline configuration (Budget) and the four model presets")
     if dry_run:
-        log("  [dry-run] would run scripts/auto-populate-configuration.py budget user-pipeline")
+        log("  [dry-run] would run scripts/auto-populate-configuration.py "
+            f"budget {ACTIVE_CONFIGURATION}")
+        log("  [dry-run] would bake the Free, Budget, Speed and Premium presets")
         return True
     script = REPO_ROOT / "scripts" / "auto-populate-configuration.py"
     if not script.exists():
@@ -1050,24 +1567,33 @@ def step_autopopulate(state: dict, dry_run: bool) -> bool:
         return False
     try:
         result = subprocess.run(
-            [sys.executable, str(script), "budget", "user-pipeline"],
+            [sys.executable, str(script), "budget", ACTIVE_CONFIGURATION],
             cwd=str(REPO_ROOT),
             capture_output=True, text=True, timeout=60,
         )
-        if result.returncode == 0:
-            log("  ✓ user-pipeline configuration populated")
-            for line in result.stdout.strip().split("\n"):
-                if line.strip():
-                    log(f"    {line}")
-            state["steps_completed"].append("autopopulate")
-            save_state(state)
-            return True
-        log(f"  ✗ Auto-populate failed (exit {result.returncode})")
-        log(f"    stderr: {result.stderr.strip()}")
-        return False
     except subprocess.TimeoutExpired:
         log("  ✗ Auto-populate timed out after 60s")
         return False
+    if result.returncode != 0:
+        log(f"  ✗ Auto-populate failed (exit {result.returncode})")
+        log(f"    stderr: {result.stderr.strip()}")
+        return False
+    log(f"  ✓ {ACTIVE_CONFIGURATION} configuration populated")
+    for line in result.stdout.strip().split("\n"):
+        if line.strip():
+            log(f"    {line}")
+
+    if not _bake_promised_presets():
+        return False
+
+    # Last, so the message about healthy preset cards can point at the ones
+    # printed directly above it.
+    if not _verify_active_configuration():
+        return False
+
+    state["steps_completed"].append("autopopulate")
+    save_state(state)
+    return True
 
 
 def _extract_smoke_models(cfg: dict) -> list[str]:

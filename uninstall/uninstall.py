@@ -14,6 +14,10 @@ operation of Ora. By design:
     ``data/converters/``) by default, for the same reason: they are large
     and ``python3 scripts/install.py converters`` fetches them again. Pass
     ``--include-converters`` to opt in.
+  - Preserves ``config/model-catalog.json``. It ships in the repository
+    and is what an install falls back on when OpenRouter is unreachable;
+    removing it broke offline re-installs. Restore the shipped copy over
+    a refreshed one with ``git checkout -- config/model-catalog.json``.
   - Does NOT delete the git checkout itself (the source tree where the
     user ran git clone). That's the user's working copy.
 
@@ -55,7 +59,16 @@ CONVERSATIONS = _ROOTS.conversations
 ALWAYS_REMOVE = [
     REPO_ROOT / "install-state.json",
     REPO_ROOT / "install.log",
-    REPO_ROOT / "config" / "model-catalog.json",
+    # config/model-catalog.json is deliberately NOT here. It used to be, back
+    # when it was a disposable download. It is now the file an install falls
+    # back on when OpenRouter is unreachable: a copy ships in the repository,
+    # and step 5 of the install refreshes it in place rather than creating it.
+    # Deleting it left the checkout unable to install offline — the install
+    # halted at step 5 on a clone that had shipped a perfectly good catalog.
+    # It is repository content, not runtime state, so the uninstaller leaves
+    # it exactly as it leaves the rest of the source tree; `git checkout --
+    # config/model-catalog.json` puts back the shipped copy for anyone who
+    # wants the refreshed data gone too.
     REPO_ROOT / "config" / "browser-models.json",     # deprecated subscription dispatch artifact
     REPO_ROOT / "data" / "model-catalog-changes.jsonl",
     REPO_ROOT / "data" / "chroma",                    # ChromaDB index — rebuildable from sources
@@ -187,8 +200,8 @@ def _confirm() -> bool:
     print("CONFIRMATION REQUIRED")
     print("=" * 60)
     print()
-    print("This will remove Ora's runtime state (configurations, model")
-    print("catalog, ChromaDB index, install log, etc.).")
+    print("This will remove Ora's runtime state (configurations, ChromaDB")
+    print("index, install log, etc.).")
     print()
     print("To proceed, type the literal word: DELETE")
     print("Anything else cancels.")

@@ -1,6 +1,8 @@
 """Tests for orchestrator/active_configuration.py — the active-config
 pointer + per-configuration toggle persistence used by the V3 Models
 pane header strip (install Chunk 10 step 3)."""
+import contextlib
+import io
 import json
 import os
 import sys
@@ -1305,6 +1307,321 @@ class TestMinContext1mToggle(_Fixture):
             importlib.util.spec_from_file_location = self._orig_spec
             importlib.util.module_from_spec = self._orig_modfrom
         self.addCleanup(_restore)
+
+
+class TestPresetBakeCauses(_Fixture):
+    """An empty preset card has to say why it is empty.
+
+    Before this, a preset that never baked and a preset whose picker blew up
+    both arrived at the Models pane as the same silent ``null``. These tests
+    pin the cause to the preset it belongs to, and pin it disappearing again
+    the moment that preset exists.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.module._bake_errors.clear()
+        self.addCleanup(self.module._bake_errors.clear)
+
+    def _arm_bake(self, fake_ap=None, *, write_catalog=True):
+        """Point the bake at an in-temp catalog/presets pair and, when a fake
+        picker is supplied, at that instead of the real one."""
+        import importlib
+        ac = self.module
+        cfg = Path(self.tmpdir) / "config"
+        cfg.mkdir(parents=True, exist_ok=True)
+        (cfg / "configuration-presets.json").write_text(json.dumps({"presets": {}}))
+        if write_catalog:
+            (cfg / "model-catalog.json").write_text(
+                json.dumps({"models": [{"id": "m"}]}))
+        (Path(self.tmpdir) / "scripts").mkdir(parents=True, exist_ok=True)
+        (Path(self.tmpdir) / "scripts" / "auto-populate-configuration.py").write_text("# stub\n")
+
+        orig_home = ac.ORA_HOME
+        ac.ORA_HOME = Path(self.tmpdir)
+        orig_spec = importlib.util.spec_from_file_location
+        orig_modfrom = importlib.util.module_from_spec
+
+        if fake_ap is not None:
+            def _fake_spec(name, path):
+                class _S:
+                    loader = type(
+                        "L", (), {"exec_module": staticmethod(lambda m: None)})()
+                return _S()
+
+            importlib.util.spec_from_file_location = _fake_spec
+            importlib.util.module_from_spec = lambda spec: fake_ap
+
+        def _restore():
+            ac.ORA_HOME = orig_home
+            importlib.util.spec_from_file_location = orig_spec
+            importlib.util.module_from_spec = orig_modfrom
+        self.addCleanup(_restore)
+
+    @staticmethod
+    def _fake_picker(failing: dict):
+        """A stand-in picker that fills every preset except the named ones."""
+        class _AP:
+            @staticmethod
+            def registry_crossref(path=None):
+                return {}
+
+            @staticmethod
+            def populate_configuration(preset_name, catalog, presets, **kwargs):
+                if preset_name in failing:
+                    raise failing[preset_name]
+                return {
+                    "preset_lineage": preset_name,
+                    "cells": {
+                        "utility": {"step1_cleanup": {"primary": "small", "fallback": []}},
+                        "analysis": {
+                            "gear4": {"depth": {"primary": "big", "fallback": []},
+                                      "breadth": None},
+                            "gear3": {"depth": {"primary": "fast", "fallback": []},
+                                      "breadth": None},
+                        },
+                        "post_analysis": {},
+                    },
+                }
+        return _AP
+
+    def test_a_missing_catalog_is_reported_against_every_preset(self):
+        self._arm_bake(write_catalog=False)
+        self.assertEqual(self.module.bake_missing_presets(force=True), [])
+        errors = self.module.preset_bake_errors()
+        self.assertEqual(set(errors), set(self.module.PRESET_ORDER))
+        for cause in errors.values():
+            self.assertIn("model catalog is missing", cause)
+            self.assertIn("model-catalog.json", cause)
+
+    def test_one_preset_that_raises_does_not_hide_its_cause(self):
+        boom = ValueError("no candidate met the 80 tokens/second floor")
+        self._arm_bake(self._fake_picker({"speed": boom}))
+        baked = self.module.bake_missing_presets(force=True)
+        self.assertNotIn("speed", baked)
+        errors = self.module.preset_bake_errors()
+        self.assertEqual(set(errors), {"speed"})
+        self.assertEqual(
+            errors["speed"],
+            "ValueError: no candidate met the 80 tokens/second floor")
+
+    def test_the_cause_reaches_the_pane_payload_for_that_slot_only(self):
+        boom = ValueError("catalog held no free model")
+        self._arm_bake(self._fake_picker({"free": boom}))
+        self.module.bake_missing_presets(force=True)
+        payload = self.module.list_configurations()
+        self.assertIsNone(payload["presets"]["free"])
+        self.assertEqual(set(payload["preset_errors"]), {"free"})
+        self.assertIn("catalog held no free model", payload["preset_errors"]["free"])
+        # Slots that did bake carry no error at all.
+        for name in ("budget", "speed", "premium"):
+            self.assertIsNotNone(payload["presets"][name])
+            self.assertNotIn(name, payload["preset_errors"])
+
+    def test_a_bake_that_cannot_start_records_against_presets_that_exist(self):
+        # What the preset_bake_errors docstring now says out loud: when the
+        # whole bake aborts, nothing was attempted for any preset, so the
+        # cause lands on every selected name — including ones with a
+        # perfectly good file on disk. The pane never sees those, because
+        # list_configurations only reports a cause for an empty slot.
+        self._write_config("budget", {
+            "preset_lineage": "budget",
+            "cells": {
+                "utility": {"step1_cleanup": {"primary": "small", "fallback": []}},
+                "analysis": {
+                    "gear4": {"depth": {"primary": "big", "fallback": []},
+                              "breadth": None},
+                    "gear3": {"depth": {"primary": "fast", "fallback": []},
+                              "breadth": None},
+                },
+                "post_analysis": {},
+            },
+        })
+        self._arm_bake(write_catalog=False)
+        self.assertEqual(self.module.bake_missing_presets(force=True), [])
+        self.assertIn("budget", self.module.preset_bake_errors())
+        payload = self.module.list_configurations()
+        self.assertIsNotNone(payload["presets"]["budget"])
+        self.assertNotIn("budget", payload["preset_errors"])
+
+    def test_a_later_success_clears_the_earlier_cause(self):
+        self._arm_bake(self._fake_picker({"premium": RuntimeError("transient")}))
+        self.module.bake_missing_presets(force=True)
+        self.assertIn("premium", self.module.preset_bake_errors())
+        self._arm_bake(self._fake_picker({}))
+        self.module.bake_missing_presets(force=True)
+        self.assertEqual(self.module.preset_bake_errors(), {})
+        self.assertEqual(self.module.list_configurations()["preset_errors"], {})
+
+    # ── Regenerating over an existing preset has to say so ─────────────
+    #
+    # ``force=True`` is how a toggle flip and the installer redo the picks,
+    # and replacing the file is the point of it. Doing it in silence is not:
+    # a user who hand-picked models into a preset lost them on the next
+    # re-run with nothing in any log to explain where they went.
+
+    def _bake_output(self, **kwargs):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            baked = self.module.bake_missing_presets(**kwargs)
+        return baked, buffer.getvalue()
+
+    def _seed_preset_file(self, name):
+        self._write_config(name, {
+            "name": name,
+            "preset_lineage": name,
+            "description": "hand-edited by the user",
+            "cells": {
+                "utility": {"step1_cleanup": {"primary": "chosen/by-hand",
+                                              "fallback": []}},
+                "analysis": {
+                    "gear4": {"depth": {"primary": "chosen/by-hand",
+                                        "fallback": []}, "breadth": None},
+                    "gear3": {"depth": {"primary": "chosen/by-hand",
+                                        "fallback": []}, "breadth": None},
+                },
+                "post_analysis": {},
+            },
+        })
+
+    def test_replacing_an_existing_preset_logs_one_line_naming_the_file(self):
+        self._seed_preset_file("speed")
+        self._arm_bake(self._fake_picker({}))
+        baked, output = self._bake_output(force=True)
+        self.assertIn("speed", baked)
+        replaced = [line for line in output.splitlines()
+                    if "replacing the existing configuration" in line]
+        self.assertEqual(len(replaced), 1, output)
+        self.assertIn("[presets] speed:", replaced[0])
+        self.assertIn(str(self.config_dir / "speed.json"), replaced[0])
+        self.assertIn("overwritten", replaced[0])
+        # The picks really were replaced — the line is not decorative.
+        with open(self.config_dir / "speed.json") as f:
+            self.assertEqual(
+                json.load(f)["cells"]["analysis"]["gear4"]["depth"]["primary"],
+                "big")
+
+    def test_a_first_time_bake_is_not_noisier_for_it(self):
+        self._arm_bake(self._fake_picker({}))
+        baked, output = self._bake_output(force=True)
+        self.assertEqual(set(baked), set(self.module.PRESET_ORDER))
+        self.assertNotIn("replacing the existing configuration", output)
+
+    def test_only_the_presets_actually_replaced_are_announced(self):
+        self._seed_preset_file("premium")
+        self._arm_bake(self._fake_picker({}))
+        _baked, output = self._bake_output(force=True)
+        announced = [line for line in output.splitlines()
+                     if "replacing the existing configuration" in line]
+        self.assertEqual(len(announced), 1, output)
+        self.assertIn("[presets] premium:", announced[0])
+
+    def test_an_unforced_bake_leaves_the_existing_file_alone_and_silently(self):
+        self._seed_preset_file("free")
+        self._arm_bake(self._fake_picker({}))
+        baked, output = self._bake_output()
+        self.assertNotIn("free", baked)
+        self.assertNotIn("replacing the existing configuration", output)
+        with open(self.config_dir / "free.json") as f:
+            self.assertEqual(
+                json.load(f)["cells"]["analysis"]["gear4"]["depth"]["primary"],
+                "chosen/by-hand")
+
+    # ── Who hears what the bake has to say ─────────────────────────────
+    #
+    # A bake writes two things nobody else can reconstruct: why a preset did
+    # not bake, and the warning that a forced one has just overwritten
+    # hand-picked slots. Printing them is right under the server, where stdout
+    # is the log. It is not right under the installer, which calls this
+    # in-process and keeps its own install.log — the file it tells the user to
+    # read afterwards. So a caller can hand in a writer, and the same lines go
+    # wherever that caller keeps its record.
+
+    def _bake_to_writer(self, **kwargs):
+        """Bake with a supplied writer, capturing stdout as well.
+
+        Both are returned so a test can assert not just that the writer got
+        the line but that stdout was not written to behind its back.
+        """
+        collected: list[str] = []
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            baked = self.module.bake_missing_presets(
+                log=collected.append, **kwargs)
+        return baked, collected, buffer.getvalue()
+
+    def test_a_supplied_writer_gets_the_replacement_warning(self):
+        self._seed_preset_file("speed")
+        self._arm_bake(self._fake_picker({}))
+        baked, collected, stdout = self._bake_to_writer(force=True)
+        self.assertIn("speed", baked)
+        replaced = [line for line in collected
+                    if "replacing the existing configuration" in line]
+        self.assertEqual(len(replaced), 1, collected)
+        self.assertIn("[presets] speed:", replaced[0])
+        self.assertIn(str(self.config_dir / "speed.json"), replaced[0])
+        self.assertIn("overwritten", replaced[0])
+        # And it went there instead of to stdout, not as well as.
+        self.assertEqual(stdout, "")
+
+    def test_a_supplied_writer_gets_the_cause_a_preset_did_not_bake(self):
+        # The cause that would otherwise vanish: force=True over a preset file
+        # that already exists, and the picker raises. The file survives, so
+        # the preset is not "missing" and no caller can recover the reason
+        # from the listing — this line is the only place it is said.
+        self._seed_preset_file("premium")
+        self._arm_bake(self._fake_picker(
+            {"premium": ValueError("no candidate met the floor")}))
+        _baked, collected, stdout = self._bake_to_writer(force=True)
+        causes = [line for line in collected if "did not bake" in line]
+        self.assertEqual(len(causes), 1, collected)
+        self.assertIn("[presets] premium did not bake — "
+                      "ValueError: no candidate met the floor", causes[0])
+        self.assertEqual(stdout, "")
+        self.assertTrue((self.config_dir / "premium.json").exists())
+
+    def test_a_supplied_writer_gets_a_bake_that_could_not_start(self):
+        self._arm_bake(write_catalog=False)
+        baked, collected, stdout = self._bake_to_writer(force=True)
+        self.assertEqual(baked, [])
+        self.assertEqual(len(collected), 1, collected)
+        self.assertIn("bake could not run", collected[0])
+        self.assertIn("model catalog is missing", collected[0])
+        self.assertEqual(stdout, "")
+
+    def test_a_first_time_bake_says_nothing_to_the_writer_either(self):
+        # The installer's ordinary case. Routing these lines somewhere new
+        # must not turn a clean first install into a wall of text.
+        self._arm_bake(self._fake_picker({}))
+        baked, collected, stdout = self._bake_to_writer(force=True)
+        self.assertEqual(set(baked), set(self.module.PRESET_ORDER))
+        self.assertEqual(collected, [])
+        self.assertEqual(stdout, "")
+
+    def test_the_warning_fires_once_per_file_it_replaces(self):
+        for name in ("free", "speed"):
+            self._seed_preset_file(name)
+        self._arm_bake(self._fake_picker({}))
+        _baked, collected, _stdout = self._bake_to_writer(force=True)
+        replaced = [line for line in collected
+                    if "replacing the existing configuration" in line]
+        self.assertEqual(len(replaced), 2, collected)
+        self.assertIn("[presets] free:", replaced[0])
+        self.assertIn("[presets] speed:", replaced[1])
+
+    def test_a_caller_that_supplies_nothing_still_gets_stdout(self):
+        # The server's call, unchanged: no writer, and the line lands on
+        # stdout exactly where the server log picks it up.
+        import inspect
+        signature = inspect.signature(self.module.bake_missing_presets)
+        self.assertIsNone(signature.parameters["log"].default)
+        self.assertEqual(signature.parameters["log"].kind,
+                         inspect.Parameter.KEYWORD_ONLY)
+        self._seed_preset_file("budget")
+        self._arm_bake(self._fake_picker({}))
+        _baked, output = self._bake_output(force=True)
+        self.assertIn("[presets] budget: replacing the existing configuration",
+                      output)
 
 
 if __name__ == "__main__":

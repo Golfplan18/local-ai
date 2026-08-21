@@ -117,6 +117,20 @@ class TestGatherTargets(unittest.TestCase):
         self.assertNotIn(uninstall.CONVERSATIONS, targets)
         self.assertNotIn(uninstall.REPO_ROOT / "data" / "converters", targets)
 
+    def test_the_shipped_model_catalog_is_never_a_target(self):
+        # config/model-catalog.json is the file an install falls back on when
+        # OpenRouter is unreachable — a copy ships in the repository and the
+        # install refreshes it in place. While the uninstaller removed it, an
+        # uninstall followed by an offline re-install halted at step 5 on a
+        # checkout that had shipped a perfectly usable catalog.
+        catalog = uninstall.REPO_ROOT / "config" / "model-catalog.json"
+        self.assertNotIn(catalog, uninstall.ALWAYS_REMOVE)
+        for flags in ((False, False), (True, True)):
+            targets = uninstall._gather_targets(
+                include_models=flags[0], include_conversations=flags[1],
+                include_converters=True)
+            self.assertNotIn(catalog, targets)
+
     def test_include_models_adds_models_dir(self):
         targets = uninstall._gather_targets(include_models=True, include_conversations=False)
         self.assertIn(uninstall.REPO_ROOT / "models", targets)
