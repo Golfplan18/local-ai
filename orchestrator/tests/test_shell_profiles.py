@@ -505,6 +505,16 @@ class TestUtilityEffects(PreparedCommandCase):
             with self.subTest(command=command):
                 self.assertTrue(self.prepare(command).unknown)
 
+    def test_abbreviated_commit_message_file_options_fail_closed(self):
+        for command in (
+            "git commit --f=/etc/hosts",
+            "git commit --fil=/etc/hosts",
+            "git commit --f /etc/hosts",
+            "git commit --fil /etc/hosts",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(self.prepare(command).unknown)
+
     def test_rg_files_binds_its_recursive_search_roots(self):
         tree = self.root / "tree"
         tree.mkdir()

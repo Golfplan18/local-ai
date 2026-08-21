@@ -1645,6 +1645,12 @@ def _git_option_is_output(token: str) -> bool:
     return _git_long_option_matches(token, ("--output",))
 
 
+def _git_option_is_commit_message_file(token: str) -> bool:
+    """Match Git commit message-file options, including long prefixes."""
+
+    return _git_long_option_matches(token, ("--file",))
+
+
 def _git_long_option_matches(token: str, options: Iterable[str]) -> bool:
     """Match Git's exact, equals-attached, and unique-prefix long options."""
 
@@ -2067,8 +2073,9 @@ def _parse_git(args: list[str], cwd: str) -> dict[str, Any]:
     if subcommand in _GIT_LOCAL_WRITE_SUBCOMMANDS:
         if any(_git_option_is_signature(item) for item in subargs):
             return _unknown_profile("Git signature helper execution is not allowed", "git")
-        if subcommand == "commit" and _has_any_option(
-            subargs, ("-F", "--file", "--file=")
+        if subcommand == "commit" and (
+            any(_git_option_is_commit_message_file(item) for item in subargs)
+            or _has_any_option(subargs, ("-F",))
         ):
             return _unknown_profile(
                 "Git commit message files are outside the exact local grammar",
