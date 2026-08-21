@@ -745,8 +745,18 @@ def classify_action(
     #     `git push` resolve to external_write, `scp`/`rsync` to irreversible.
     # A caller that reports no selector at all gets no carve-out: it fails
     # closed below on missing-exact-scope.
-    local_write_only = bool(exact_selectors) and all(
-        selector.startswith("path:") for selector in exact_selectors
+    # A model-facing download/fetch may bind additional read-side identities
+    # (public destination, repository/ref, executable) without turning the
+    # inbound operation into an outbound write.  At least one exact local path
+    # must still be present; only these inert/read-side selector families may
+    # accompany it.  An external_write axis (for example git push) is never
+    # covered by this carve-out.
+    local_write_only = (
+        any(selector.startswith("path:") for selector in exact_selectors)
+        and all(selector.startswith((
+            "path:", "network-read:", "repo:", "git-remote:",
+            "git-ref:", "git-operation:", "git-config:", "executable:",
+        )) for selector in exact_selectors)
     )
     outbound_write = mutability == "external_write" or (
         egress == "external" and mutability != "read" and not local_write_only)
@@ -813,6 +823,7 @@ def classify_tool_call(
     axes: Mapping[str, Any],
     *,
     shell_profile: Mapping[str, Any] | None = None,
+    prepared_command: Any | None = None,
 ) -> PolicyDecision:
     selectors: list[str] = []
     destructive_intent: bool | None = None
@@ -823,17 +834,66 @@ def classify_tool_call(
             "deny", "unclassified tool effect fails closed", action,
             tuple(), "unclassified-effect",
         )
+    if tool_name.startswith("mcp_"):
+        mcp_action = axes.get("_mcp_action")
+        mcp_selectors = axes.get("_mcp_selectors")
+        mcp_destructive = axes.get("_mcp_destructive")
+        if (
+            mcp_action != tool_name
+            or not isinstance(mcp_selectors, (tuple, list))
+            or not mcp_selectors
+            or not all(isinstance(selector, str) and selector for selector in mcp_selectors)
+            or not isinstance(mcp_destructive, bool)
+        ):
+            return PolicyDecision(
+                "deny", "MCP call lacks an exact configured authority binding",
+                action, tuple(), "unclassified-mcp-effect",
+            )
+        return classify_action(
+            str(mcp_action),
+            selectors=tuple(mcp_selectors),
+            mutability=str(axes.get("mutability") or "irreversible"),
+            sensitivity=str(axes.get("sensitivity") or "secret"),
+            egress=str(axes.get("egress") or "external"),
+            surface="tool_dispatcher",
+            destructive_intent=mcp_destructive,
+        )
     if tool_name in {"file_read", "file_write", "file_edit"}:
         path = parameters.get("path", parameters.get("file_path"))
         if path:
             selectors.append(path_selector(str(path)))
             authority_scopes.append((str(path), False, False, False))
     elif tool_name == "bash_execute":
+        if prepared_command is None:
+            return PolicyDecision(
+                "deny", "shell execution lacks the dispatcher-prepared command",
+                "bash:unknown", tuple(), "missing-prepared-command",
+            )
+        try:
+            prepared_binding = prepared_command.binding()
+        except Exception:
+            return PolicyDecision(
+                "deny", "shell execution prepared identity is malformed",
+                "bash:unknown", tuple(), "invalid-prepared-command",
+            )
+        if dict((shell_profile or {}).get("prepared_binding") or {}) != prepared_binding:
+            return PolicyDecision(
+                "deny", "shell classification does not match its prepared command",
+                "bash:unknown", tuple(), "prepared-command-mismatch",
+            )
         action = "bash:" + str((shell_profile or {}).get("profile") or "unknown")
         for path in (shell_profile or {}).get("read_paths", []):
             selectors.append(path_selector(str(path)))
         for path in (shell_profile or {}).get("write_paths", []):
             selectors.append(path_selector(str(path)))
+        # Prepared-command semantic identities are logical selectors: they
+        # join the same approval request/pre-state/args hash as filesystem
+        # targets without creating a second approval mechanism.
+        selectors.extend(
+            str(selector)
+            for selector in (shell_profile or {}).get("semantic_selectors", [])
+            if str(selector)
+        )
         declared_scopes = list(
             (shell_profile or {}).get("authority_scopes") or []
         )
@@ -992,6 +1052,7 @@ def begin_execution(
     params_digest: str,
     pre_state: Sequence[Mapping[str, Any]] = (),
     surface: str,
+    command_binding: Mapping[str, Any] | None = None,
 ) -> ProtectionExecution:
     """Persist the write-ahead receipt required before a protected effect."""
 
@@ -1019,6 +1080,7 @@ def begin_execution(
         params_digest=params_digest,
         pre_state=pre_state,
         surface=surface,
+        command_binding=command_binding,
     )
     authenticated_pre_state = request["pre_state"]
     request = {
@@ -1029,6 +1091,8 @@ def begin_execution(
         "pre_state": authenticated_pre_state,
         "surface": str(surface),
     }
+    if command_binding is not None:
+        request["prepared_command"] = copy.deepcopy(dict(command_binding))
     try:
         import tool_events as _te
     except ImportError:  # pragma: no cover
@@ -1073,6 +1137,7 @@ def prepare_protection_request(
     params_digest: str,
     pre_state: Sequence[Mapping[str, Any]],
     surface: str,
+    command_binding: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Build the immutable selector/state identity shown for review.
 
@@ -1093,6 +1158,8 @@ def prepare_protection_request(
         "pre_state": authenticated_pre_state,
         "surface": str(surface),
     }
+    if command_binding is not None:
+        request["prepared_command"] = copy.deepcopy(dict(command_binding))
     return request, _digest(request)
 
 

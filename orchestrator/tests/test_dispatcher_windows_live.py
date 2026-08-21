@@ -1,20 +1,20 @@
-"""Native-Windows dispatcher/shell integration smoke.
+"""Native-Windows dispatcher/direct-argv integration smoke.
 
-This suite owns only the dispatcher-level seam: POSIX profile resolution,
+This suite owns only the dispatcher-level seam: one-time command preparation,
 gate, permission path, real handler execution, result serialization, and the
-final shell event. ``test_portability.TestWindowsExecutionShell`` separately
-owns lower-level executor argv, ``shell=False``, foreground/background, and
-no-shell refusal contracts; those are deliberately not repeated here.
+final command event. ``test_portability.TestCrossPlatformDirectArgv`` owns the
+lower-level exact-argv and ``shell=False`` contracts.
 
-Ordinary non-Windows discovery skips this module. The declared-shell method
-also skips when ``ORA_POSIX_SHELL`` does not resolve to a real Git Bash/sh
-executable; the G1.13 Windows acceptance run must report it as PASS, not skip.
+Ordinary non-Windows discovery skips this module. Native acceptance requires
+Git, which is already an Ora installation prerequisite.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -81,7 +81,7 @@ class TestNativeWindowsDispatcher(unittest.TestCase):
         dispatcher.set_permission_mode("auto-approve")
         self._patches = [
             # Orthogonal operator hooks and retired-log cleanup are not part
-            # of this live seam; the POSIX shell and process launch stay real.
+            # of this live seam; direct process launch stays real.
             mock.patch.object(dispatcher, "fire_hooks", return_value=[]),
             mock.patch.object(dispatcher,
                               "_retire_legacy_session_logs_once",
@@ -126,55 +126,69 @@ class TestNativeWindowsDispatcher(unittest.TestCase):
     def _events(self):
         return _read_events(self.sink)
 
-    def test_dispatch_without_declared_shell_gates_before_handler(self):
-        with mock.patch.dict(os.environ, {}, clear=False), \
-             mock.patch.object(dispatcher, "execute_command") as execute:
-            os.environ.pop("ORA_POSIX_SHELL", None)
+    def test_shell_grammar_gates_before_handler(self):
+        with mock.patch.object(dispatcher, "execute_command") as execute:
             result = dispatcher.dispatch(
                 "bash_execute",
-                {"command": "printf 'ora-dispatch-windows-ok\\n'",
+                {"command": "git status && git log -1",
                  "cwd": self.tmp.name},
             )
 
-        self.assertIn("GATED", result)
+        self.assertIn("SYSTEM PROTECTION", result)
         execute.assert_not_called()
         gate_events = [e for e in self._events() if e.get("event") == "gate"]
         self.assertTrue(gate_events)
         self.assertEqual(gate_events[-1]["action"], "bash_execute")
         self.assertEqual(gate_events[-1]["mutability"], "irreversible")
         self.assertEqual(gate_events[-1]["sensitivity"], "secret")
-        self.assertIn("unknown action", gate_events[-1]["gate"]["why"])
+        self.assertIn("shell operators", gate_events[-1]["gate"]["why"])
         self.assertFalse(any(e.get("event") == "shell"
                              for e in self._events()))
 
-    def test_dispatch_with_declared_shell_runs_and_records_event(self):
-        shell = bash_execute._posix_shell_path()
-        if shell is None:
-            self.skipTest(
-                "ORA_POSIX_SHELL is not configured to a real POSIX shell")
-
-        command = (
-            "printf 'ora-dispatch-windows-ok\\n' > dispatcher-smoke.txt "
-            "&& cat dispatcher-smoke.txt"
+    def test_dispatch_direct_git_read_runs_and_records_event(self):
+        git = shutil.which("git")
+        self.assertIsNotNone(git, "Git is required for native Ora acceptance")
+        subprocess.run(
+            [git, "init", "--quiet"], cwd=self.tmp.name, check=True,
+            capture_output=True, text=True,
         )
         result = dispatcher.dispatch(
-            "bash_execute", {"command": command, "cwd": self.tmp.name})
+            "bash_execute", {"command": "git status --short",
+                             "cwd": self.tmp.name})
 
         payload = json.loads(result)
         self.assertEqual(payload["returncode"], 0)
-        self.assertIn("ora-dispatch-windows-ok", payload["stdout"])
-        marker = os.path.join(self.tmp.name, "dispatcher-smoke.txt")
-        with open(marker) as f:
-            self.assertEqual(f.read(), "ora-dispatch-windows-ok\n")
+        self.assertEqual(payload["stdout"], "")
 
         shell_events = [e for e in self._events() if e.get("event") == "shell"]
         self.assertEqual(len(shell_events), 1)
         event = shell_events[0]
-        self.assertEqual(event["action"], "bash:printf")
+        self.assertEqual(event["action"], "bash:git")
         self.assertEqual(event["gate"]["decision"], "allowed")
         self.assertTrue(event["exit"]["ok"])
-        self.assertEqual(event["mutability"], "reversible_write")
-        self.assertTrue(event["mutated"])
+        self.assertEqual(event["mutability"], "read")
+        self.assertFalse(event["mutated"])
+
+    def test_quoted_executable_and_repository_paths_bind_exact_native_argv(self):
+        git = shutil.which("git")
+        self.assertIsNotNone(git, "Git is required for native Ora acceptance")
+        repository = os.path.join(self.tmp.name, "repository with spaces")
+        os.makedirs(repository)
+        subprocess.run(
+            [git, "init", "--quiet"], cwd=repository, check=True,
+            capture_output=True, text=True,
+        )
+        command = subprocess.list2cmdline([git, "-C", repository, "status", "--short"])
+        prepared = bash_execute.prepare_command(command, cwd=self.tmp.name)
+        self.assertEqual(
+            prepared.argv,
+            (os.path.realpath(git), "-C", repository, "status", "--short"),
+        )
+        completed = subprocess.run(
+            list(prepared.argv), cwd=prepared.cwd, env=prepared.env,
+            shell=False, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
 if __name__ == "__main__":

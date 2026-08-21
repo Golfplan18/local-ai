@@ -23,6 +23,11 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
+try:
+    from orchestrator import network_policy
+except ImportError:  # pragma: no cover
+    import network_policy
+
 
 OUTCOMES = {"CONTINUE", "FIX", "DONE", "ASK USER"}
 _MODEL_TOOL_RE = re.compile(
@@ -439,11 +444,13 @@ def _pdf_payloads(
 
 def _interface_payloads(root: Path, parameters: dict[str, Any]) -> list[dict[str, str]]:
     url = str(parameters.get("url") or "").strip()
-    if url and not re.match(r"^https?://", url, re.IGNORECASE):
-        raise ProgrammingError("inspect_interface URL must use HTTP or HTTPS")
     if not url:
         path = _safe_path(root, str(parameters.get("path") or ""), must_exist=True)
         url = path.as_uri()
+    try:
+        contract = network_policy.browser_contract(url, root)
+    except network_policy.NetworkPolicyError as exc:
+        raise ProgrammingError(f"inspect_interface destination refused: {exc}") from exc
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
@@ -451,8 +458,50 @@ def _interface_payloads(root: Path, parameters: dict[str, Any]) -> list[dict[str
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         try:
-            page = browser.new_page(viewport={"width": 1440, "height": 1000})
-            page.goto(url, wait_until="load", timeout=90_000)
+            context = browser.new_context(
+                viewport={"width": 1440, "height": 1000},
+                service_workers="block",
+            )
+            if not hasattr(context, "route_web_socket"):
+                raise ProgrammingError(
+                    "inspect_interface refused: browser cannot route WebSockets",
+                )
+            violations: list[str] = []
+
+            def route_request(route):
+                try:
+                    network_policy.validate_browser_request(
+                        route.request.url, contract,
+                    )
+                except network_policy.NetworkPolicyError as exc:
+                    violations.append(str(exc))
+                    route.abort()
+                    return
+                route.continue_()
+
+            def route_websocket(websocket_route):
+                try:
+                    network_policy.validate_browser_request(
+                        getattr(websocket_route, "url", ""), contract,
+                    )
+                except network_policy.NetworkPolicyError as exc:
+                    violations.append(str(exc))
+                    close = getattr(websocket_route, "close", None)
+                    if callable(close):
+                        close(code=1008, reason="destination refused")
+                    return
+                connect = getattr(websocket_route, "connect_to_server", None)
+                if callable(connect):
+                    connect()
+
+            context.route("**/*", route_request)
+            context.route_web_socket("**/*", route_websocket)
+            page = context.new_page()
+            page.goto(contract.initial_url, wait_until="load", timeout=90_000)
+            if violations:
+                raise ProgrammingError(
+                    "inspect_interface blocked a request outside its network contract",
+                )
             raw = page.screenshot(full_page=True, type="png")
         finally:
             browser.close()

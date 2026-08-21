@@ -234,7 +234,9 @@ class TestApprovalAndReceipts(SystemProtectionBase):
         import dispatcher
         from tools import file_edit, file_ops, search_files
         from tools import bash_execute
-        from tools.bash_execute import resolve_shell_profile
+        from tools.bash_execute import (
+            CommandPreparationError, prepare_command, resolve_shell_profile,
+        )
 
         tool_events._grant_approval_authorized(
             "diagnostic", tool_events.normalize_args_hash("diagnostic", {}),
@@ -282,9 +284,14 @@ class TestApprovalAndReceipts(SystemProtectionBase):
             f"cat {hardlink}",
         ):
             profile = resolve_shell_profile(command, cwd=str(self.root))
+            try:
+                prepared = prepare_command(command, cwd=str(self.root))
+            except CommandPreparationError:
+                prepared = None
             decision = protection.classify_tool_call(
                 "bash_execute", {"command": command},
                 {**read_axes, **profile}, shell_profile=profile,
+                prepared_command=prepared,
             )
             self.assertEqual(decision.outcome, "deny", command)
 
@@ -295,17 +302,21 @@ class TestApprovalAndReceipts(SystemProtectionBase):
         shallow_profile = resolve_shell_profile(
             shallow_command, cwd=str(self.root),
         )
+        shallow_prepared = prepare_command(shallow_command, cwd=str(self.root))
         self.assertNotEqual(protection.classify_tool_call(
             "bash_execute", {"command": shallow_command},
             {**read_axes, **shallow_profile}, shell_profile=shallow_profile,
+            prepared_command=shallow_prepared,
         ).outcome, "deny")
         parent_command = f"ls {self.root}"
         parent_profile = resolve_shell_profile(
             parent_command, cwd=str(self.root),
         )
+        parent_prepared = prepare_command(parent_command, cwd=str(self.root))
         self.assertEqual(protection.classify_tool_call(
             "bash_execute", {"command": parent_command},
             {**read_axes, **parent_profile}, shell_profile=parent_profile,
+            prepared_command=parent_prepared,
         ).outcome, "deny")
 
         dispatcher.reset_consecutive()
@@ -381,6 +392,56 @@ class TestApprovalAndReceipts(SystemProtectionBase):
                 self.assertIn("SYSTEM PROTECTION", refusal)
                 run.assert_not_called()
                 popen.assert_not_called()
+
+    def test_recursive_commands_cannot_reach_nested_approval_authority(self):
+        import dispatcher
+        from tools import bash_execute
+
+        # Materialize the signed store and key below the recursive root.  The
+        # dispatcher must deny reachability before its ordinary approval gate
+        # can consume or create any approval record.
+        tool_events._grant_approval_authorized(
+            "diagnostic", "recursive-authority-proof", "g1-22a-test",
+        )
+        copied = self.root.parent / f"{self.root.name}-copied"
+        archive = self.root.parent / f"{self.root.name}.tar"
+        commands = (
+            f"ls -R {shlex.quote(str(self.root))}",
+            f"cp -R {shlex.quote(str(self.root))} {shlex.quote(str(copied))}",
+            f"tar -cf {shlex.quote(str(archive))} {shlex.quote(str(self.root))}",
+            f"rm -rf {shlex.quote(str(self.root))}",
+        )
+        for command in commands:
+            with self.subTest(command=command), \
+                    mock.patch.object(
+                        dispatcher, "execute_command",
+                        side_effect=AssertionError("handler ran"),
+                    ) as handler, mock.patch.object(
+                        tool_events, "gate", wraps=tool_events.gate,
+                    ) as generic_gate:
+                dispatcher.reset_consecutive()
+                result = dispatcher.dispatch(
+                    "bash_execute",
+                    {"command": command, "cwd": str(self.root)},
+                )
+            self.assertIn("SYSTEM PROTECTION", result)
+            handler.assert_not_called()
+            generic_gate.assert_not_called()
+        self.assertFalse(copied.exists())
+        self.assertFalse(archive.exists())
+
+        # Recursive reads remain available when their complete scope is
+        # disjoint from approval authority.
+        safe_tree = self.root / "safe-tree"
+        nested = safe_tree / "nested"
+        nested.mkdir(parents=True)
+        (nested / "visible.txt").write_text("visible", encoding="utf-8")
+        command = f"ls -R {shlex.quote(str(safe_tree))}"
+        prepared = bash_execute.prepare_command(command, cwd=str(self.root))
+        self.assertFalse(prepared.unknown)
+        result = bash_execute.execute_command(prepared)
+        self.assertEqual(result["returncode"], 0)
+        self.assertIn("visible.txt", result["stdout"])
 
     def test_signed_approval_store_tampering_fails_closed(self):
         args_hash = tool_events.normalize_args_hash("diagnostic", {"x": 1})

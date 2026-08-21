@@ -110,7 +110,7 @@ Next autonomous task. Interactive sessions have priority.
 <tool_call><n>queue_read</n><parameters>{}</parameters></tool_call>
 ```
 ### bash_execute
-Execute a shell command on the user's machine. `command` (REQUIRED), `timeout` (opt, 60), `background` (opt, false). Requires user approval. Use when you need to run a terminal command, install software, check system state, or execute a script. You are limited to 8 consecutive bash commands. If you reach this limit, report what you have tried, what the current error state is, and ask the user for guidance.
+Execute one direct command on the user's machine. `command` (REQUIRED), `timeout` (opt, 60), `background` (opt, false), `cwd` (opt). Requires user approval. The command is parsed into one argument vector and is not run through a shell: do not use pipes, redirects, command chaining, background ampersands, variable assignment/expansion, substitutions, globs, or compound shell syntax. Use an existing single executable or script for terminal work, installation, system inspection, or checks. Wait for the returned result or refusal and never assume an effect occurred. You are limited to 8 consecutive bash commands. If you reach this limit, report what you have tried, what the current error state is, and ask the user for guidance.
 ```xml
 <tool_call><n>bash_execute</n><parameters>{"command": "echo hello", "timeout": 60}</parameters></tool_call>
 ```
@@ -141,7 +141,7 @@ Stop a background process by PID. `pid` (REQUIRED). Use after testing background
 ```
 
 ### MCP Tools
-MCP-sourced tools may also be available with `mcp_` prefixed names. Invoke them using the same `<tool_call>` format. These tools come from external MCP servers configured in config/mcp-servers.json.
+Cataloged MCP tools may also be available with `mcp_`-prefixed names. Only invoke a recognized name shown in the current tool catalog, using the same `<tool_call>` format. Vault paths, GitHub changes, and browser interactions remain subject to the ordinary path, authority, and approval boundary; do not treat the MCP server as separate permission. Arbitrary Playwright code/evaluation is unavailable. Wait for the returned result: an MCP refusal, protocol error, timeout, or tool-declared error means the action failed, not that it probably succeeded.
 
 ### Permission System
 Tools marked as requiring approval will prompt the user before execution. Wait for the tool result — do not assume the tool executed. If the user denies permission, you will receive an error result. Acknowledge the denial and proceed without the tool result.

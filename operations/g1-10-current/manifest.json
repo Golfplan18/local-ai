@@ -13,7 +13,7 @@
     "operations/g1-10-current/cloud/scripts/gear4-expiration.py": "6d60464976fa7c28f163aef5375f0638dd62111a213140084e203a31532068be",
     "operations/g1-10-current/cloud/scripts/msi-deploy.sh": "13820dd88aed0ca8c452bd3fcc3bbfd93b9c0796046ab9d6fb8a11cf485c9347",
     "operations/g1-10-current/cloud/scripts/msi_vault_outbox.sh": "0dd605f8abb02714b4c30d7e2df304fee462360c246ef3ba6e6e8a7eb0f8e6ec",
-    "operations/g1-10-current/cloud/scripts/ora-audit-models.py": "953d2bc34bd6fe9d89761071992e415b589505f07ecd6fdaceeaf3bce339e0b4",
+    "operations/g1-10-current/cloud/scripts/ora-audit-models.py": "87a528bfc45c5036781af4ddf11316d5b89f3c491b20e1b2964a2e9d90651fd0",
     "operations/g1-10-current/cloud/scripts/ora-deploy.sh": "18d2b79375386917ac53f793dcf2868a61e3b5de701c446ac326ae2442ae4e7f",
     "operations/g1-10-current/cloud/scripts/ora-vault-runtime-sync.sh": "5a06ffe4e3539d5110f4208640079bd2f44dd02d1be984160f232aa68384d567",
     "operations/g1-10-current/cloud/scripts/wsj-reauth-guard.sh": "17c43f84ee6de7505a1354ca9d6ad7a4101f2ea57d5af2708ab4624563e41ff5",

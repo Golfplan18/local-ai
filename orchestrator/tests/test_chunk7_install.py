@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -135,6 +136,43 @@ class TestPreflightStep(unittest.TestCase):
         self.assertIn("beautifulsoup4", missing)
 
 
+class TestMCPRuntimeInstall(unittest.TestCase):
+    def test_installs_locked_chromium_through_repo_local_playwright_cli(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "mcp-runtime"
+            runtime.mkdir()
+            (runtime / "package-lock.json").write_text("{}", encoding="utf-8")
+            for package, version in install.MCP_RUNTIME_PACKAGES.items():
+                metadata = runtime / "node_modules" / package / "package.json"
+                metadata.parent.mkdir(parents=True, exist_ok=True)
+                metadata.write_text(json.dumps({"version": version}), encoding="utf-8")
+            core = runtime / "node_modules" / "playwright-core"
+            cli = core / "cli.js"
+            cli.parent.mkdir(parents=True, exist_ok=True)
+            cli.write_text("", encoding="utf-8")
+            browser = core / ".local-browsers" / "chromium-123" / "chrome"
+            browser.parent.mkdir(parents=True)
+            browser.write_text("binary", encoding="utf-8")
+            results = [
+                subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 0, str(browser), ""),
+            ]
+            with mock.patch.object(install, "MCP_RUNTIME_DIR", runtime), \
+                 mock.patch.object(install.shutil, "which", side_effect=lambda name: f"/exact/{name}"), \
+                 mock.patch.object(install.subprocess, "run", side_effect=results) as run:
+                self.assertTrue(install._install_mcp_runtime(dry_run=False))
+        browser_call = run.call_args_list[1]
+        self.assertEqual(
+            browser_call.args[0],
+            ["/exact/node", str(cli), "install", "chromium"],
+        )
+        self.assertEqual(
+            browser_call.kwargs["env"]["PLAYWRIGHT_BROWSERS_PATH"], "0",
+        )
+        self.assertNotIn("npx", " ".join(browser_call.args[0]))
+
+
 class TestProfileStep(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -194,6 +232,25 @@ class TestSmokeHelpers(unittest.TestCase):
         self.assertEqual(
             install._extract_smoke_models(cfg)[:3],
             ["provider/primary:free", "provider/fallback:free", "openrouter/free"],
+        )
+
+    def test_openrouter_smoke_uses_origin_locked_transport(self):
+        payload = {
+            "choices": [{"message": {"content": "Ora install smoke ok"}}],
+        }
+        with mock.patch.object(
+            install.network_policy, "openrouter_request_bytes",
+            return_value=(json.dumps(payload).encode(), mock.sentinel.destination),
+        ) as request:
+            ok, message, auth_failure = install._openrouter_smoke_call(
+                "openrouter/free", "secret",
+            )
+        self.assertTrue(ok)
+        self.assertFalse(auth_failure)
+        self.assertEqual(message, "Ora install smoke ok")
+        self.assertEqual(
+            request.call_args.args[0],
+            "https://openrouter.ai/api/v1/chat/completions",
         )
 
 
