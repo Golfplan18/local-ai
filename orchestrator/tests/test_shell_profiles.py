@@ -551,6 +551,21 @@ class TestUtilityEffects(PreparedCommandCase):
             ((str(self.root.resolve()), True, True, False),),
         )
 
+    def test_rg_ignore_file_option_respects_argument_terminator(self):
+        rejected = self.prepare("rg --ignore-file /etc/hosts needle")
+        self.assertTrue(rejected.unknown)
+        self.assertIn("ignore-file", rejected.unknown_reason)
+
+        literal_pattern = self.prepare("rg -- --ignore-file")
+        self.assertFalse(literal_pattern.unknown)
+        self.assertEqual(
+            literal_pattern.read_paths, (str(self.root.resolve()),),
+        )
+        self.assertEqual(
+            literal_pattern.authority_scopes,
+            ((str(self.root.resolve()), True, True, False),),
+        )
+
     def test_sed_backup_script_and_execution_forms_refuse_before_spawn(self):
         target = self.root / "input.txt"
         script = self.root / "program.sed"

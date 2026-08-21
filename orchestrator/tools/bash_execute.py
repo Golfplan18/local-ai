@@ -2337,13 +2337,18 @@ def _profile(base: str, args: list[str], cwd: str, executable: str) -> dict[str,
         for item in args
     ):
         return _unknown_profile("find execution, deletion, and file-output predicates are not allowed", base)
-    if base == "rg" and any(
-        item == "--ignore-file" or item.startswith("--ignore-file=")
-        for item in args
-    ):
-        return _unknown_profile(
-            "rg ignore-file reads are outside the exact authority grammar", base,
-        )
+    if base == "rg":
+        # ``--`` ends rg's option list.  After it, ``--ignore-file`` is a
+        # literal pattern or path operand rather than the read-bearing
+        # option; keep the backstop aligned with the option parser above.
+        separator = args.index("--") if "--" in args else len(args)
+        if any(
+            item == "--ignore-file" or item.startswith("--ignore-file=")
+            for item in args[:separator]
+        ):
+            return _unknown_profile(
+                "rg ignore-file reads are outside the exact authority grammar", base,
+            )
     risky_options = _UTILITY_EXECUTION_OPTIONS.get(base, ())
     if risky_options and _has_any_option(args, risky_options):
         return _unknown_profile("command-launching option is not allowed", base)
