@@ -29,6 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.api_client import AnthropicClient
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
@@ -48,9 +49,11 @@ from orchestrator.tools.vault_indexer import (
 )
 
 
-DEFAULT_ARCHIVE_DIR  = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_MANIFEST_PATH = "/Users/oracle/ora/data/llm-reclassify-manifest.json"
-DEFAULT_REPORT_PATH   = "/Users/oracle/ora/data/llm-reclassify-report.json"
+# Roots come from the path layer, so this runs against the archive and
+# data directory of whichever install it is invoked in.
+DEFAULT_ARCHIVE_DIR   = _rp.HISTORICAL_ARCHIVE_DIR_STR
+DEFAULT_MANIFEST_PATH = str(_rp.DATA_DIR / "llm-reclassify-manifest.json")
+DEFAULT_REPORT_PATH   = str(_rp.DATA_DIR / "llm-reclassify-report.json")
 
 # Min segment length to bother classifying. Shorter segments are usually
 # dialogue fragments or one-line snippets — not worth a model call.

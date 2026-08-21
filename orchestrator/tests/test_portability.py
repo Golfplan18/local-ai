@@ -5,9 +5,12 @@ host required. Covers the judge's portability conditions."""
 
 from __future__ import annotations
 
+import json
 import ntpath
 import os
+import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -270,6 +273,79 @@ class TestWindowsExecutionShell(unittest.TestCase):
         self.assertIn("posix-default-ok", r["stdout"])
 
 
+# Config files that are deliberately machine-specific and gitignored, so a
+# real absolute path in them is correct rather than a leak (CLAUDE.md:
+# "config/models.json is machine-specific and gitignored"; the same holds
+# for the ChromaDB collection binding). Only consulted when git can't be
+# asked which files are actually checked in.
+_MACHINE_LOCAL_CONFIGS = {"models.json", "chromadb.json"}
+
+
+def _tracked_config_files(suffix: str) -> list[Path] | None:
+    """Files under config/ ending in ``suffix`` that git reports as tracked.
+
+    ``None`` when git cannot be asked at all (a source tarball, a vendored
+    copy), so each caller can fall back to its own filesystem walk."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_ORCH.parent), "ls-files", "--", "config"],
+            capture_output=True, text=True, timeout=30, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    tracked = [_ORCH.parent / line for line in out.splitlines()
+               if line.endswith(suffix)]
+    return tracked or None
+
+
+def _checked_in_config_json() -> list[Path]:
+    """Every JSON file under config/ that ships with the repository.
+
+    Prefers git's own answer, so a newly added machine-local config is
+    excluded the moment it's gitignored, and falls back to a filesystem
+    walk minus the known machine-local names when git isn't available
+    (a source tarball, a vendored copy)."""
+    tracked = _tracked_config_files(".json")
+    if tracked is not None:
+        return tracked
+    config_dir = _ORCH.parent / "config"
+    return [p for p in sorted(config_dir.rglob("*.json"))
+            if p.name not in _MACHINE_LOCAL_CONFIGS]
+
+
+def _checked_in_config_markdown() -> list[Path]:
+    """Every Markdown file under config/ that ships with the repository.
+
+    Same shipped-configuration surface as the JSON above, different file
+    type: the generated indexes and the visual-schema guides are read into
+    a model's context window verbatim. Nothing policed them — the config
+    sweep parses JSON, and the portability linter's users-oracle rule only
+    inspects code extensions — which is how 69 lines of the packager's home
+    directory rode along in framework-library-index.md,
+    rag-manifest-compiled.md, and visual-schemas/README.md."""
+    tracked = _tracked_config_files(".md")
+    if tracked is not None:
+        return tracked
+    return sorted((_ORCH.parent / "config").rglob("*.md"))
+
+
+_HOME_ROOTED_TEXT = re.compile(r"/Users/|/home/|[A-Za-z]:\\Users")
+
+
+def _home_rooted_strings(node, trail="$"):
+    """Yield (json path, value) for every string holding somebody's home
+    directory — POSIX ``/Users/x`` or ``/home/x``, or Windows ``C:\\Users``."""
+    if isinstance(node, str):
+        if ("/Users/" in node or "/home/" in node
+                or re.search(r"[A-Za-z]:\\Users", node)):
+            yield trail, node
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            yield from _home_rooted_strings(item, f"{trail}[{i}]")
+    elif isinstance(node, dict):
+        for key, item in node.items():
+            yield from _home_rooted_strings(item, f"{trail}.{key}")
+
+
 class TestMcpConfigPortability(unittest.TestCase):
     """Revision 7 [P1]: the checked-in MCP registry carries no machine- or
     platform-specific absolute paths; placeholders resolve at launch through
@@ -281,6 +357,7 @@ class TestMcpConfigPortability(unittest.TestCase):
             return json.load(f)
 
     def test_no_hardcoded_user_paths_in_checked_in_config(self):
+        # The MCP registry, field by field — the original expectation.
         for server in self._registry()["servers"]:
             for arg in server.get("args", []):
                 self.assertFalse(arg.startswith("/Users/"), arg)
@@ -288,6 +365,99 @@ class TestMcpConfigPortability(unittest.TestCase):
                 self.assertNotIn(":\\Users", arg)
             cmd = server.get("command", "")
             self.assertFalse(cmd.startswith("/Users/"), cmd)
+
+        # Every OTHER checked-in config the running system loads, whole-file.
+        # The registry was the only file this ever policed, so the packager's
+        # own home directory shipped in routing-config.json (six local
+        # model_paths, the vault / conversations / chromadb roots) and in
+        # capabilities.json — none of which exist on anyone else's machine.
+        # Placeholders belong in these files; absolute home paths do not.
+        offenders = []
+        for path in _checked_in_config_json():
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue  # unreadable/non-JSON is another test's problem
+            for trail, value in _home_rooted_strings(loaded):
+                offenders.append(
+                    f"{path.relative_to(_ORCH.parent)} {trail} = {value!r}")
+        self.assertEqual(
+            offenders, [],
+            "checked-in config carries a home-directory path; use a "
+            "${ORA_HOME} / ${ORA_VAULT} / ${ORA_CONVERSATIONS} / "
+            "${ORA_CHROMADB} placeholder and let the loader expand it:\n  "
+            + "\n  ".join(offenders))
+
+    def test_no_hardcoded_user_paths_in_checked_in_config_markdown(self):
+        """The same rule, applied to config/'s Markdown.
+
+        `framework-library-index.md` and `rag-manifest-compiled.md` are
+        written by scripts/generate-indexes.sh and
+        scripts/compile-rag-manifest.sh and are handed to a model as
+        context, so a packager's home directory in them ships to every
+        clone and describes a tree that clone does not have. Fixing the
+        files is only half the fix — a generator still pinned to the
+        packager's layout puts the paths straight back on the next run."""
+        offenders = []
+        for path in _checked_in_config_markdown():
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for lineno, line in enumerate(text.splitlines(), 1):
+                if _HOME_ROOTED_TEXT.search(line):
+                    offenders.append(
+                        f"{path.relative_to(_ORCH.parent)}:{lineno}: "
+                        f"{line.strip()[:110]}")
+        self.assertEqual(
+            offenders, [],
+            "checked-in config Markdown carries a home-directory path; "
+            "emit it relative to the workspace root or as a ${ORA_HOME} "
+            "placeholder, and fix the generator that wrote it:\n  "
+            + "\n  ".join(offenders))
+
+    def test_runtime_configs_use_placeholders_and_expand(self):
+        """The two configs that carried the author's paths now carry
+        placeholders — and those placeholders resolve to the RUNNING
+        install, not to a baked location."""
+        config_dir = _ORCH.parent / "config"
+        routing = json.loads(
+            (config_dir / "routing-config.json").read_text(encoding="utf-8"))
+        locals_ = [ep for ep in routing.get("endpoints", [])
+                   if ep.get("type") == "local" and ep.get("model_path")]
+        self.assertTrue(locals_, "no local endpoints to check")
+        for endpoint in locals_:
+            self.assertTrue(
+                endpoint["model_path"].startswith("${ORA_HOME}"),
+                endpoint["model_path"])
+
+        relocated = os.path.join(os.sep, "opt", "ora clone")
+        with mock.patch.dict(os.environ, {"ORA_HOME": relocated}):
+            expanded = runtime_paths.expand_placeholders(routing)
+        for endpoint in expanded["endpoints"]:
+            if endpoint.get("type") == "local" and endpoint.get("model_path"):
+                self.assertTrue(
+                    endpoint["model_path"].startswith(relocated),
+                    endpoint["model_path"])
+
+        capabilities = json.loads(
+            (config_dir / "capabilities.json").read_text(encoding="utf-8"))
+        self.assertTrue(
+            capabilities["_canonical_source"].startswith("${ORA_VAULT}"),
+            capabilities["_canonical_source"])
+
+    def test_routing_config_loaders_expand_placeholders(self):
+        """boot and the Router are the two loaders that turn a local
+        endpoint's model_path into a filesystem path; both must expand."""
+        import boot
+        rc = boot.load_routing_config()
+        for endpoint in rc.get("endpoints", []):
+            self.assertNotIn("${ORA_", str(endpoint.get("model_path") or ""))
+
+        from router import Router
+        router = Router()
+        for endpoint in router.config.get("endpoints", []):
+            self.assertNotIn("${ORA_", str(endpoint.get("model_path") or ""))
 
     def test_vault_fs_server_uses_placeholder(self):
         vault_fs = next(s for s in self._registry()["servers"]
@@ -922,7 +1092,14 @@ class TestSlashCommandRepoRoot(unittest.TestCase):
 
     def test_no_hardcoded_user_path_in_source(self):
         src = (_ORCH / "slash_commands.py").read_text()
-        self.assertNotIn("/Users/oracle/ora", src)
+        # No absolute home-rooted path of ANY user — stricter than the
+        # single packager path this used to name, and it keeps the source
+        # of the assertion free of one itself. Comments are excluded: the
+        # module explains in prose why it does NOT use such a path.
+        code = "\n".join(line for line in src.splitlines()
+                         if not line.lstrip().startswith("#"))
+        self.assertNotIn("/Users/", code)
+        self.assertNotIn("/home/", code)
 
 
 class TestExecutionPacketTracePathPortable(unittest.TestCase):

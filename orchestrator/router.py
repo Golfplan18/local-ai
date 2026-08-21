@@ -142,7 +142,9 @@ class Router:
             self._uses_default_config_path = config_path is None
             self._config_path = Path(config_path) if config_path else rp.routing_config_path()
             with open(self._config_path) as f:
-                self.config = json.load(f)
+                # ${ORA_HOME} & friends resolve on the way in — the file on
+                # disk stays clone-portable (see runtime_paths).
+                self.config = rp.expand_placeholders(json.load(f))
 
         self._build_lookup_tables()
 
@@ -411,7 +413,7 @@ class Router:
             if self._uses_default_config_path:
                 self._config_path = rp.routing_config_path()
             with open(self._config_path) as f:
-                new_config = json.load(f)
+                new_config = rp.expand_placeholders(json.load(f))
         except Exception as exc:  # pragma: no cover — exercised in tests via missing file
             # Keep the prior config in memory so the running pipeline
             # doesn't silently degrade. The caller logs the failure.

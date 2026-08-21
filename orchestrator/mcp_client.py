@@ -25,33 +25,17 @@ MCP_REGISTRY = os.path.join(WORKSPACE, "config", "mcp-servers.json")
 # machine- or platform-specific absolute path (e.g. the vault-fs server's
 # root is ${ORA_VAULT}, which resolves to %USERPROFILE%\Documents\vault on
 # Windows and ~/Documents/vault on POSIX unless overridden).
-_PLACEHOLDER_ATTRS = {
-    "ORA_HOME": "WORKSPACE",
-    "ORA_VAULT": "VAULT_STR",
-    "ORA_CONVERSATIONS": "CONVERSATIONS_STR",
-    "ORA_SCRATCH": "SCRATCH_DIR_STR",
-}
+#
+# The convention outgrew the MCP registry: config/routing-config.json and
+# config/capabilities.json use the same placeholders, so the expander lives
+# in runtime_paths (which owns the roots it resolves against) and every
+# loader shares one implementation. These names stay as the module's own
+# spelling of it.
+_PLACEHOLDER_ATTRS = _rp.PLACEHOLDER_ATTRS
+_expand_placeholders = _rp.expand_placeholders
 
 # Cap on buffered stdout lines per connection (see MCPConnection.__init__).
 _RECV_QUEUE_MAXLINES = 10_000
-
-
-def _expand_placeholders(value):
-    """Recursively expand ${ORA_*} placeholders in a config value.
-    Unknown placeholders are left verbatim (the server fails to start with
-    a visible bad path rather than silently pointing somewhere else)."""
-    if isinstance(value, str):
-        for name, attr in _PLACEHOLDER_ATTRS.items():
-            token = "${" + name + "}"
-            if token in value:
-                value = value.replace(
-                    token, os.environ.get(name) or getattr(_rp, attr))
-        return value
-    if isinstance(value, list):
-        return [_expand_placeholders(v) for v in value]
-    if isinstance(value, dict):
-        return {k: _expand_placeholders(v) for k, v in value.items()}
-    return value
 
 
 class MCPConnection:

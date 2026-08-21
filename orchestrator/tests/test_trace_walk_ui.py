@@ -11,7 +11,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 JSDOM_MODULE_DIRS = [
     ROOT / "server/static/ora-visual-compiler/tests/node_modules",
-    Path("/Users/oracle/ora/server/static/ora-visual-compiler/tests/node_modules"),
     Path.home() / ".hermes/hermes-agent/node_modules",
 ]
 

@@ -362,8 +362,8 @@ class TestRedirectsAndTargets(unittest.TestCase):
 
     def test_redirect_to_protected_path_surfaces_target(self):
         r = resolve_shell_profile(
-            "echo pwn > /Users/oracle/ora/config/hooks/evil.json")
-        self.assertIn("/Users/oracle/ora/config/hooks/evil.json",
+            "echo pwn > /opt/ora/config/hooks/evil.json")
+        self.assertIn("/opt/ora/config/hooks/evil.json",
                       r["write_paths"])
 
     def test_glued_redirect_forms(self):

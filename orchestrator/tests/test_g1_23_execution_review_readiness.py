@@ -20,7 +20,8 @@ from server import app as server
 
 ROOT = Path(__file__).resolve().parents[2]
 VAULT_ORA = Path(
-    os.environ.get("ORA_VAULT_ROOT", "/Users/oracle/Documents/vault")
+    os.environ.get("ORA_VAULT_ROOT")
+    or Path.home() / "Documents" / "vault"
 ) / "Projects" / "Ora"
 
 

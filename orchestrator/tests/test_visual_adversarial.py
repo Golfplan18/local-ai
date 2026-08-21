@@ -41,7 +41,8 @@ from visual_adversarial import (  # noqa: E402
     _apply_strictness,
 )
 
-EXAMPLES = Path("/Users/oracle/ora/config/visual-schemas/examples")
+EXAMPLES = (Path(__file__).resolve().parents[2]
+            / "config" / "visual-schemas" / "examples")
 
 
 def _load(name: str) -> dict:

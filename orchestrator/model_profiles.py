@@ -192,7 +192,7 @@ def load_model_inventory() -> dict:
         if isinstance(legacy, str) and isinstance(current, str):
             aliases[legacy] = current
 
-    routing = read_json(rp.routing_config_path())
+    routing = rp.expand_placeholders(read_json(rp.routing_config_path()))
     for endpoint in routing.get("endpoints", []) or []:
         if not isinstance(endpoint, dict):
             continue
@@ -434,7 +434,8 @@ def capture_project_binding(
         )
     if routing_config is None:
         try:
-            routing_config = json.loads(rp.routing_config_path().read_text(encoding="utf-8"))
+            routing_config = rp.expand_placeholders(
+                json.loads(rp.routing_config_path().read_text(encoding="utf-8")))
         except (OSError, json.JSONDecodeError) as exc:
             raise ModelProfileError(f"cannot capture model routing locks: {exc}") from exc
     routing_values = _locked_routing_values(routing_config)

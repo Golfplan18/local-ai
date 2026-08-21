@@ -19,9 +19,11 @@ from __future__ import annotations
 import base64, json, sys, time, urllib.request
 from pathlib import Path
 
-# Import shared helpers from the main script
+# Import shared helpers from the main script — resolved next to THIS file,
+# so the pair travels together to whatever location the repo is cloned at.
 import importlib.util
-spec = importlib.util.spec_from_file_location("rmp", "/Users/oracle/ora/scripts/refresh-mode-pages.py")
+spec = importlib.util.spec_from_file_location(
+    "rmp", str(Path(__file__).resolve().parent / "refresh-mode-pages.py"))
 rmp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rmp)
 

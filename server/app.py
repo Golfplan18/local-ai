@@ -19144,7 +19144,9 @@ def model_registry_get():
             import json as _json2
             _rc_path = rp.routing_config_path()
             if _rc_path.exists():
-                _rc = _json2.loads(_rc_path.read_text())
+                # Placeholders resolve on the way in; model_path below is
+                # compared against real directories.
+                _rc = rp.expand_placeholders(_json2.loads(_rc_path.read_text()))
                 _configured_locals_by_path = {}
                 for _endpoint in (_rc.get("endpoints") or []):
                     if _endpoint.get("type") != "local":

@@ -133,7 +133,7 @@ class TestFrontmatterParsing(unittest.TestCase):
             "  - epistemology\n"
             "source_file: research-paper.pdf\n"
             "source_format: pdf\n"
-            "source_path: /Users/oracle/papers/research-paper.pdf\n"
+            "source_path: /srv/papers/research-paper.pdf\n"
             "processed_date: 2026-04-30\n"
             "chunk_index: 5\n"
             "total_chunks: 42\n"
@@ -282,7 +282,7 @@ class TestComposedMetadata(unittest.TestCase):
             "  - epistemology\n"
             "source_file: research-paper.pdf\n"
             "source_format: pdf\n"
-            "source_path: /Users/oracle/papers/research-paper.pdf\n"
+            "source_path: /srv/papers/research-paper.pdf\n"
             "processed_date: 2026-04-30\n"
             "chunk_index: 5\n"
             "total_chunks: 42\n"
@@ -292,7 +292,7 @@ class TestComposedMetadata(unittest.TestCase):
         chroma_meta = knowledge_index._compose_chroma_metadata(self.filepath, meta)
         self.assertEqual(chroma_meta["source_file"], "research-paper.pdf")
         self.assertEqual(chroma_meta["source_format"], "pdf")
-        self.assertEqual(chroma_meta["source_path"], "/Users/oracle/papers/research-paper.pdf")
+        self.assertEqual(chroma_meta["source_path"], "/srv/papers/research-paper.pdf")
         self.assertEqual(chroma_meta["processed_date"], "2026-04-30")
         self.assertEqual(chroma_meta["chunk_index"], 5)
         self.assertEqual(chroma_meta["total_chunks"], 42)
