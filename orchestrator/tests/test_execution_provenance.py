@@ -256,7 +256,12 @@ class TestLibraryGuardIntegration(_EventEnvMixin):
         te.set_turn_context(trace_dir=self.trace_dir, conversation_id="c2")
         result = {"url": "https://e.com/p", "markdown": "hello world",
                   "title": "t", "channel": "httpx", "fetched_at": "2026-07-05"}
-        with mock.patch.object(wf, "_fetch_httpx", return_value=result):
+        public_dns = [(wf.network_policy.socket.AF_INET,
+                       wf.network_policy.socket.SOCK_STREAM,
+                       6, "", ("93.184.216.34", 443))]
+        with mock.patch.object(
+            wf.network_policy.socket, "getaddrinfo", return_value=public_dns,
+        ), mock.patch.object(wf, "_fetch_httpx", return_value=result):
             with mock.patch.object(wf, "_is_acceptable", return_value=True):
                 wf.web_fetch("https://e.com/p")
         evs = self._trace_events()

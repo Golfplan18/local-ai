@@ -26,6 +26,11 @@ except Exception:
     except Exception:
         _runtime_paths = None
 
+try:
+    from orchestrator import network_policy as _network_policy
+except ImportError:  # pragma: no cover - direct orchestrator import context
+    import network_policy as _network_policy
+
 
 def _submit_with_context(executor, fn, *args, **kwargs):
     """Submit ``fn(*args, **kwargs)`` to ``executor`` with a copy of the
@@ -17661,14 +17666,12 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                     flush=True,
                 )
         try:
-            from openai import OpenAI
             key = _canonical_provider_key("openrouter")
             if not key:
                 return (
                     "[Error calling OpenRouter API: No API key found. "
                     "Store via: keyring set ora openrouter-api-key]"
                 )
-            client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
             api_messages = messages
             if images:
                 api_messages = _inject_images_into_messages(
@@ -17682,15 +17685,16 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                 # the max_completion_tokens requirement when the request
                 # lands at the OpenAI API behind the scenes.
                 cap_kwarg = {_openai_max_tokens_param(model_name): max_tokens}
-                resp = client.chat.completions.create(
-                    model=model_name,
-                    messages=api_messages,
-                    extra_headers={
-                        "HTTP-Referer": "https://ora.local",
-                        "X-Title": "Ora",
-                    },
-                    **cap_kwarg,
-                )
+                with _network_policy.openrouter_sdk_client(key) as client:
+                    resp = client.chat.completions.create(
+                        model=model_name,
+                        messages=api_messages,
+                        extra_headers={
+                            "HTTP-Referer": "https://ora.local",
+                            "X-Title": "Ora",
+                        },
+                        **cap_kwarg,
+                    )
                 content = resp.choices[0].message.content
                 if not content:
                     try:
@@ -17701,11 +17705,17 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
                         print(
                             f"[openrouter-empty-content] model={model!r} "
                             f"finish_reason={fr!r} has_tool_calls={has_tool_calls} "
-                            f"refusal={refusal!r} content_is_none={content is None}",
+                            "refusal="
+                            f"{_network_policy.redact_sensitive_text(refusal)!r} "
+                            f"content_is_none={content is None}",
                             flush=True,
                         )
                     except Exception as diag_err:
-                        print(f"[openrouter-empty-content] diag failed: {diag_err}", flush=True)
+                        print(
+                            "[openrouter-empty-content] diag failed: "
+                            f"{_network_policy.redact_sensitive_text(diag_err)}",
+                            flush=True,
+                        )
                 text = content or ""
                 truncated = getattr(resp.choices[0], "finish_reason", None) == "length"
                 # 2026-05-28: capture token usage. OpenRouter passes
@@ -17731,7 +17741,10 @@ def _call_api_endpoint_inner(messages: list, endpoint: dict, images: list = None
 
             return _call_api_with_truncation_retry(_openrouter_call, "OpenRouter", endpoint)
         except Exception as e:
-            return f"[Error calling OpenRouter API: {e}]"
+            safe_error = _network_policy.redact_sensitive_text(
+                e, secrets=((key,) if "key" in locals() else ()),
+            )
+            return f"[Error calling OpenRouter API: {safe_error}]"
 
     elif service in _OPENAI_COMPAT_SERVICES or service == "openai_compatible":
         # Generic direct dispatch for any OpenAI-compatible vendor API —

@@ -24,6 +24,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
+
+try:
+    import network_policy
+except ImportError:  # pragma: no cover
+    from orchestrator import network_policy
 
 # Minimum useful markdown length to consider a tier successful. Pages
 # below this trigger escalation in the cascade. JS-rendered SPAs
@@ -40,6 +46,7 @@ _USER_AGENT = (
 _HTTPX_TIMEOUT_SECONDS = 15
 _PLAYWRIGHT_TIMEOUT_MS = 30_000
 _JINA_TIMEOUT_SECONDS = 20
+_MAX_REDIRECTS = 5
 
 # Execution Review Phase 8 Chunk C (§4): the response headers a deploy_probe may
 # inspect (staleness / cache state). Whitelisted so an event never carries an
@@ -87,17 +94,29 @@ def web_fetch(
             "G1.10 Phase 2."
         )
 
-    if not url or not isinstance(url, str):
-        return _error_result(url or "", "auto", "URL required")
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return _error_result(url, "auto", f"Invalid URL scheme: {url}")
+    try:
+        destination = network_policy.validate_public_url(url)
+    except network_policy.NetworkPolicyError as exc:
+        result = _error_result(
+            network_policy.safe_url_label(str(url or "")), "auto", str(exc),
+        )
+        result["destination_classification"] = "refused-non-public"
+        result["third_party_forwarding"] = {
+            "forwarded": False,
+            "provider": "jina-reader",
+            "reason": "invalid-destination",
+        }
+        return _record_fetch_read(result)
+    url = destination.url
 
     if channel == "httpx":
         return _record_fetch_read(_fetch_httpx(url, raw=raw, timeout_s=timeout_s))
     if channel == "local":
         return _record_fetch_read(_fetch_playwright(url))
     if channel == "api":
-        return _record_fetch_read(_fetch_jina(url))
+        if not destination.third_party_safe:
+            return _record_fetch_read(_third_party_refusal(url, explicit=True))
+        return _record_fetch_read(_fetch_jina(url, reason="explicit-request"))
     if channel != "auto":
         return _error_result(url, channel, f"Unknown channel: {channel}")
 
@@ -108,7 +127,9 @@ def web_fetch(
     result = _fetch_playwright(url)
     if _is_acceptable(result):
         return _record_fetch_read(result)
-    return _record_fetch_read(_fetch_jina(url))
+    if not destination.third_party_safe:
+        return _record_fetch_read(_third_party_refusal(url, explicit=False))
+    return _record_fetch_read(_fetch_jina(url, reason="automatic-fallback"))
 
 
 def _filter_headers(resp_headers) -> dict:
@@ -144,13 +165,20 @@ def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
         if _te.library_recording_suppressed():
             return result
         safe_url = _te.sanitize_url(result.get("url", ""))
+        forwarding = result.get("third_party_forwarding")
+        forwarding = dict(forwarding) if isinstance(forwarding, dict) else None
+        classification = str(
+            result.get("destination_classification") or "unknown",
+        )[:80]
         if result.get("error"):
             _te.record_web_reads(
                 "web_fetch",
                 [{"what": safe_url, "where": "network"}],
                 args_redacted={"url": safe_url,
                                "channel": result.get("channel", "")},
-                exit_ok=False, exit_reason=str(result.get("error", ""))[:120])
+                exit_ok=False, exit_reason=str(result.get("error", ""))[:120],
+                destination_classification=classification,
+                third_party_forwarding=forwarding)
             return result
         import hashlib
         markdown = result.get("markdown") or ""
@@ -159,7 +187,9 @@ def _record_fetch_read(result: dict[str, Any]) -> dict[str, Any]:
             "content_hash": hashlib.sha256(
                 markdown.encode("utf-8", "replace")).hexdigest()[:16],
         }], args_redacted={"url": safe_url,
-                           "channel": result.get("channel", "")})
+                           "channel": result.get("channel", "")},
+            destination_classification=classification,
+            third_party_forwarding=forwarding)
     except Exception:
         pass
     return result
@@ -184,10 +214,10 @@ def _fetch_httpx(url: str, *, raw: bool = False,
     try:
         with httpx.Client(
             timeout=timeout,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={"User-Agent": _USER_AGENT},
         ) as client:
-            resp = client.get(url)
+            resp, final = _manual_httpx_get(client, url)
         status = resp.status_code
         headers = _filter_headers(resp.headers)
         if raw:
@@ -198,14 +228,20 @@ def _fetch_httpx(url: str, *, raw: bool = False,
                 "url": url, "markdown": resp.text or "", "title": None,
                 "channel": "httpx", "fetched_at": _now(),
                 "status_code": status, "headers": headers,
+                "destination_classification": "public",
+                "final_origin": final.origin,
             }
         if status >= 400:
             r = _error_result(url, "httpx", f"HTTP {status}")
             r["status_code"] = status
             r["headers"] = headers
             return r
-        return _trafilatura_to_result(resp.text, url, "httpx",
-                                      status_code=status, headers=headers)
+        result = _trafilatura_to_result(
+            resp.text, url, "httpx", status_code=status, headers=headers,
+        )
+        result["destination_classification"] = "public"
+        result["final_origin"] = final.origin
+        return result
     except Exception as e:
         return _error_result(url, "httpx", str(e))
 
@@ -221,42 +257,109 @@ def _fetch_playwright(url: str) -> dict[str, Any]:
         return _error_result(url, "local", "trafilatura not installed")
 
     try:
+        contract = network_policy.BrowserNetworkContract(
+            "public",
+            network_policy.validate_public_url(url).url,
+            origin=network_policy.validate_public_url(url).origin,
+        )
         with sync_playwright() as p:
             browser = p.chromium.launch(channel="chrome", headless=True)
             try:
-                page = browser.new_page(user_agent=_USER_AGENT)
+                context = browser.new_context(
+                    user_agent=_USER_AGENT,
+                    service_workers="block",
+                )
+                if not hasattr(context, "route_web_socket"):
+                    return _error_result(
+                        url, "local",
+                        "browser tier refused: WebSocket routing is unavailable",
+                    )
+
+                def route_request(route):
+                    try:
+                        network_policy.validate_browser_request(
+                            route.request.url, contract,
+                        )
+                    except network_policy.NetworkPolicyError:
+                        route.abort()
+                        return
+                    route.continue_()
+
+                def route_websocket(websocket_route):
+                    request_url = getattr(websocket_route, "url", "")
+                    try:
+                        network_policy.validate_browser_request(
+                            request_url, contract,
+                        )
+                    except network_policy.NetworkPolicyError:
+                        close = getattr(websocket_route, "close", None)
+                        if callable(close):
+                            close(code=1008, reason="destination refused")
+                        return
+                    connect = getattr(websocket_route, "connect_to_server", None)
+                    if callable(connect):
+                        connect()
+
+                context.route("**/*", route_request)
+                context.route_web_socket("**/*", route_websocket)
+                page = context.new_page()
                 page.goto(
-                    url,
+                    contract.initial_url,
                     wait_until="networkidle",
                     timeout=_PLAYWRIGHT_TIMEOUT_MS,
                 )
                 html = page.content()
             finally:
                 browser.close()
-        return _trafilatura_to_result(html, url, "local")
+        result = _trafilatura_to_result(html, url, "local")
+        result["destination_classification"] = "public-browser-routed"
+        return result
     except Exception as e:
         return _error_result(url, "local", str(e))
 
 
-def _fetch_jina(url: str) -> dict[str, Any]:
+def _fetch_jina(url: str, *, reason: str = "explicit-request") -> dict[str, Any]:
     try:
         import httpx
     except ImportError:
-        return _error_result(url, "api", "httpx not installed")
+        result = _error_result(url, "api", "httpx not installed")
+        result["destination_classification"] = "public-not-forwarded"
+        result["third_party_forwarding"] = {
+            "forwarded": False, "provider": "jina-reader",
+            "reason": "provider-unavailable",
+        }
+        return result
 
-    jina_url = "https://r.jina.ai/" + url
+    try:
+        destination = network_policy.validate_public_url(url)
+    except network_policy.NetworkPolicyError as exc:
+        result = _error_result(network_policy.safe_url_label(url), "api", str(exc))
+        result["destination_classification"] = "refused-non-public"
+        result["third_party_forwarding"] = {
+            "forwarded": False, "provider": "jina-reader",
+            "reason": "invalid-destination",
+        }
+        return result
+    if not destination.third_party_safe:
+        return _third_party_refusal(url, explicit=True)
+    jina_url = "https://r.jina.ai/" + destination.url
     try:
         with httpx.Client(
             timeout=_JINA_TIMEOUT_SECONDS,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={
                 "User-Agent": _USER_AGENT,
                 "Accept": "text/markdown",
             },
         ) as client:
-            resp = client.get(jina_url)
+            resp, _final = _manual_httpx_get(client, jina_url)
         if resp.status_code >= 400:
-            return _error_result(url, "api", f"HTTP {resp.status_code}")
+            result = _error_result(url, "api", f"HTTP {resp.status_code}")
+            result["destination_classification"] = "public-forwarded-to-jina"
+            result["third_party_forwarding"] = {
+                "forwarded": True, "provider": "jina-reader", "reason": reason,
+            }
+            return result
         text = resp.text or ""
         title = _jina_title(text)
         return {
@@ -267,12 +370,64 @@ def _fetch_jina(url: str) -> dict[str, Any]:
             "fetched_at": _now(),
             "status_code": None,
             "headers": None,
+            "destination_classification": "public-forwarded-to-jina",
+            "third_party_forwarding": {
+                "forwarded": True,
+                "provider": "jina-reader",
+                "reason": reason,
+                "source_origin": destination.origin,
+            },
         }
     except Exception as e:
-        return _error_result(url, "api", str(e))
+        result = _error_result(
+            url, "api", network_policy.redact_sensitive_text(e),
+        )
+        result["destination_classification"] = "public-forwarded-to-jina"
+        result["third_party_forwarding"] = {
+            "forwarded": True, "provider": "jina-reader", "reason": reason,
+        }
+        return result
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
+
+def _manual_httpx_get(client, url: str):
+    """GET with bounded, per-hop public validation and no implicit redirects."""
+
+    current = network_policy.validate_public_url(url)
+    for hop in range(_MAX_REDIRECTS + 1):
+        # Re-resolve immediately before each effect, including the initial hop.
+        current = network_policy.validate_public_url(current.url)
+        response = client.get(current.url)
+        if response.status_code not in {301, 302, 303, 307, 308}:
+            return response, current
+        if hop >= _MAX_REDIRECTS:
+            raise network_policy.NetworkPolicyError("redirect limit exceeded")
+        location = response.headers.get("location")
+        current = network_policy.validate_redirect(current, location)
+    raise network_policy.NetworkPolicyError("redirect limit exceeded")
+
+
+def _third_party_refusal(url: str, *, explicit: bool) -> dict[str, Any]:
+    result = _error_result(
+        network_policy.safe_url_label(url),
+        "api",
+        (
+            "explicit Jina forwarding refused for a credential-bearing, "
+            "signed, or sensitive-query URL"
+            if explicit else
+            "automatic Jina fallback skipped for a credential-bearing, "
+            "signed, or sensitive-query URL"
+        ),
+    )
+    result["destination_classification"] = "public-not-forwardable"
+    result["third_party_forwarding"] = {
+        "forwarded": False,
+        "provider": "jina-reader",
+        "reason": "sensitive-url",
+    }
+    return result
 
 
 def _trafilatura_to_result(

@@ -28,6 +28,11 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
+try:  # pragma: no cover - import shim
+    from orchestrator import network_policy
+except ImportError:  # pragma: no cover
+    import network_policy
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -225,7 +230,7 @@ def _openrouter_embed_batch(
     last_err: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
-            req = urllib.request.Request(
+            raw, _destination = network_policy.openrouter_request_bytes(
                 url,
                 data=payload,
                 headers={
@@ -234,10 +239,10 @@ def _openrouter_embed_batch(
                     "HTTP-Referer": "https://ora.local",
                     "X-Title": "Ora",
                 },
-                method="POST",
+                timeout=timeout,
+                max_bytes=32 * 1024 * 1024,
             )
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                data = json.loads(resp.read())
+            data = json.loads(raw)
             rows = data.get("data")
             if not isinstance(rows, list):
                 raise RuntimeError("OpenRouter returned no embedding data")
@@ -256,9 +261,16 @@ def _openrouter_embed_batch(
                 body = exc.read().decode("utf-8", errors="replace")[:500]
             except Exception:
                 body = ""
-            last_err = RuntimeError(f"OpenRouter embeddings HTTP {exc.code}: {body}")
+            safe_body = network_policy.redact_sensitive_text(
+                body, secrets=(key,),
+            )
+            last_err = RuntimeError(
+                f"OpenRouter embeddings HTTP {exc.code}: {safe_body}",
+            )
         except Exception as exc:
-            last_err = exc
+            last_err = RuntimeError(
+                network_policy.redact_sensitive_text(exc, secrets=(key,)),
+            )
         if attempt < attempts:
             time.sleep(attempt * 2)
     assert last_err is not None

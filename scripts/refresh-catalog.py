@@ -54,6 +54,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import network_policy
+
 CONFIG_DIR = REPO_ROOT / "config"
 DATA_DIR = REPO_ROOT / "data"
 
@@ -84,17 +88,30 @@ BLEND_DENOMINATOR = BLEND_INPUT_WEIGHT + BLEND_OUTPUT_WEIGHT  # 4.0
 def fetch_openrouter() -> dict | None:
     """Fetch the OpenRouter model list. Returns the parsed JSON or None on error."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    req = urllib.request.Request(
-        OPENROUTER_URL,
-        headers={"Accept": "application/json"},
-    )
-    if api_key:
-        req.add_header("Authorization", f"Bearer {api_key}")
     try:
+        if api_key:
+            raw, _destination = network_policy.openrouter_request_bytes(
+                OPENROUTER_URL,
+                headers={
+                    "Accept": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+                timeout=30,
+                max_bytes=32 * 1024 * 1024,
+            )
+            return json.loads(raw.decode("utf-8"))
+        req = urllib.request.Request(
+            OPENROUTER_URL,
+            headers={"Accept": "application/json"},
+        )
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
-        print(f"[refresh-catalog] OpenRouter fetch failed: {exc}", file=sys.stderr)
+        safe = network_policy.redact_sensitive_text(exc, secrets=(api_key,))
+        print(f"[refresh-catalog] OpenRouter fetch failed: {safe}", file=sys.stderr)
+        return None
+    except network_policy.NetworkPolicyError as exc:
+        print(f"[refresh-catalog] OpenRouter fetch refused: {exc}", file=sys.stderr)
         return None
 
 

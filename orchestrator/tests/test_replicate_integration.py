@@ -47,6 +47,28 @@ from orchestrator.capability_registry import (  # noqa: E402
 from orchestrator.job_queue import JobQueue  # noqa: E402
 
 
+_dns_patch = None
+
+
+def setUpModule():
+    global _dns_patch
+    _dns_patch = mock.patch.object(
+        rep_mod.network_policy.socket,
+        "getaddrinfo",
+        return_value=[
+            (rep_mod.network_policy.socket.AF_INET,
+             rep_mod.network_policy.socket.SOCK_STREAM, 6, "",
+             ("93.184.216.34", 443)),
+        ],
+    )
+    _dns_patch.start()
+
+
+def tearDownModule():
+    if _dns_patch is not None:
+        _dns_patch.stop()
+
+
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
@@ -77,11 +99,12 @@ class _FakeRequests:
     def queue_get(self, url_substr: str, *responses: _FakeResponse) -> None:
         self.get_responses.setdefault(url_substr, []).extend(responses)
 
-    def post(self, url, headers=None, json=None, timeout=None):
+    def post(self, url, headers=None, json=None, timeout=None,
+             allow_redirects=None):
         self.posts.append((url, headers or {}, json or {}))
         return self._dequeue(self.post_responses, url)
 
-    def get(self, url, headers=None, timeout=None):
+    def get(self, url, headers=None, timeout=None, allow_redirects=None):
         self.gets.append((url, headers or {}))
         return self._dequeue(self.get_responses, url)
 
@@ -352,29 +375,111 @@ class AsyncDispatchTests(unittest.TestCase):
             "/predictions",
             _FakeResponse(201, {"id": "vp", "status": "starting"}),
         )
+        signed_url = "https://r.example/clip.mp4?token=never-persist"
         self.fake.queue_get(
             "/predictions/vp",
             _FakeResponse(200, {"id": "vp", "status": "succeeded",
-                                "output": "https://r.example/clip.mp4"}),
+                                "output": signed_url}),
         )
         rep_mod.set_active_conversation("conv-1")
-        with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", True):
+        with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", True), \
+             mock.patch.object(
+                 rep_mod.network_policy, "urllib_request_bytes",
+                 return_value=(b"video-bytes", mock.sentinel.destination),
+             ) as fetch:
             job = rep_mod.dispatch_video_generates({
                 "prompt": "a serene lake at dawn",
                 "duration": 4,
                 "resolution": "720p",
             })
+            deadline = time.time() + 5.0
+            while time.time() < deadline:
+                updated = self.queue.get_job("conv-1", job["id"])
+                if updated["status"] in {"complete", "failed", "cancelled"}:
+                    break
+                time.sleep(0.02)
         self.assertIn(job["status"], {"queued", "in_progress", "complete"})
-        # Wait for the polling thread to drive the queue to terminal.
-        deadline = time.time() + 5.0
-        while time.time() < deadline:
-            updated = self.queue.get_job("conv-1", job["id"])
-            if updated["status"] in {"complete", "failed", "cancelled"}:
-                break
-            time.sleep(0.02)
         updated = self.queue.get_job("conv-1", job["id"])
         self.assertEqual(updated["status"], "complete")
-        self.assertEqual(updated["result_ref"], "https://r.example/clip.mp4")
+        route = updated["result_ref"]["video_url"]
+        self.assertTrue(route.startswith(f"/api/jobs/conv-1/{job['id']}/artifacts/"))
+        self.assertNotIn("never-persist", json.dumps(updated))
+        artifact = Path(self.tmpdir.name) / "conv-1" / "uploads" / route.rsplit("/", 1)[-1]
+        self.assertEqual(artifact.read_bytes(), b"video-bytes")
+        fetch.assert_called_once_with(
+            signed_url, timeout=180, max_bytes=rep_mod._ASYNC_ARTIFACT_LIMIT,
+        )
+        persisted = (Path(self.tmpdir.name) / "conv-1" / "jobs.json").read_text(
+            encoding="utf-8",
+        )
+        self.assertNotIn("never-persist", persisted)
+
+    def test_style_training_materializes_case_varied_urls_in_values_and_keys(self):
+        self.fake.queue_get(
+            "/models/ostris/flux-dev-lora-trainer",
+            _FakeResponse(200, {"latest_version": {"id": "v-sha"}}),
+        )
+        self.fake.queue_post(
+            "/predictions",
+            _FakeResponse(201, {"id": "sp", "status": "starting"}),
+        )
+        weights_url = (
+            "hTTps://r.example/weights.safetensors?sig=weights-never-persist"
+        )
+        key_url = "HTTP://r.example/key.bin?token=key-never-persist"
+        preview_url = "HtTpS://r.example/preview.mp4?token=preview-never-persist"
+        self.fake.queue_get(
+            "/predictions/sp",
+            _FakeResponse(200, {"id": "sp", "status": "succeeded",
+                                "output": {
+                                    "weights": weights_url,
+                                    key_url: {"nested": [preview_url]},
+                                }}),
+        )
+        rep_mod.set_active_conversation("conv-style")
+        with mock.patch.object(rep_mod, "_HAS_JOB_QUEUE", True), \
+             mock.patch.object(
+                 rep_mod.network_policy, "urllib_request_bytes",
+                 side_effect=[
+                     (b"weights", mock.sentinel.destination),
+                     (b"key", mock.sentinel.destination),
+                     (b"preview", mock.sentinel.destination),
+                 ],
+             ) as fetch:
+            job = rep_mod.dispatch_style_trains({
+                "reference_images": ["data:a", "data:b", "data:c"],
+                "name": "watercolor",
+            })
+            deadline = time.time() + 5.0
+            while time.time() < deadline:
+                updated = self.queue.get_job("conv-style", job["id"])
+                if updated["status"] in {"complete", "failed", "cancelled"}:
+                    break
+                time.sleep(0.02)
+        updated = self.queue.get_job("conv-style", job["id"])
+        self.assertEqual(updated["status"], "complete")
+        result_ref = updated["result_ref"]
+        self.assertTrue(result_ref["weights"].endswith(".safetensors"))
+        materialized_keys = [
+            key for key in result_ref
+            if key.startswith(f"/api/jobs/conv-style/{job['id']}/artifacts/")
+        ]
+        self.assertEqual(len(materialized_keys), 1)
+        preview_route = result_ref[materialized_keys[0]]["nested"][0]
+        self.assertTrue(preview_route.startswith(
+            f"/api/jobs/conv-style/{job['id']}/artifacts/"
+        ))
+        self.assertEqual(
+            [call.args[0] for call in fetch.call_args_list],
+            [weights_url, key_url, preview_url],
+        )
+        persisted = (
+            Path(self.tmpdir.name) / "conv-style" / "jobs.json"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("never-persist", persisted)
+        self.assertNotIn("r.example", persisted)
+        for raw_url in (weights_url, key_url, preview_url):
+            self.assertNotIn(raw_url, persisted)
 
     def test_style_trains_rejects_under_three_refs(self):
         with self.assertRaises(rep_mod.ReplicateError) as cm:

@@ -196,6 +196,25 @@ class TestSmokeHelpers(unittest.TestCase):
             ["provider/primary:free", "provider/fallback:free", "openrouter/free"],
         )
 
+    def test_openrouter_smoke_uses_origin_locked_transport(self):
+        payload = {
+            "choices": [{"message": {"content": "Ora install smoke ok"}}],
+        }
+        with mock.patch.object(
+            install.network_policy, "openrouter_request_bytes",
+            return_value=(json.dumps(payload).encode(), mock.sentinel.destination),
+        ) as request:
+            ok, message, auth_failure = install._openrouter_smoke_call(
+                "openrouter/free", "secret",
+            )
+        self.assertTrue(ok)
+        self.assertFalse(auth_failure)
+        self.assertEqual(message, "Ora install smoke ok")
+        self.assertEqual(
+            request.call_args.args[0],
+            "https://openrouter.ai/api/v1/chat/completions",
+        )
+
 
 class TestExternalApiWalkthrough(unittest.TestCase):
     def test_recommended_minimal_package_present(self):

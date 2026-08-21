@@ -43,6 +43,7 @@ import dispatcher  # noqa: E402
 import tool_events  # noqa: E402
 import oversight_queue  # noqa: E402
 import bash_execute  # noqa: E402
+import network_policy  # noqa: E402
 import file_ops  # noqa: E402
 import search_files  # noqa: E402
 
@@ -108,10 +109,6 @@ class DispatchBase(unittest.TestCase):
             }
 
         self._patches = [
-            # Exercise POSIX grammar matching even on Windows; real shell
-            # availability belongs to the native-Windows live suite.
-            mock.patch.object(bash_execute, "_posix_shell_available",
-                              return_value=True),
             mock.patch.object(dispatcher, "execute_command",
                               side_effect=fake_execute),
             mock.patch.object(dispatcher, "credential_store",
@@ -124,6 +121,14 @@ class DispatchBase(unittest.TestCase):
                               return_value=False),
             mock.patch.object(dispatcher, "WORKSPACE", self.workspace),
             mock.patch.object(bash_execute, "WORKSPACE", self.workspace),
+            mock.patch.object(
+                network_policy.socket, "getaddrinfo",
+                return_value=[
+                    (network_policy.socket.AF_INET,
+                     network_policy.socket.SOCK_STREAM, 6, "",
+                     ("93.184.216.34", 443)),
+                ],
+            ),
         ]
         for patcher in self._patches:
             patcher.start()
@@ -167,6 +172,10 @@ class DispatchBase(unittest.TestCase):
     def _events(self):
         return _read_events(self.sink)
 
+    def _shell_commands(self):
+        return [getattr(call[0], "audit_command", call[0])
+                for call in self.shell_calls]
+
     def _queue_lines(self):
         if not os.path.exists(oversight_queue.HUMAN_QUEUE_PATH):
             return []
@@ -196,6 +205,116 @@ class TestGateBeforeExecution(DispatchBase):
         self.assertIn("SYSTEM PROTECTION", result)
         self.assertEqual(self.shell_calls, [])
         self.assertFalse(os.path.exists(marker))
+
+    def test_identity_drift_precedes_gate_and_approval_consumption(self):
+        victim = os.path.join(self.workspace, "victim.txt")
+        with open(victim, "w") as handle:
+            handle.write("x")
+        params = {"command": f"rm -f {shlex.quote(victim)}",
+                  "cwd": self.workspace}
+        prepared = bash_execute.prepare_command(
+            params["command"], cwd=self.workspace,
+        )
+        gate_params = {**params, "_prepared_command": prepared.binding()}
+        args_hash = tool_events.normalize_args_hash("bash_execute", gate_params)
+        token = tool_events._grant_approval_authorized(
+            "bash_execute", args_hash,
+        )
+        with mock.patch.object(
+            dispatcher, "revalidate_prepared_command",
+            side_effect=bash_execute.CommandPreparationError(
+                "prepared executable identity drifted",
+            ),
+        ), mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate:
+            result = dispatcher.dispatch("bash_execute", params)
+        self.assertIn("identity drifted", result)
+        gate.assert_not_called()
+        self.assertEqual(self.shell_calls, [])
+        self.assertEqual(
+            tool_events.check_and_consume_approval("bash_execute", args_hash),
+            token,
+        )
+
+    def test_private_web_destination_precedes_generic_gate_and_handler(self):
+        with mock.patch.object(
+            network_policy.socket, "getaddrinfo",
+            return_value=[
+                (network_policy.socket.AF_INET,
+                 network_policy.socket.SOCK_STREAM, 6, "",
+                 ("10.0.0.8", 443)),
+            ],
+        ), mock.patch.object(tool_events, "gate", wraps=tool_events.gate) as gate, \
+             mock.patch.object(dispatcher, "web_fetch") as fetch:
+            result = dispatcher.dispatch(
+                "web_fetch", {"url": "https://private.example/data"},
+            )
+        self.assertIn("non-public", result)
+        gate.assert_not_called()
+        fetch.assert_not_called()
+        event = self._events()[-1]
+        self.assertEqual(event["destination_classification"], "refused-non-public")
+        self.assertEqual(event["third_party_forwarding"], {
+            "provider": "jina-reader",
+            "forwarded": False,
+            "reason": "invalid-destination",
+        })
+
+    def test_web_fetch_records_actual_and_refused_jina_forwarding(self):
+        refused = dispatcher.dispatch("web_fetch", {
+            "url": "https://example.com/file?token=do-not-record",
+            "channel": "api",
+        })
+        self.assertNotIn("do-not-record", refused)
+        refusal_event = [
+            event for event in self._events()
+            if event.get("action") == "web_fetch"
+        ][-1]
+        self.assertFalse(refusal_event["exit"]["ok"])
+        self.assertEqual(
+            refusal_event["destination_classification"],
+            "public-not-forwardable",
+        )
+        self.assertEqual(refusal_event["third_party_forwarding"], {
+            "provider": "jina-reader",
+            "forwarded": False,
+            "reason": "sensitive-url",
+        })
+        self.assertNotIn("do-not-record", json.dumps(refusal_event))
+
+        forwarded_result = {
+            "url": "https://example.com/",
+            "markdown": "body",
+            "title": "title",
+            "channel": "api",
+            "fetched_at": "now",
+            "destination_classification": "public-forwarded-to-jina",
+            "third_party_forwarding": {
+                "forwarded": True,
+                "provider": "jina-reader",
+                "reason": "automatic-fallback",
+            },
+        }
+        dispatcher.reset_consecutive()
+        with mock.patch.object(
+            dispatcher, "web_fetch", return_value=forwarded_result,
+        ):
+            dispatcher.dispatch("web_fetch", {
+                "url": "https://example.com/article", "channel": "auto",
+            })
+        forwarded_event = [
+            event for event in self._events()
+            if event.get("action") == "web_fetch"
+        ][-1]
+        self.assertTrue(forwarded_event["exit"]["ok"])
+        self.assertEqual(
+            forwarded_event["destination_classification"],
+            "public-forwarded-to-jina",
+        )
+        self.assertEqual(forwarded_event["third_party_forwarding"], {
+            "provider": "jina-reader",
+            "forwarded": True,
+            "reason": "automatic-fallback",
+        })
 
     def test_command_launching_wrappers_cannot_consume_approval_or_enter_handler(self):
         protected = tool_events.APPROVALS_PATH
@@ -248,6 +367,61 @@ class TestGateBeforeExecution(DispatchBase):
                         token,
                     )
 
+    def test_ambiguous_helper_network_and_state_derived_forms_refuse_pre_gate(self):
+        commands = (
+            "git merge --strategy=ours topic",
+            "git merge -sours topic",
+            "git fetch --upload-pack=/tmp/helper origin main",
+            "git push --receive-pack=/tmp/helper origin main",
+            "git diff --ext-d",
+            "git diff --textc",
+            f"git diff --no-index --ext-d {self.workspace}/a {self.workspace}/b",
+            "git fetch example.com://helper/repo main",
+            f"tar -cf {self.workspace}/out.tar -T {self.workspace}/files.txt",
+            "ffmpeg -i https://example.com/video.mp4 -f null -",
+            f"sed -i.bak 's/a/b/' {self.workspace}/input.txt",
+            f"sed -f{self.workspace}/program.sed {self.workspace}/input.txt",
+            f"sed 's/a/b/e' {self.workspace}/input.txt",
+            f"sed '{{e id}}' {self.workspace}/input.txt",
+            f"sed '1~2e id' {self.workspace}/input.txt",
+            f"sed '{{s/a/id/e}}' {self.workspace}/input.txt",
+            f"sed '/x/{{s/a/id/e}}' {self.workspace}/input.txt",
+            f"ffmpeg -i {self.workspace}/clip.mp4 -report -f null -",
+            f"ffmpeg -i {self.workspace}/clip.mp4 -vstats -f null -",
+            "sysctl -w kern.maxfiles=1024",
+            "sysctl kern.maxfiles=1024",
+            "pip list --outdated",
+        )
+        for command in commands:
+            with self.subTest(command=command), mock.patch.object(
+                tool_events, "gate", wraps=tool_events.gate,
+            ) as gate, mock.patch.object(
+                bash_execute.subprocess, "run",
+            ) as run, mock.patch.object(
+                bash_execute.subprocess, "Popen",
+            ) as popen:
+                dispatcher.reset_consecutive()
+                dispatcher.execute_command.reset_mock()
+                params = {"command": command, "cwd": self.workspace}
+                args_hash = tool_events.normalize_args_hash(
+                    "bash_execute", params,
+                )
+                token = tool_events._grant_approval_authorized(
+                    "bash_execute", args_hash,
+                )
+                result = dispatcher.dispatch("bash_execute", params)
+                self.assertIn("SYSTEM PROTECTION", result)
+                gate.assert_not_called()
+                dispatcher.execute_command.assert_not_called()
+                run.assert_not_called()
+                popen.assert_not_called()
+                self.assertEqual(
+                    tool_events.check_and_consume_approval(
+                        "bash_execute", args_hash,
+                    ),
+                    token,
+                )
+
     def test_env_inspection_only_forms_reach_registered_handler(self):
         commands = ("env", "env FOO=bar", "env -i FOO=bar", "env -u HOME")
         for command in commands:
@@ -258,7 +432,7 @@ class TestGateBeforeExecution(DispatchBase):
             self.assertNotIn("SYSTEM PROTECTION", result, command)
             self.assertNotIn("GATED", result, command)
         self.assertEqual(
-            [call[0] for call in self.shell_calls], list(commands),
+            self._shell_commands(), list(commands),
         )
 
     def test_git_force_push_blocked(self):
@@ -270,7 +444,7 @@ class TestGateBeforeExecution(DispatchBase):
     def test_profiled_read_command_executes(self):
         result = dispatcher.dispatch("bash_execute", {"command": "pwd"})
         self.assertNotIn("GATED", result)
-        self.assertEqual([call[0] for call in self.shell_calls], ["pwd"])
+        self.assertEqual(self._shell_commands(), ["pwd"])
         self.assertEqual(self.shell_calls[0][1], {
             "timeout": 60,
             "cwd": None,
@@ -328,7 +502,7 @@ class TestGateBeforeExecution(DispatchBase):
         # One prompt (the gate's), not two — and the command then runs.
         self.assertEqual(calls, ["bash_execute"])
         self.assertNotIn("GATED", result)
-        self.assertEqual([call[0] for call in self.shell_calls],
+        self.assertEqual(self._shell_commands(),
                          ["rm exact-reviewed-target"])
 
 
@@ -442,7 +616,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             "bash_execute",
             {"command": "cat ordinary.txt", "cwd": self.workspace})
         self.assertNotIn("GATED", result)
-        self.assertEqual(self.shell_calls[-1][0], "cat ordinary.txt")
+        self.assertEqual(self._shell_commands()[-1], "cat ordinary.txt")
 
     def test_archive_of_secret_is_gated(self):
         # gzip/tar/pandoc reading a secret must gate (content would otherwise
@@ -490,21 +664,20 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         r = dispatcher.dispatch(
             "bash_execute", {"command": command, "cwd": self.workspace})
         self.assertNotIn("GATED", r)
-        self.assertEqual(self.shell_calls[-1][0], command)
+        self.assertEqual(self._shell_commands()[-1], command)
 
     def test_download_output_into_protected_path_gated(self):
-        # curl/wget download output flags writing into a protected path gate.
+        # An admitted exact curl output writing into protected config gates.
         import shutil
         guard = os.path.join(self.workspace, "download-protected")
         os.makedirs(guard)
         tool_events._PROTECTED_PREFIXES.append(tool_events._cmp_key(guard))
         try:
             qguard = shlex.quote(guard)
-            for cmd in (f"wget -O {qguard}/x.json http://u",
-                        f"wget --output-document {qguard}/x.json http://u",
-                        f"wget -P {qguard} http://u",
-                        f"curl -O --output-dir {qguard} http://u",
-                        f"curl --remote-name --output-dir {qguard} http://u"):
+            for cmd in (
+                f"curl -o {qguard}/x.json https://example.com/source.json",
+                f"curl --output={qguard}/y.json https://example.com/source.json",
+            ):
                 r = dispatcher.dispatch(
                     "bash_execute",
                     {"command": cmd, "cwd": self.workspace})
@@ -519,11 +692,13 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         # protected-config gate (external egress is a Phase-2 policy, not a
         # Phase-1 block).
         output = shlex.quote(os.path.join(self.workspace, "download.json"))
-        command = f"curl -o {output} http://u"
+        command = f"curl -o {output} https://example.com/source.json"
         r = dispatcher.dispatch(
             "bash_execute", {"command": command, "cwd": self.workspace})
         self.assertNotIn("GATED", r)
-        self.assertEqual(self.shell_calls[-1][0], command)
+        prepared = self.shell_calls[-1][0]
+        self.assertEqual(prepared.argv[-1], "https://example.com/source.json")
+        self.assertNotIn("source.json", prepared.audit_command)
 
     def test_viewer_of_workspace_file_not_over_gated(self):
         # less/nl/od of a normal workspace file must NOT gate.
@@ -532,7 +707,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             r = dispatcher.dispatch(
                 "bash_execute", {"command": cmd, "cwd": self.workspace})
             self.assertNotIn("GATED", r, cmd)
-        self.assertEqual([call[0] for call in self.shell_calls],
+        self.assertEqual(self._shell_commands(),
                          ["less ordinary.txt", "nl ordinary.txt",
                           "base64 ordinary.txt"])
 
@@ -559,15 +734,38 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
         self.assertIn("SYSTEM PROTECTION", r)
         self.assertEqual(self.shell_calls, [])
 
-    def test_cd_into_secret_dir_gates_relative_read(self):
+    def test_cd_compounds_are_structurally_refused(self):
         for cmd in ("cd ~/.aws && cat config",
                     "pushd ~/.aws && cat config"):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
                                      "cwd": self.workspace})
-            self.assertIn("GATED", r, cmd)
+            self.assertIn("SYSTEM PROTECTION", r, cmd)
+        self.assertEqual(self.shell_calls, [])
 
-    def test_cd_into_workspace_does_not_over_gate(self):
+    def test_unbound_output_helper_and_remote_network_shapes_refuse_pre_handler(self):
+        marker = os.path.join(self.workspace, "helper-ran")
+        helper = os.path.join(self.workspace, "helper")
+        with open(helper, "w", encoding="utf-8") as handle:
+            handle.write(f"#!/bin/sh\nprintf ran > {shlex.quote(marker)}\n")
+        os.chmod(helper, 0o700)
+        commands = (
+            f"git diff --output={shlex.quote(os.path.join(self.workspace, 'diff.txt'))}",
+            f"rg --pre={shlex.quote(helper)} needle {shlex.quote(self.workspace)}",
+            "git remote update",
+            "git remote prune origin",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                result = dispatcher.dispatch(
+                    "bash_execute", {"command": command, "cwd": self.workspace},
+                )
+                self.assertIn("SYSTEM PROTECTION", result)
+        self.assertEqual(self.shell_calls, [])
+        self.assertFalse(os.path.exists(marker))
+        self.assertEqual(self._queue_lines(), [])
+
+    def test_cwd_is_only_supported_as_an_explicit_parameter(self):
         nested = os.path.join(self.workspace, "nested")
         os.makedirs(nested)
         commands = (
@@ -578,9 +776,8 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd,
                                      "cwd": self.workspace})
-            self.assertNotIn("GATED", r, cmd)
-        self.assertEqual([call[0] for call in self.shell_calls],
-                         list(commands))
+            self.assertIn("SYSTEM PROTECTION", r, cmd)
+        self.assertEqual(self.shell_calls, [])
 
     def test_unmodelable_cd_fails_closed(self):
         # cd $VAR / cd - can't be resolved; a following relative read fails
@@ -674,7 +871,7 @@ class TestSensitiveAndProtectedPaths(DispatchBase):
             r = dispatcher.dispatch("bash_execute",
                                     {"command": cmd, "cwd": self.workspace})
             self.assertNotIn("GATED", r, cmd)
-        self.assertEqual([call[0] for call in self.shell_calls],
+        self.assertEqual(self._shell_commands(),
                          ["pip list", "npm ls", "brew list",
                           "python3 --version"])
 

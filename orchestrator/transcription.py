@@ -45,6 +45,11 @@ try:
 except ImportError:  # pragma: no cover - package-qualified import context
     from orchestrator import runtime_paths as _rp
 
+try:
+    import network_policy
+except ImportError:  # pragma: no cover - package-qualified import context
+    from orchestrator import network_policy
+
 # ── Module configuration ─────────────────────────────────────────────────────
 
 WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
@@ -809,12 +814,6 @@ class TranscriptionManager:
             return
 
         try:
-            client = OpenAI(
-                api_key=key,
-                base_url="https://openrouter.ai/api/v1",
-                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
-                max_retries=REMOTE_MAX_RETRIES,
-            )
             language = (job.options.get("language") or "").strip()
             # OpenRouter's transcription endpoint mirrors OpenAI's; the
             # `language` field accepts ISO-639-1 codes or "auto".
@@ -834,9 +833,18 @@ class TranscriptionManager:
                     kwargs["language"] = language
                 if self._job_deleted(job):
                     return
-                resp = client.audio.transcriptions.create(**kwargs)
+                with network_policy.openrouter_sdk_client(
+                    key,
+                    timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                    max_retries=REMOTE_MAX_RETRIES,
+                ) as client:
+                    resp = client.audio.transcriptions.create(**kwargs)
         except Exception as e:
-            self._fail(job, f"OpenRouter transcription failed: {e}")
+            self._fail(
+                job,
+                "OpenRouter transcription failed: "
+                + network_policy.redact_sensitive_text(e, secrets=(key,)),
+            )
             return
 
         # The response shape: { text: "...", language?: "en", duration?: 12.3 }
@@ -933,33 +941,36 @@ class TranscriptionManager:
             return
 
         try:
-            client = OpenAI(
-                api_key=key,
-                base_url="https://openrouter.ai/api/v1",
-                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
-                max_retries=REMOTE_MAX_RETRIES,
-            )
             if self._job_deleted(job):
                 return
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "text",        "text":  question},
-                        {"type": "input_audio", "input_audio": {
-                            "data":   audio_b64,
-                            "format": ext,
-                        }},
-                    ],
-                }],
-                extra_headers={
-                    "HTTP-Referer": "https://ora.local",
-                    "X-Title": "Ora",
-                },
-            )
+            with network_policy.openrouter_sdk_client(
+                key,
+                timeout=REMOTE_REQUEST_TIMEOUT_SECONDS,
+                max_retries=REMOTE_MAX_RETRIES,
+            ) as client:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text",        "text":  question},
+                            {"type": "input_audio", "input_audio": {
+                                "data":   audio_b64,
+                                "format": ext,
+                            }},
+                        ],
+                    }],
+                    extra_headers={
+                        "HTTP-Referer": "https://ora.local",
+                        "X-Title": "Ora",
+                    },
+                )
         except Exception as e:
-            self._fail(job, f"OpenRouter audio-understanding failed: {e}")
+            self._fail(
+                job,
+                "OpenRouter audio-understanding failed: "
+                + network_policy.redact_sensitive_text(e, secrets=(key,)),
+            )
             return
 
         msg = resp.choices[0].message if resp.choices else None

@@ -108,10 +108,18 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit
+
+try:
+    from orchestrator import network_policy, runtime_paths as _rp
+except ImportError:  # pragma: no cover
+    import network_policy
+    import runtime_paths as _rp
 
 # --- Optional dependencies. We fail-soft so a developer machine without
 # `keyring` or `requests` can still import this module (the registry
@@ -157,6 +165,7 @@ KEYRING_ACCOUNT = "replicate-api-key"
 ENV_OVERRIDE = "REPLICATE_API_TOKEN"
 
 API_BASE = "https://api.replicate.com/v1"
+_TRUSTED_API_ORIGIN = "https://api.replicate.com"
 
 # Default Replicate model identifiers per slot.
 #
@@ -237,6 +246,10 @@ class ReplicateError(Exception):
     def __init__(self, code: str, message: str):
         self.code = code
         super().__init__(f"[{code}] {message}")
+
+
+def _safe_error_detail(value: Any) -> str:
+    return network_policy.redact_sensitive_text(value or "no detail")[:240]
 
 
 # ---------------------------------------------------------------------------
@@ -354,6 +367,26 @@ class ReplicateClient:
             "User-Agent": "ora/1.0 (+https://github.com/ora-commons/ora)",
         }
 
+    def _request_url(self, path: str) -> str:
+        if not isinstance(path, str) or not path.startswith("/") or "?" in path or "#" in path:
+            raise ReplicateError(
+                "handler_failed", "Replicate API request path is malformed.",
+            )
+        try:
+            destination = network_policy.validate_public_url(
+                f"{self._api_base}{path}",
+            )
+        except network_policy.NetworkPolicyError as exc:
+            raise ReplicateError(
+                "handler_failed", "Replicate API destination was refused.",
+            ) from exc
+        if destination.origin != _TRUSTED_API_ORIGIN:
+            raise ReplicateError(
+                "handler_failed",
+                "Replicate credential request is outside its trusted origin.",
+            )
+        return destination.url
+
     def _post(self, path: str, payload: dict) -> dict:
         if not _HAS_REQUESTS:
             raise ReplicateError(
@@ -361,10 +394,22 @@ class ReplicateClient:
                 "The 'requests' Python package is not installed; cannot reach "
                 "the Replicate API. Run `pip install requests`.",
             )
-        url = f"{self._api_base}{path}"
-        resp = (self._session or requests).post(
-            url, headers=self._headers(), json=payload, timeout=60
-        )
+        url = self._request_url(path)
+        try:
+            resp = (self._session or requests).post(
+                url,
+                headers=self._headers(),
+                json=payload,
+                timeout=60,
+                allow_redirects=False,
+            )
+        except ReplicateError:
+            raise
+        except Exception as exc:
+            raise ReplicateError(
+                "handler_failed",
+                f"Replicate API request failed: {type(exc).__name__}.",
+            ) from exc
         return self._raise_or_json(resp)
 
     def _get(self, path: str) -> dict:
@@ -374,34 +419,50 @@ class ReplicateClient:
                 "The 'requests' Python package is not installed; cannot reach "
                 "the Replicate API.",
             )
-        url = f"{self._api_base}{path}"
-        resp = (self._session or requests).get(
-            url, headers=self._headers(), timeout=60
-        )
+        url = self._request_url(path)
+        try:
+            resp = (self._session or requests).get(
+                url,
+                headers=self._headers(),
+                timeout=60,
+                allow_redirects=False,
+            )
+        except ReplicateError:
+            raise
+        except Exception as exc:
+            raise ReplicateError(
+                "handler_failed",
+                f"Replicate API request failed: {type(exc).__name__}.",
+            ) from exc
         return self._raise_or_json(resp)
 
     @staticmethod
     def _raise_or_json(resp) -> dict:
+        status = getattr(resp, "status_code", 0) or 0
+        if status in {301, 302, 303, 307, 308}:
+            raise ReplicateError(
+                "handler_failed",
+                "Replicate API redirect was refused before credential forwarding.",
+            )
         try:
             data = resp.json()
         except Exception:
             data = {"raw": getattr(resp, "text", "")}
-        status = getattr(resp, "status_code", 0) or 0
         if 200 <= status < 300:
             return data
         # Map HTTP status to our error taxonomy.
-        msg = (data or {}).get("detail") or (data or {}).get("error") or str(data)
         if status == 401 or status == 403:
             raise ReplicateError("model_unavailable",
-                                 f"Replicate auth failed ({status}): {msg}")
+                                 f"Replicate auth failed ({status}).")
         if status == 429:
             raise ReplicateError("quota_exceeded",
-                                 f"Replicate rate limit ({status}): {msg}")
-        if status == 422 and "nsfw" in str(msg).lower():
+                                 f"Replicate rate limit ({status}).")
+        detail = (data or {}).get("detail") or (data or {}).get("error") or ""
+        if status == 422 and "nsfw" in str(detail).lower():
             raise ReplicateError("prompt_rejected",
-                                 f"Replicate content policy: {msg}")
+                                 "Replicate content policy refused the request.")
         raise ReplicateError("handler_failed",
-                             f"Replicate API {status}: {msg}")
+                             f"Replicate API request failed ({status}).")
 
     # ------------------------------------------------------------------
 
@@ -480,7 +541,8 @@ class ReplicateClient:
         if prediction.get("status") == "failed":
             raise ReplicateError(
                 "handler_failed",
-                f"Replicate prediction failed: {prediction.get('error')}",
+                "Replicate prediction failed: "
+                f"{_safe_error_detail(prediction.get('error'))}",
             )
         if prediction.get("status") == "canceled":
             raise ReplicateError(
@@ -772,7 +834,7 @@ def _async_dispatch(
     # transition the job to ``failed`` directly.
     t = threading.Thread(
         target=_poll_thread,
-        args=(client, cfg, payload, conversation_id, job["id"]),
+        args=(slot, client, cfg, payload, conversation_id, job["id"]),
         name=f"replicate-{slot}-{job['id']}",
         daemon=True,
     )
@@ -781,6 +843,7 @@ def _async_dispatch(
 
 
 def _poll_thread(
+    slot: str,
     client: ReplicateClient,
     cfg: dict,
     payload: dict,
@@ -819,22 +882,32 @@ def _poll_thread(
             time.sleep(2.0)
             pred = client.poll(pred["id"])
         if pred.get("status") == "succeeded":
-            result_ref = _extract_async_result(pred)
+            # Re-check the queue before writing an artifact so a forgotten
+            # conversation cannot be recreated by a late provider result.
+            queue.get_job(conversation_id, job_id)
+            result_ref = _materialize_async_result(
+                slot, pred, queue, conversation_id, job_id,
+            )
             queue.mark_complete(conversation_id, job_id, result_ref)
         else:
             queue.mark_failed(
                 conversation_id, job_id,
                 f"Replicate prediction {pred.get('status')}: "
-                f"{pred.get('error') or 'no detail'}",
+                f"{_safe_error_detail(pred.get('error'))}",
             )
     except ReplicateError as exc:
         try:
-            queue.mark_failed(conversation_id, job_id, str(exc))
+            queue.mark_failed(
+                conversation_id, job_id, _safe_error_detail(exc),
+            )
         except Exception:
             pass
     except Exception as exc:  # pragma: no cover — defensive
         try:
-            queue.mark_failed(conversation_id, job_id, f"Unexpected: {exc}")
+            queue.mark_failed(
+                conversation_id, job_id,
+                f"Unexpected provider failure: {type(exc).__name__}",
+            )
         except Exception:
             pass
 
@@ -894,6 +967,118 @@ def _extract_async_result(prediction: dict) -> Any:
     """
     out = prediction.get("output")
     return out
+
+
+_ASYNC_ARTIFACT_LIMIT = 512 * 1024 * 1024
+_ASYNC_ARTIFACT_SUFFIXES = {
+    ".mp4", ".webm", ".mov", ".mkv", ".zip", ".tar", ".gz",
+    ".safetensors", ".bin",
+}
+
+
+def _artifact_suffix(value: str, slot: str) -> str:
+    suffix = Path(urlsplit(value).path).suffix.casefold()
+    if suffix in _ASYNC_ARTIFACT_SUFFIXES:
+        return suffix
+    return ".mp4" if slot == "video_generates" else ".zip"
+
+
+def _is_remote_output_url(value: Any) -> bool:
+    """Recognize a provider-returned HTTP(S) URL without case sensitivity."""
+
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
+    return parsed.scheme.casefold() in {"http", "https"} and bool(parsed.hostname)
+
+
+def _materialize_async_result(
+    slot: str,
+    prediction: dict,
+    queue: Any,
+    conversation_id: str,
+    job_id: str,
+) -> Any:
+    """Replace every remote async output URL with an owned local route."""
+
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", str(job_id or "")):
+        raise ReplicateError("handler_failed", "Replicate job identity is malformed.")
+    root = Path(getattr(queue, "_root", _rp.ORA_HOME / "sessions"))
+    conversation_dir = _rp.safe_owned_subdir(root, conversation_id)
+    if (
+        not conversation_dir.is_dir()
+        or conversation_dir.is_symlink()
+    ):
+        raise ReplicateError(
+            "handler_failed", "Replicate output owner is no longer available.",
+        )
+    uploads = _rp.safe_owned_subdir(conversation_dir, "uploads")
+    try:
+        uploads.mkdir()
+    except FileExistsError:
+        pass
+    if not uploads.is_dir() or uploads.is_symlink():
+        raise ReplicateError(
+            "handler_failed", "Replicate output directory is unavailable.",
+        )
+
+    artifact_index = 0
+    raw_output = _extract_async_result(prediction)
+
+    def materialize(value: Any) -> Any:
+        nonlocal artifact_index
+        if _is_remote_output_url(value):
+            index = artifact_index
+            artifact_index += 1
+            if artifact_index > 8:
+                raise ReplicateError(
+                    "handler_failed", "Replicate returned too many remote outputs.",
+                )
+            suffix = _artifact_suffix(value, slot)
+            filename = f"replicate-{job_id}-{index}{suffix}"
+            try:
+                payload, _destination = network_policy.urllib_request_bytes(
+                    value,
+                    timeout=180,
+                    max_bytes=_ASYNC_ARTIFACT_LIMIT,
+                )
+                _rp.atomic_write_bytes(uploads / filename, payload)
+            except Exception as exc:
+                raise ReplicateError(
+                    "handler_failed",
+                    f"Replicate output download failed: {type(exc).__name__}.",
+                ) from exc
+            return (
+                f"/api/jobs/{conversation_id}/{job_id}/artifacts/{filename}"
+            )
+        if isinstance(value, (list, tuple)):
+            return [materialize(item) for item in value]
+        if isinstance(value, dict):
+            mapped: dict[str, Any] = {}
+            for key, item in value.items():
+                mapped_key = str(materialize(key))
+                if mapped_key in mapped:
+                    raise ReplicateError(
+                        "handler_failed",
+                        "Replicate output keys collide after artifact materialization.",
+                    )
+                mapped[mapped_key] = materialize(item)
+            return mapped
+        return value
+
+    output = materialize(raw_output)
+    if artifact_index == 0:
+        return output
+    if slot == "video_generates" and isinstance(output, str):
+        return {"video_url": output}
+    if slot == "video_generates" and isinstance(output, list) and output:
+        return {"video_url": output[0], "outputs": output}
+    if slot == "style_trains" and isinstance(output, str):
+        return {"weights": output}
+    return output
 
 
 # ---------------------------------------------------------------------------

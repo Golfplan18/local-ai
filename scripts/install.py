@@ -72,6 +72,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import network_policy
+
 STATE_PATH = REPO_ROOT / "install-state.json"
 LOG_PATH = REPO_ROOT / "install.log"
 COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"
@@ -729,28 +733,39 @@ def _openrouter_smoke_call(model_id: str, api_key: str) -> tuple[bool, str, bool
         "temperature": 0,
         "max_tokens": 12,
     }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=payload,
-        headers={
+    try:
+        raw, _destination = network_policy.openrouter_request_bytes(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=payload,
+            headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://ora-ai.app",
             "X-Title": "Ora installer smoke test",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
+            },
+            timeout=45,
+            max_bytes=8 * 1024 * 1024,
+        )
+        body = json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:240]
+        detail = network_policy.redact_sensitive_text(
+            detail, secrets=(api_key,),
+        )
         auth_failure = exc.code in {401, 403}
         return False, f"HTTP {exc.code}: {detail}", auth_failure
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
-        return False, f"{type(exc).__name__}: {exc}", False
+        detail = network_policy.redact_sensitive_text(
+            exc, secrets=(api_key,),
+        )
+        return False, f"{type(exc).__name__}: {detail}", False
     except json.JSONDecodeError as exc:
         return False, f"invalid JSON response: {exc}", False
+    except Exception as exc:
+        detail = network_policy.redact_sensitive_text(
+            exc, secrets=(api_key,),
+        )
+        return False, f"{type(exc).__name__}: {detail}", False
 
     content = ""
     try:

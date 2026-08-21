@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import os
 import sys
+import json
+import tempfile
 import unittest
 from unittest import mock
 
@@ -26,9 +28,32 @@ if _TOOLS not in sys.path:
     sys.path.insert(0, _TOOLS)
 
 import web_fetch as wf  # noqa: E402
+import network_policy  # noqa: E402
+import tool_events  # noqa: E402
 
 
 _LIVE = os.environ.get("ORA_WEB_FETCH_LIVE") == "1"
+_dns_patch = None
+
+
+def setUpModule():
+    global _dns_patch
+    if not _LIVE:
+        _dns_patch = mock.patch.object(
+            network_policy.socket,
+            "getaddrinfo",
+            return_value=[
+                (network_policy.socket.AF_INET,
+                 network_policy.socket.SOCK_STREAM, 6, "",
+                 ("93.184.216.34", 443)),
+            ],
+        )
+        _dns_patch.start()
+
+
+def tearDownModule():
+    if _dns_patch is not None:
+        _dns_patch.stop()
 
 
 class ContractShapeTests(unittest.TestCase):
@@ -174,6 +199,79 @@ class JinaTitleParsingTests(unittest.TestCase):
 
     def test_returns_none_on_empty(self):
         self.assertIsNone(wf._jina_title(""))
+
+
+class JinaForwardingRecordTests(unittest.TestCase):
+    def test_opaque_query_refusal_record_is_failed_and_redacted(self):
+        with tempfile.TemporaryDirectory() as temp:
+            sink = os.path.join(temp, "events.jsonl")
+            prior = tool_events.GLOBAL_SINK_DEFAULT
+            prior_disabled = os.environ.pop("ORA_TOOL_EVENTS", None)
+            tool_events.GLOBAL_SINK_DEFAULT = sink
+            try:
+                result = wf.web_fetch(
+                    "https://example.com/file?context=private-draft-never-store",
+                    channel="api",
+                )
+                with open(sink, encoding="utf-8") as stream:
+                    event = json.loads(stream.readlines()[-1])
+            finally:
+                tool_events.GLOBAL_SINK_DEFAULT = prior
+                if prior_disabled is not None:
+                    os.environ["ORA_TOOL_EVENTS"] = prior_disabled
+            self.assertIn("error", result)
+            self.assertFalse(event["exit"]["ok"])
+            self.assertEqual(event["destination_classification"],
+                             "public-not-forwardable")
+            self.assertEqual(event["third_party_forwarding"], {
+                "provider": "jina-reader",
+                "forwarded": False,
+                "reason": "sensitive-url",
+            })
+            self.assertNotIn("never-store", json.dumps(event))
+
+    def test_safe_fallback_records_forwarding_reason(self):
+        bad = {
+            "url": "https://example.com", "markdown": "", "title": None,
+            "channel": "httpx", "fetched_at": "now", "error": "short",
+        }
+        response = mock.Mock(status_code=200, text="Title: Safe\n\n" + "x" * 600)
+        manager = mock.MagicMock()
+        manager.__enter__.return_value = mock.Mock()
+        manager.__exit__.return_value = False
+        fake_httpx = mock.Mock()
+        fake_httpx.Client.return_value = manager
+        with tempfile.TemporaryDirectory() as temp:
+            sink = os.path.join(temp, "events.jsonl")
+            prior = tool_events.GLOBAL_SINK_DEFAULT
+            prior_disabled = os.environ.pop("ORA_TOOL_EVENTS", None)
+            tool_events.GLOBAL_SINK_DEFAULT = sink
+            try:
+                with mock.patch.dict(sys.modules, {"httpx": fake_httpx}), \
+                     mock.patch.object(wf, "_fetch_httpx", return_value=bad), \
+                     mock.patch.object(wf, "_fetch_playwright", return_value=bad), \
+                     mock.patch.object(wf, "_manual_httpx_get",
+                                       return_value=(response, mock.sentinel.final)):
+                    result = wf.web_fetch("https://example.com/article?page=2")
+                with open(sink, encoding="utf-8") as stream:
+                    event = json.loads(stream.readlines()[-1])
+            finally:
+                tool_events.GLOBAL_SINK_DEFAULT = prior
+                if prior_disabled is not None:
+                    os.environ["ORA_TOOL_EVENTS"] = prior_disabled
+        self.assertEqual(result["destination_classification"],
+                         "public-forwarded-to-jina")
+        self.assertEqual(result["third_party_forwarding"]["provider"],
+                         "jina-reader")
+        self.assertTrue(result["third_party_forwarding"]["forwarded"])
+        self.assertEqual(result["third_party_forwarding"]["reason"],
+                         "automatic-fallback")
+        self.assertTrue(event["exit"]["ok"])
+        self.assertEqual(event["third_party_forwarding"], {
+            "provider": "jina-reader",
+            "forwarded": True,
+            "reason": "automatic-fallback",
+        })
 
 
 class AcceptabilityTests(unittest.TestCase):

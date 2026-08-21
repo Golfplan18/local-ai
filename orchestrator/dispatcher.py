@@ -61,9 +61,17 @@ try:
     from file_ops import file_read, file_write, _validate_path, model_read_blocked
     from knowledge_search import knowledge_search
     from credential_store import credential_store
-    from bash_execute import (execute_command, classify_command,
-                              resolve_shell_profile, stop_process,
-                              cleanup_all)
+    from bash_execute import (
+        CommandPreparationError,
+        PreparedCommand,
+        classify_command,
+        cleanup_all,
+        execute_command,
+        prepare_command,
+        revalidate_prepared_command,
+        resolve_shell_profile,
+        stop_process,
+    )
     from file_edit import edit_file
     from search_files import grep_files, list_directory
     from subagent import spawn_subagent
@@ -128,9 +136,9 @@ def _wrap_file_edit(params):
                      params.get("old_string", ""),
                      params.get("new_string", ""))
 
-def _wrap_bash_execute(params):
+def _wrap_bash_execute(params, prepared_command=None):
     return execute_command(
-        params.get("command", ""),
+        prepared_command if prepared_command is not None else params.get("command", ""),
         timeout=params.get("timeout", 60),
         cwd=params.get("cwd"),
         background=params.get("background", False),
@@ -491,7 +499,9 @@ def set_mcp_client(client):
 # ── Main dispatch function ────────────────────────────────────────────────
 
 def _resolve_call_axes(tool_name: str, entry: dict | None,
-                       parameters: dict) -> tuple[dict, dict | None, dict | None]:
+                       parameters: dict,
+                       prepared_command: PreparedCommand | None = None,
+                       ) -> tuple[dict, dict | None, dict | None]:
     """Resolve the capability axes for THIS call.
 
     Returns (axes, classification, shell_profile). Order of resolution:
@@ -516,18 +526,63 @@ def _resolve_call_axes(tool_name: str, entry: dict | None,
             axes.update(tool_events.FAIL_CLOSED)
 
     if tool_name == "bash_execute":
-        cmd = parameters.get("command", "")
-        classification = classify_command(cmd)
-        # resolve_shell_profile returns ABSOLUTE target paths, resolved against
-        # the effective cwd (it tracks in-command cd/pushd/popd), so a
-        # 'cd ~/.aws && cat config' gates config as ~/.aws/config.
+        if prepared_command is None:
+            # Keep the direct inspection helper compatible for legacy callers
+            # that invoke ``_resolve_call_axes`` themselves.  The production
+            # dispatcher prepares once before reaching this function and
+            # passes that same object through, so this branch cannot create a
+            # second parse on the real execution path.
+            try:
+                prepared_command = prepare_command(
+                    str(parameters.get("command", "")),
+                    cwd=parameters.get("cwd") or WORKSPACE,
+                )
+            except CommandPreparationError as exc:
+                # Legacy inspection callers expect a classification object
+                # even when the command is refused before preparation.  The
+                # real dispatch path rejects this same error before entering
+                # the resolver; this compatibility branch has no execution
+                # authority and never reaches a handler.
+                command_text = str(parameters.get("command", ""))
+                lower = command_text.casefold()
+                protected_hint = (
+                    "mindspec" in lower
+                    and (
+                        "self-spec" in lower
+                        or "self-spe[cd]" in lower
+                        or "mindspec/*.md" in lower
+                        or "mindspec/{default,self-spec}" in lower
+                        or "mindspec/**/self-spec" in lower
+                        or "{mindspec,personas}" in lower
+                    )
+                ) or "self-spec" in lower or (
+                    "/ora/*/" in lower
+                    or "/ora/{" in lower
+                    or ("/ora" in lower and any(
+                        lower.lstrip().startswith(prefix)
+                        for prefix in ("grep ", "rg ", "find ")
+                    ))
+                )
+                axes.update(tool_events.FAIL_CLOSED)
+                shell_profile = resolve_shell_profile(
+                    command_text, cwd=parameters.get("cwd") or WORKSPACE,
+                )
+                classification = {
+                    "level": "blocked" if protected_hint else "rejected",
+                    "reason": (
+                        "archived MindSpec self-spec is not model-readable"
+                        if protected_hint else str(exc)
+                    ),
+                }
+                return axes, classification, shell_profile
+        classification = classify_command(prepared_command)
         _cwd = parameters.get("cwd") or WORKSPACE
-        shell_profile = resolve_shell_profile(cmd, cwd=_cwd)
+        shell_profile = prepared_command.profile()
         axes["mutability"] = shell_profile["mutability"]
         axes["sensitivity"] = shell_profile["sensitivity"]
         axes["egress"] = shell_profile["egress"]
-        # The shell interior is opaque (shell=True subprocess) — Ora observes
-        # the command, not what it does. Never in_harness.
+        # There is no shell interior: exact argv and executable identity are
+        # bound, but the invoked program remains a boundary-observed process.
         axes["enforcement"] = "boundary_only"
         if shell_profile.get("unknown"):
             axes["unknown"] = True
@@ -634,6 +689,7 @@ def dispatch(tool_name: str, parameters: dict,
         return "[Tools unavailable — import failed at startup]"
 
     start = time.time()
+    parameters = dict(parameters or {})
     is_mcp = tool_name.startswith("mcp_")
     entry = TOOL_REGISTRY.get(tool_name)
 
@@ -647,6 +703,49 @@ def dispatch(tool_name: str, parameters: dict,
         })
         return f"[Unknown tool: {tool_name}]"
 
+    # Structural command and destination refusal belongs before the generic
+    # gate, one-shot-token consumption, hooks, handler, or any effect.
+    prepared_command = None
+    if tool_name == "bash_execute":
+        try:
+            prepared_command = prepare_command(
+                str(parameters.get("command") or ""),
+                cwd=parameters.get("cwd") or WORKSPACE,
+            )
+        except CommandPreparationError as exc:
+            tool_events.record({
+                "event": "gate", "action": "bash_execute", "category": "execute",
+                **tool_events.FAIL_CLOSED,
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "invalid command structure"},
+                "enforcement_model": "in_harness",
+            })
+            return f"[SYSTEM PROTECTION — {exc}]"
+    elif tool_name == "web_fetch":
+        try:
+            try:
+                import network_policy as _network_policy
+            except ImportError:  # pragma: no cover
+                from orchestrator import network_policy as _network_policy
+            parameters["url"] = _network_policy.validate_public_url(
+                str(parameters.get("url") or ""),
+            ).url
+        except _network_policy.NetworkPolicyError as exc:
+            refusal_event = {
+                "event": "gate", "action": "web_fetch", "category": "read",
+                "mutability": "read", "sensitivity": "public", "egress": "external",
+                "gate": {"decision": "blocked", "why": str(exc)},
+                "exit": {"ok": False, "reason": "invalid network destination"},
+                "enforcement_model": "in_harness",
+            }
+            refusal_event["destination_classification"] = "refused-non-public"
+            refusal_event["third_party_forwarding"] = {
+                "provider": "jina-reader", "forwarded": False,
+                "reason": "invalid-destination",
+            }
+            tool_events.record(refusal_event)
+            return f"[SYSTEM PROTECTION — {exc}]"
+
     # Consecutive call check (includes MCP tools now)
     warning = _check_consecutive(tool_name)
     if warning and _consecutive_count >= 8:
@@ -656,7 +755,11 @@ def dispatch(tool_name: str, parameters: dict,
         return warning
 
     axes, classification, shell_profile = _resolve_call_axes(
-        tool_name, entry, parameters)
+        tool_name, entry, parameters, prepared_command)
+
+    gate_parameters = dict(parameters)
+    if prepared_command is not None:
+        gate_parameters["_prepared_command"] = prepared_command.binding()
 
     # G1.22A: classification at the same pre-effect boundary as the existing
     # execution gate.  The generic capability axes cannot express absolute
@@ -664,6 +767,7 @@ def dispatch(tool_name: str, parameters: dict,
     # write from an ordinary reversible local write.
     protection_policy = system_protection.classify_tool_call(
         tool_name, parameters, axes, shell_profile=shell_profile,
+        prepared_command=prepared_command,
     )
     if protection_policy.outcome == "deny":
         duration = int((time.time() - start) * 1000)
@@ -695,9 +799,13 @@ def dispatch(tool_name: str, parameters: dict,
             review_request, review_digest = (
                 system_protection.prepare_protection_request(
                     protection_policy,
-                    params_digest=system_protection.params_digest(parameters),
+                    params_digest=system_protection.params_digest(gate_parameters),
                     pre_state=protection_pre_state,
                     surface="tool_dispatcher",
+                    command_binding=(
+                        prepared_command.binding()
+                        if prepared_command is not None else None
+                    ),
                 )
             )
             protection_approval_binding = {
@@ -750,12 +858,21 @@ def dispatch(tool_name: str, parameters: dict,
             resp = input("   Approve this action once? (y/n): ").strip().lower()
             return resp in ("y", "yes")
 
-    description = parameters.get("command") or \
+    description = (prepared_command.audit_command if prepared_command else None) or \
+        parameters.get("command") or \
         parameters.get("path", parameters.get("file_path")) or \
         parameters.get("url") or parameters.get("query") or \
         parameters.get("service", "")
+    # Recheck before the generic gate can consume a one-shot approval.  The
+    # executor repeats this immediately before spawn on the SAME object.
+    if prepared_command is not None:
+        try:
+            revalidate_prepared_command(prepared_command)
+        except CommandPreparationError as exc:
+            return f"[SYSTEM PROTECTION — {exc}]"
+
     decision = tool_events.gate(
-        tool_name, gate_axes, params=parameters,
+        tool_name, gate_axes, params=gate_parameters,
         description=str(description or "")[:200],
         model_facing=True, interactive_approver=interactive,
         queue_extra=queue_extra,
@@ -777,11 +894,15 @@ def dispatch(tool_name: str, parameters: dict,
                 approval_id=decision.approval_id,
                 approval_action=tool_name,
                 approval_args_hash=tool_events.normalize_args_hash(
-                    tool_name, parameters,
+                    tool_name, gate_parameters,
                 ),
-                params_digest=system_protection.params_digest(parameters),
+                params_digest=system_protection.params_digest(gate_parameters),
                 pre_state=protection_pre_state,
                 surface="tool_dispatcher",
+                command_binding=(
+                    prepared_command.binding()
+                    if prepared_command is not None else None
+                ),
             )
         except system_protection.SystemProtectionError as exc:
             duration = int((time.time() - start) * 1000)
@@ -836,6 +957,7 @@ def dispatch(tool_name: str, parameters: dict,
     fire_hooks("pre_tool", {"tool_name": tool_name, "parameters": parameters})
 
     # Execute
+    result = None
     try:
         effect_context = (
             system_protection.protected_effect(protection_execution)
@@ -855,6 +977,8 @@ def dispatch(tool_name: str, parameters: dict,
                 # same-thread exact — the double-record kill, judge OQ-5).
                 with tool_events.suppress_library_recording():
                     result = entry["handler"](parameters)
+            elif tool_name == "bash_execute":
+                result = _wrap_bash_execute(parameters, prepared_command)
             else:
                 result = entry["handler"](parameters)
         if isinstance(result, (dict, list)):
@@ -906,6 +1030,8 @@ def dispatch(tool_name: str, parameters: dict,
         if tool_name == "bash_execute" and isinstance(result, dict):
             error = error or (result.get("returncode", 0) != 0) or \
                 bool(result.get("timed_out"))
+        if tool_name == "web_fetch" and isinstance(result, dict):
+            error = error or bool(result.get("error"))
         reads = None
         if tool_name == "file_read":
             p = parameters.get("path", "")
@@ -947,11 +1073,21 @@ def dispatch(tool_name: str, parameters: dict,
         # reads[].what sanitization above — args_redacted was the second
         # unsanitized path for a signed URL).
         _args_view = {k: str(v)[:200] for k, v in (parameters or {}).items()}
+        if tool_name == "bash_execute" and prepared_command is not None:
+            _args_view["command"] = prepared_command.audit_command[:200]
+            _args_view["prepared"] = {
+                "argv_sha256": hashlib.sha256(
+                    json.dumps(list(prepared_command.argv)).encode("utf-8")
+                ).hexdigest(),
+                "cwd": prepared_command.cwd,
+                "env_digest": prepared_command.env_digest,
+                "executable": prepared_command.executable.path,
+            }
         if tool_name in ("web_fetch", "web_search"):
             _args_view = {k: (tool_events.sanitize_url(v)[:200]
                               if k in ("url", "query") else v)
                           for k, v in _args_view.items()}
-        tool_events.record({
+        event_record = {
             "event": event_kind, "action": action,
             "category": axes.get("category", "execute"),
             "mutability": axes["mutability"],
@@ -966,7 +1102,19 @@ def dispatch(tool_name: str, parameters: dict,
             "gate": {"decision": decision.decision, "why": decision.why,
                      "approval_id": decision.approval_id},
             "enforcement_model": axes.get("enforcement", "in_harness"),
-        })
+        }
+        if tool_name == "web_fetch" and isinstance(result, dict):
+            event_record["destination_classification"] = str(
+                result.get("destination_classification") or "unknown",
+            )[:80]
+            forwarding = result.get("third_party_forwarding")
+            if isinstance(forwarding, dict):
+                event_record["third_party_forwarding"] = {
+                    "provider": str(forwarding.get("provider") or "")[:80],
+                    "forwarded": bool(forwarding.get("forwarded")),
+                    "reason": str(forwarding.get("reason") or "")[:120],
+                }
+        tool_events.record(event_record)
     except Exception:
         pass  # recorder is best-effort; its own failure path sets health
 

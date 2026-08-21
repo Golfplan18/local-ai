@@ -24,8 +24,11 @@ import json
 import os
 import sys
 import time
-import urllib.request
 from pathlib import Path
+
+ORA_ROOT = Path(os.environ.get("ORA_HOME") or Path.home() / "ora")
+sys.path.insert(0, str(ORA_ROOT / "orchestrator"))
+import network_policy  # noqa: E402
 
 ROUTING_CONFIG = Path.home() / "ora" / "config" / "routing-config.json"
 ENV_FILE       = Path.home() / ".config" / "ora-server.env"
@@ -62,12 +65,16 @@ def load_api_key() -> str:
 
 
 def fetch_models(api_key: str) -> list[dict]:
-    req = urllib.request.Request(API_URL, headers={
-        "Authorization": f"Bearer {api_key}",
-        "User-Agent": "ora-cost-audit/1.0",
-    })
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
+    raw, _destination = network_policy.openrouter_request_bytes(
+        API_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "ora-cost-audit/1.0",
+        },
+        timeout=20,
+        max_bytes=32 * 1024 * 1024,
+    )
+    body = json.loads(raw.decode("utf-8"))
     return body.get("data", [])
 
 
@@ -114,7 +121,8 @@ def main() -> int:
     try:
         catalog = fetch_models(api_key)
     except Exception as e:
-        log(f"FATAL: catalog fetch failed: {type(e).__name__}: {e}")
+        detail = network_policy.redact_sensitive_text(e, secrets=(api_key,))
+        log(f"FATAL: catalog fetch failed: {type(e).__name__}: {detail}")
         return 2
 
     by_id = {m.get("id"): m for m in catalog if m.get("id")}

@@ -76,6 +76,23 @@ class OperationalIdentityTests(unittest.TestCase):
         for value in prohibited:
             self.assertNotIn(value, rows[0])
 
+    def test_current_cost_audit_origin_locks_its_openrouter_bearer(self):
+        script = CURRENT / "cloud" / "scripts" / "ora-audit-models.py"
+        module = load_script(script, "g1_10_current_cost_audit")
+        payload = json.dumps({"data": [{"id": "vendor/model"}]}).encode()
+        with mock.patch.object(
+            module.network_policy,
+            "openrouter_request_bytes",
+            return_value=(payload, mock.sentinel.destination),
+        ) as request:
+            result = module.fetch_models("secret")
+        self.assertEqual(result, [{"id": "vendor/model"}])
+        self.assertEqual(request.call_args.args[0], module.API_URL)
+        self.assertEqual(
+            request.call_args.kwargs["headers"]["Authorization"],
+            "Bearer secret",
+        )
+
     def test_macos_cutover_retires_exact_five_and_preserves_server(self):
         script = (CURRENT / "macos" / "install-macos-cutover.sh").read_text()
         retired = {

@@ -696,7 +696,9 @@ def _capped_what(what) -> str:
 
 def record_web_reads(action: str, reads: list,
                      *, args_redacted: dict | None = None,
-                     exit_ok: bool = True, exit_reason: str = "") -> None:
+                     exit_ok: bool = True, exit_reason: str = "",
+                     destination_classification: str | None = None,
+                     third_party_forwarding: dict | None = None) -> None:
     """Record library-boundary web reads as one or more ``action`` events,
     BYTE-budgeted so no emitted line ever approaches MAX_LINE_BYTES (whose
     truncation keep-set drops ``reads[]`` wholesale): reads accumulate while
@@ -721,6 +723,16 @@ def record_web_reads(action: str, reads: list,
                          "reason": str(exit_reason)[:120] if exit_reason else ""},
                 "gate": {"decision": "allowed", "why": "library read"},
                 "enforcement_model": axes.get("enforcement", "in_harness")}
+        if destination_classification:
+            base["destination_classification"] = str(
+                destination_classification,
+            )[:80]
+        if isinstance(third_party_forwarding, dict):
+            base["third_party_forwarding"] = {
+                "provider": str(third_party_forwarding.get("provider") or "")[:80],
+                "forwarded": bool(third_party_forwarding.get("forwarded")),
+                "reason": str(third_party_forwarding.get("reason") or "")[:120],
+            }
         if args_redacted:
             base["args_redacted"] = {k: str(v)[:200]
                                      for k, v in args_redacted.items()}
@@ -808,7 +820,8 @@ def record(event: dict) -> None:
                      "correlation", "conversation_id", "truncated",
                      "telemetry_incomplete", "risk_tier", "divergence",
                      "source_read_suspected", "output_type",
-                     "consistency") if k in event}
+                     "consistency", "destination_classification",
+                     "third_party_forwarding") if k in event}
             encoded = json.dumps(keep, default=str).encode("utf-8",
                                                            errors="replace")
         path = _sink_path(ctx)
