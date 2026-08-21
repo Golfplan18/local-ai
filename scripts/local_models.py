@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Local-model selection and download (install Chunk 8).
 
-Preserves the load-bearing logic from installer/phase2/layer2-model-selection.md:
+Preserves the load-bearing logic from the retired natural-language layer set
+(installer/phase2/layer2-model-selection.md, deleted; see git history):
   - RAM-tier scheme with AVAILABLE = total_RAM × 0.75
   - Dense-preference rule (MoE rejected at Tier 3+ for reasoning slots)
   - RAM estimation by parameter count × quantization-bits/8 + 2GB overhead
@@ -44,7 +45,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = REPO_ROOT / "models"
 LOCAL_MODELS_STATE = REPO_ROOT / "config" / "local-models.json"
 
-# RAM-tier scheme — preserved from installer/phase2/layer2-model-selection.md.
+# RAM-tier scheme — preserved from the retired layer set (git history holds
+# installer/phase2/layer2-model-selection.md).
 # AVAILABLE_MODEL_RAM = total_RAM × 0.75 (25% OS overhead).
 USABLE_RAM_FRACTION = 0.75
 

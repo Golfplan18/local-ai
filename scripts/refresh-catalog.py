@@ -413,7 +413,7 @@ def append_media_entries_from_registry(catalog: list[dict], registry: dict) -> i
       - ``size_bucket`` stays None (sizing doesn't apply to image models)
       - ``image_pricing`` (new 2026-05-22) — when AA published a per-1k
         images price, propagate it. Lets auto-populate differentiate
-        Premium / Optimum / Budget / Free picks for image-gen slots.
+        Premium / Budget / Speed / Free picks for image-gen slots.
       - ``is_free`` set from ``image_pricing == 0`` when known.
       - ``openrouter_pricing`` stays all-None (chat-side pricing
         doesn't apply to image models).
