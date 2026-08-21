@@ -484,6 +484,19 @@ class TestUtilityEffects(PreparedCommandCase):
         sed = self.prepare(f"sed 's/a/b/w {out}' {target}")
         self.assertIn(str(out.resolve()), sed.write_paths)
 
+    def test_unbound_effect_operands_fail_closed(self):
+        for command in (
+            "git commit -F /etc/hosts",
+            "rg --files --ignore-file /etc/hosts /private/tmp",
+            "sed '1r /etc/hosts' input.txt",
+            "sed '1,3r /etc/hosts' input.txt",
+            "sed '1~2r/etc/hosts' input.txt",
+            "sed '1R /etc/hosts' input.txt",
+            "tar -xPf archive -C target",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(self.prepare(command).unknown)
+
     def test_rg_files_binds_its_recursive_search_roots(self):
         tree = self.root / "tree"
         tree.mkdir()
