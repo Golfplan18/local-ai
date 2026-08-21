@@ -1,0 +1,29 @@
+# Line endings for platform-specific scripts.
+#
+# Only the file types below are pinned. Everything else keeps Git's default
+# handling; this is deliberately not a repository-wide normalization.
+#
+# cmd.exe walks a batch file by byte offset rather than by line. With LF-only
+# endings a `goto` can resume mid-line, so a label lookup silently lands in the
+# wrong place instead of failing cleanly. start.bat and stop.bat both use
+# labels, so they have to reach Windows with CRLF whatever the contributor's
+# platform or core.autocrlf setting. uninstall/uninstall.ps1 is read by
+# PowerShell on the same machines and is held to the same rule.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# POSIX shells treat a trailing CR as part of the shebang or the command, so a
+# CRLF checkout breaks these outright ("bad interpreter: /bin/bash^M"). Pin
+# them to LF so a Windows clone with core.autocrlf=true cannot convert them.
+*.sh text eol=lf
+
+# Same hazard, no extension to match on. These five carry shebangs and are run
+# directly, but `*.sh` cannot see them, so a default Git-for-Windows clone
+# (core.autocrlf=true) converts them and they die with `bad interpreter: ...^M`.
+# A new extensionless script under scripts/ needs a line here; the launcher
+# test fails until it has one.
+scripts/check-capability-sync text eol=lf
+scripts/find-atomics text eol=lf
+scripts/ora-cost-summary text eol=lf
+scripts/ora-test text eol=lf
+scripts/vet-prompt text eol=lf

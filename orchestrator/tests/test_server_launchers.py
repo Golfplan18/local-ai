@@ -26,7 +26,11 @@ APP_LAUNCHER = ROOT / "installer" / "macos" / "ora-app-launcher.sh"
 SWAP_ICON = ROOT / "swap-icon.sh"
 SERVICE_MANAGER = ROOT / "scripts" / "ora-launchd.sh"
 SERVER = ROOT / "server" / "app.py"
+START_BAT = ROOT / "start.bat"
+STOP_BAT = ROOT / "stop.bat"
+INSTALLER = ROOT / "scripts" / "install.py"
 GITIGNORE = ROOT / ".gitignore"
+GITATTRIBUTES = ROOT / ".gitattributes"
 LAUNCH_EXAMPLE = ROOT / ".claude" / "launch.json.example"
 
 RUNTIME_FLAGS = {
@@ -39,6 +43,177 @@ RUNTIME_FLAGS = {
     "ORA_OR_STATS": "1",
     "ORA_EXECUTION_LOOP": "1",
 }
+
+
+def _bat_source(path: Path) -> str:
+    """Read a batch file with its real line endings left in place.
+
+    `read_text` opens in universal-newline mode, which turns every CRLF into a
+    bare LF before any assertion below ever sees it. That would hide the one
+    thing the batch files must get right — cmd.exe needs CRLF — and it would
+    let the byte-identity check pass on two blocks whose line endings differ.
+    """
+    return path.read_bytes().decode("utf-8")
+
+
+def _bat_shared_block(source: str, name: str) -> str | None:
+    """Return the body of a `REM ---- shared: <name> ----` block, or None.
+
+    start.bat and stop.bat carry these blocks byte-identical so the two scripts
+    cannot drift into disagreeing about which process belongs to this checkout.
+    The markers tolerate either line ending, but the body is returned exactly as
+    it appears on disk, so comparing two bodies compares their endings too.
+    """
+    match = re.search(
+        rf"^REM ---- shared: {re.escape(name)} ----\r?\n"
+        rf"(.*?)"
+        rf"^REM ---- end shared: {re.escape(name)} ----\r?$",
+        source,
+        re.DOTALL | re.MULTILINE,
+    )
+    return match.group(1) if match else None
+
+
+def _bat_server_files(source: str) -> set[str]:
+    """Every `server\\<name>.py` a batch launcher names, as repo-relative paths."""
+    return {
+        found.replace("\\", "/")
+        for found in re.findall(r"\\(server\\[A-Za-z0-9_.-]+\.py)", source)
+    }
+
+
+WINDOWS_TARGET = "C:\\ora\\server\\app.py"
+WINDOWS_TARGET_WITH_SPACE = "C:\\Users\\Jane Doe\\ora\\server\\app.py"
+
+# Command lines a Windows box can plausibly be running, and whether stop.bat is
+# entitled to kill each one. Only a process the launcher itself started is.
+WINDOWS_STOP_CASES = (
+    (f"python -m py_compile {WINDOWS_TARGET}", False),
+    (f"python -m pytest {WINDOWS_TARGET}", False),
+    (f"python C:\\tools\\fmt.py {WINDOWS_TARGET}", False),
+    (f"notepad {WINDOWS_TARGET}", False),
+    (f"python {WINDOWS_TARGET}.bak --oversight", False),
+    (WINDOWS_TARGET, False),
+    (f"python {WINDOWS_TARGET}", True),
+    (f"C:\\ora\\.venv\\Scripts\\python.exe {WINDOWS_TARGET}", True),
+    (f"C:\\Python311\\python3.11.exe -u {WINDOWS_TARGET} --oversight --no-open", True),
+)
+
+# The same nine shapes as a POSIX `ps` line. Windows command lines quote an
+# argument containing a space; `ps` output does not, so the shape "a path with a
+# space in it" is the quoted case on one side and the bare case on the other.
+POSIX_TARGET = "/ora/server/app.py"
+POSIX_STOP_CASES = (
+    (f"python -m py_compile {POSIX_TARGET}", POSIX_TARGET),
+    (f"python -m pytest {POSIX_TARGET}", POSIX_TARGET),
+    (f"python /tools/fmt.py {POSIX_TARGET}", POSIX_TARGET),
+    (f"vim {POSIX_TARGET}", POSIX_TARGET),
+    (f"python {POSIX_TARGET}.bak --oversight", POSIX_TARGET),
+    (POSIX_TARGET, POSIX_TARGET),
+    (f"python {POSIX_TARGET}", POSIX_TARGET),
+    (f"/ora/.venv/bin/python3 {POSIX_TARGET}", POSIX_TARGET),
+    (f"/usr/bin/python3.11 -u {POSIX_TARGET} --oversight --no-open", POSIX_TARGET),
+)
+
+# Quoting is Windows-only, so these have no `ps` counterpart to compare against.
+WINDOWS_QUOTED_STOP_CASES = (
+    (f'"C:\\Python311\\python.exe" "{WINDOWS_TARGET_WITH_SPACE}" --oversight', True),
+    (f'python -m py_compile "{WINDOWS_TARGET_WITH_SPACE}"', False),
+    (f'python "C:\\tools\\fmt.py" "{WINDOWS_TARGET_WITH_SPACE}"', False),
+)
+
+
+def _windows_stop_matches(block: str, command_line: str, target: str) -> bool:
+    """Would the shipped PowerShell predicate kill this process?
+
+    Windows is not available here and neither is PowerShell, so this is a hand
+    translation of the one-liner in the `ora-stop-owned-server` block, statement
+    for statement. The interpreter pattern is read out of the block rather than
+    repeated, so the assertion cannot drift away from what actually ships; the
+    test above pins the surrounding statements textually for the same reason.
+    """
+    interpreter = re.search(r"-notmatch '([^']+)'", block)
+    assert interpreter, "the stop block no longer tests the preceding argument"
+    target = target.lower()
+    line = command_line.lower()
+    position = line.find(target)                        # IndexOf($target, Ordinal)
+    if position < 0:
+        return False
+    before = line[:position]                            # Substring(0, $pos)
+    after = line[position + len(target):]               # Substring($pos + Length)
+    if before.endswith('"') != after.startswith('"'):   # quotes have to pair
+        return False
+    if after.startswith('"'):
+        before = before[:-1]
+        after = after[1:]
+    if len(after) > 0 and not after.startswith(" "):    # the path ends its argument
+        return False
+    parts = before.replace('"', "").rstrip().replace("/", "\\").split("\\")
+    return re.match(interpreter.group(1), parts[-1]) is not None
+
+
+def _posix_stop_awk_program() -> str:
+    """The awk program stop.sh really runs, lifted out of the script."""
+    match = re.search(r"awk '(.*?)'\)\"", STOP.read_text(encoding="utf-8"), re.DOTALL)
+    assert match, "stop.sh no longer selects processes with awk"
+    return match.group(1)
+
+
+def _posix_stop_matches(program: str, command_line: str, target: str) -> bool:
+    completed = subprocess.run(
+        ["awk", program],
+        input=f"4242 {command_line}\n",
+        text=True,
+        capture_output=True,
+        env={"ORA_STOP_SERVER_TARGET": target, "PATH": "/usr/bin:/bin"},
+        check=False,
+    )
+    assert not completed.stderr.strip(), completed.stderr
+    return completed.stdout.split() == ["4242"]
+
+
+def _bat_stop_outcome(source: str, code: int) -> dict:
+    """Walk stop.bat's `if "!STOP_RC!"==...` chain the way cmd.exe would.
+
+    Returns what the operator is told, and what the script exits with, for one
+    exit code out of the shared stop block.
+    """
+    lines = [line.rstrip("\r") for line in source.split("\n")]
+    start = next(
+        index for index, line in enumerate(lines)
+        if line.startswith('if "!STOP_RC!"=="')
+    )
+    branches, guard, body = [], lines[start], []
+    for line in lines[start + 1:]:
+        stripped = line.strip()
+        if stripped.startswith(") else"):
+            branches.append((guard, body))
+            guard, body = stripped, []
+        elif stripped == ")":
+            branches.append((guard, body))
+            break
+        else:
+            body.append(stripped)
+    else:  # pragma: no cover - the chain is always closed
+        raise AssertionError("stop.bat's STOP_RC chain is unterminated")
+
+    tail = lines[lines.index(")", start):]
+    fallthrough = next(
+        (line for line in tail if line.startswith("exit /b")), "exit /b 0"
+    )
+    for guard, body in branches:
+        match = re.search(r'"!STOP_RC!"=="(\d+)"', guard)
+        if match is not None and int(match.group(1)) != code:
+            continue
+        if match is None and not guard.startswith(") else ("):
+            continue
+        echoed = [
+            line[len("echo "):] for line in body if line.startswith("echo ")
+        ]
+        exits = [line for line in body if line.startswith("exit /b")]
+        chosen = exits[0] if exits else fallthrough
+        return {"echo": echoed, "exit": int(chosen.split()[-1])}
+    raise AssertionError(f"no branch of stop.bat handles exit code {code}")
 
 
 def _load_server_port_contract():
@@ -285,7 +460,7 @@ class TestServerLaunchers(unittest.TestCase):
 
     def test_interactive_launchers_poll_exact_explicit_port(self):
         posix = START.read_text(encoding="utf-8")
-        windows = (ROOT / "start.bat").read_text(encoding="utf-8")
+        windows = _bat_source(START_BAT)
     
         assert 'ports=( "$PORT" )' in posix
         assert '"${PORT+x}" == "x" && "$launchd_state" != "none"' in posix
@@ -295,7 +470,7 @@ class TestServerLaunchers(unittest.TestCase):
         assert "s.bind(('localhost',int(os.environ['PORT'])))" in windows
 
     def test_windows_launcher_targets_its_own_or_explicit_checkout(self):
-        source = (ROOT / "start.bat").read_text(encoding="utf-8")
+        source = _bat_source(START_BAT)
     
         assert "if defined ORA_HOME" in source
         assert 'set "WORKSPACE=!ORA_HOME!"' in source
@@ -304,9 +479,10 @@ class TestServerLaunchers(unittest.TestCase):
         assert "%USERPROFILE%\\ora" not in source
 
     def test_windows_health_probe_rejects_a_different_checkout(self):
-        source = (ROOT / "start.bat").read_text(encoding="utf-8")
+        source = _bat_source(START_BAT)
         match = re.search(
-            r"REM ORA_HEALTH_IDENTITY_CHECK[^\n]*\n%PYTHON% -c \"([^\n]+)\" >nul",
+            r"REM ORA_HEALTH_IDENTITY_CHECK[^\r\n]*\r?\n"
+            r"%PYTHON% -c \"([^\r\n]+)\" >nul",
             source,
         )
         assert match, "health identity command is missing from start.bat"
@@ -352,6 +528,297 @@ class TestServerLaunchers(unittest.TestCase):
     
         assert wrong.returncode == 1
         assert correct.returncode == 0
+
+    def test_windows_launchers_only_name_server_files_that_exist(self):
+        """start.bat launched `server\\server.py`, which has never existed.
+
+        The suite passed anyway, because nothing checked the launch target
+        against the filesystem. Every server file either batch script names —
+        the one it launches and the one its failure message tells the user to
+        run by hand — has to be a real file in this checkout.
+        """
+        start_source = _bat_source(START_BAT)
+        stop_source = _bat_source(STOP_BAT)
+
+        named = _bat_server_files(start_source) | _bat_server_files(stop_source)
+        assert named, "the Windows launchers name no server file at all"
+        missing = sorted(rel for rel in named if not (ROOT / rel).is_file())
+        assert not missing, f"Windows launchers point at missing files: {missing}"
+        assert named == {"server/app.py"}
+        assert "server.py" not in start_source
+        assert "server.py" not in stop_source
+
+    def test_windows_launch_and_recovery_advice_name_one_command(self):
+        source = _bat_source(START_BAT)
+        lines = source.splitlines()
+
+        launch = [line for line in lines if "subprocess.Popen" in line]
+        assert len(launch) == 1, "start.bat should spawn the server exactly once"
+        assert "os.environ['ORA_SERVER_TARGET']" in launch[0]
+
+        recovery = [
+            line for line in lines if line.startswith("echo ERROR: Server did not start")
+        ]
+        assert len(recovery) == 1
+        # The advice must reproduce the launch, not a second guess at the path.
+        assert "%PYTHON%" in recovery[0]
+        assert "!ORA_SERVER_TARGET!" in recovery[0]
+
+    def test_windows_start_and_stop_share_one_process_identity_mechanism(self):
+        """Both scripts must find the server the same way, or stop is a lottery.
+
+        They used to run `tasklist /v | findstr server.py`, which searches the
+        WINDOW TITLE — the launcher's own window is titled "Ora Server", so the
+        match was against the wrong field entirely.
+        """
+        start_source = _bat_source(START_BAT)
+        stop_source = _bat_source(STOP_BAT)
+
+        for name in ("ora-process-identity", "ora-stop-owned-server"):
+            in_start = _bat_shared_block(start_source, name)
+            in_stop = _bat_shared_block(stop_source, name)
+            assert in_start, f"start.bat is missing the '{name}' block"
+            assert in_stop, f"stop.bat is missing the '{name}' block"
+            assert in_start == in_stop, f"'{name}' has drifted between the two"
+
+        identity = _bat_shared_block(start_source, "ora-process-identity")
+        assert 'set "ORA_SERVER_TARGET=%%~fI"' in identity
+        assert 'set "ORA_SERVER_PID_FILE=%%~fI"' in identity
+
+        # start.bat records the PID it launched; stop.bat consumes that file.
+        assert "write_text(str(child.pid)" in start_source
+        assert "ORA_SERVER_PID_FILE" in stop_source
+        assert "call :stop_owned_server" in start_source
+        assert "call :stop_owned_server" in stop_source
+
+        # Both scripts resolve the same checkout, so neither can reach into
+        # another one, and neither identifies anything by window title.
+        for source in (start_source, stop_source):
+            assert 'set "WORKSPACE=!ORA_HOME!"' in source
+            assert 'set "WORKSPACE=%~dp0"' in source
+            assert "tasklist" not in source
+            assert "findstr" not in source
+            assert "taskkill" not in source
+
+    def test_windows_stop_reverifies_a_recorded_pid_before_killing_it(self):
+        block = _bat_shared_block(
+            _bat_source(STOP_BAT), "ora-stop-owned-server"
+        )
+        assert block
+
+        assert "Get-CimInstance Win32_Process" in block
+        # With a PID file, only that PID is a candidate...
+        assert "$proc.ProcessId -ne $owned" in block
+        # ...and it is still killed only if it is a Python interpreter running
+        # this checkout's exact server file, so a PID Windows has recycled onto
+        # something else survives.
+        assert "$name.ToLower().StartsWith('python')" in block
+        assert "$cl.IndexOf($target, $ord)" in block
+        assert "Stop-Process -Id $proc.ProcessId -Force" in block
+        assert "Stop-Process -Name" not in block
+
+    def test_windows_stop_matches_only_the_argument_after_an_interpreter(self):
+        """A path anywhere in a command line is not evidence the launcher ran it.
+
+        The first version of this block accepted the server path in ANY argument
+        position, so `python -m pytest <server>` and `python fmt.py <server>` --
+        neither of them started by start.bat -- were force-killed. The rule is
+        positional, as it already was in stop.sh: whatever sits immediately
+        before the path has to be a Python interpreter and optional -flags, and
+        the path has to end its own argument.
+        """
+        block = _bat_shared_block(_bat_source(STOP_BAT), "ora-stop-owned-server")
+        assert block
+
+        # The position-blind matcher must not come back.
+        assert "$cl.Contains($target + ' ')" not in block
+        assert "$cl.Contains($target + [char]34)" not in block
+        assert "$cl.EndsWith($target)" not in block
+
+        # ...and the positional one must be doing the work.
+        for fragment in (
+            "$pos = $cl.IndexOf($target, $ord)",
+            "$before = $cl.Substring(0, $pos)",
+            "$after = $cl.Substring($pos + $target.Length)",
+            "$parts = $before.Replace($q, '').TrimEnd().Split([char[]]('\\', '/'))",
+            "$exe = $parts[$parts.Length - 1]",
+        ):
+            assert fragment in block, f"the positional rule lost: {fragment}"
+
+        for command_line, expected in WINDOWS_STOP_CASES:
+            actual = _windows_stop_matches(block, command_line, WINDOWS_TARGET)
+            assert actual == expected, (
+                f"{command_line!r} should {'match' if expected else 'not match'}"
+            )
+
+        # Windows quotes any argument with a space in it, so a checkout under
+        # C:\Users\Jane Doe still has to be stoppable -- without the quotes
+        # becoming a way back into the position-blind behaviour.
+        for command_line, expected in WINDOWS_QUOTED_STOP_CASES:
+            actual = _windows_stop_matches(
+                block, command_line, WINDOWS_TARGET_WITH_SPACE
+            )
+            assert actual == expected, (
+                f"{command_line!r} should {'match' if expected else 'not match'}"
+            )
+
+    def test_windows_and_posix_stop_agree_on_the_same_process_shapes(self):
+        """One rule, two implementations -- they have to reach the same verdict.
+
+        stop.sh's awk is the reference and is executed here for real. The
+        Windows side is a translation (no PowerShell on this platform), so the
+        value of this test is the comparison: every process shape either both
+        of them kill, or neither does.
+        """
+        block = _bat_shared_block(_bat_source(STOP_BAT), "ora-stop-owned-server")
+        assert block
+        program = _posix_stop_awk_program()
+
+        for index, (windows_line, _expected) in enumerate(WINDOWS_STOP_CASES):
+            posix_line, posix_target = POSIX_STOP_CASES[index]
+            windows = _windows_stop_matches(block, windows_line, WINDOWS_TARGET)
+            posix = _posix_stop_matches(program, posix_line, posix_target)
+            assert windows == posix, (
+                "the two stop paths disagree:\n"
+                f"  windows {'kills' if windows else 'spares'}: {windows_line}\n"
+                f"  posix   {'kills' if posix else 'spares'}: {posix_line}"
+            )
+
+    def test_windows_stop_counts_only_kills_that_actually_happened(self):
+        """`stop.bat` used to print "Server stopped." having killed nothing.
+
+        `Stop-Process -ErrorAction SilentlyContinue` swallows the access-denied
+        an elevated server produces, and the counter was incremented regardless.
+        """
+        block = _bat_shared_block(_bat_source(STOP_BAT), "ora-stop-owned-server")
+        assert block
+
+        assert "Stop-Process -Id $proc.ProcessId -Force -ErrorAction Stop" in block, (
+            "a kill that fails must raise, not be swallowed"
+        )
+        # The success counter is reachable only from the statement after the kill.
+        kill = "try { Stop-Process -Id $proc.ProcessId -Force -ErrorAction Stop; " \
+               "$stopped = $stopped + 1 } catch { $failed = $failed + 1 }"
+        assert kill in block
+        assert block.count("$stopped = $stopped + 1") == 1
+
+    def test_windows_stop_separates_a_broken_stop_from_an_idle_machine(self):
+        """A stop that could not run is not the same fact as nothing to stop.
+
+        With powershell.exe missing or blocked, cmd returns 9009 -- and the old
+        script read every non-zero code as "Server was not running.", which
+        reassures the operator that a server they cannot see is gone.
+        """
+        source = _bat_source(STOP_BAT)
+        block = _bat_shared_block(source, "ora-stop-owned-server")
+        assert block
+
+        # Distinct outcomes carry distinct codes, and none of them is bare 1 --
+        # PowerShell itself exits 1 when it dies of an unhandled error.
+        assert "$code = 3" in block and "$code = 0" in block
+        assert "$code = 2" in block and "$code = 4" in block
+
+        stopped = _bat_stop_outcome(source, 0)
+        assert stopped["exit"] == 0
+        assert any("Server stopped." in line for line in stopped["echo"])
+
+        idle = _bat_stop_outcome(source, 3)
+        assert idle["exit"] == 0
+        assert any("Server was not running." in line for line in idle["echo"])
+
+        for code in (2, 4, 9009, 1, 255):
+            outcome = _bat_stop_outcome(source, code)
+            assert outcome["exit"] == 1, f"exit code {code} must fail loudly"
+            assert any(line.startswith("ERROR:") for line in outcome["echo"]), (
+                f"exit code {code} produced no error message"
+            )
+            assert not any("was not running" in line for line in outcome["echo"]), (
+                f"exit code {code} still reports the machine as idle"
+            )
+        assert "powershell.exe" in " ".join(_bat_stop_outcome(source, 9009)["echo"])
+
+    def test_windows_launcher_states_the_installer_python_floor(self):
+        tree = ast.parse(INSTALLER.read_text(encoding="utf-8"), filename=str(INSTALLER))
+        floor = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "PREFLIGHT_MIN_PYTHON"
+                for target in node.targets
+            ):
+                floor = ast.literal_eval(node.value)
+        assert floor, "scripts/install.py no longer declares PREFLIGHT_MIN_PYTHON"
+
+        required = "{}.{}".format(*floor[:2])
+        source = _bat_source(START_BAT)
+        assert f"Python {required}+" in source
+        # No second, contradictory version claim anywhere in the launcher.
+        assert set(re.findall(r"Python (\d+\.\d+)\+", source)) == {required}
+
+    def test_each_launcher_ships_the_line_endings_its_interpreter_needs(self):
+        """Batch files reach Windows as CRLF; shell scripts stay LF.
+
+        cmd.exe walks a batch file by byte offset rather than by line, and with
+        LF-only endings it can resume mid-line after a `goto` — the label lookup
+        lands somewhere the author never wrote, and nothing reports an error.
+        Both batch files use labels, and neither had ever run on Windows, so
+        there was never any evidence LF worked there.
+
+        Bytes on disk are only half the guarantee. Without the .gitattributes
+        rule the next fresh clone, or a checkout on another platform, quietly
+        puts LF back — so this asserts the rule as well as the result.
+        """
+        for path in (START_BAT, STOP_BAT):
+            raw = path.read_bytes()
+            assert b"\n" in raw, f"{path.name} has no line endings to check"
+            bare_lf = raw.count(b"\n") - raw.count(b"\r\n")
+            assert bare_lf == 0, (
+                f"{path.name} must use CRLF throughout; found {bare_lf} bare LF endings"
+            )
+
+        # A trailing CR is part of the shebang or the command to a POSIX shell,
+        # so these break outright if a checkout ever converts them.
+        posix_scripts = sorted(ROOT.glob("*.sh")) + sorted((ROOT / "scripts").glob("*.sh"))
+        assert {START, STOP, SERVICE_MANAGER}.issubset(set(posix_scripts))
+        for path in posix_scripts:
+            assert b"\r" not in path.read_bytes(), (
+                f"{path.relative_to(ROOT)} carries CR bytes; POSIX shells choke on them"
+            )
+
+        rules = {
+            line.split()[0]: line.split()[1:]
+            for line in GITATTRIBUTES.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        assert rules.get("*.bat") == ["text", "eol=crlf"], (
+            ".gitattributes must pin *.bat to CRLF or a fresh clone reverts it"
+        )
+        assert rules.get("*.ps1") == ["text", "eol=crlf"]
+        assert rules.get("*.sh") == ["text", "eol=lf"], (
+            ".gitattributes must pin *.sh to LF; Git for Windows defaults "
+            "core.autocrlf=true and would otherwise convert them on clone"
+        )
+
+        # `*.sh` cannot see a script with no extension, and five of them under
+        # scripts/ carry shebangs. They were measured coming out CRLF in a
+        # default Git-for-Windows clone, which breaks them outright, so each
+        # needs a rule of its own. A new one added later fails here until it
+        # gets a line.
+        shebanged = sorted(
+            path for path in (ROOT / "scripts").iterdir()
+            if path.is_file()
+            and not path.suffix
+            and path.read_bytes()[:2] == b"#!"
+        )
+        assert shebanged, "no extensionless scripts found to check"
+        for path in shebanged:
+            relative = path.relative_to(ROOT).as_posix()
+            assert rules.get(relative) == ["text", "eol=lf"], (
+                f"{relative} has a shebang and no extension; .gitattributes must "
+                "pin it to LF or a Windows clone converts it to CRLF"
+            )
+            assert b"\r" not in path.read_bytes(), (
+                f"{relative} carries CR bytes; its shebang would not resolve"
+            )
 
     def test_interactive_start_rejects_one_shot_port_when_launchd_manages_ora(self):
         home = self.tmp_path / "home"

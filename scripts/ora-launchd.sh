@@ -136,7 +136,7 @@ is_loaded() {
 owned_server_pids() {
   # Match a Python interpreter whose next argv is the exact canonical server
   # path. A substring search can kill an editor, a tail/test process, or a
-  # similarly-prefixed backup merely because its command mentions server.py.
+  # similarly-prefixed backup merely because its command mentions that path.
   # Pass the target through the environment so the awk process itself never
   # carries the needle in its argv.
   local ORA_LAUNCHD_SERVER_TARGET="$ORA_HOME/server/app.py"

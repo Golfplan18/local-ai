@@ -51,7 +51,7 @@ fi
 find_ora_port() {
   local port payload reported_home python
   local ports=( {5000..5010} )
-  # A direct foreground/background launch inherits PORT and server.py treats it
+  # A direct foreground/background launch inherits PORT and the server treats it
   # as exact intent. Supervised launches with an ambient PORT are rejected below
   # because launchd cannot inherit a one-shot caller environment safely.
   if [[ "${PORT+x}" == "x" ]]; then
