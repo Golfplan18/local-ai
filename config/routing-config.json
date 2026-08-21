@@ -1,7 +1,7 @@
 {
   "_schema_version": 2,
   "_note": "Schema v2. As of Chunk 2d (2026-05-18) the pipelines block is retired and slot resolution flows through config/configurations/. See _schema_notes for the deprecation roadmap.",
-  "_migrated_from": "/Users/oracle/ora/config/endpoints.json",
+  "_migrated_from": "${ORA_HOME}/config/endpoints.json",
   "visual_synthesis": {
     "preferred": null,
     "fallback": [],
@@ -145,7 +145,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/mistral-medium-3.5-128b-4bit",
+      "model_path": "${ORA_HOME}/models/mistral-medium-3.5-128b-4bit",
       "display_name": "Mistral Medium 3.5 128B (4-bit)",
       "provider": "mistral",
       "training_family": "mistral",
@@ -169,7 +169,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.5-122b-a10b-mxfp4",
+      "model_path": "${ORA_HOME}/models/qwen3.5-122b-a10b-mxfp4",
       "display_name": "Qwen3.5-122B-A10B (MXFP4)",
       "provider": "qwen",
       "training_family": "qwen",
@@ -193,7 +193,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/glm-4.6v-mxfp4",
+      "model_path": "${ORA_HOME}/models/glm-4.6v-mxfp4",
       "display_name": "GLM-4.6V (MXFP4)",
       "provider": "zhipu",
       "training_family": "glm",
@@ -217,7 +217,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.6-27b-4bit",
+      "model_path": "${ORA_HOME}/models/qwen3.6-27b-4bit",
       "display_name": "Qwen3.6-27B (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
@@ -241,7 +241,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/qwen3.5-9b-mlx-4bit",
+      "model_path": "${ORA_HOME}/models/qwen3.5-9b-mlx-4bit",
       "display_name": "Qwen3.5-9B (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
@@ -265,7 +265,7 @@
       "type": "local",
       "engine": "mlx",
       "machine": "studio-128",
-      "model_path": "/Users/oracle/ora/models/huihui-qwen3.5-4b-claude-opus-abliterated-4bit",
+      "model_path": "${ORA_HOME}/models/huihui-qwen3.5-4b-claude-opus-abliterated-4bit",
       "display_name": "Qwen3.5-4B Claude-Opus Abliterated (4-bit)",
       "provider": "qwen",
       "training_family": "qwen",
@@ -14066,9 +14066,9 @@
     "warnings_dismissed": []
   },
   "paths": {
-    "vault": "/Users/oracle/Documents/vault/",
-    "conversations": "/Users/oracle/Documents/conversations/",
-    "chromadb": "/Users/oracle/ora/chromadb/"
+    "vault": "${ORA_VAULT}",
+    "conversations": "${ORA_CONVERSATIONS}",
+    "chromadb": "${ORA_CHROMADB}"
   },
   "diversity": {
     "enabled": true

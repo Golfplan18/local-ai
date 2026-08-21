@@ -4,7 +4,17 @@
 
 set -uo pipefail
 
-ORA_DIR="${HOME}/ora"
+# Resolve the workspace the way start.sh and run-ora-server.sh do: an explicit
+# ORA_HOME wins, otherwise this script belongs to the checkout it lives in. The
+# old "${HOME}/ora" pin meant a clone anywhere else compiled a completely
+# unrelated tree's manifest — or nothing at all, on a machine with no ~/ora.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+ORA_DIR="${ORA_HOME:-$(cd -- "${SCRIPT_DIR}/.." && pwd -P)}"
+if [ ! -d "$ORA_DIR" ]; then
+    echo "ERROR: ORA_HOME is not a directory: $ORA_DIR" >&2
+    exit 1
+fi
+ORA_DIR="$(cd -- "$ORA_DIR" && pwd -P)"
 CONFIG_DIR="${ORA_DIR}/config"
 CANONICAL="${CONFIG_DIR}/rag-manifest.md"
 COMPILED="${CONFIG_DIR}/rag-manifest-compiled.md"

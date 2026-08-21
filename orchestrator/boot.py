@@ -2686,6 +2686,11 @@ def load_routing_config() -> dict:
     try:
         with open(_routing_config_json_path(), "r") as f:
             rc = json.load(f)
+        # ${ORA_HOME} / ${ORA_VAULT} / ... resolve here, on the way in, so
+        # the checked-in seed carries no machine's absolute paths (local
+        # endpoints' model_path in particular). See runtime_paths.
+        if _runtime_paths is not None:
+            rc = _runtime_paths.expand_placeholders(rc)
     except Exception:
         rc = {"endpoints": [], "default_endpoint": None}
     # Overlay curated registry values onto each endpoint dict.

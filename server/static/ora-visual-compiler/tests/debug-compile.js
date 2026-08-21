@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-const COMPILER_DIR = '/Users/oracle/ora/server/static/ora-visual-compiler';
+const COMPILER_DIR = path.resolve(__dirname, '..');
 
 async function main() {
   const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', { runScripts: 'outside-only' });

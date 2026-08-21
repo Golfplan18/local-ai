@@ -17,13 +17,12 @@ WORKSPACE = str(Path(__file__).resolve().parents[1])
 sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator"))
 
 import boot
+import runtime_paths as _rp
 
-CORPUS_PATH = Path(
-    "/Users/oracle/Documents/vault/Projects/Ora/Reference — Pipeline Routing Test Corpus.md"
-)
-DEFAULT_REPORT = Path(
-    "/Users/oracle/Documents/vault/Projects/Ora/Working — Phase 9 Routing Accuracy Report.md"
-)
+# The corpus and the report live in the vault this install is bound to
+# (ORA_VAULT, else <Documents>/vault), not in whoever packaged the repo.
+CORPUS_PATH = _rp.VAULT_ORA / "Reference — Pipeline Routing Test Corpus.md"
+DEFAULT_REPORT = _rp.VAULT_ORA / "Working — Phase 9 Routing Accuracy Report.md"
 
 
 def parse_corpus(path: Path) -> list[dict]:

@@ -1,7 +1,7 @@
 {
   "_schema_version": 1,
   "_note": "Capability slot definitions for Ora's image / video / training pipeline. Authored 2026-04-29 under WP-7.0.1. Each entry is the canonical contract a model registers against; provider wiring lands in WP-7.3.2 / WP-7.3.3 / WP-7.3.4.",
-  "_canonical_source": "/Users/oracle/Documents/vault/Reference \u2014 Capability Invocation Contracts.md",
+  "_canonical_source": "${ORA_VAULT}/Reference \u2014 Capability Invocation Contracts.md",
   "_input_types": [
     "text",
     "image-ref",

@@ -12,6 +12,7 @@ import ntpath
 import os
 import re
 import stat
+import sys
 import tempfile
 import time
 import uuid
@@ -466,6 +467,67 @@ def __getattr__(name: str):
 
 def __dir__() -> list[str]:
     return sorted(set(globals()) | set(_LAZY_ROOTS))
+
+
+# ── ${ORA_*} placeholders in checked-in config ─────────────────────────────
+# Checked-in JSON under ``config/`` must never carry the packager's absolute
+# paths: a clone at any location, under any account, has to start. Files that
+# need a user-storage root write ``${ORA_HOME}`` / ``${ORA_VAULT}`` /
+# ``${ORA_CONVERSATIONS}`` / ``${ORA_CHROMADB}`` / ``${ORA_SCRATCH}`` and the
+# LOADER expands them — env var of the same name first, else the resolved root
+# below. (``ORA_CHROMADB`` has no env var of its own; its root already follows
+# ORA_CHROMADB_PATH through CHROMADB_DIR_STR.)
+#
+# Placeholders are expanded on the way IN, by consumers. Read-modify-write
+# EDITORS of the same files — server.app's /config/routing pair,
+# platform_check's engine resolution, the maintenance scripts — deliberately
+# round-trip the raw text, so a settings save can never bake a machine's
+# absolute paths back into the checked-in seed. That re-baking is how the
+# author's paths got into config/routing-config.json in the first place.
+PLACEHOLDER_ATTRS = {
+    "ORA_HOME": "WORKSPACE",
+    "ORA_VAULT": "VAULT_STR",
+    "ORA_CONVERSATIONS": "CONVERSATIONS_STR",
+    "ORA_CHROMADB": "CHROMADB_DIR_STR",
+    "ORA_SCRATCH": "SCRATCH_DIR_STR",
+}
+
+
+def expand_placeholders(value, extra=None):
+    """Recursively expand ``${ORA_*}`` placeholders in a config value.
+
+    Walks strings, lists and dicts; leaves every other type alone. Unknown
+    placeholders are left verbatim (the caller fails with a visible bad path
+    rather than silently pointing somewhere else).
+
+    ``extra`` lets a caller add placeholder names of its own, as a mapping of
+    name to a no-argument callable resolved at expansion time. It exists for
+    the names that are NOT storage roots and so have no attribute here to
+    stand behind them — mcp_client's ``${ORA_NODE}`` (the exact Node binary on
+    PATH) and ``${ORA_PYTHON}`` (this interpreter). A caller resolver owns its
+    whole lookup, env overrides included; returning None or "" leaves the
+    placeholder verbatim, which is the same visible-failure contract unknown
+    names get."""
+    if isinstance(value, str):
+        for name in (*PLACEHOLDER_ATTRS, *(extra or ())):
+            token = "${" + name + "}"
+            if token not in value:
+                continue
+            attr = PLACEHOLDER_ATTRS.get(name)
+            if attr:
+                replacement = (os.environ.get(name)
+                               or getattr(sys.modules[__name__], attr))
+            else:
+                replacement = extra[name]()
+            if replacement:
+                value = value.replace(token, replacement)
+        return value
+    if isinstance(value, list):
+        return [expand_placeholders(v, extra) for v in value]
+    if isinstance(value, dict):
+        return {k: expand_placeholders(v, extra) for k, v in value.items()}
+    return value
+
 
 # ── Oversight/telemetry write sandbox (test harness hook) ───────────────────
 # When ORA_OVERSIGHT_SANDBOX names a directory, every durable oversight and

@@ -57,7 +57,16 @@ from typing import Optional
 # Locations
 # ---------------------------------------------------------------------------
 
-_WORKSPACE = os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
+# The workspace root comes from the one path layer that resolves it
+# (ORA_HOME first, ~/ora otherwise), so a clone installed anywhere finds
+# its own frameworks — and so framework_parser, which loads the same
+# directory, provably agrees with this module rather than approximately.
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as _rp  # type: ignore
+
+_WORKSPACE = _rp.WORKSPACE
 FRAMEWORKS_DIR = Path(_WORKSPACE) / "frameworks" / "book"
 
 

@@ -17,7 +17,17 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-FRAMEWORKS_DIR = os.path.expanduser("~/ora/frameworks/book")
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as _rp  # type: ignore
+
+# Same resolution as framework_config.FRAMEWORKS_DIR — one workspace root
+# from the path layer (ORA_HOME first, ~/ora otherwise). Before this, the
+# parser was pinned to ~/ora while framework_config followed ORA_HOME, so a
+# clone installed anywhere else had the two disagreeing about where the
+# frameworks live.
+FRAMEWORKS_DIR = os.path.join(_rp.WORKSPACE, "frameworks", "book")
 
 
 # ---------- Data structures ----------

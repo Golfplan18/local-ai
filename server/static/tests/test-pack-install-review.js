@@ -382,7 +382,7 @@ process.stdout.write('\n--- TEST 2: §13.7 — modal shows all four categories -
   reviewMod.init();
   // Don't await yet — we need to inspect the DOM while the modal is open.
   var pending = reviewMod.show(THIRD_PARTY_PACK,
-    { source: '/Users/oracle/Downloads/cartoon-studio.pack.json' });
+    { source: '/srv/downloads/cartoon-studio.pack.json' });
 
   var modal = doc.querySelector('#ora-pack-install-review-modal');
   check('2a. modal element is mounted on show()', !!modal, !!modal);
@@ -398,7 +398,7 @@ process.stdout.write('\n--- TEST 2: §13.7 — modal shows all four categories -
   check('2e. body shows author URL', html.indexOf('https://example.com/cartoon') >= 0);
   check('2f. body shows author email', html.indexOf('author@example.com') >= 0);
   check('2g. body shows source path',
-    html.indexOf('/Users/oracle/Downloads/cartoon-studio.pack.json') >= 0);
+    html.indexOf('/srv/downloads/cartoon-studio.pack.json') >= 0);
 
   check('2h. body has Toolbars section heading',           html.indexOf('Toolbars') >= 0);
   check('2j. body has Prompt templates section heading',   html.indexOf('Prompt templates') >= 0);

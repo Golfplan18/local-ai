@@ -16,7 +16,13 @@ const SCHEMA = {
   additionalProperties: false,
 }
 
-const ROOT = '/Users/oracle/ora/data/conversation-projects'
+// Workspace root from the environment (ORA_HOME, else <home>/ora) — these
+// paths are pasted into agent prompts, so they must be absolute AND must
+// not name whoever packaged the repo.
+const ORA_HOME =
+  process.env.ORA_HOME ||
+  `${process.env.HOME || process.env.USERPROFILE}/ora`
+const ROOT = `${ORA_HOME}/data/conversation-projects`
 const pad = (n) => String(n).padStart(3, '0')
 
 const KNOWN = `Registered projects and passions (43): AI Assisted Writing, American Jesus, American Judas, American King, Audio Diaries 1990s, Autism Acceptance, Diklis Chump, Divorce, Einstein Resonance, Executor Instructions, Expanding Awareness, Golf, Golf Course Design, Human Nexus, Image Generation, Incubator, Insight, Main Street Independent, Marketing, Obsidian, Ora, Ora AI App, Ora AI Org, Chokepoint Response, Ora Foundation, Framework Library, Knowledge Library, Pen Names, Photo Books James, Politics, Project Workshop, Prompt Engineering, Property, Publishing, Old Cypress Publishing, Quantum Mechanics, Real Estate Book, Relationships, Science, Technology, We Too, Writing, Writing Fiction.

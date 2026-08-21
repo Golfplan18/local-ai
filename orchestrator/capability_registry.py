@@ -64,6 +64,25 @@ CONFIG_DIR = Path(__file__).parent.parent / "config"
 CAPABILITIES_JSON = CONFIG_DIR / "capabilities.json"
 ROUTING_CONFIG_JSON = CONFIG_DIR / "routing-config.json"
 
+try:
+    from orchestrator import runtime_paths as _runtime_paths
+except ImportError:  # flat import context (orchestrator on sys.path)
+    try:
+        import runtime_paths as _runtime_paths  # type: ignore
+    except ImportError:  # pragma: no cover — registry still loads unexpanded
+        _runtime_paths = None  # type: ignore
+
+
+def _read_config_json(path) -> dict:
+    """Read a checked-in config file and resolve its ``${ORA_*}``
+    placeholders, so a clone at any location reads real paths out of a
+    file that carries none. See runtime_paths.expand_placeholders."""
+    with open(path) as f:
+        loaded = json.load(f)
+    if _runtime_paths is None:
+        return loaded
+    return _runtime_paths.expand_placeholders(loaded)
+
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -183,8 +202,7 @@ class CapabilityRegistry:
             self.config = config_dict
         else:
             path = Path(config_path) if config_path else CAPABILITIES_JSON
-            with open(path) as f:
-                self.config = json.load(f)
+            self.config = _read_config_json(path)
 
         self._slots: dict[str, dict] = self.config.get("slots", {})
         self._routing_config = routing_config or {}
@@ -767,8 +785,7 @@ def load_registry(
     """
     # 1. Load core capabilities.json into a dict we can mutate.
     cap_path = Path(config_path) if config_path else CAPABILITIES_JSON
-    with open(cap_path) as f:
-        capabilities = json.load(f)
+    capabilities = _read_config_json(cap_path)
 
     # 2. Load publisher routing-config.json (publisher's preferences).
     #
@@ -797,8 +814,7 @@ def load_registry(
     if routing_config_path is not None or Path(rc_default).exists():
         rc_path = Path(routing_config_path) if routing_config_path else Path(rc_default)
         try:
-            with open(rc_path) as f:
-                routing_config = json.load(f)
+            routing_config = _read_config_json(rc_path)
         except Exception:
             routing_config = None
 

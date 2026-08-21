@@ -18,7 +18,13 @@ const SCHEMA = {
   additionalProperties: false,
 }
 
-const ROOT = '/Users/oracle/ora/data/conversation-projects'
+// Workspace root from the environment (ORA_HOME, else <home>/ora) — these
+// paths are pasted into agent prompts, so they must be absolute AND must
+// not name whoever packaged the repo.
+const ORA_HOME =
+  process.env.ORA_HOME ||
+  `${process.env.HOME || process.env.USERPROFILE}/ora`
+const ROOT = `${ORA_HOME}/data/conversation-projects`
 
 function pad(n) { return String(n).padStart(3, '0') }
 

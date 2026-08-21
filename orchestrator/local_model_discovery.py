@@ -389,7 +389,9 @@ def _load_static_local_endpoints(routing_config: Path | None) -> list[dict]:
         return []
     try:
         with open(path) as f:
-            data = json.load(f)
+            # ${ORA_HOME}/models/... on a static local endpoint resolves
+            # here — the paths below are compared against real directories.
+            data = _rp.expand_placeholders(json.load(f))
     except (OSError, json.JSONDecodeError) as exc:
         raise LocalModelDiscoveryError(
             f"could not read configured local endpoints from {path}: {exc}"

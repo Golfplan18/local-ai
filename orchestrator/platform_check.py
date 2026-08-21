@@ -16,8 +16,16 @@ import os
 import platform
 import subprocess
 
-WORKSPACE = os.path.expanduser("~/ora/")
-ROUTING_CONFIG_JSON = os.path.join(WORKSPACE, "config/routing-config.json")
+try:
+    from . import runtime_paths as _rp
+except ImportError:  # direct script-style import from sys.path
+    import runtime_paths as _rp  # type: ignore
+
+# One source for the workspace root, so a clone that lives somewhere other
+# than ~/ora (an ORA_HOME install, a worktree) reads its OWN config instead
+# of silently reporting "no routing-config.json found".
+WORKSPACE = os.path.join(_rp.WORKSPACE, "")
+ROUTING_CONFIG_JSON = str(_rp.seed_path("config", "routing-config.json"))
 
 
 def detect_platform() -> dict:
@@ -86,6 +94,10 @@ def startup_check() -> list[str]:
         return msgs
 
     try:
+        # Read RAW: this is a read-modify-write of one field (endpoints'
+        # engine) and the file is saved back below. Expanding ${ORA_*} here
+        # would bake this machine's absolute paths into the checked-in seed
+        # on the next save — the very thing the placeholders exist to stop.
         with open(ROUTING_CONFIG_JSON) as f:
             config = json.load(f)
     except Exception as e:

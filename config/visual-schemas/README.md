@@ -88,9 +88,12 @@ Use Ajv 2020 (draft 2020-12 support).
 ```js
 import Ajv2020 from "ajv/dist/2020.js";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-const ROOT = "/Users/oracle/ora/config/visual-schemas";
+// An explicit ORA_HOME wins; otherwise the install under this user's home.
+const ORA_HOME = process.env.ORA_HOME || path.join(os.homedir(), "ora");
+const ROOT = path.join(ORA_HOME, "config", "visual-schemas");
 const load = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), "utf-8"));
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });

@@ -29,6 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from orchestrator import runtime_paths as _rp
 from orchestrator.historical.cleaned_pair_reader import (
     CleanedPairFile,
     load_cleaned_pair,
@@ -47,8 +48,10 @@ from orchestrator.tools.vault_indexer import (
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_ARCHIVE_DIR     = "/Users/oracle/Documents/Commercial AI archives"
-DEFAULT_REPORT_PATH     = "/Users/oracle/ora/data/reclassify-report.json"
+# Roots come from the path layer, so this runs against the archive and
+# data directory of whichever install it is invoked in.
+DEFAULT_ARCHIVE_DIR     = _rp.HISTORICAL_ARCHIVE_DIR_STR
+DEFAULT_REPORT_PATH     = str(_rp.DATA_DIR / "reclassify-report.json")
 
 
 # ---------------------------------------------------------------------------

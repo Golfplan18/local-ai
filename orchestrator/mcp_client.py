@@ -22,11 +22,29 @@ except ImportError:  # pragma: no cover
 WORKSPACE = _rp.WORKSPACE
 MCP_REGISTRY = os.path.join(WORKSPACE, "config", "mcp-servers.json")
 
-_PLACEHOLDER_ATTRS = {
-    "ORA_HOME": "WORKSPACE",
-    "ORA_VAULT": "VAULT_STR",
-    "ORA_CONVERSATIONS": "CONVERSATIONS_STR",
-    "ORA_SCRATCH": "SCRATCH_DIR_STR",
+# Placeholders resolvable in server config values (command / args / env /
+# url). Resolved at launch time — env var of the same name wins, else the
+# runtime_paths default — so the checked-in registry never carries a
+# machine- or platform-specific absolute path (e.g. the vault-fs server's
+# root is ${ORA_VAULT}, which resolves to %USERPROFILE%\Documents\vault on
+# Windows and ~/Documents/vault on POSIX unless overridden).
+#
+# The convention outgrew the MCP registry: config/routing-config.json and
+# config/capabilities.json use the same placeholders, so the expander lives
+# in runtime_paths (which owns the roots it resolves against) and every
+# loader shares one implementation. These names stay as the module's own
+# spelling of it.
+#
+# ${ORA_NODE} and ${ORA_PYTHON} are this module's own two, and they are not
+# storage roots: they name the exact executables the pinned launch contract
+# must run, computed per call rather than read off a runtime_paths attribute.
+# They stay here — runtime_paths resolves where Ora's data lives, not which
+# interpreter or Node binary this process happens to be launching — and ride
+# into the shared expander as its ``extra`` resolvers.
+_PLACEHOLDER_ATTRS = _rp.PLACEHOLDER_ATTRS
+_COMPUTED_PLACEHOLDERS = {
+    "ORA_NODE": lambda: shutil.which("node"),
+    "ORA_PYTHON": lambda: os.path.realpath(sys.executable),
 }
 
 _RECV_QUEUE_MAXLINES = 256
@@ -55,10 +73,9 @@ class MCPProtocolError(MCPError):
 
 
 def _placeholder_value(name: str) -> str | None:
-    if name == "ORA_NODE":
-        return shutil.which("node")
-    if name == "ORA_PYTHON":
-        return os.path.realpath(sys.executable)
+    computed = _COMPUTED_PLACEHOLDERS.get(name)
+    if computed:
+        return computed()
     attr = _PLACEHOLDER_ATTRS.get(name)
     if attr:
         return os.environ.get(name) or str(getattr(_rp, attr))
@@ -68,19 +85,7 @@ def _placeholder_value(name: str) -> str | None:
 def _expand_placeholders(value):
     """Expand only Ora's known runtime placeholders, recursively."""
 
-    if isinstance(value, str):
-        for name in (*_PLACEHOLDER_ATTRS, "ORA_NODE", "ORA_PYTHON"):
-            token = "${" + name + "}"
-            if token in value:
-                replacement = _placeholder_value(name)
-                if replacement:
-                    value = value.replace(token, replacement)
-        return value
-    if isinstance(value, list):
-        return [_expand_placeholders(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _expand_placeholders(item) for key, item in value.items()}
-    return value
+    return _rp.expand_placeholders(value, extra=_COMPUTED_PLACEHOLDERS)
 
 
 def _expected_server_specs() -> dict[str, dict]:

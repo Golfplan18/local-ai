@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[2]
 BASELINE = ROOT / "operations" / "g1-10-baseline"
 CURRENT = ROOT / "operations" / "g1-10-current"
 CLOSEOUT = ROOT / "outputs" / "g1-10" / "closeout-evidence.md"
-VAULT = Path(os.environ.get("ORA_VAULT") or
-             "/Users/oracle/Documents/vault")
+VAULT = Path(os.environ.get("ORA_VAULT")
+             or Path.home() / "Documents" / "vault")
 
 
 def digest(path: Path) -> str:

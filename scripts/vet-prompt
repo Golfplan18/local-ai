@@ -26,7 +26,10 @@ import json
 import os
 import sys
 
-ORCH = "/Users/oracle/ora/orchestrator"
+# The orchestrator that ships beside THIS script — so the tool works from a
+# clone at any location instead of importing the packager's checkout.
+ORCH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "orchestrator")
 if ORCH not in sys.path:
     sys.path.insert(0, ORCH)
 

@@ -4,24 +4,68 @@
 
 | Mode | File | Default Gear | Trigger Summary |
 |---|---|---|---|
-| Benefits Analysis | benefits-analysis.md | Gear 3 | "What are the benefits and risks of," "pros and cons of," cost-benefit analysis, |
-| Competing Hypotheses | competing-hypotheses.md | Gear 4 | Multiple explanations exist for the same evidence, "which explanation fits best, |
-| Consequences And Sequel | consequences-and-sequel.md | Gear 3 | "What would happen if," "what are the downstream effects," "second-order consequ |
-| Constraint Mapping | constraint-mapping.md | Gear 3 | Multiple viable options exist, "which should I choose," tradeoff analysis, C&S o |
-| Cui Bono | cui-bono.md | Gear 4 | Policy analysis, institutional behavior analysis, "who benefits," numerical targ |
-| Decision Under Uncertainty | decision-under-uncertainty.md | Gear 3 | A choice must be made between alternatives with uncertain outcomes. "Should we a |
-| Deep Clarification | deep-clarification.md | Gear 3 | "Why does X work that way," "explain the mechanics of," "what's really going on  |
-| Dialectical Analysis | dialectical-analysis.md | Gear 4 | A question is structured around genuine opposition between positions that each h |
-| Paradigm Suspension | paradigm-suspension.md | Gear 4 | The user questions a mainstream position ("what if X is wrong"), evidence contra |
-| Passion Exploration | passion-exploration.md | Gear 2 | No deliverable stated, curiosity-driven inquiry, "I'm interested in," "help me t |
-| Project Mode | project-mode.md | Gear 3 | The user names a specific output ("build," "write," "create," "produce," "draft, |
-| Relationship Mapping | relationship-mapping.md | Gear 3 | "How do these connect," systems analysis, causal modeling, dependency graphs, "w |
-| Root Cause Analysis | root-cause-analysis.md | Gear 3 | Something has gone wrong and the cause is unclear. A problem keeps recurring des |
-| Scenario Planning | scenario-planning.md | Gear 4 | A decision depends on future conditions that are genuinely uncertain, strategic  |
-| Spatial Reasoning | spatial-reasoning.md | Gear 3 | The user submits visual input as the primary query medium — a napkin sketch, a |
-| Steelman Construction | steelman-construction.md | Gear 3 | A position is about to be critiqued or dismissed, the user asks "what's the best |
-| Strategic Interaction | strategic-interaction.md | Gear 4 | "Game theory analysis," the situation involves two or more actors making choices |
-| Structured Output | structured-output.md | Gear 2 | The user requests a specific document format — "write this as a report," "form |
-| Synthesis | synthesis.md | Gear 4 | Cross-domain connection, "how does X relate to Y," integrative analysis, the use |
-| Systems Dynamics | systems-dynamics.md | Gear 4 | The problem involves feedback loops, unintended consequences, or counterintuitiv |
-| Terrain Mapping | terrain-mapping.md | Gear 3 | The user asks "what is," "how does X work," "where do I start," "what do I need  |
+| Index | INDEX.md | — |  |
+| Argument Audit | argument-audit.md | Gear 4 | "argument audit", "full audit of this argument", "coherence and frame check" |
+| Balanced Critique | balanced-critique.md | Gear 4 | "balanced critique", "balanced assessment", "balanced evaluation" |
+| Bayesian Hypothesis Network | bayesian-hypothesis-network.md | Gear 4 | "Bayesian network", "posterior probability", "prior and likelihood" |
+| Benefits Analysis | benefits-analysis.md | Gear 4 | "what are the benefits and risks of", "pros and cons of", "PMI for" |
+| Boundary Critique | boundary-critique.md | Gear 4 | "boundary critique", "Ulrich", "CSH", "critical systems heuristics" |
+| Causal Dag | causal-dag.md | Gear 4 | "causal graph", "DAG", "do-calculus", "Pearl", "confounder", "back-door" |
+| Coherence Audit | coherence-audit.md | Gear 4 | "coherence audit", "fallacy check", "fallacy detection", "inferential audit" |
+| Competing Hypotheses | competing-hypotheses.md | Gear 4 | "which explanation fits best", "make me an ACH matrix", "what rules out X" |
+| Compositional Dynamics | compositional-dynamics.md | Gear 4 | "compositional dynamics", "figure-ground", "gestalt grouping" |
+| Conceptual Engineering | conceptual-engineering.md | Gear 4 | "conceptual engineering", "ameliorative analysis", "redefine" |
+| Consequences And Sequel | consequences-and-sequel.md | Gear 4 | "consequences", "sequel", "second-order", "third-order", "cascade forward" |
+| Constraint Mapping | constraint-mapping.md | Gear 4 | "compare alternatives", "map the tradeoffs" |
+| Cui Bono | cui-bono.md | Gear 4 | "who benefits", "cui bono", "whose interests", "who's pushing this" |
+| Decision Architecture | decision-architecture.md | Gear 4 | "decision architecture", "full decision analysis" |
+| Decision Clarity | decision-clarity.md | Gear 4 | "decision clarity", "decision document for", "brief the decision-maker" |
+| Decision Under Uncertainty | decision-under-uncertainty.md | Gear 4 | "expected value", "decision tree", "should we wait", "value of information" |
+| Deep Clarification | deep-clarification.md | Gear 4 | "deeper", "mechanism", "how does it actually work" |
+| Dialectical Analysis | dialectical-analysis.md | Gear 4 | "thesis / antithesis", "dialectical", "sublate" |
+| Differential Diagnosis | differential-diagnosis.md | Gear 4 | "differential", "differential diagnosis", "candidate explanations" |
+| Domain Induction | domain-induction.md | Gear 4 | "domain induction", "induct me into", "structured onboarding to a domain" |
+| Factual Lookup | factual-lookup.md | Gear 2 | "what is the current", "what's the latest", "who won", "weather" |
+| Fragility Antifragility Audit | fragility-antifragility-audit.md | Gear 4 | "fragility", "antifragile", "Taleb", "convex response", "concave exposure" |
+| Frame Audit | frame-audit.md | Gear 4 | "frame audit", "framing analysis", "what frame is this using" |
+| Frame Comparison | frame-comparison.md | Gear 4 | "frame comparison", "compare the framings", "Lakoff" |
+| General Inquiry | general-inquiry.md | Gear 3 | "should I", "what should", "is it worth", "tradeoff" |
+| Information Density | information-density.md | Gear 4 | "information density", "visual hierarchy", "Tufte", "data-ink ratio" |
+| Interest Mapping | interest-mapping.md | Gear 4 | "interest mapping", "interests vs positions", "Fisher Ury" |
+| Ma Reading | ma-reading.md | Gear 4 | "ma reading", "Ma", "yūgen", "wabi-sabi", "mu", "void as content" |
+| Market Dynamics | market-dynamics.md | Gear 4 | "supply and demand", "market equilibrium / price equilibrium" |
+| Mechanism Design | mechanism-design.md | Gear 4 | "adverse selection", "moral hazard", "winner's curse" |
+| Mechanism Understanding | mechanism-understanding.md | Gear 4 | "how does this work", "mechanism", "under the hood", "how do the parts produce" |
+| Multi Criteria Decision | multi-criteria-decision.md | Gear 4 | "multi-criteria", "MCDA", "MCDM", "weighted criteria", "AHP", "SMART analysis" |
+| Paradigm Suspension | paradigm-suspension.md | Gear 4 | "suspend the paradigm", "question the frame", "what if the consensus is wrong" |
+| Passion Exploration | passion-exploration.md | Gear 3 | "I'm interested in", "help me think about", "I've been wondering", "what if" |
+| Place Reading Genius Loci | place-reading-genius-loci.md | Gear 4 | "place reading", "genius loci", "spirit of place", "prospect refuge" |
+| Pre Mortem Action | pre-mortem-action.md | Gear 4 | "pre-mortem", "pre-mortem this plan", "imagine this failed", "Klein pre-mortem" |
+| Pre Mortem Fragility | pre-mortem-fragility.md | Gear 4 | "pre-mortem this design", "pre-mortem this system", "structural fragilities" |
+| Principled Negotiation | principled-negotiation.md | Gear 4 | "principled negotiation", "Fisher Ury", "Getting to Yes", "BATNA" |
+| Probabilistic Forecasting | probabilistic-forecasting.md | Gear 4 | "probability of", "what are the chances", "forecast", "superforecasting" |
+| Process Mapping | process-mapping.md | Gear 4 | "process map", "workflow", "swim lane", "value stream", "bottleneck" |
+| Process Tracing | process-tracing.md | Gear 4 | "process tracing", "Bennett Checkel", "smoking gun", "hoop test" |
+| Project Mode | project-mode.md | Gear 4 | "build", "write", "create", "produce", "draft", "design", "make" |
+| Propaganda Audit | propaganda-audit.md | Gear 4 | "propaganda audit", "is this propaganda", "Stanley test" |
+| Quick Orientation | quick-orientation.md | Gear 4 | "quick orientation", "quick overview", "quick lay of the land" |
+| Red Team Advocate | red-team-advocate.md | Gear 4 | "argue against this", "make the case against", "give me ammunition" |
+| Red Team Assessment | red-team-assessment.md | Gear 4 | "stress-test this", "attack this", "pick this apart", "try to break this" |
+| Relationship Mapping | relationship-mapping.md | Gear 4 | "relationship map", "causal DAG", "dependency graph", "concept map of" |
+| Root Cause Analysis | root-cause-analysis.md | Gear 4 | "what are the root causes of", "why does this keep happening", "draw a fishbone" |
+| Scenario Planning | scenario-planning.md | Gear 4 | "scenarios", "2x2 scenario matrix", "scenario planning", "possible futures" |
+| Simple | simple.md | Gear 1 | "Stage 0 (pre-Phase-A) bypass check fired on raw prompt" |
+| Spatial Reasoning | spatial-reasoning.md | Gear 4 | "annotate this", "what's missing", "what node am I missing" |
+| Stakeholder Mapping | stakeholder-mapping.md | Gear 4 | "stakeholder map", "stakeholder mapping", "stakeholder analysis" |
+| Steelman Construction | steelman-construction.md | Gear 4 | "steelman", "best case for", "strongest version of" |
+| Strategic Interaction | strategic-interaction.md | Gear 4 | "game theory", "what's their best move", "payoff matrix", "Nash", "deterrence" |
+| Structured Output | structured-output.md | Gear 2 | "write this as a report", "format as a memo", "create a comparison table" |
+| Subjective Inquiry | subjective-inquiry.md | Gear 3 | "more attractive", "more beautiful", "better looking", "prettier", "ugliest" |
+| Synthesis | synthesis.md | Gear 4 | "synthesise", "synthesize", "connect these frameworks" |
+| Systems Dynamics Causal | systems-dynamics-causal.md | Gear 4 | "why does this keep happening with feedback dynamics" |
+| Systems Dynamics Structural | systems-dynamics-structural.md | Gear 4 | "how does this system work", "draw the feedback structure (structural)" |
+| Terrain Mapping | terrain-mapping.md | Gear 4 | "walk me through", "the big picture", "map this domain for me", "concept map of" |
+| Third Side | third-side.md | Gear 4 | "third side", "third-side", "Ury third side", "mediation" |
+| Wicked Future | wicked-future.md | Gear 4 | "wicked future", "long-horizon scenarios with probabilities" |
+| Wicked Problems | wicked-problems.md | Gear 4 | "wicked problem", "everything is connected", "no clean solution" |
+| Worldview Cartography | worldview-cartography.md | Gear 4 | "worldview cartography", "multi-paradigm map", "compare and integrate paradigms" |

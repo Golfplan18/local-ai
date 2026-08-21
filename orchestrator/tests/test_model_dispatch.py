@@ -154,7 +154,7 @@ class TestGetSlotInfo(unittest.TestCase):
         boot_stub.get_slot_endpoint = mock.Mock(return_value={
             "name": "local-mlx-hermes-4-70b",
             "model_name": "Hermes-4-70B (4-bit)",
-            "model": "/Users/oracle/ora/models/hermes-4-70b",
+            "model": "/opt/ora/models/hermes-4-70b",
             "type": "local",
             "service": None,
             "role": "breadth",
