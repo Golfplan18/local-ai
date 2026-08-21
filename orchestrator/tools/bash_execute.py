@@ -2067,10 +2067,8 @@ def _parse_git(args: list[str], cwd: str) -> dict[str, Any]:
     if subcommand in _GIT_LOCAL_WRITE_SUBCOMMANDS:
         if any(_git_option_is_signature(item) for item in subargs):
             return _unknown_profile("Git signature helper execution is not allowed", "git")
-        if subcommand == "commit" and any(
-            item in {"-F", "--file"}
-            or item.startswith(("-F", "--file="))
-            for item in subargs
+        if subcommand == "commit" and _has_any_option(
+            subargs, ("-F", "--file", "--file=")
         ):
             return _unknown_profile(
                 "Git commit message files are outside the exact local grammar",
