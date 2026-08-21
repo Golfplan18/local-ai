@@ -221,6 +221,19 @@ class TestHTTPBoundaries(unittest.TestCase):
         jina.assert_called_once()
         self.assertTrue(result["third_party_forwarding"]["forwarded"])
 
+    def test_sensitive_card_number_query_is_not_forwarded(self):
+        bad = wf._error_result("https://example.com", "httpx", "short")
+        with mock.patch.object(
+            network_policy.socket, "getaddrinfo", side_effect=_dns({}),
+        ), mock.patch.object(wf, "_fetch_httpx", return_value=bad), \
+             mock.patch.object(wf, "_fetch_playwright", return_value=bad), \
+             mock.patch.object(wf, "_fetch_jina") as jina:
+            result = wf.web_fetch(
+                "https://example.com/search?q=4111-1111-1111-1111",
+            )
+        jina.assert_not_called()
+        self.assertFalse(result["third_party_forwarding"]["forwarded"])
+
 
 class _Route:
     def __init__(self, url):

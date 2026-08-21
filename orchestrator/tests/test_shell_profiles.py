@@ -484,6 +484,49 @@ class TestUtilityEffects(PreparedCommandCase):
         sed = self.prepare(f"sed 's/a/b/w {out}' {target}")
         self.assertIn(str(out.resolve()), sed.write_paths)
 
+    def test_unbound_effect_operands_fail_closed(self):
+        for command in (
+            "git commit -F /etc/hosts",
+            "rg --files --ignore-file /etc/hosts /private/tmp",
+            "sed '1r /etc/hosts' input.txt",
+            "sed '1,3r /etc/hosts' input.txt",
+            "sed '1~2r/etc/hosts' input.txt",
+            "sed '1rfoo' input.txt",
+            "sed '1r-foo' input.txt",
+            "sed '1R /etc/hosts' input.txt",
+            "sed '1Rfoo' input.txt",
+            "sed '1R-foo' input.txt",
+            "tar -xPf archive -C target",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(self.prepare(command).unknown)
+
+    def test_sed_ordinary_substitutions_remain_admitted(self):
+        for command in (
+            "sed 's/a/rfoo/' input.txt",
+            "sed '1s/a/R-foo/' input.txt",
+        ):
+            with self.subTest(command=command):
+                self.assertFalse(self.prepare(command).unknown)
+
+    def test_clustered_commit_message_file_options_fail_closed(self):
+        for command in (
+            "git commit -aF/etc/hosts",
+            "git commit -aF /etc/hosts",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(self.prepare(command).unknown)
+
+    def test_abbreviated_commit_message_file_options_fail_closed(self):
+        for command in (
+            "git commit --f=/etc/hosts",
+            "git commit --fil=/etc/hosts",
+            "git commit --f /etc/hosts",
+            "git commit --fil /etc/hosts",
+        ):
+            with self.subTest(command=command):
+                self.assertTrue(self.prepare(command).unknown)
+
     def test_rg_files_binds_its_recursive_search_roots(self):
         tree = self.root / "tree"
         tree.mkdir()
@@ -500,6 +543,21 @@ class TestUtilityEffects(PreparedCommandCase):
             ((str(self.root.resolve()), True, True, False),),
         )
         literal_pattern = self.prepare("rg -- --files")
+        self.assertEqual(
+            literal_pattern.read_paths, (str(self.root.resolve()),),
+        )
+        self.assertEqual(
+            literal_pattern.authority_scopes,
+            ((str(self.root.resolve()), True, True, False),),
+        )
+
+    def test_rg_ignore_file_option_respects_argument_terminator(self):
+        rejected = self.prepare("rg --ignore-file /etc/hosts needle")
+        self.assertTrue(rejected.unknown)
+        self.assertIn("ignore-file", rejected.unknown_reason)
+
+        literal_pattern = self.prepare("rg -- --ignore-file")
+        self.assertFalse(literal_pattern.unknown)
         self.assertEqual(
             literal_pattern.read_paths, (str(self.root.resolve()),),
         )
