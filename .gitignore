@@ -102,6 +102,11 @@ docs/hardware-report.md
 docs/upgrade-report*.md
 docs/pre-upgrade-packages.txt
 
+# Windows launcher PID file. start.bat records the server process it
+# launched so stop.bat can terminate that exact PID; per-machine runtime
+# state, regenerated on the next start.
+/.ora-server.pid
+
 # Logs and caches
 logs/
 *.log
