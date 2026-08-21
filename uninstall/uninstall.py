@@ -10,6 +10,10 @@ operation of Ora. By design:
     ``--include-conversations`` to opt in to deleting them.
   - Preserves downloaded local model files by default (expensive to
     re-download). Pass ``--include-models`` to opt in.
+  - Preserves the downloaded document converters (Pandoc + Typst, in
+    ``data/converters/``) by default, for the same reason: they are large
+    and ``python3 scripts/install.py converters`` fetches them again. Pass
+    ``--include-converters`` to opt in.
   - Does NOT delete the git checkout itself (the source tree where the
     user ran git clone). That's the user's working copy.
 
@@ -25,6 +29,7 @@ doesn't surface it alongside install.py and the dev tools.
 Usage:
     python3 uninstall/uninstall.py                # interactive, preserve everything except runtime state
     python3 uninstall/uninstall.py --include-models           # also delete downloaded models
+    python3 uninstall/uninstall.py --include-converters       # also delete Pandoc/Typst
     python3 uninstall/uninstall.py --include-conversations    # also delete conversations
     python3 uninstall/uninstall.py --dry-run                  # preview, no changes
 """
@@ -73,6 +78,11 @@ CONFIGURATIONS_DIR = REPO_ROOT / "config" / "configurations"
 # Optional removals — explicit opt-in flags only.
 OPT_IN_MODELS = [REPO_ROOT / "models"]
 OPT_IN_CONVERSATIONS = [CONVERSATIONS]
+# Pandoc and Typst, downloaded per machine by scripts/converters.py. Anchored
+# to this clone because that is where the installer puts them: the launchers
+# export ORA_HOME as the checkout they live in, so the clone is the runtime's
+# Ora home whatever ORA_HOME happens to say in this shell.
+OPT_IN_CONVERTERS = [REPO_ROOT / "data" / "converters"]
 
 # Hard NEVER list — uninstaller refuses to touch these even with flags.
 HARD_PRESERVE = [
@@ -147,7 +157,11 @@ def _remove(path: Path, dry_run: bool) -> bool:
         return False
 
 
-def _gather_targets(include_models: bool, include_conversations: bool) -> list[Path]:
+def _gather_targets(
+    include_models: bool,
+    include_conversations: bool,
+    include_converters: bool = False,
+) -> list[Path]:
     targets: list[Path] = []
     targets.extend(ALWAYS_REMOVE)
 
@@ -160,6 +174,8 @@ def _gather_targets(include_models: bool, include_conversations: bool) -> list[P
         targets.extend(OPT_IN_MODELS)
     if include_conversations:
         targets.extend(OPT_IN_CONVERSATIONS)
+    if include_converters:
+        targets.extend(OPT_IN_CONVERTERS)
 
     return targets
 
@@ -199,6 +215,12 @@ def main():
              "Default: preserved — re-downloading is expensive.",
     )
     parser.add_argument(
+        "--include-converters", action="store_true",
+        help="Also delete the downloaded Word/PDF converters "
+             "(<clone>/data/converters/). Default: preserved — re-download "
+             "them with `python3 scripts/install.py converters`.",
+    )
+    parser.add_argument(
         "--include-conversations", action="store_true",
         help="Also delete conversation history (~/Documents/conversations/). "
              "Default: preserved.",
@@ -216,11 +238,14 @@ def main():
     print(f"Conversations: {CONVERSATIONS}  ({_ROOTS.sources['conversations']}; "
           f"{'WILL DELETE' if args.include_conversations else 'preserved'})")
     print(f"Models:        {REPO_ROOT / 'models'}  ({'WILL DELETE' if args.include_models else 'preserved'})")
+    print(f"Converters:    {OPT_IN_CONVERTERS[0]}  "
+          f"({'WILL DELETE' if args.include_converters else 'preserved'})")
     for warning in _ROOTS.warnings:
         print(f"WARNING: {warning}")
     print()
 
-    targets = _gather_targets(args.include_models, args.include_conversations)
+    targets = _gather_targets(
+        args.include_models, args.include_conversations, args.include_converters)
     if not targets:
         print("Nothing to remove.")
         return

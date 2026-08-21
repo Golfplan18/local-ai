@@ -70,6 +70,58 @@ class ExportModuleTests(unittest.TestCase):
             r"C:\Users\ora\AppData\Local\Microsoft\WinGet\Links", dirs,
         )
 
+    def test_ora_provisioned_converter_dir_is_searched(self):
+        # The installer downloads Pandoc/Typst here; detection has to look here
+        # too, or a provisioned converter is invisible to the runtime.
+        from orchestrator import runtime_paths as rp
+        with mock.patch.object(rp, "DATA_DIR_STR", str(self.root / "data")):
+            expected = self.root / "data" / "converters" / "bin"
+            self.assertEqual(ex.converters_dir(), expected)
+            for platform_name in ("posix", "nt"):
+                dirs = ex._binary_search_dirs(platform_name, {})
+                self.assertEqual(dirs[0], str(expected))
+
+    def _stub_binary(self, directory: pathlib.Path, banner: str) -> pathlib.Path:
+        """A file named ``pandoc`` that this machine's shutil.which can find."""
+        directory.mkdir(parents=True, exist_ok=True)
+        if os.name == "nt":
+            stub = directory / "pandoc.bat"
+            stub.write_text(f"@echo {banner}\r\n", encoding="utf-8")
+        else:
+            stub = directory / "pandoc"
+            stub.write_text(f"#!/bin/sh\necho {banner}\n", encoding="utf-8")
+            stub.chmod(0o755)
+        return stub
+
+    def test_path_wins_over_the_ora_provisioned_copy(self):
+        # A converter the user installed themselves must be preferred. Two real
+        # files named pandoc, both findable, in the two places _which looks —
+        # so the assertion is about ordering and nothing else. Counting calls
+        # to a patched shutil.which cannot tell the orderings apart: both make
+        # exactly one call when the first place searched has a hit.
+        on_path = self._stub_binary(self.root / "path-bin", "PATH copy")
+        data_dir = self.root / "data"
+        with (
+            mock.patch.object(ex._rp, "DATA_DIR_STR", str(data_dir)),
+            mock.patch.dict(
+                os.environ,
+                {"PATH": str(on_path.parent), "PATHEXT": ".BAT"},
+                clear=False,
+            ),
+        ):
+            ora_owned = self._stub_binary(ex.converters_dir(), "Ora copy")
+            self.assertNotEqual(str(on_path), str(ora_owned))
+            self.assertEqual(ex._which("pandoc"), str(on_path))
+
+            # And the Ora copy really was reachable — otherwise the assertion
+            # above would pass for the wrong reason.
+            on_path.unlink()
+            self.assertEqual(ex._which("pandoc"), str(ora_owned))
+
+    def test_dead_outputs_constant_is_gone(self):
+        # No production caller ever set it; the live behavior is vault root.
+        self.assertFalse(hasattr(ex, "DEFAULT_OUTPUTS_SUBDIR"))
+
     def test_binary_lookup_uses_which_for_pathext_fallback(self):
         directory = r"C:\Program Files\Pandoc"
         resolved = directory + r"\pandoc.exe"
@@ -129,12 +181,6 @@ class ExportModuleTests(unittest.TestCase):
                 "content", project_nexus="ghost", vault=self.vault,
             )
         self.assertFalse((self.vault / "Projects" / "ghost").exists())
-
-    def test_explicit_compatibility_subdir_is_honored(self):
-        path = ex.save_output_to_vault(
-            "content", title="Legacy", vault=self.vault,
-            outputs_subdir=ex.DEFAULT_OUTPUTS_SUBDIR)
-        self.assertEqual(path.parent, self.vault / "Outputs")
 
     def test_exact_dot_folders_cannot_escape_intended_directory(self):
         for traversal in (".", ".."):

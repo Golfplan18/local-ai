@@ -16,11 +16,18 @@ target (Export §1.9). This module owns:
 
   * **Render targets (docx / pdf).** When Pandoc is on the machine, a rendered
     output is converted from its canonical markdown and written to
-    ``~/Documents/Ora Exports/``. PDF uses Typst as the engine (the plan's
-    bundleable choice). Both are *detected at runtime* — absent Pandoc / engine,
-    the format is reported unavailable and nothing breaks. The installer bundles
-    Pandoc + Typst so this works out of the box for shipped users; here it works
-    once ``brew install pandoc typst`` has run.
+    ``~/Documents/Ora Exports/``. PDF uses Typst as the engine. Both are
+    *detected at runtime* — absent Pandoc / engine, the format is reported
+    unavailable and nothing breaks.
+
+    Neither program ships inside this repository (Pandoc is GPL-2.0-or-later;
+    vendoring it here would be redistribution). ``scripts/converters.py``,
+    which the installer runs, downloads the publishers' own pinned releases
+    into ``<ORA_HOME>/data/converters/bin`` — ``converters_dir()`` below —
+    unless the machine already has them. Detection looks at ``PATH`` first, so
+    a Homebrew / WinGet / hand-rolled install always wins over Ora's copy. If
+    provisioning was skipped or failed, ``python3 scripts/install.py
+    converters`` re-runs it.
 
 Everything is best-effort and path-sandboxed; it never raises on a missing
 vault or a permissions error (cloud-ora has neither vault nor ~/Documents).
@@ -47,11 +54,6 @@ _INITIAL_EXPORTS_DIR = _rp.DOCUMENTS / "Ora Exports"
 _INITIAL_RESOURCES_DIR = _rp.DOCUMENTS / "Ora Resources"
 EXPORTS_DIR = _INITIAL_EXPORTS_DIR  # compatibility patch hook
 RESOURCES_DIR = _INITIAL_RESOURCES_DIR  # compatibility patch hook
-
-# Deprecated compatibility constant for out-of-tree callers that explicitly
-# request the former folder. It is intentionally no longer the function
-# default: an omitted ``outputs_subdir`` now means the vault root.
-DEFAULT_OUTPUTS_SUBDIR = "Outputs"
 
 PROJECT_OUTPUT_CHILD_BUDGET_UNITS = 120
 WINDOWS_PORTABLE_PATH_LIMIT = 240
@@ -307,7 +309,8 @@ def _safe_folder(name: str | None) -> str:
 # Formats this module can always produce (no external binary).
 NATIVE_FORMATS = ("markdown",)
 # Formats that need Pandoc (+ a PDF engine for pdf). Available when the binaries
-# are present; the installer bundles them.
+# are present; the installer provisions them into ``converters_dir()`` when the
+# machine does not already have them (``python3 scripts/install.py converters``).
 PANDOC_FORMATS = ("docx", "pdf")
 
 # Package-manager/user installs aren't always on a service's minimal PATH.
@@ -316,16 +319,33 @@ _POSIX_BIN_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
 _PDF_ENGINES = ("typst", "weasyprint", "wkhtmltopdf", "tectonic", "xelatex", "pdflatex")
 
 
+def converters_dir() -> Path:
+    """Where Ora keeps the converters it provisioned itself.
+
+    ``scripts/converters.py`` downloads Pandoc and Typst here when the machine
+    has neither, and ``_binary_search_dirs`` looks here — after ``PATH`` — so a
+    converter the user installed some other way is always preferred. Resolved
+    at call time so a relocated ``ORA_HOME`` is honored.
+    """
+    return Path(_rp.DATA_DIR_STR) / "converters" / "bin"
+
+
 def _binary_search_dirs(
     platform_name: str | None = None,
     env: dict[str, str] | None = None,
 ) -> tuple[str, ...]:
-    """Extra service-PATH locations for the current operating system."""
+    """Extra service-PATH locations for the current operating system.
+
+    Ora's own converter directory comes first: it is the one location this
+    project provisions, so it is the one location it can vouch for. ``PATH``
+    still wins over the whole list — see ``_which``.
+    """
     platform_name = platform_name or os.name
+    ora_owned = str(converters_dir())
     if platform_name != "nt":
-        return _POSIX_BIN_DIRS
+        return (ora_owned, *_POSIX_BIN_DIRS)
     env = os.environ if env is None else env
-    out: list[str] = []
+    out: list[str] = [ora_owned]
 
     def add(root: str | None, *parts: str) -> None:
         if root:
@@ -435,6 +455,7 @@ __all__ = [
     "current_resources_dir",
     "NATIVE_FORMATS",
     "PANDOC_FORMATS",
+    "converters_dir",
     "ensure_export_dirs",
     "save_output_to_vault",
     "export_capabilities",
