@@ -1342,6 +1342,29 @@
     fetch('/api/configurations/' + encodeURIComponent(name), {
       method: 'DELETE',
     }).then(_json).then(function (resp) {
+      if (resp && resp.status === 'awaiting_system_protection_approval') {
+        document.dispatchEvent(new CustomEvent(
+          'ora:system-protection-approval-required',
+          {detail: {
+            action: 'Delete Model Profile',
+            profile_name: name,
+            queue_id: resp.queue_id || '',
+            retry_required: resp.retry_required === true,
+          }}
+        ));
+        if (root.OraReviewQueuePanel
+            && typeof root.OraReviewQueuePanel.open === 'function') {
+          root.OraReviewQueuePanel.open({tab: 'paused'});
+        } else {
+          var reviewButton = document.getElementById('sidebarReviewQueueOpen');
+          if (reviewButton) reviewButton.click();
+        }
+        alert(
+          'Deleting Model Profile "' + name + '" is waiting for approval. '
+          + 'Approve the request in Review Queue, then click Delete again.'
+        );
+        return;
+      }
       if (resp && resp.error) {
         alert('Could not delete: ' + resp.error);
         return;
