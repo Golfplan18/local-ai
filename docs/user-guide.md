@@ -189,6 +189,8 @@ Ora assigns models to named roles (the analyst, the reviewer, the fast helper, a
 
 **Edit a single role.** In the same Models pane, change which model fills a given slot; the interface writes the change into your active configuration's routing. (Edit routing through the Models pane, not by hand-editing config files.)
 
+**Delete a custom Model Profile.** Click **Delete** on its card and confirm. Because deletion is protected, Ora pauses it for approval instead of removing the profile immediately. In **Review Queue → Paused**, approve the request, then return to **Settings → Models** and click **Delete** again (and confirm again) to complete the deletion.
+
 If you pick Free, expect the trade-off up front: free models are rate-limited and sometimes unavailable. Add OpenRouter credits or a direct provider key for daily use.
 
 ---
