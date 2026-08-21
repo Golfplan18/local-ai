@@ -9,7 +9,11 @@ operators get a clear "not yet" message instead of a silent shape change.
 Steps the script performs in order:
 
   1. Pre-flight: Python 3.11+, ≥5GB disk, OpenRouter catalog reachable,
-     write perms
+     write perms. Also creates the vault when the resolved vault path does
+     not exist yet — root plus the folder skeleton the runtime reads. An
+     existing vault is reported and left untouched; nothing is ever written
+     into one. A creation that fails part-way removes the directories it
+     just made, so a re-run never inherits a half-built vault.
   2. Deployment profile selection (Solo today; Hybrid / Organization future)
   3. Catalog refresh — fetches OpenRouter operational fields and writes
      config/model-catalog.json (legacy snapshot, still consumed by
@@ -105,6 +109,36 @@ DEPLOYMENT_PROFILES = {
 
 PREFLIGHT_MIN_PYTHON = (3, 11)
 PREFLIGHT_MIN_DISK_GB = 5
+
+# The folder skeleton a brand-new vault needs, expressed as path segments
+# below the resolved vault root.
+#
+# This is the set the runtime actually reads or watches, not a tidy-looking
+# copy of the author's vault:
+#   Projects/Ora   — runtime_paths.VAULT_ORA; the Problem Evolution framework,
+#                    the Trusted Web Sources registry and the periodic-
+#                    maintenance control doc are all read from here.
+#   Sessions       — conversation_closeout._DEFAULT_VAULT_SESSIONS and the
+#                    vault_export destination.
+#   Engrams        — knowledge_index / engram_promotion root, and one of the
+#                    two collections runtime_event_dispatcher classifies.
+#   Resources      — resources_watcher's reading copy, and the other
+#                    dispatcher-classified collection.
+#   Administration — canonical Master Matrix location (vault_export).
+#
+# Deliberately absent: Archive / Workshop / Templates / Modes / Lenses appear
+# in the code only inside skip-lists and maturity tables — nothing reads or
+# writes them. Incubator, Matrix, Corpus Instances and Daily Notes are each
+# created by their own writer on first use (document_input carries an explicit
+# comment saying the Incubator must not be assumed to exist on a fresh
+# install). MSI News belongs to a project plugin, not to Ora.
+VAULT_SKELETON: tuple[tuple[str, ...], ...] = (
+    ("Projects", "Ora"),
+    ("Sessions",),
+    ("Engrams",),
+    ("Resources",),
+    ("Administration",),
+)
 
 # Import name -> pip distribution.  The Solo source installer does not mutate
 # an existing Python environment; it fails preflight with one exact install
@@ -306,6 +340,104 @@ def reset_install(dry_run: bool) -> None:
     log("Install state cleared. Vault, conversations, and downloaded models untouched.")
 
 
+def _undo_created_vault(vault: Path, created: list[Path]) -> None:
+    """Remove exactly the directories this run just made, deepest first.
+
+    A half-made vault is worse than no vault: the root exists, so the next
+    ``--resume`` takes the "found existing" branch, reports the vault as
+    somebody's real work and installs on top of an incomplete skeleton.
+
+    This is a deletion, so every step answers the same question — could it
+    reach something this run did not create?
+
+      * ``created`` is appended to only after a directory was made by this
+        call, and only when the vault root did not exist when the call began;
+        the "found existing" branch returns long before it is populated.
+      * Each entry must be the recorded root itself or sit under it.
+      * A symlink is never removed and never followed.
+      * ``rmdir`` deletes empty directories only. A folder holding anything
+        this run did not put there refuses to go, which is the answer we
+        want: stop and report, rather than delete somebody's content.
+
+    Anything that stops the removal is left exactly where it is and named in
+    the log, so the operator can look at it before re-running.
+
+    Nothing above the vault root is ever touched. A missing parent directory
+    on the way to the vault is created along with it and then left: it is
+    shared ground, and an empty folder that is not the vault path is not
+    something a later run can mistake for a vault.
+    """
+    if not created:
+        return
+    for path in reversed(created):
+        if path != vault and vault not in path.parents:
+            log(f"  ⚠ Left {path} alone: it is not inside the vault this run created")
+            return
+        if path.is_symlink():
+            log(f"  ⚠ Left {path} alone: it is a symlink, not a directory this run created")
+            return
+        if not path.exists():
+            continue
+        try:
+            path.rmdir()
+        except OSError as exc:
+            log(
+                f"  ⚠ Could not remove {path}: {exc}. Left in place — check it "
+                "before re-running the installer."
+            )
+            return
+    log(f"  ✓ Removed the partial vault this run created at {vault}")
+
+
+def _ensure_vault(vault: Path, dry_run: bool) -> bool:
+    """Create a missing vault; leave an existing one completely alone.
+
+    An existing vault is somebody's real work. This never writes into one —
+    not even to add a skeleton folder it happens to be missing — because a
+    "repair" here is indistinguishable from damage. Only the case where there
+    is no vault at all is ours to act on.
+
+    Returns False when creation was attempted and failed, so the caller halts
+    the install instead of reporting success into a product that cannot load.
+    A failure part-way through takes the half-built vault with it, so the next
+    run starts from the same clean state this one did.
+    """
+    if vault.exists():
+        log(f"  ✓ Vault found at {vault} — left exactly as it is")
+        return True
+
+    folders = ", ".join("/".join(segments) for segments in VAULT_SKELETON)
+    if dry_run:
+        log(f"  [dry-run] would create the vault at {vault} ({folders})")
+        return True
+
+    created: list[Path] = []
+    try:
+        from orchestrator import runtime_paths as rp
+        # Claim the root first and on its own, so a later failure has an
+        # exact, complete list of what this run made. ``exist_ok`` is
+        # deliberately off: if something has appeared at this path since the
+        # check above, it is not ours to create — and so never ours to remove.
+        vault.mkdir(parents=True)
+        created.append(vault)
+        # One level per call, so each success records one directory. The
+        # skeleton's only nested entry is Projects/Ora; walking the prefixes
+        # keeps the parent recorded separately from the child.
+        for segments in VAULT_SKELETON:
+            for depth in range(1, len(segments) + 1):
+                branch = segments[:depth]
+                if vault.joinpath(*branch).exists():
+                    continue
+                created.append(rp.safe_owned_subdir(vault, *branch, create=True))
+    except Exception as exc:
+        log(f"  ✗ Could not create the vault at {vault}: {exc}")
+        _undo_created_vault(vault, created)
+        return False
+
+    log(f"  ✓ Created vault at {vault} ({folders})")
+    return True
+
+
 def _runtime_path_preflight(dry_run: bool) -> bool:
     """Resolve and report every user-storage root before install work starts."""
     try:
@@ -358,12 +490,7 @@ def _runtime_path_preflight(dry_run: bool) -> bool:
     if roots.vault.exists() and not roots.vault.is_dir():
         log(f"  ✗ Resolved vault path exists but is not a directory: {roots.vault}")
         return False
-    if not roots.vault.exists():
-        log(
-            f"  ⚠ Resolved vault does not yet exist: {roots.vault}. "
-            "Ora will not create or replace a canonical vault during install."
-        )
-    return True
+    return _ensure_vault(roots.vault, dry_run)
 
 
 # ─── Steps ───────────────────────────────────────────────────────────────

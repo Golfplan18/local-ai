@@ -8,8 +8,10 @@ machine work correctly.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -134,6 +136,233 @@ class TestPreflightStep(unittest.TestCase):
             missing = install._missing_document_dependencies()
         self.assertIn("python-docx", missing)
         self.assertIn("beautifulsoup4", missing)
+
+
+def _tree_checksum(root: Path) -> str:
+    """One digest over every path, its kind, and every file's bytes."""
+    entries = sorted(root.rglob("*"), key=lambda p: str(p))
+    if not entries:
+        # An empty tree hashes to the digest of nothing, which matches any
+        # other empty tree — including one this test was meant to prove is
+        # still full. Refuse rather than hand back a false pass.
+        raise AssertionError(f"refusing to checksum an empty tree at {root}")
+    digest = hashlib.sha256()
+    for path in entries:
+        rel = path.relative_to(root).as_posix()
+        if path.is_symlink():
+            digest.update(f"L:{rel}:{os.readlink(path)}\0".encode())
+        elif path.is_dir():
+            digest.update(f"D:{rel}\0".encode())
+        else:
+            digest.update(f"F:{rel}:".encode())
+            digest.update(hashlib.sha256(path.read_bytes()).hexdigest().encode())
+            digest.update(b"\0")
+    return digest.hexdigest()
+
+
+class TestVaultCreation(unittest.TestCase):
+    """Milestone C — the installer creates the vault a fresh clone lacks.
+
+    Before this, install reported success into a product with nothing to
+    load: the resolved vault did not exist, the installer said so, and then
+    said it would not create one.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.log_path = self.root / "install.log"
+        self.state_path_patch = mock.patch.object(
+            install, "STATE_PATH", self.root / "install-state.json")
+        self.log_path_patch = mock.patch.object(install, "LOG_PATH", self.log_path)
+        self.state_path_patch.start()
+        self.log_path_patch.start()
+
+    def tearDown(self):
+        self.state_path_patch.stop()
+        self.log_path_patch.stop()
+        self.tmp.cleanup()
+
+    def _logged(self) -> str:
+        return self.log_path.read_text(encoding="utf-8") if self.log_path.exists() else ""
+
+    def _preflight_with_vault(self, vault: Path, dry_run: bool = False) -> bool:
+        """Run the real path preflight against an ORA_VAULT-resolved vault."""
+        with mock.patch.dict(
+            "os.environ",
+            {"ORA_DOCUMENTS": str(self.root), "ORA_VAULT": str(vault)},
+            clear=True,
+        ):
+            return install._runtime_path_preflight(dry_run=dry_run)
+
+    def test_missing_vault_is_created_with_the_runtime_skeleton(self):
+        vault = self.root / "fresh-vault"
+        self.assertFalse(vault.exists())
+
+        self.assertTrue(self._preflight_with_vault(vault))
+
+        self.assertTrue(vault.is_dir(), "vault root was not created")
+        for segments in install.VAULT_SKELETON:
+            folder = vault.joinpath(*segments)
+            self.assertTrue(folder.is_dir(), f"missing skeleton folder {folder}")
+        self.assertIn(f"Created vault at {vault}", self._logged())
+
+    def test_created_vault_carries_no_content(self):
+        """Content is an explicit non-goal: folders only, no seeded files."""
+        vault = self.root / "fresh-vault"
+        self._preflight_with_vault(vault)
+        files = [p for p in vault.rglob("*") if p.is_file()]
+        self.assertEqual(files, [])
+
+    def test_skeleton_holds_only_folders_the_runtime_uses(self):
+        top_level = {segments[0] for segments in install.VAULT_SKELETON}
+        self.assertEqual(
+            top_level,
+            {"Projects", "Sessions", "Engrams", "Resources", "Administration"},
+        )
+        # Guard the non-goal: these have no runtime reference beyond skip-lists.
+        for decorative in ("Archive", "Workshop", "Templates"):
+            self.assertNotIn(decorative, top_level)
+
+    def test_existing_vault_is_left_byte_identical(self):
+        vault = self.root / "real-vault"
+        (vault / "Projects" / "Ora").mkdir(parents=True)
+        (vault / "Projects" / "Ora" / "Registry — Ora.md").write_text(
+            "# Registry\n\nreal work\n", encoding="utf-8")
+        (vault / "Engrams").mkdir()
+        (vault / "Engrams" / "note.md").write_text("engram\n", encoding="utf-8")
+        (vault / "Idiosyncratic Folder").mkdir()
+        (vault / "top-level.md").write_text("root note\n", encoding="utf-8")
+        # Deliberately missing Sessions / Resources / Administration: an
+        # existing vault must not be "repaired" into the skeleton shape.
+
+        before = _tree_checksum(vault)
+        self.assertTrue(self._preflight_with_vault(vault))
+        after = _tree_checksum(vault)
+
+        self.assertEqual(before, after, "install modified an existing vault")
+        self.assertFalse((vault / "Sessions").exists())
+        self.assertIn(f"Vault found at {vault}", self._logged())
+
+    def test_dry_run_creates_nothing(self):
+        vault = self.root / "fresh-vault"
+        self.assertTrue(self._preflight_with_vault(vault, dry_run=True))
+        self.assertFalse(vault.exists())
+
+    def test_creation_failure_halts_instead_of_reporting_success(self):
+        vault = self.root / "fresh-vault"
+        with mock.patch(
+            "orchestrator.runtime_paths.safe_owned_subdir",
+            side_effect=OSError("read-only file system"),
+        ):
+            self.assertFalse(self._preflight_with_vault(vault))
+        self.assertIn("Could not create the vault", self._logged())
+
+    # ── A creation that fails part-way must not leave a vault behind ──
+    #
+    # The failure is a real one from the operating system: a folder name
+    # longer than any filesystem accepts. Only the skeleton list is swapped,
+    # so the root and the folders before it are created for real and the
+    # kernel refuses the next one — the same shape as a disk filling up or
+    # permissions changing mid-run.
+    _UNCREATABLE = "x" * 300
+
+    def _skeleton_that_fails_after(self, *good: tuple[str, ...]):
+        return mock.patch.object(
+            install, "VAULT_SKELETON", (*good, (self._UNCREATABLE,)))
+
+    def test_partial_creation_leaves_no_vault_root_behind(self):
+        vault = self.root / "fresh-vault"
+        with self._skeleton_that_fails_after(("Sessions",), ("Projects", "Ora")):
+            self.assertFalse(self._preflight_with_vault(vault))
+
+        self.assertFalse(
+            vault.exists(),
+            "a half-created vault survived — the next --resume would adopt it",
+        )
+        logged = self._logged()
+        self.assertIn(f"Could not create the vault at {vault}", logged)
+        self.assertIn(f"Removed the partial vault this run created at {vault}", logged)
+
+    def test_re_run_after_a_partial_failure_creates_the_vault_completely(self):
+        vault = self.root / "fresh-vault"
+        with self._skeleton_that_fails_after(("Sessions",)):
+            self.assertFalse(self._preflight_with_vault(vault))
+        self.assertFalse(vault.exists())
+
+        # Second run, nothing engineered: the clean state the first run left
+        # behind is what lets this one build the whole skeleton.
+        self.assertTrue(self._preflight_with_vault(vault))
+        self.assertTrue(vault.is_dir())
+        for segments in install.VAULT_SKELETON:
+            self.assertTrue(vault.joinpath(*segments).is_dir(),
+                            f"missing skeleton folder {vault.joinpath(*segments)}")
+        self.assertIn(f"Created vault at {vault}", self._logged())
+
+    def test_removal_stops_at_anything_this_run_did_not_create(self):
+        """Content that appears mid-run is left alone, not swept up."""
+        vault = self.root / "fresh-vault"
+        stray = vault / "not-ours.md"
+        from orchestrator import runtime_paths as rp
+        real_subdir = rp.safe_owned_subdir
+
+        def drop_a_file_then_carry_on(base, *segments, create=False):
+            made = real_subdir(base, *segments, create=create)
+            if segments == ("Sessions",):
+                stray.write_text("somebody else's work\n", encoding="utf-8")
+            return made
+
+        with mock.patch("orchestrator.runtime_paths.safe_owned_subdir",
+                        side_effect=drop_a_file_then_carry_on):
+            with self._skeleton_that_fails_after(("Sessions",)):
+                self.assertFalse(self._preflight_with_vault(vault))
+
+        self.assertTrue(vault.is_dir(), "the vault was removed with content in it")
+        self.assertEqual(stray.read_text(encoding="utf-8"), "somebody else's work\n")
+        self.assertFalse((vault / "Sessions").exists(), "own empty folder not undone")
+        self.assertIn(f"Could not remove {vault}", self._logged())
+
+    def test_an_existing_vault_is_never_removed(self):
+        """The found-existing branch records nothing, so nothing can undo it.
+
+        The skeleton here is one that cannot be created at all. An existing
+        vault never reaches it — and must survive byte-identical either way.
+        """
+        vault = self.root / "real-vault"
+        (vault / "Engrams").mkdir(parents=True)
+        (vault / "Engrams" / "note.md").write_text("engram\n", encoding="utf-8")
+        before = _tree_checksum(vault)
+
+        with self._skeleton_that_fails_after():
+            self.assertTrue(self._preflight_with_vault(vault))
+
+        self.assertTrue(vault.is_dir(), "an existing vault was removed")
+        self.assertEqual(before, _tree_checksum(vault))
+        self.assertIn(f"Vault found at {vault}", self._logged())
+
+    def test_undo_refuses_a_path_outside_the_vault_it_created(self):
+        elsewhere = self.root / "somebody-elses-folder"
+        elsewhere.mkdir()
+        install._undo_created_vault(self.root / "fresh-vault", [elsewhere])
+        self.assertTrue(elsewhere.is_dir())
+        self.assertIn("not inside the vault this run created", self._logged())
+
+    def test_undo_never_removes_a_symlink(self):
+        target = self.root / "real-folder"
+        target.mkdir()
+        (target / "keep.md").write_text("keep\n", encoding="utf-8")
+        link = self.root / "linked-vault"
+        link.symlink_to(target, target_is_directory=True)
+
+        install._undo_created_vault(link, [link])
+
+        self.assertTrue(link.is_symlink(), "a symlink was removed")
+        self.assertEqual((target / "keep.md").read_text(encoding="utf-8"), "keep\n")
+        self.assertIn("it is a symlink", self._logged())
+
+    def test_the_old_refusal_message_is_gone(self):
+        source = (REPO_ROOT / "scripts" / "install.py").read_text(encoding="utf-8")
+        self.assertNotIn("will not create or replace a canonical vault", source)
 
 
 class TestMCPRuntimeInstall(unittest.TestCase):
