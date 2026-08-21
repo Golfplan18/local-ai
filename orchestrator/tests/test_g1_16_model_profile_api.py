@@ -15,6 +15,10 @@ sys.path.insert(0, str(WORKSPACE / 'orchestrator'))
 sys.path.insert(0, str(WORKSPACE / 'server'))
 
 import conversation_memory as runtime_memory
+import oversight_actions
+import oversight_queue
+import system_protection
+import tool_events
 from orchestrator import conversation_memory as package_memory
 from orchestrator import active_configuration as ac
 from orchestrator import model_profiles as mp
@@ -97,6 +101,71 @@ class ModelProfileApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(events, ['scan', 'bake', 'reload'])
         bake.assert_called_once_with(force=True, preset_names=('free',))
+
+    def test_custom_profile_delete_requires_approval_and_succeeds_on_retry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            configurations = root / 'configurations'
+            configurations.mkdir()
+            profile_path = configurations / 'Approval Test.json'
+            profile_path.write_text(json.dumps({
+                'name': 'Approval Test',
+                'preset_lineage': 'custom',
+            }), encoding='utf-8')
+            pointer_path = root / 'active-configuration.json'
+            pointer_path.write_text(
+                json.dumps({'name': 'free'}), encoding='utf-8')
+            approvals_path = root / 'execution-approvals.json'
+            events_path = root / 'tool-events.jsonl'
+            queue_path = root / 'human-queue.jsonl'
+            actions_path = root / 'actions.jsonl'
+
+            tool_events._queued_hashes.clear()
+            try:
+                with (
+                    mock.patch.object(ac, 'CONFIGURATIONS_DIR', configurations),
+                    mock.patch.object(ac, 'ACTIVE_POINTER_PATH', pointer_path),
+                    mock.patch.object(
+                        tool_events, 'APPROVALS_PATH', str(approvals_path)),
+                    mock.patch.object(
+                        tool_events, 'GLOBAL_SINK_DEFAULT', str(events_path)),
+                    mock.patch.object(
+                        oversight_queue, 'HUMAN_QUEUE_PATH', str(queue_path)),
+                    mock.patch.object(
+                        oversight_actions, 'HUMAN_QUEUE_PATH', str(queue_path)),
+                    mock.patch.object(
+                        system_protection, '_actions_path',
+                        return_value=str(actions_path),
+                    ),
+                ):
+                    first = self.client.delete(
+                        '/api/configurations/Approval%20Test')
+                    first_payload = first.get_json()
+
+                    self.assertEqual(first.status_code, 409, first_payload)
+                    self.assertEqual(
+                        first_payload['status'],
+                        'awaiting_system_protection_approval',
+                    )
+                    self.assertTrue(first_payload['retry_required'])
+                    self.assertTrue(profile_path.is_file())
+
+                    entry = oversight_queue.find_paused_by_id(
+                        first_payload['queue_id'])
+                    self.assertIsNotNone(entry)
+                    approved = tool_events.resolve_gate_entry(
+                        entry.to_dict(), approve=True)
+                    self.assertIn('One-shot token', approved)
+
+                    retry = self.client.delete(
+                        '/api/configurations/Approval%20Test')
+                    self.assertEqual(
+                        retry.status_code, 200, retry.get_json())
+                    self.assertEqual(
+                        retry.get_json(), {'deleted': 'Approval Test'})
+                    self.assertFalse(profile_path.exists())
+            finally:
+                tool_events._queued_hashes.clear()
 
     def test_toggle_rebake_reloads_router_after_all_profile_writes(self):
         events = []

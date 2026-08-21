@@ -940,6 +940,11 @@ def _rg_file_roots(args: list[str], cwd: str) -> list[str] | None:
         if token == "--files":
             index += 1
             continue
+        # The ignore-file is an additional model-selected read. Parsing its
+        # contents is outside this exact-root grammar; refuse the shape rather
+        # than letting an unbound file disappear from the authority record.
+        if token == "--ignore-file" or token.startswith("--ignore-file="):
+            return None
         if token in value_options:
             if index + 1 >= len(args):
                 return None
@@ -1059,6 +1064,12 @@ def _sed_write_targets(expression: str) -> list[str] | None:
     # Standalone write commands, including address prefixes such as ``1w x``.
     for command in re.split(r"[;\n]", expression):
         stripped = command.strip()
+        # sed's ``r`` command reads a second model-selected file.  It is not
+        # an ordinary positional input, so refuse both spaced and attached
+        # spellings instead of allowing that read to disappear from the
+        # authority record.
+        if re.match(r"^" + command_prefix + r"[rR]", stripped):
+            return None
         # GNU sed's ``e`` command and the ``s///e`` flag execute a helper
         # process.  Its filesystem/network effects cannot be represented by
         # this exact-path profile, so refuse the complete program.
@@ -1634,6 +1645,12 @@ def _git_option_is_output(token: str) -> bool:
     return _git_long_option_matches(token, ("--output",))
 
 
+def _git_option_is_commit_message_file(token: str) -> bool:
+    """Match Git commit message-file options, including long prefixes."""
+
+    return _git_long_option_matches(token, ("--file",))
+
+
 def _git_long_option_matches(token: str, options: Iterable[str]) -> bool:
     """Match Git's exact, equals-attached, and unique-prefix long options."""
 
@@ -2056,6 +2073,14 @@ def _parse_git(args: list[str], cwd: str) -> dict[str, Any]:
     if subcommand in _GIT_LOCAL_WRITE_SUBCOMMANDS:
         if any(_git_option_is_signature(item) for item in subargs):
             return _unknown_profile("Git signature helper execution is not allowed", "git")
+        if subcommand == "commit" and (
+            any(_git_option_is_commit_message_file(item) for item in subargs)
+            or _has_any_option(subargs, ("-F",))
+        ):
+            return _unknown_profile(
+                "Git commit message files are outside the exact local grammar",
+                "git",
+            )
         if subcommand in {"worktree"}:
             return _unknown_profile("Git worktree writes require a dedicated exact-path surface", "git")
         if subcommand == "init" and any(
@@ -2312,6 +2337,18 @@ def _profile(base: str, args: list[str], cwd: str, executable: str) -> dict[str,
         for item in args
     ):
         return _unknown_profile("find execution, deletion, and file-output predicates are not allowed", base)
+    if base == "rg":
+        # ``--`` ends rg's option list.  After it, ``--ignore-file`` is a
+        # literal pattern or path operand rather than the read-bearing
+        # option; keep the backstop aligned with the option parser above.
+        separator = args.index("--") if "--" in args else len(args)
+        if any(
+            item == "--ignore-file" or item.startswith("--ignore-file=")
+            for item in args[:separator]
+        ):
+            return _unknown_profile(
+                "rg ignore-file reads are outside the exact authority grammar", base,
+            )
     risky_options = _UTILITY_EXECUTION_OPTIONS.get(base, ())
     if risky_options and _has_any_option(args, risky_options):
         return _unknown_profile("command-launching option is not allowed", base)
