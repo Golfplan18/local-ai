@@ -537,12 +537,17 @@ class TestSinglePass(unittest.TestCase):
         ep = {"service": "openrouter", "id": "qwen/qwen3.5-9b",
               "openrouter_fallback_model_id": "qwen/qwen3.5-9b"}
         with mock.patch.object(campaign, "_keyring_get", return_value="k"), \
-             mock.patch.object(campaign.urllib.request, "urlopen") as uo:
-            uo.return_value.__enter__.return_value.read.return_value = \
-                json.dumps(fake).encode()
+             mock.patch.object(
+                 campaign.network_policy, "openrouter_request_bytes",
+                 return_value=(json.dumps(fake).encode(), mock.sentinel.destination),
+             ) as request:
             rec = campaign.single_pass_call(ep, "prompt")
         self.assertEqual(rec["via"], "openrouter")
         self.assertEqual(rec["completion_tokens"], 500)
+        self.assertEqual(
+            request.call_args.args[0],
+            "https://openrouter.ai/api/v1/chat/completions",
+        )
 
     def test_pricing_math(self):
         rec = {"prompt_tokens": 1_000_000, "completion_tokens": 500_000}
@@ -1019,9 +1024,10 @@ class TestSinglePassFidelity(unittest.TestCase):
         ep = {"service": "openrouter", "id": "qwen/qwen3.5-9b",
               "openrouter_fallback_model_id": "qwen/qwen3.5-9b"}
         with mock.patch.object(campaign, "_keyring_get", return_value="k"), \
-             mock.patch.object(campaign.urllib.request, "urlopen") as uo:
-            uo.return_value.__enter__.return_value.read.return_value = \
-                json.dumps(fake).encode()
+             mock.patch.object(
+                 campaign.network_policy, "openrouter_request_bytes",
+                 return_value=(json.dumps(fake).encode(), mock.sentinel.destination),
+             ):
             with self.assertRaises(RuntimeError):
                 campaign.single_pass_call(ep, "prompt")
 

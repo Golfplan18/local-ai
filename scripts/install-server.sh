@@ -98,6 +98,8 @@ command -v pip3          >/dev/null || NEEDED_APT+=("python3-pip")
 python3 -c 'import venv' 2>/dev/null || NEEDED_APT+=("python3-venv")
 command -v git           >/dev/null || NEEDED_APT+=("git")
 command -v curl          >/dev/null || NEEDED_APT+=("curl")
+command -v node          >/dev/null || NEEDED_APT+=("nodejs")
+command -v npm           >/dev/null || NEEDED_APT+=("npm")
 
 if (( ${#NEEDED_APT[@]} > 0 )); then
   log "Installing apt packages: ${NEEDED_APT[*]}"
@@ -145,6 +147,25 @@ if [[ ! -f requirements.txt ]]; then
 fi
 run "python3 -m pip install --quiet -r requirements.txt"
 log "  ✓ Installed dependencies from requirements.txt"
+
+if [[ ! -f mcp-runtime/package-lock.json ]]; then
+  log "  ✗ mcp-runtime/package-lock.json not found"
+  exit 1
+fi
+if (( DRY_RUN )); then
+  log "  DRY: would run npm ci --offline against the pinned MCP lock, with an exact-lock registry fallback only if the cache is incomplete"
+  log "  DRY: would run node mcp-runtime/node_modules/playwright-core/cli.js install chromium with PLAYWRIGHT_BROWSERS_PATH=0"
+else
+  if ! (cd mcp-runtime && npm ci --offline --ignore-scripts --no-audit --no-fund); then
+    log "  ⚠ Local npm cache incomplete; installing the same exact lock from its registry URLs"
+    (cd mcp-runtime && npm ci --ignore-scripts --no-audit --no-fund)
+  fi
+  PLAYWRIGHT_BROWSERS_PATH=0 node \
+    mcp-runtime/node_modules/playwright-core/cli.js install chromium
+  PLAYWRIGHT_BROWSERS_PATH=0 node -e \
+    'const fs=require("fs");const {chromium}=require("./mcp-runtime/node_modules/playwright-core");const p=chromium.executablePath();if(!fs.existsSync(p))process.exit(1)'
+fi
+log "  ✓ Installed pinned MCP runtime and exact Playwright Chromium"
 
 # ─── 3. ollama for embeddings ──────────────────────────────────────────
 log "Step 3/6: ollama (for ChromaDB embeddings)"

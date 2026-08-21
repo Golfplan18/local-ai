@@ -47,6 +47,7 @@ sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
 sys.path.insert(0, WORKSPACE.rstrip("/\\") or WORKSPACE)
 
 import runtime_paths as rp
+import network_policy
 
 # Conversation roots come from the single cross-platform source (honors
 # ORA_CONVERSATIONS / a relocation), not a hardcoded ~/Documents path. They are
@@ -56,6 +57,15 @@ CONVERSATIONS_RAW = os.path.join(rp.CONVERSATIONS_STR, "raw", "")
 # Same rule for the local-model inventory: the path layer owns it (and honors
 # ORA_MODELS_JSON_PATH), so it has to be read after runtime_paths is importable.
 MODELS_JSON = str(rp.models_json_path())
+
+
+def _fetch_provider_asset(url: str, *, timeout: float = 30) -> bytes:
+    """Fetch a provider-returned public asset with per-hop validation."""
+
+    body, _destination = network_policy.urllib_request_bytes(
+        url, timeout=timeout,
+    )
+    return body
 
 
 def _routing_config_path() -> str:
@@ -199,6 +209,58 @@ def jobs_list(conversation_id):
     except Exception as exc:  # pragma: no cover — defensive
         return json.dumps({"jobs": [], "error": str(exc)})
     return json.dumps({"jobs": jobs, "available": True})
+
+
+def _job_result_contains_route(value, route: str) -> bool:
+    if isinstance(value, str):
+        return value == route
+    if isinstance(value, list):
+        return any(_job_result_contains_route(item, route) for item in value)
+    if isinstance(value, dict):
+        return any(_job_result_contains_route(item, route) for item in value.values())
+    return False
+
+
+@app.route(
+    "/api/jobs/<conversation_id>/<job_id>/artifacts/<filename>",
+    methods=["GET"],
+)
+def job_artifact(conversation_id, job_id, filename):
+    """Serve only an artifact named by that conversation's completed job."""
+
+    if not _HAS_JOB_QUEUE or _get_job_queue is None:
+        return _json_response({"error": "job queue unavailable"}, status=503)
+    if (
+        not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", job_id or "")
+        or filename != os.path.basename(filename)
+        or not re.fullmatch(r"[A-Za-z0-9_.-]{1,255}", filename or "")
+    ):
+        return _json_response({"error": "invalid artifact"}, status=400)
+    with _conversation_read_scope(conversation_id) as (
+        conversation_id, error_response,
+    ):
+        if error_response is not None:
+            return error_response
+        try:
+            job = _get_job_queue().get_job(conversation_id, job_id)
+        except Exception:
+            return _json_response({"error": "unknown job"}, status=404)
+        route = f"/api/jobs/{conversation_id}/{job_id}/artifacts/{filename}"
+        if not _job_result_contains_route(job.get("result_ref"), route):
+            return _json_response({"error": "unknown artifact"}, status=404)
+        try:
+            session = rp.safe_owned_subdir(
+                rp.ORA_HOME, "sessions", conversation_id,
+            )
+            uploads = rp.safe_owned_subdir(session, "uploads")
+            target = uploads / filename
+            if target.is_symlink() or not target.is_file():
+                return _json_response({"error": "artifact unavailable"}, status=404)
+            return send_from_directory(
+                str(uploads), filename, conditional=True, max_age=0,
+            )
+        except (OSError, ValueError):
+            return _json_response({"error": "artifact unavailable"}, status=404)
 
 
 # ── Audio/Video Phase 1 — capture endpoints ──────────────────────────────────
@@ -751,17 +813,18 @@ def _tts_openrouter(text: str, model: str, voice: str) -> tuple[bytes | None, st
     if not model:
         return None, "No OpenRouter speech model selected"
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
         kwargs = {"model": model, "input": text}
         if voice: kwargs["voice"] = voice
-        resp = client.audio.speech.create(
-            **kwargs,
-            extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
-        )
+        with network_policy.openrouter_sdk_client(key) as client:
+            resp = client.audio.speech.create(
+                **kwargs,
+                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+            )
         return resp.read(), "audio/mpeg"
     except Exception as e:
-        return None, f"openrouter speech failed: {e}"
+        return None, "openrouter speech failed: " + network_policy.redact_sensitive_text(
+            e, secrets=(key,),
+        )
 
 
 @app.route("/api/tts", methods=["POST"])
@@ -2543,7 +2606,12 @@ def _verify_provider_key(entry: dict, key: str):
 
     try:
         if pid == "openrouter":
-            _get("https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {key}"})
+            network_policy.openrouter_request_bytes(
+                "https://openrouter.ai/api/v1/key",
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=12,
+                max_bytes=2 * 1024 * 1024,
+            )
         elif pid == "anthropic":
             _get("https://api.anthropic.com/v1/models",
                  {"x-api-key": key, "anthropic-version": "2023-06-01"})
@@ -2595,7 +2663,7 @@ def _verify_provider_key(entry: dict, key: str):
         # (e.g. InvalidURL on a key with a stray space) embed the full URL,
         # which for FRED contains the key in the query string. Never let a
         # secret round-trip back into the browser.
-        msg = str(e).replace(key, "***") if key else str(e)
+        msg = network_policy.redact_sensitive_text(e, secrets=(key,))
         return None, f"Couldn't reach the provider: {msg}"
 
 
@@ -17469,14 +17537,18 @@ def capability_image_styles():
         elif isinstance(output.get("image_url"), str):
             # Fetch the URL and base64-encode the bytes.
             try:
-                from urllib.request import urlopen
                 import base64
-                with urlopen(output["image_url"], timeout=30) as resp:
-                    image_b64 = base64.b64encode(resp.read()).decode("ascii")
+                image_b64 = base64.b64encode(
+                    _fetch_provider_asset(output["image_url"], timeout=30),
+                ).decode("ascii")
             except Exception as exc:
                 return Response(json.dumps({"error": {
                     "code": "model_unavailable",
-                    "message": f"Failed to fetch result image: {exc}"
+                    "message": (
+                        "Failed to fetch result image from "
+                        f"{network_policy.safe_url_label(output['image_url'])}: "
+                        f"{type(exc).__name__}"
+                    )
                 }}), status=502, mimetype="application/json")
     elif isinstance(output, (bytes, bytearray)):
         import base64
@@ -18066,7 +18138,6 @@ def capability_image_varies():
 
     images_out = []
     if isinstance(output, list):
-        from urllib.request import urlopen
         import base64
         for entry in output:
             b64 = None
@@ -18077,8 +18148,9 @@ def capability_image_varies():
                         b64 = uri.split(";base64,", 1)[1]
                 elif isinstance(entry.get("image_url"), str):
                     try:
-                        with urlopen(entry["image_url"], timeout=30) as resp:
-                            b64 = base64.b64encode(resp.read()).decode("ascii")
+                        b64 = base64.b64encode(
+                            _fetch_provider_asset(entry["image_url"], timeout=30),
+                        ).decode("ascii")
                     except Exception:
                         b64 = None
             elif isinstance(entry, (bytes, bytearray)):
@@ -21449,6 +21521,13 @@ if __name__ == "__main__":
         print(f"MCP tools: {mcp_count}")
     print("Press Ctrl+C to stop.")
 
+    def _shutdown_mcp():
+        try:
+            from mcp_client import shutdown as _stop_mcp
+            _stop_mcp()
+        finally:
+            set_mcp_client(None)
+
     def _shutdown_handler(sig, frame):
         fire_hooks("session_end")
         # Clear sidebar windows on shutdown
@@ -21459,6 +21538,10 @@ if __name__ == "__main__":
         try:
             from bash_execute import cleanup_all
             cleanup_all()
+        except Exception:
+            pass
+        try:
+            _shutdown_mcp()
         except Exception:
             pass
         raise SystemExit(0)
@@ -21518,4 +21601,7 @@ if __name__ == "__main__":
     except Exception as _e:
         print(f"[startup] icon-set rebuild failed: {_e}")
 
-    app.run(host=_SERVER_HOST, port=port, debug=False, threaded=True)
+    try:
+        app.run(host=_SERVER_HOST, port=port, debug=False, threaded=True)
+    finally:
+        _shutdown_mcp()

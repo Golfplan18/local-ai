@@ -70,6 +70,11 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import network_policy
+
 # Resolve relative to the runner's own checkout by default.  ``~/ora`` was a
 # historical deployment assumption; it made an accepted-runtime checkout read
 # a different repository's traces and falsely fail otherwise valid reruns.
@@ -1372,13 +1377,15 @@ def single_pass_call(endpoint: dict, prompt: str, max_tokens: int = 16000,
     slug = endpoint.get("openrouter_fallback_model_id") or endpoint.get("id")
     body = {"model": slug, "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": prompt}]}
-    req = urllib.request.Request(
+    raw, _destination = network_policy.openrouter_request_bytes(
         "https://openrouter.ai/api/v1/chat/completions",
         data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}",
-                 "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        d = json.loads(resp.read())
+                 "Content-Type": "application/json"},
+        timeout=timeout,
+        max_bytes=16 * 1024 * 1024,
+    )
+    d = json.loads(raw)
     choice = (d.get("choices") or [{}])[0]
     usage = d.get("usage") or {}
     served = d.get("model") or slug

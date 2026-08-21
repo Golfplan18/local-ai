@@ -49,6 +49,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 # Single cross-platform source for Ora roots + path normalization + locking.
 try:
@@ -252,43 +253,313 @@ def manifest_axes(action: str) -> dict:
     return dict(entry)
 
 
-# ── MCP server axes (config/mcp-servers.json, optional keys) ──────────────
+# ── MCP exact-tool policy (config/mcp-servers.json) ───────────────────────
 
 _MCP_CONFIG_PATH = os.path.join(WORKSPACE, "config/mcp-servers.json")
 _mcp_axes_cache: dict | None = None
+_MCP_ARGUMENT_MAX_BYTES = 8 * 1024 * 1024
+
+
+class MCPPolicyError(ValueError):
+    """An MCP call is unknown or cannot be bound to an exact policy."""
+
+
+def _load_mcp_policy_cache() -> dict[str, dict]:
+    global _mcp_axes_cache
+    if _mcp_axes_cache is not None:
+        return _mcp_axes_cache
+    loaded: dict[str, dict] = {}
+    try:
+        with open(_MCP_CONFIG_PATH, encoding="utf-8") as stream:
+            cfg = json.load(stream)
+        for server in cfg.get("servers", []):
+            server_name = str(server.get("name") or "")
+            tools = server.get("tools")
+            if not server_name or not isinstance(tools, dict):
+                continue
+            for tool_name, raw_policy in tools.items():
+                if not isinstance(tool_name, str) or not isinstance(raw_policy, dict):
+                    continue
+                axes = {
+                    "category": raw_policy.get("category"),
+                    "mutability": raw_policy.get("mutability"),
+                    "sensitivity": raw_policy.get("sensitivity"),
+                    "egress": raw_policy.get("egress"),
+                    "enforcement": "in_harness",
+                }
+                if (
+                    axes["category"] not in FUNCTION_CATEGORIES
+                    or validate_axes(axes)
+                    or not isinstance(raw_policy.get("adapter"), str)
+                    or not isinstance(raw_policy.get("destructive"), bool)
+                ):
+                    continue
+                namespaced = f"mcp_{server_name}_{tool_name}"
+                loaded[namespaced] = {
+                    **axes,
+                    "server": server_name,
+                    "tool": tool_name,
+                    "adapter": raw_policy["adapter"],
+                    "destructive": raw_policy["destructive"],
+                }
+    except Exception:
+        loaded = {}
+    _mcp_axes_cache = loaded
+    return loaded
+
+
+def mcp_tool_allowlist() -> dict[str, set[str]]:
+    """Return the exact configured tool names grouped by child server."""
+
+    grouped: dict[str, set[str]] = {}
+    for policy in _load_mcp_policy_cache().values():
+        grouped.setdefault(policy["server"], set()).add(policy["tool"])
+    return grouped
+
+
+def _mcp_text(value, label: str, *, maximum: int = 2048) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise MCPPolicyError(f"{label} is missing or malformed")
+    if len(value) > maximum or any(ord(ch) < 32 for ch in value):
+        raise MCPPolicyError(f"{label} exceeds its policy boundary")
+    return value
+
+
+def _mcp_logical(value) -> str:
+    return quote(str(value), safe="")
+
+
+def _canonical_vault_path(value) -> str:
+    raw = _mcp_text(value, "vault path", maximum=32768)
+    if "\x00" in raw:
+        raise MCPPolicyError("vault path contains a null byte")
+    expanded = Path(raw).expanduser()
+    if ".." in expanded.parts:
+        raise MCPPolicyError("vault path traversal is not allowed")
+    vault = Path(_rp.VAULT_STR).expanduser().resolve(strict=False)
+    candidate = expanded if expanded.is_absolute() else vault / expanded
+    resolved = candidate.resolve(strict=False)
+    try:
+        common = os.path.commonpath((os.path.normcase(str(vault)),
+                                     os.path.normcase(str(resolved))))
+    except ValueError as exc:
+        raise MCPPolicyError("vault path is outside the configured vault") from exc
+    if common != os.path.normcase(str(vault)):
+        raise MCPPolicyError("vault path is outside the configured vault")
+    return str(resolved)
+
+
+def _github_repo_selectors(params: dict) -> list[str]:
+    owner = _mcp_text(params.get("owner"), "GitHub owner", maximum=256)
+    repo = _mcp_text(params.get("repo"), "GitHub repository", maximum=256)
+    base = f"github:repo/{_mcp_logical(owner)}/{_mcp_logical(repo)}"
+    selectors = [base]
+    for key in ("branch", "from_branch", "base", "head", "ref"):
+        value = params.get(key)
+        if value is not None:
+            selectors.append(f"github:ref/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{_mcp_logical(_mcp_text(value, key))}")
+    if params.get("path") is not None:
+        path = _mcp_text(params["path"], "GitHub path", maximum=4096)
+        selectors.append(f"github:path/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{_mcp_logical(path)}")
+    issue = params.get("issue_number")
+    if issue is not None:
+        if isinstance(issue, bool) or not isinstance(issue, int) or issue <= 0:
+            raise MCPPolicyError("GitHub issue number is malformed")
+        selectors.append(f"github:issue/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{issue}")
+    pull = params.get("pull_number")
+    if pull is not None:
+        if isinstance(pull, bool) or not isinstance(pull, int) or pull <= 0:
+            raise MCPPolicyError("GitHub pull-request number is malformed")
+        selectors.append(f"github:pull/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{pull}")
+    for comment in params.get("comments") or []:
+        if not isinstance(comment, dict) or not isinstance(comment.get("path"), str):
+            raise MCPPolicyError("GitHub review comment path is malformed")
+        selectors.append(f"github:path/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{_mcp_logical(_mcp_text(comment['path'], 'GitHub review path', maximum=4096))}")
+    return selectors
+
+
+def _playwright_relative_selectors(params: dict) -> list[str]:
+    selectors = ["playwright:page/active"]
+    interesting = {"ref", "selector", "element", "target", "startref",
+                   "endref", "starttarget", "endtarget", "startelement",
+                   "endelement", "tab", "index", "action", "key",
+                   "filename"}
+
+    def walk(value, prefix=""):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                next_prefix = f"{prefix}.{key}" if prefix else str(key)
+                if str(key).casefold() in interesting and isinstance(child, (str, int)) and not isinstance(child, bool):
+                    text = str(child)
+                    if len(text) <= 512:
+                        selectors.append(
+                            f"playwright:call/{_mcp_logical(next_prefix)}/{_mcp_logical(text)}"
+                        )
+                walk(child, next_prefix)
+        elif isinstance(value, list):
+            for index, child in enumerate(value[:256]):
+                walk(child, f"{prefix}[{index}]")
+
+    walk(params)
+    return selectors
+
+
+def _public_browser_url(value) -> str:
+    try:
+        try:
+            import network_policy as _network_policy
+        except ImportError:  # pragma: no cover
+            from orchestrator import network_policy as _network_policy
+        return _network_policy.validate_public_url(
+            _mcp_text(value, "browser URL", maximum=8192)
+        ).url
+    except Exception as exc:
+        raise MCPPolicyError(f"browser destination is not public: {exc}") from exc
+
+
+def _normalize_playwright_paths(params: dict) -> list[str]:
+    """Canonicalize an optional locked-schema ``paths`` array in place."""
+
+    if "paths" not in params:
+        return []
+    paths = params["paths"]
+    if not isinstance(paths, list) or len(paths) > 64:
+        raise MCPPolicyError("browser file paths must be a bounded list")
+    absolute = []
+    for raw in paths:
+        path = str(Path(
+            _mcp_text(raw, "browser file path", maximum=32768)
+        ).expanduser().resolve(strict=True))
+        absolute.append(path)
+    params["paths"] = absolute
+    return absolute
+
+
+def mcp_policy(namespaced_tool: str, parameters: dict | None) -> dict:
+    """Resolve one exact MCP tool policy and normalize its transmitted args."""
+
+    policy = _load_mcp_policy_cache().get(str(namespaced_tool))
+    if not policy:
+        raise MCPPolicyError("unknown MCP tool is outside the configured allowlist")
+    if not isinstance(parameters, dict):
+        raise MCPPolicyError("MCP tool arguments must be an object")
+    try:
+        encoded = json.dumps(parameters, ensure_ascii=False).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise MCPPolicyError("MCP tool arguments are not JSON-serializable") from exc
+    if len(encoded) > _MCP_ARGUMENT_MAX_BYTES:
+        raise MCPPolicyError("MCP tool arguments exceed the outbound byte limit")
+
+    normalized = dict(parameters)
+    selectors: list[str] = []
+    adapter = policy["adapter"]
+    if adapter == "deny_opaque_code":
+        raise MCPPolicyError("opaque arbitrary-code MCP tools are prohibited")
+    if adapter == "vault_path":
+        normalized["path"] = _canonical_vault_path(normalized.get("path"))
+        selectors.append("path:" + normalized["path"])
+    elif adapter == "vault_paths":
+        paths = normalized.get("paths")
+        if not isinstance(paths, list) or not paths or len(paths) > 256:
+            raise MCPPolicyError("vault paths must be a bounded non-empty list")
+        normalized["paths"] = [_canonical_vault_path(path) for path in paths]
+        selectors.extend("path:" + path for path in normalized["paths"])
+    elif adapter == "vault_move":
+        normalized["source"] = _canonical_vault_path(normalized.get("source"))
+        normalized["destination"] = _canonical_vault_path(normalized.get("destination"))
+        selectors.extend(("path:" + normalized["source"],
+                          "path:" + normalized["destination"]))
+    elif adapter == "vault_root":
+        if normalized:
+            raise MCPPolicyError("list_allowed_directories accepts no arguments")
+        selectors.append("path:" + str(Path(_rp.VAULT_STR).expanduser().resolve(strict=False)))
+    elif adapter == "github_search":
+        query_field = (
+            "q" if policy["tool"] in {"search_code", "search_issues", "search_users"}
+            else "query"
+        )
+        query = _mcp_text(normalized.get(query_field), "GitHub search query")
+        normalized[query_field] = query
+        selectors.append(f"github:search/{_mcp_logical(policy['tool'])}/{_mcp_logical(query)}")
+    elif adapter in {"github_repo", "github_push_files"}:
+        selectors.extend(_github_repo_selectors(normalized))
+        if adapter == "github_push_files":
+            files = normalized.get("files")
+            if not isinstance(files, list) or not files or len(files) > 256:
+                raise MCPPolicyError("GitHub push files must be a bounded non-empty list")
+            owner = _mcp_text(normalized.get("owner"), "GitHub owner", maximum=256)
+            repo = _mcp_text(normalized.get("repo"), "GitHub repository", maximum=256)
+            for item in files:
+                if not isinstance(item, dict):
+                    raise MCPPolicyError("GitHub pushed file entry is malformed")
+                path = _mcp_text(item.get("path"), "GitHub pushed path", maximum=4096)
+                selectors.append(f"github:path/{_mcp_logical(owner)}/{_mcp_logical(repo)}/{_mcp_logical(path)}")
+    elif adapter == "github_create_repo":
+        name = _mcp_text(normalized.get("name"), "GitHub repository name", maximum=256)
+        selectors.append(f"github:token-account/opaque/repo/{_mcp_logical(name)}")
+    elif adapter == "github_fork":
+        selectors.extend(_github_repo_selectors(normalized))
+        organization = normalized.get("organization")
+        destination = _mcp_text(organization, "GitHub fork organization", maximum=256) if organization else "opaque-token-account"
+        selectors.append(f"github:fork-destination/{_mcp_logical(destination)}")
+    elif adapter == "playwright_navigate":
+        normalized["url"] = _public_browser_url(normalized.get("url"))
+        selectors.append("network-read:" + normalized["url"])
+    elif adapter == "playwright_upload":
+        absolute = _normalize_playwright_paths(normalized)
+        selectors.extend("path:" + path for path in absolute)
+        selectors.extend(_playwright_relative_selectors(normalized))
+    elif adapter == "playwright_drop":
+        absolute = _normalize_playwright_paths(normalized)
+        selectors.extend("path:" + path for path in absolute)
+        selectors.extend(_playwright_relative_selectors(normalized))
+    elif adapter == "playwright_tabs":
+        if normalized.get("action") == "new" and normalized.get("url"):
+            normalized["url"] = _public_browser_url(normalized["url"])
+            selectors.append("network-read:" + normalized["url"])
+        selectors.extend(_playwright_relative_selectors(normalized))
+    elif adapter in {"playwright_observe", "playwright_state",
+                     "playwright_interact", "playwright_drag"}:
+        selectors.extend(_playwright_relative_selectors(normalized))
+    else:
+        raise MCPPolicyError("MCP tool policy adapter is unknown")
+
+    axes = {key: policy[key] for key in
+            ("category", "mutability", "sensitivity", "egress", "enforcement")}
+    if adapter == "playwright_tabs":
+        if normalized.get("action") == "list":
+            axes.update(category="read", mutability="read")
+        elif any(selector.startswith("network-read:") for selector in selectors):
+            axes["egress"] = "external"
+    if adapter == "playwright_upload" and not normalized.get("paths"):
+        # Omitting paths (and the schema-valid empty list) cancels the modal;
+        # no page or remote destination receives local file content.
+        axes.update(mutability="reversible_write", egress="local")
+    if any(selector.startswith("path:") for selector in selectors):
+        for selector in selectors:
+            if selector.startswith("path:"):
+                axes["sensitivity"] = max_sensitivity(
+                    axes["sensitivity"], resolve_path_sensitivity(selector[5:])
+                )
+    return {
+        "axes": axes,
+        "parameters": normalized,
+        "selectors": tuple(sorted(set(selectors))),
+        "action": str(namespaced_tool),
+        "destructive": bool(policy["destructive"]),
+        "server": policy["server"],
+        "tool": policy["tool"],
+    }
 
 
 def mcp_axes(namespaced_tool: str) -> dict:
-    """Axes for an mcp_<server>_<tool> call.
+    """Compatibility accessor for one exact configured MCP tool."""
 
-    A server may declare "mutability" / "sensitivity" / "egress" keys in its
-    config/mcp-servers.json entry; those apply to all its tools. A server
-    (or tool) without declared axes is unknown → fail closed. MCP servers
-    are opaque subprocesses, so enforcement is boundary_only regardless.
-    """
-    global _mcp_axes_cache
-    if _mcp_axes_cache is None:
-        _mcp_axes_cache = {}
-        try:
-            with open(_MCP_CONFIG_PATH) as f:
-                cfg = json.load(f)
-            for server in cfg.get("servers", []):
-                name = server.get("name", "")
-                axes = {k: server[k] for k in
-                        ("mutability", "sensitivity", "egress") if k in server}
-                if name and axes and not validate_axes({**FAIL_CLOSED, **axes}):
-                    _mcp_axes_cache[name] = axes
-        except Exception:
-            _mcp_axes_cache = {}
-    parts = namespaced_tool.split("_", 2)
-    server = parts[1] if len(parts) > 1 else ""
-    declared = _mcp_axes_cache.get(server)
-    if not declared:
+    policy = _load_mcp_policy_cache().get(str(namespaced_tool))
+    if not policy:
         return {**FAIL_CLOSED, "enforcement": "boundary_only"}
-    return {"category": "execute", "mutability": declared.get("mutability", "irreversible"),
-            "sensitivity": declared.get("sensitivity", "secret"),
-            "egress": declared.get("egress", "external"),
-            "enforcement": "boundary_only"}
+    return {key: policy[key] for key in
+            ("category", "mutability", "sensitivity", "egress", "enforcement")}
 
 
 def reset_mcp_axes_cache() -> None:
@@ -696,7 +967,9 @@ def _capped_what(what) -> str:
 
 def record_web_reads(action: str, reads: list,
                      *, args_redacted: dict | None = None,
-                     exit_ok: bool = True, exit_reason: str = "") -> None:
+                     exit_ok: bool = True, exit_reason: str = "",
+                     destination_classification: str | None = None,
+                     third_party_forwarding: dict | None = None) -> None:
     """Record library-boundary web reads as one or more ``action`` events,
     BYTE-budgeted so no emitted line ever approaches MAX_LINE_BYTES (whose
     truncation keep-set drops ``reads[]`` wholesale): reads accumulate while
@@ -721,6 +994,16 @@ def record_web_reads(action: str, reads: list,
                          "reason": str(exit_reason)[:120] if exit_reason else ""},
                 "gate": {"decision": "allowed", "why": "library read"},
                 "enforcement_model": axes.get("enforcement", "in_harness")}
+        if destination_classification:
+            base["destination_classification"] = str(
+                destination_classification,
+            )[:80]
+        if isinstance(third_party_forwarding, dict):
+            base["third_party_forwarding"] = {
+                "provider": str(third_party_forwarding.get("provider") or "")[:80],
+                "forwarded": bool(third_party_forwarding.get("forwarded")),
+                "reason": str(third_party_forwarding.get("reason") or "")[:120],
+            }
         if args_redacted:
             base["args_redacted"] = {k: str(v)[:200]
                                      for k, v in args_redacted.items()}
@@ -808,7 +1091,8 @@ def record(event: dict) -> None:
                      "correlation", "conversation_id", "truncated",
                      "telemetry_incomplete", "risk_tier", "divergence",
                      "source_read_suspected", "output_type",
-                     "consistency") if k in event}
+                     "consistency", "destination_classification",
+                     "third_party_forwarding") if k in event}
             encoded = json.dumps(keep, default=str).encode("utf-8",
                                                            errors="replace")
         path = _sink_path(ctx)

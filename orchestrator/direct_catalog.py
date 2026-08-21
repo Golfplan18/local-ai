@@ -45,6 +45,11 @@ import threading
 import time
 import urllib.request
 
+try:  # pragma: no cover - import shim
+    from orchestrator import network_policy
+except ImportError:  # pragma: no cover
+    import network_policy
+
 # in-memory caches
 #   _CATALOG_CACHE: provider_id -> (expiry_epoch, frozenset(native_ids) | None)
 #   _RESOLVE_CACHE: (provider_id, or_remainder) -> (decision, model_id)
@@ -140,8 +145,16 @@ def _fetch_ids(entry: dict, key: str):
     if req is None or not key:
         return None
     try:
-        with urllib.request.urlopen(req, timeout=_timeout_seconds()) as resp:
-            raw = resp.read(_MAX_BODY_BYTES + 1)
+        if entry.get("id") == "openrouter":
+            raw, _destination = network_policy.openrouter_request_bytes(
+                req.full_url,
+                headers=dict(req.header_items()),
+                timeout=_timeout_seconds(),
+                max_bytes=_MAX_BODY_BYTES,
+            )
+        else:
+            with urllib.request.urlopen(req, timeout=_timeout_seconds()) as resp:
+                raw = resp.read(_MAX_BODY_BYTES + 1)
         if len(raw) > _MAX_BODY_BYTES:
             return None  # implausibly large for a model list — treat as unreachable
         data = json.loads(raw.decode("utf-8", "replace"))

@@ -1,11 +1,13 @@
-"""MCP client manager — connects to MCP servers, discovers tools,
-routes tool calls through JSON-RPC."""
+"""Pinned stdio MCP client with exact-tool discovery and lifecycle bounds."""
 
 from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import queue
+import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -15,6 +17,7 @@ try:
     import runtime_paths as _rp
 except ImportError:  # pragma: no cover
     from orchestrator import runtime_paths as _rp
+
 
 WORKSPACE = _rp.WORKSPACE
 MCP_REGISTRY = os.path.join(WORKSPACE, "config", "mcp-servers.json")
@@ -31,295 +34,670 @@ MCP_REGISTRY = os.path.join(WORKSPACE, "config", "mcp-servers.json")
 # in runtime_paths (which owns the roots it resolves against) and every
 # loader shares one implementation. These names stay as the module's own
 # spelling of it.
+#
+# ${ORA_NODE} and ${ORA_PYTHON} are this module's own two, and they are not
+# storage roots: they name the exact executables the pinned launch contract
+# must run, computed per call rather than read off a runtime_paths attribute.
+# They stay here — runtime_paths resolves where Ora's data lives, not which
+# interpreter or Node binary this process happens to be launching — and ride
+# into the shared expander as its ``extra`` resolvers.
 _PLACEHOLDER_ATTRS = _rp.PLACEHOLDER_ATTRS
-_expand_placeholders = _rp.expand_placeholders
+_COMPUTED_PLACEHOLDERS = {
+    "ORA_NODE": lambda: shutil.which("node"),
+    "ORA_PYTHON": lambda: os.path.realpath(sys.executable),
+}
 
-# Cap on buffered stdout lines per connection (see MCPConnection.__init__).
-_RECV_QUEUE_MAXLINES = 10_000
+_RECV_QUEUE_MAXLINES = 256
+MAX_OUTBOUND_BYTES = 8 * 1024 * 1024
+MAX_INBOUND_LINE_BYTES = 16 * 1024 * 1024
+MAX_STDERR_LINE_BYTES = 64 * 1024
+MAX_STDERR_RETAINED_BYTES = 64 * 1024
+MAX_TOOL_SCHEMA_BYTES = 256 * 1024
+MAX_DISCOVERY_BYTES = 512 * 1024
+MAX_TOOLS_PER_SERVER = 128
+MAX_SCHEMA_DEPTH = 32
+MAX_CATALOG_BYTES = 64 * 1024
+_TOOL_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
+
+
+class MCPError(RuntimeError):
+    pass
+
+
+class MCPConfigError(MCPError):
+    pass
+
+
+class MCPProtocolError(MCPError):
+    pass
+
+
+def _placeholder_value(name: str) -> str | None:
+    computed = _COMPUTED_PLACEHOLDERS.get(name)
+    if computed:
+        return computed()
+    attr = _PLACEHOLDER_ATTRS.get(name)
+    if attr:
+        return os.environ.get(name) or str(getattr(_rp, attr))
+    return None
+
+
+def _expand_placeholders(value):
+    """Expand only Ora's known runtime placeholders, recursively."""
+
+    return _rp.expand_placeholders(value, extra=_COMPUTED_PLACEHOLDERS)
+
+
+def _expected_server_specs() -> dict[str, dict]:
+    home = os.path.realpath(str(_rp.WORKSPACE))
+    vault = os.path.realpath(str(_rp.VAULT_STR))
+    scratch = os.path.realpath(str(_rp.SCRATCH_DIR_STR))
+    runtime = os.path.join(home, "mcp-runtime")
+    playwright_output = os.path.join(scratch, "mcp-playwright")
+    return {
+        "vault-fs": {
+            "package": "@modelcontextprotocol/server-filesystem",
+            "version": "2026.7.10",
+            "entry": os.path.join(runtime, "node_modules", "@modelcontextprotocol",
+                                  "server-filesystem", "dist", "index.js"),
+            "args": [vault],
+            "cwd": vault,
+        },
+        "playwright": {
+            "package": "@playwright/mcp",
+            "version": "0.0.79",
+            "entry": os.path.join(runtime, "node_modules", "@playwright", "mcp", "cli.js"),
+            "args": [
+                "--browser", "chromium", "--isolated", "--block-service-workers",
+                "--init-page", os.path.join(home, "orchestrator", "mcp_playwright_init.mjs"),
+                "--output-dir", playwright_output,
+                "--output-max-size", "52428800",
+            ],
+            "cwd": playwright_output,
+            "env": {
+                "PLAYWRIGHT_BROWSERS_PATH": "0",
+                "ORA_MCP_POLICY_PYTHON": os.path.realpath(sys.executable),
+                "ORA_MCP_POLICY_CLI": os.path.join(
+                    home, "orchestrator", "mcp_network_policy_cli.py",
+                ),
+            },
+        },
+        "github": {
+            "package": "@modelcontextprotocol/server-github",
+            "version": "2025.4.8",
+            "entry": os.path.join(runtime, "node_modules", "@modelcontextprotocol",
+                                  "server-github", "dist", "index.js"),
+            "args": [],
+            "cwd": runtime,
+        },
+    }
+
+
+def _package_version(entry: str) -> str:
+    current = Path(entry).resolve()
+    for parent in (current, *current.parents):
+        package_json = parent / "package.json"
+        if package_json.is_file():
+            try:
+                return str(json.loads(package_json.read_text(encoding="utf-8")).get("version") or "")
+            except Exception as exc:
+                raise MCPConfigError("MCP package metadata is unreadable") from exc
+    raise MCPConfigError("MCP package metadata is missing")
+
+
+def _playwright_browser_executable(runtime: str, node: str) -> str:
+    """Resolve and verify the browser owned by the locked Playwright package."""
+
+    core = os.path.join(runtime, "node_modules", "playwright-core")
+    cli = os.path.join(core, "cli.js")
+    if not os.path.isfile(cli):
+        raise MCPConfigError(
+            "playwright: locked Playwright CLI is not installed; rerun scripts/install.py"
+        )
+    probe = subprocess.run(
+        [node, "-e", (
+            "const {chromium}=require(process.argv[1]);"
+            "process.stdout.write(chromium.executablePath())"
+        ), core],
+        cwd=runtime, env={"PLAYWRIGHT_BROWSERS_PATH": "0"},
+        capture_output=True, text=True, timeout=10,
+    )
+    browser = os.path.realpath((probe.stdout or "").strip())
+    local_root = os.path.realpath(os.path.join(core, ".local-browsers"))
+    try:
+        local = os.path.commonpath([browser, local_root]) == local_root
+    except ValueError:
+        local = False
+    if probe.returncode != 0 or not local or not os.path.isfile(browser):
+        raise MCPConfigError(
+            "playwright: exact locked Chromium is not installed; rerun scripts/install.py"
+        )
+    return browser
+
+
+def _validate_server_config(raw: dict) -> dict:
+    if not isinstance(raw, dict):
+        raise MCPConfigError("MCP server declaration is not an object")
+    name = str(raw.get("name") or "")
+    expected = _expected_server_specs().get(name)
+    if expected is None:
+        raise MCPConfigError(f"unsupported MCP server declaration: {name or 'unnamed'}")
+    if raw.get("transport") != "stdio":
+        raise MCPConfigError(f"{name}: only pinned stdio transport is allowed")
+    command = _expand_placeholders(raw.get("command"))
+    node = shutil.which("node")
+    if not isinstance(command, str) or not node or os.path.realpath(command) != os.path.realpath(node):
+        raise MCPConfigError(f"{name}: command is not the exact local Node executable")
+    args = _expand_placeholders(raw.get("args"))
+    expected_args = [expected["entry"], *expected["args"]]
+    def _arg_identity(value):
+        return os.path.realpath(value) if isinstance(value, str) and os.path.isabs(value) else value
+    if not isinstance(args, list) or list(map(_arg_identity, args)) != list(map(_arg_identity, expected_args)):
+        raise MCPConfigError(f"{name}: entrypoint or arguments differ from the pinned launch contract")
+    if not os.path.isfile(expected["entry"]):
+        raise MCPConfigError(f"{name}: pinned local entrypoint is not installed")
+    if _package_version(expected["entry"]) != expected["version"]:
+        raise MCPConfigError(f"{name}: installed package version does not match the lock")
+    cwd = _expand_placeholders(raw.get("cwd"))
+    if not isinstance(cwd, str) or os.path.realpath(cwd) != os.path.realpath(expected["cwd"]):
+        raise MCPConfigError(f"{name}: working directory differs from the pinned launch contract")
+    tools = raw.get("tools")
+    if not isinstance(tools, dict) or not tools:
+        raise MCPConfigError(f"{name}: exact tool allowlist is missing")
+    env_allowlist = raw.get("env_allowlist")
+    env_from_parent = raw.get("env_from_parent", [])
+    explicit_env = _expand_placeholders(raw.get("env", {}))
+    required_env = raw.get("required_env", [])
+    if not all(isinstance(value, list) and all(isinstance(item, str) and item for item in value)
+               for value in (env_allowlist, env_from_parent, required_env)):
+        raise MCPConfigError(f"{name}: environment declaration is malformed")
+    if not isinstance(explicit_env, dict) or not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in explicit_env.items()
+    ):
+        raise MCPConfigError(f"{name}: explicit environment is malformed")
+    if name != "github" and (env_from_parent or required_env):
+        raise MCPConfigError(f"{name}: ambient credential import is prohibited")
+    if name == "github" and (env_from_parent != ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+                              or required_env != ["GITHUB_PERSONAL_ACCESS_TOKEN"]):
+        raise MCPConfigError("github: token boundary differs from the pinned launch contract")
+    if explicit_env != expected.get("env", {}):
+        raise MCPConfigError(f"{name}: explicit environment differs from the pinned launch contract")
+    forbidden = {"NODE_OPTIONS", "NODE_PATH", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+                 "http_proxy", "https_proxy", "all_proxy"}
+    if forbidden.intersection(env_allowlist + env_from_parent + list(explicit_env)):
+        raise MCPConfigError(f"{name}: environment permits loader or proxy injection")
+    launch_args = list(expected_args)
+    if name == "playwright":
+        launch_args.extend([
+            "--executable-path",
+            _playwright_browser_executable(
+                os.path.join(os.path.realpath(str(_rp.WORKSPACE)), "mcp-runtime"),
+                os.path.realpath(command),
+            ),
+        ])
+    return {
+        "name": name,
+        "command": os.path.realpath(command),
+        "args": launch_args,
+        "cwd": expected["cwd"],
+        "create_cwd": bool(raw.get("create_cwd")),
+        "env_allowlist": env_allowlist,
+        "env_from_parent": env_from_parent,
+        "env": explicit_env,
+        "required_env": required_env,
+        "tools": set(tools),
+    }
+
+
+def _schema_depth(value, depth: int = 0) -> int:
+    if depth > MAX_SCHEMA_DEPTH:
+        return depth
+    if isinstance(value, dict):
+        return max((_schema_depth(item, depth + 1) for item in value.values()), default=depth)
+    if isinstance(value, list):
+        return max((_schema_depth(item, depth + 1) for item in value), default=depth)
+    return depth
 
 
 class MCPConnection:
-    """Manages a single MCP server connection via stdio transport."""
+    """One serialized newline-delimited JSON-RPC stdio connection."""
 
-    def __init__(self, name: str, command: str, args: list = None, env: dict = None):
+    def __init__(self, name: str, command: str, args: list | None = None,
+                 env: dict | None = None, *, cwd: str | None = None,
+                 env_allowlist: list[str] | None = None,
+                 env_from_parent: list[str] | None = None):
         self.name = name
         self.command = command
         self.args = args or []
-        self.env = env
+        self.env = env or {}
+        self.cwd = cwd
+        self.env_allowlist = list(env_allowlist or [])
+        self.env_from_parent = list(env_from_parent or [])
         self.process = None
-        self.tools = []
+        self.tools: list[dict] = []
         self._request_id = 0
-        self._lock = threading.Lock()
-        # Bounded so a notification-chatty server cannot grow parent memory
-        # without limit: when the queue fills, the reader blocks, the OS
-        # pipe fills, and the server write-blocks — the same backpressure
-        # the pipe itself provided before the reader thread existed. The
-        # cap is a PROVISIONAL tuning constant (worst case ~a few MB per
-        # connection at typical line sizes), not empirically calibrated.
-        self._recv_queue: queue.Queue = queue.Queue(
-            maxsize=_RECV_QUEUE_MAXLINES)
+        self._request_lock = threading.Lock()
+        self._write_lock = threading.Lock()
+        self._close_lock = threading.Lock()
+        self._recv_queue: queue.Queue = queue.Queue(maxsize=_RECV_QUEUE_MAXLINES)
         self._reader_thread: threading.Thread | None = None
+        self._stderr_thread: threading.Thread | None = None
         self._reader_eof = False
+        self._fatal_error: str | None = None
+        self._stderr = bytearray()
+        self._closed = False
 
-    def _start_reader(self):
-        """Pump the server's stdout onto a queue from a daemon thread.
+    def _fresh_environment(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for key in (*self.env_allowlist, *self.env_from_parent):
+            value = os.environ.get(key)
+            if value is not None:
+                result[key] = value
+        result.update({str(key): str(value) for key, value in self.env.items()})
+        return result
 
-        This is the cross-platform replacement for waiting on the pipe with
-        ``select.select()``: on Windows, select supports only sockets — it
-        cannot wait on a subprocess pipe handle — so a select-based receive
-        would fail every stdio MCP initialization there. A blocking
-        ``readline`` on a daemon thread plus ``Queue.get(timeout=...)``
-        works identically on every platform. When the stream ends (EOF or a
-        read error, which is logged, never swallowed silently) the pump
-        sets ``_reader_eof`` and pushes a ``None`` sentinel so ``_recv``
-        can distinguish a closed server from a quiet one — and, via the
-        flag, answer immediately (not after a full timeout) on every call
-        after the stream is gone, matching the old select-on-EOF behavior."""
-        def _pump():
+    def _mark_fatal(self, reason: str) -> None:
+        if self._fatal_error is None:
+            self._fatal_error = reason
+        process = self.process
+        if process is not None:
             try:
-                for line in iter(self.process.stdout.readline, ""):
-                    self._recv_queue.put(line)
-            except Exception as e:
-                try:
-                    print(f"[MCP] {self.name}: stdout reader error: {e}",
-                          file=sys.stderr)
-                except Exception:
-                    pass
-            self._reader_eof = True   # set BEFORE the sentinel: a consumer
-            self._recv_queue.put(None)  # that sees the flag never blocks
+                if process.poll() is None:
+                    process.terminate()
+            except Exception:
+                pass
+
+    def _queue_eof(self) -> None:
+        self._reader_eof = True
+        try:
+            self._recv_queue.put_nowait(None)
+        except queue.Full:
+            try:
+                self._recv_queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._recv_queue.put_nowait(None)
+            except queue.Full:
+                pass
+
+    def _start_reader(self) -> None:
+        def pump() -> None:
+            try:
+                while True:
+                    line = self.process.stdout.readline(MAX_INBOUND_LINE_BYTES + 1)
+                    if line in (b"", ""):
+                        break
+                    raw = line.encode("utf-8", "strict") if isinstance(line, str) else bytes(line)
+                    if len(raw) > MAX_INBOUND_LINE_BYTES or (
+                        len(raw) == MAX_INBOUND_LINE_BYTES + 1 and not raw.endswith(b"\n")
+                    ):
+                        self._mark_fatal("MCP stdout line exceeds the byte limit")
+                        break
+                    try:
+                        self._recv_queue.put(raw, timeout=0.25)
+                    except queue.Full:
+                        self._mark_fatal("MCP stdout queue overflow")
+                        break
+            except Exception as exc:
+                self._mark_fatal(f"MCP stdout reader failed: {type(exc).__name__}")
+            finally:
+                self._queue_eof()
 
         self._reader_thread = threading.Thread(
-            target=_pump, daemon=True, name=f"mcp-{self.name}-stdout")
+            target=pump, daemon=True, name=f"mcp-{self.name}-stdout")
         self._reader_thread.start()
 
-    def connect(self) -> bool:
-        """Start the MCP server subprocess and initialize."""
-        try:
-            cmd = [self.command] + self.args
-            proc_env = os.environ.copy()
-            if self.env:
-                proc_env.update(self.env)
+    def _start_stderr_reader(self) -> None:
+        def pump() -> None:
+            try:
+                while True:
+                    line = self.process.stderr.readline(MAX_STDERR_LINE_BYTES + 1)
+                    if line in (b"", ""):
+                        break
+                    raw = line.encode("utf-8", "replace") if isinstance(line, str) else bytes(line)
+                    if len(raw) > MAX_STDERR_LINE_BYTES:
+                        raw = raw[:MAX_STDERR_LINE_BYTES]
+                    remaining = MAX_STDERR_RETAINED_BYTES - len(self._stderr)
+                    if remaining > 0:
+                        self._stderr.extend(raw[:remaining])
+            except Exception:
+                pass
 
-            # encoding is pinned: MCP stdio is UTF-8 by spec, but bare
-            # text=True decodes with the locale's preferred encoding — on
-            # Windows Python <= 3.14 that is the ANSI codepage (cp1252 et
-            # al.), so the first non-ASCII response would corrupt or kill
-            # the stream. errors="replace" keeps one malformed line from
-            # ending the reader: the line decodes with U+FFFD and at worst
-            # fails json.loads and is skipped, instead of raising in the
-            # pump and permanently deadening a healthy connection.
+        self._stderr_thread = threading.Thread(
+            target=pump, daemon=True, name=f"mcp-{self.name}-stderr")
+        self._stderr_thread.start()
+
+    def connect(self) -> bool:
+        try:
             self.process = subprocess.Popen(
-                cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, env=proc_env, text=True,
-                encoding="utf-8", errors="replace",
+                [self.command, *self.args],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env=self._fresh_environment(), cwd=self.cwd, text=False, bufsize=0,
             )
             self._start_reader()
-
-            # Send initialize request
-            self._send({"jsonrpc": "2.0", "id": self._next_id(),
-                         "method": "initialize",
-                         "params": {"protocolVersion": "2024-11-05",
-                                    "capabilities": {},
-                                    "clientInfo": {"name": "ora", "version": "1.0"}}})
-            resp = self._recv(timeout=10)
-            if resp and "result" in resp:
-                # Send initialized notification
-                self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-                return True
+            self._start_stderr_reader()
+            result = self._request(
+                "initialize",
+                {"protocolVersion": "2024-11-05", "capabilities": {},
+                 "clientInfo": {"name": "ora", "version": "1.0"}},
+                timeout=10,
+            )
+            if not isinstance(result, dict):
+                raise MCPProtocolError("initialize result is malformed")
+            self._notify("notifications/initialized", {})
+            return True
+        except Exception as exc:
+            print(f"[MCP] {self.name}: initialization failed ({exc})", file=sys.stderr)
+            self.shutdown()
             return False
-        except Exception as e:
-            print(f"[MCP] Failed to connect to {self.name}: {e}")
-            return False
-
-    def discover_tools(self) -> list:
-        """Call tools/list to discover available tools."""
-        try:
-            self._send({"jsonrpc": "2.0", "id": self._next_id(),
-                         "method": "tools/list", "params": {}})
-            resp = self._recv(timeout=10)
-            if resp and "result" in resp:
-                self.tools = resp["result"].get("tools", [])
-                return self.tools
-        except Exception as e:
-            print(f"[MCP] Tool discovery failed for {self.name}: {e}")
-        return []
-
-    def call_tool(self, tool_name: str, arguments: dict, timeout: int = 30) -> dict:
-        """Call a tool on this MCP server."""
-        try:
-            self._send({"jsonrpc": "2.0", "id": self._next_id(),
-                         "method": "tools/call",
-                         "params": {"name": tool_name, "arguments": arguments}})
-            resp = self._recv(timeout=timeout)
-            if resp and "result" in resp:
-                return resp["result"]
-            if resp and "error" in resp:
-                return {"error": resp["error"]}
-            return {"error": "No response from MCP server"}
-        except Exception as e:
-            return {"error": str(e)}
-
-    def shutdown(self):
-        """Close the connection and terminate the subprocess."""
-        if self.process and self.process.poll() is None:
-            try:
-                self.process.stdin.close()
-                self.process.terminate()
-                self.process.wait(timeout=5)
-            except Exception:
-                try:
-                    self.process.kill()
-                except Exception:
-                    pass
 
     def _next_id(self) -> int:
         self._request_id += 1
         return self._request_id
 
-    def _send(self, message: dict):
-        with self._lock:
-            data = json.dumps(message)
-            # MCP stdio transport is newline-delimited JSON-RPC — one compact
-            # JSON message per line, NOT LSP-style Content-Length framing.
-            # (The earlier Content-Length header made the server fail to parse
-            # the request and made _recv block forever waiting for a \r\n\r\n
-            # terminator the server never sends.)
-            self.process.stdin.write(data + "\n")
+    def _encoded_message(self, message: dict) -> bytes:
+        try:
+            encoded = json.dumps(message, separators=(",", ":"), ensure_ascii=False).encode("utf-8") + b"\n"
+        except (TypeError, ValueError) as exc:
+            raise MCPProtocolError("outbound JSON-RPC message is not serializable") from exc
+        if len(encoded) > MAX_OUTBOUND_BYTES:
+            raise MCPProtocolError("outbound JSON-RPC message exceeds the byte limit")
+        return encoded
+
+    def _write_message(self, message: dict) -> None:
+        if self._closed or self.process is None or self.process.stdin is None:
+            raise MCPProtocolError("MCP connection is closed")
+        encoded = self._encoded_message(message)
+        with self._write_lock:
+            self.process.stdin.write(encoded)
             self.process.stdin.flush()
 
-    def _recv(self, timeout: float = 10) -> dict | None:
-        """Read one newline-delimited JSON-RPC response, with a real timeout.
+    def _notify(self, method: str, params: dict) -> None:
+        self._write_message({"jsonrpc": "2.0", "method": method, "params": params})
 
-        Lines arrive via the daemon reader thread + queue started in
-        ``connect()`` (see ``_start_reader`` — ``select.select`` cannot wait
-        on subprocess pipes on Windows, so this receive must not touch the
-        pipe directly). A server that never answers times out cleanly
-        (returning None); a server that closed stdout yields the EOF
-        sentinel. Server-initiated notifications (lines with no id/result/
-        error) are skipped so they don't get mistaken for the response.
-        """
-        deadline = time.time() + timeout
+    def _request(self, method: str, params: dict, *, timeout: float) -> object:
+        with self._request_lock:
+            request_id = self._next_id()
+            self._write_message({"jsonrpc": "2.0", "id": request_id,
+                                 "method": method, "params": params})
+            response = self._recv(expected_id=request_id, timeout=timeout)
+            if response is None:
+                raise MCPProtocolError(f"{method} timed out or the server closed")
+            if "error" in response:
+                raise MCPProtocolError(f"{method} returned JSON-RPC error")
+            return response["result"]
+
+    def _server_request_error(self, message: dict) -> None:
+        self._write_message({
+            "jsonrpc": "2.0", "id": message["id"],
+            "error": {"code": -32601, "message": "Ora exposes no client request methods"},
+        })
+
+    def _recv(self, expected_id=None, timeout: float = 10) -> dict | None:
+        deadline = time.monotonic() + timeout
         while True:
+            if self._fatal_error:
+                raise MCPProtocolError(self._fatal_error)
             if self._reader_eof:
-                # Stream is gone: only already-queued lines remain. Drain
-                # without blocking so a dead server answers immediately on
-                # every call (the old select-on-EOF behavior), not after a
-                # full timeout each time.
                 try:
-                    line = self._recv_queue.get_nowait()
+                    raw = self._recv_queue.get_nowait()
                 except queue.Empty:
-                    return None  # EOF — server closed its stdout
+                    return None
             else:
-                remaining = deadline - time.time()
+                remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    return None  # timed out — server did not respond
+                    return None
                 try:
-                    line = self._recv_queue.get(timeout=remaining)
+                    raw = self._recv_queue.get(timeout=remaining)
                 except queue.Empty:
-                    return None  # timed out — server did not respond
-            if line is None:
-                continue  # EOF sentinel — flag is set; drain any leftovers
-            line = line.strip()
-            if not line:
+                    return None
+            if raw is None:
                 continue
             try:
-                msg = json.loads(line)
-            except json.JSONDecodeError:
-                continue  # not a complete JSON line; keep reading
-            if isinstance(msg, dict) and ("result" in msg or "error" in msg or "id" in msg):
-                return msg
-            # otherwise it's a notification — keep waiting for the real response
+                text = bytes(raw).decode("utf-8", "strict").strip()
+            except UnicodeDecodeError as exc:
+                self._mark_fatal("MCP stdout contains invalid UTF-8")
+                raise MCPProtocolError(self._fatal_error) from exc
+            if not text:
+                continue
+            try:
+                message = json.loads(text)
+            except json.JSONDecodeError as exc:
+                self._mark_fatal("MCP stdout contains malformed JSON")
+                raise MCPProtocolError(self._fatal_error) from exc
+            if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
+                self._mark_fatal("MCP message is not JSON-RPC 2.0")
+                raise MCPProtocolError(self._fatal_error)
+            has_id = "id" in message
+            has_method = isinstance(message.get("method"), str)
+            has_result = "result" in message
+            has_error = "error" in message
+            if has_method and not has_id:
+                continue
+            if has_method and has_id and not has_result and not has_error:
+                self._server_request_error(message)
+                continue
+            if has_result == has_error or not has_id or has_method:
+                self._mark_fatal("MCP response shape is malformed")
+                raise MCPProtocolError(self._fatal_error)
+            if has_error:
+                error = message.get("error")
+                if not isinstance(error, dict) or isinstance(error.get("code"), bool) or not isinstance(error.get("code"), int) or not isinstance(error.get("message"), str):
+                    self._mark_fatal("MCP error response shape is malformed")
+                    raise MCPProtocolError(self._fatal_error)
+            if expected_id is not None and message.get("id") != expected_id:
+                self._mark_fatal("MCP response ID does not match the active request")
+                raise MCPProtocolError(self._fatal_error)
+            allowed_keys = {"jsonrpc", "id", "result" if has_result else "error"}
+            if set(message) != allowed_keys:
+                self._mark_fatal("MCP response contains an unexpected shape")
+                raise MCPProtocolError(self._fatal_error)
+            return message
+
+    def discover_tools(self) -> list[dict]:
+        result = self._request("tools/list", {}, timeout=10)
+        if not isinstance(result, dict) or not isinstance(result.get("tools"), list):
+            raise MCPProtocolError("tools/list result is malformed")
+        raw_tools = result["tools"]
+        try:
+            aggregate = json.dumps(raw_tools, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        except (TypeError, ValueError) as exc:
+            raise MCPProtocolError("tools/list is not JSON-serializable") from exc
+        if len(aggregate) > MAX_DISCOVERY_BYTES:
+            raise MCPProtocolError("tools/list exceeds the aggregate byte limit")
+        accepted: list[dict] = []
+        seen: set[str] = set()
+        for raw in raw_tools[:MAX_TOOLS_PER_SERVER]:
+            if not isinstance(raw, dict):
+                continue
+            name = raw.get("name")
+            description = raw.get("description", "")
+            schema = raw.get("inputSchema", {})
+            if (
+                not isinstance(name, str) or not _TOOL_NAME.fullmatch(name)
+                or name in seen or not isinstance(description, str)
+                or len(description.encode("utf-8")) > 16 * 1024
+                or not isinstance(schema, dict)
+            ):
+                continue
+            try:
+                schema_size = len(json.dumps(schema, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+            except (TypeError, ValueError):
+                continue
+            if schema_size > MAX_TOOL_SCHEMA_BYTES or _schema_depth(schema) > MAX_SCHEMA_DEPTH:
+                continue
+            seen.add(name)
+            accepted.append({"name": name, "description": description, "inputSchema": schema})
+        self.tools = accepted
+        return list(accepted)
+
+    def call_tool(self, tool_name: str, arguments: dict, timeout: int = 30) -> dict:
+        try:
+            result = self._request(
+                "tools/call", {"name": tool_name, "arguments": arguments},
+                timeout=max(1, min(int(timeout), 120)),
+            )
+            return result if isinstance(result, dict) else {"error": "MCP tool result is malformed"}
+        except Exception as exc:
+            self.shutdown()
+            return {"error": str(exc)}
+
+    def shutdown(self) -> None:
+        with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
+            process = self.process
+            if process is not None:
+                try:
+                    if process.stdin:
+                        process.stdin.close()
+                except Exception:
+                    pass
+                try:
+                    if process.poll() is None:
+                        process.terminate()
+                        process.wait(timeout=2)
+                except Exception:
+                    try:
+                        process.kill()
+                        process.wait(timeout=2)
+                    except Exception:
+                        pass
+                for stream_name in ("stdout", "stderr"):
+                    try:
+                        stream = getattr(process, stream_name, None)
+                        if stream:
+                            stream.close()
+                    except Exception:
+                        pass
+            self._queue_eof()
+            current = threading.current_thread()
+            for thread in (self._reader_thread, self._stderr_thread):
+                if thread is not None and thread is not current:
+                    thread.join(timeout=2)
+            self.process = None
 
 
 class MCPClientManager:
-    """Manages all MCP server connections."""
-
     def __init__(self):
         self.connections: dict[str, MCPConnection] = {}
-        self.all_tools: dict[str, tuple[str, str]] = {}  # namespaced_name -> (server, tool_name)
+        self.all_tools: dict[str, tuple[str, str]] = {}
+        self._definitions: dict[str, dict] = {}
 
-    def initialize(self):
-        """Load registry and connect to all configured servers."""
+    def initialize(self) -> None:
         if not os.path.exists(MCP_REGISTRY):
             return
-
         try:
-            with open(MCP_REGISTRY) as f:
-                registry = json.load(f)
-        except Exception as e:
-            print(f"[MCP] Failed to read registry: {e}")
+            if os.path.getsize(MCP_REGISTRY) > 1024 * 1024:
+                raise MCPConfigError("MCP registry exceeds its byte limit")
+            with open(MCP_REGISTRY, encoding="utf-8") as stream:
+                registry = json.load(stream)
+        except Exception as exc:
+            print(f"[MCP] registry unavailable ({exc})", file=sys.stderr)
             return
-
-        servers = registry.get("servers", [])
-        for server_cfg in servers:
-            name = server_cfg.get("name", "unknown")
-            transport = server_cfg.get("transport", "stdio")
-
-            if transport == "stdio":
+        servers = registry.get("servers") if isinstance(registry, dict) else None
+        if not isinstance(servers, list):
+            print("[MCP] registry has no server list", file=sys.stderr)
+            return
+        for raw in servers:
+            conn = None
+            name = str(raw.get("name") or "unknown") if isinstance(raw, dict) else "unknown"
+            try:
+                cfg = _validate_server_config(raw)
+                if any(not os.environ.get(key) for key in cfg["required_env"]):
+                    print(f"[MCP] {name}: skipped because its required token is absent")
+                    continue
+                if cfg["create_cwd"]:
+                    os.makedirs(cfg["cwd"], exist_ok=True)
+                elif not os.path.isdir(cfg["cwd"]):
+                    raise MCPConfigError(f"{name}: working directory is missing")
                 conn = MCPConnection(
-                    name=name,
-                    command=_expand_placeholders(server_cfg.get("command", "")),
-                    args=_expand_placeholders(server_cfg.get("args", [])),
-                    env=_expand_placeholders(server_cfg.get("env")),
+                    name=name, command=cfg["command"], args=cfg["args"],
+                    env=cfg["env"], cwd=cfg["cwd"],
+                    env_allowlist=cfg["env_allowlist"],
+                    env_from_parent=cfg["env_from_parent"],
                 )
-                if conn.connect():
-                    self.connections[name] = conn
-                    tools = conn.discover_tools()
-                    for tool in tools:
-                        namespaced = f"mcp_{name}_{tool['name']}"
-                        self.all_tools[namespaced] = (name, tool["name"])
-                    print(f"[MCP] Connected to {name}: {len(tools)} tools")
-                else:
-                    print(f"[MCP] Failed to connect to {name}")
-            # HTTP transport can be added later
+                if not conn.connect():
+                    continue
+                discovered = conn.discover_tools()
+                allowed = cfg["tools"]
+                recognized = [tool for tool in discovered if tool["name"] in allowed]
+                conn.tools = recognized
+                self.connections[name] = conn
+                for tool in recognized:
+                    namespaced = f"mcp_{name}_{tool['name']}"
+                    self.all_tools[namespaced] = (name, tool["name"])
+                    self._definitions[namespaced] = {
+                        "name": namespaced,
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("inputSchema", {}),
+                    }
+                print(f"[MCP] Connected to {name}: {len(recognized)} recognized tools")
+            except Exception as exc:
+                print(f"[MCP] {name}: failed-soft ({exc})", file=sys.stderr)
+                if conn is not None:
+                    conn.shutdown()
 
     def call_mcp_tool(self, namespaced_name: str, parameters: dict) -> dict:
-        """Route a tool call to the appropriate MCP server."""
-        if namespaced_name not in self.all_tools:
+        binding = self.all_tools.get(namespaced_name)
+        if binding is None:
             return {"error": f"Unknown MCP tool: {namespaced_name}"}
-
-        server_name, tool_name = self.all_tools[namespaced_name]
+        try:
+            try:
+                import tool_events
+            except ImportError:  # pragma: no cover
+                from orchestrator import tool_events
+            resolved = tool_events.mcp_policy(namespaced_name, parameters)
+        except Exception as exc:
+            return {"error": f"MCP policy denied the call: {exc}"}
+        server_name, tool_name = binding
         conn = self.connections.get(server_name)
-        if not conn:
+        if conn is None:
             return {"error": f"MCP server {server_name} not connected"}
+        return conn.call_tool(tool_name, resolved["parameters"])
 
-        return conn.call_tool(tool_name, parameters)
-
-    def get_tool_definitions(self) -> list:
-        """Return tool definitions suitable for injection into the model's system prompt."""
-        definitions = []
-        for conn in self.connections.values():
-            for tool in conn.tools:
-                namespaced = f"mcp_{conn.name}_{tool['name']}"
-                definitions.append({
-                    "name": namespaced,
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("inputSchema", {}),
-                })
+    def get_tool_definitions(self) -> list[dict]:
+        definitions = [self._definitions[name] for name in sorted(self._definitions)]
+        encoded = json.dumps(definitions, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if len(encoded) > MAX_CATALOG_BYTES:
+            return []
         return definitions
 
-    def shutdown(self):
-        """Shut down all MCP connections."""
-        for conn in self.connections.values():
+    def shutdown(self) -> None:
+        for conn in list(self.connections.values()):
             conn.shutdown()
         self.connections.clear()
         self.all_tools.clear()
+        self._definitions.clear()
 
 
-# Module-level singleton
-_manager = None
+_manager: MCPClientManager | None = None
 
 
 def get_manager() -> MCPClientManager:
     global _manager
     if _manager is None:
-        _manager = MCPClientManager()
-        _manager.initialize()
+        manager = MCPClientManager()
+        manager.initialize()
+        _manager = manager
     return _manager
 
 
-def shutdown():
+def shutdown() -> None:
     global _manager
-    if _manager:
-        _manager.shutdown()
-        _manager = None
+    manager = _manager
+    _manager = None
+    if manager is not None:
+        manager.shutdown()
+    try:
+        try:
+            import dispatcher
+        except ImportError:  # pragma: no cover
+            from orchestrator import dispatcher
+        if getattr(dispatcher, "_mcp_client", None) is manager:
+            dispatcher.set_mcp_client(None)
+    except Exception:
+        pass

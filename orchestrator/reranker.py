@@ -17,9 +17,10 @@ import urllib.request
 from typing import Any
 
 try:  # pragma: no cover - import shim
+    import network_policy
     import retrieval_config
 except ImportError:  # pragma: no cover
-    from orchestrator import retrieval_config
+    from orchestrator import network_policy, retrieval_config
 
 
 DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1"
@@ -55,6 +56,7 @@ def _post_json(
     headers: dict[str, str] | None = None,
     timeout: float = 30.0,
     attempts: int = 2,
+    openrouter_credential: str | None = None,
 ) -> dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
     all_headers = {"Content-Type": "application/json"}
@@ -63,6 +65,15 @@ def _post_json(
     last_err: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
+            if openrouter_credential is not None:
+                raw, _destination = network_policy.openrouter_request_bytes(
+                    url,
+                    data=body,
+                    headers=all_headers,
+                    timeout=timeout,
+                    max_bytes=16 * 1024 * 1024,
+                )
+                return json.loads(raw)
             req = urllib.request.Request(
                 url,
                 data=body,
@@ -76,9 +87,17 @@ def _post_json(
                 detail = exc.read().decode("utf-8", errors="replace")[:500]
             except Exception:
                 detail = ""
+            detail = network_policy.redact_sensitive_text(
+                detail, secrets=(openrouter_credential or "",),
+            )
             last_err = RuntimeError(f"HTTP {exc.code}: {detail}")
         except Exception as exc:
-            last_err = exc
+            if openrouter_credential is not None:
+                last_err = RuntimeError(network_policy.redact_sensitive_text(
+                    exc, secrets=(openrouter_credential,),
+                ))
+            else:
+                last_err = exc
         if attempt < attempts:
             time.sleep(attempt)
     assert last_err is not None
@@ -137,6 +156,7 @@ def _call_openrouter(
         },
         timeout=45,
         attempts=2,
+        openrouter_credential=key,
     )
     return _normalise_results(data), {
         "provider": "openrouter",

@@ -72,6 +72,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import network_policy
+
 STATE_PATH = REPO_ROOT / "install-state.json"
 LOG_PATH = REPO_ROOT / "install.log"
 COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"
@@ -114,6 +118,12 @@ DOCUMENT_CONVERSION_DEPENDENCIES = {
     "markdownify": "markdownify",
     "bs4": "beautifulsoup4",
     "striprtf": "striprtf",
+}
+MCP_RUNTIME_DIR = REPO_ROOT / "mcp-runtime"
+MCP_RUNTIME_PACKAGES = {
+    "@modelcontextprotocol/server-filesystem": "2026.7.10",
+    "@playwright/mcp": "0.0.79",
+    "@modelcontextprotocol/server-github": "2025.4.8",
 }
 
 
@@ -443,7 +453,7 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
     if dry_run:
         log(f"  [dry-run] would run: {' '.join(cmd)}")
         log("  [dry-run] would fall back to a .venv/ if the interpreter is PEP 668 externally managed")
-        return True
+        return _install_mcp_runtime(dry_run=True)
 
     log(f"  · {' '.join(cmd)}")
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -488,8 +498,86 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
     log(f"  ✓ Dependencies installed and core imports verified ({target})")
     if target != sys.executable:
         log("    Ora will start against this .venv/ automatically.")
+    if not _install_mcp_runtime(dry_run=False):
+        return False
     state["steps_completed"].append("dependencies")
     save_state(state)
+    return True
+
+
+def _install_mcp_runtime(*, dry_run: bool) -> bool:
+    """Install the exact repository lock and its matching Playwright browser."""
+
+    npm = shutil.which("npm")
+    node = shutil.which("node")
+    lock = MCP_RUNTIME_DIR / "package-lock.json"
+    if not npm or not node:
+        log("  ✗ Node.js and npm are required for the three shipped MCP servers")
+        return False
+    if not lock.is_file():
+        log(f"  ✗ {lock} not found — MCP runtime lock is unavailable")
+        return False
+    base = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund"]
+    offline = [*base, "--offline"]
+    if dry_run:
+        log(f"  [dry-run] would run from {MCP_RUNTIME_DIR}: {' '.join(offline)}")
+        log("  [dry-run] would retry the same exact lock without --offline only if the cache is incomplete")
+        cli = MCP_RUNTIME_DIR / "node_modules" / "playwright-core" / "cli.js"
+        log(f"  [dry-run] would run: {node} {cli} install chromium (PLAYWRIGHT_BROWSERS_PATH=0)")
+        return True
+    proc = subprocess.run(offline, cwd=MCP_RUNTIME_DIR,
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        log("  ⚠ Local npm cache is incomplete; installing the same exact lock from its registry URLs")
+        proc = subprocess.run(base, cwd=MCP_RUNTIME_DIR,
+                              capture_output=True, text=True)
+    if proc.returncode != 0:
+        log("  ✗ Pinned MCP runtime install failed:")
+        for line in (proc.stderr or proc.stdout or "").strip().splitlines()[-8:]:
+            log(f"      {line}")
+        return False
+    for package, expected in MCP_RUNTIME_PACKAGES.items():
+        metadata = MCP_RUNTIME_DIR / "node_modules" / package / "package.json"
+        try:
+            actual = str(json.loads(metadata.read_text(encoding="utf-8"))["version"])
+        except Exception:
+            log(f"  ✗ Installed MCP package metadata is missing: {package}")
+            return False
+        if actual != expected:
+            log(f"  ✗ Installed MCP package version mismatch: {package} {actual} != {expected}")
+            return False
+    cli = MCP_RUNTIME_DIR / "node_modules" / "playwright-core" / "cli.js"
+    if not cli.is_file():
+        log("  ✗ Locked Playwright CLI is missing after npm ci")
+        return False
+    browser_env = dict(os.environ)
+    browser_env["PLAYWRIGHT_BROWSERS_PATH"] = "0"
+    browser_cmd = [node, str(cli), "install", "chromium"]
+    browser_install = subprocess.run(
+        browser_cmd, cwd=MCP_RUNTIME_DIR, env=browser_env,
+        capture_output=True, text=True,
+    )
+    if browser_install.returncode != 0:
+        log("  ✗ Exact locked Playwright Chromium install failed:")
+        for line in (browser_install.stderr or browser_install.stdout or "").strip().splitlines()[-8:]:
+            log(f"      {line}")
+        return False
+    core = MCP_RUNTIME_DIR / "node_modules" / "playwright-core"
+    probe = subprocess.run(
+        [node, "-e", (
+            "const {chromium}=require(process.argv[1]);"
+            "process.stdout.write(chromium.executablePath())"
+        ), str(core)],
+        cwd=MCP_RUNTIME_DIR, env={"PLAYWRIGHT_BROWSERS_PATH": "0"},
+        capture_output=True, text=True,
+    )
+    browser = Path((probe.stdout or "").strip()).resolve()
+    local_root = (core / ".local-browsers").resolve()
+    if (probe.returncode != 0 or not browser.is_file()
+            or local_root not in browser.parents):
+        log("  ✗ Exact locked Playwright Chromium is unavailable after install")
+        return False
+    log("  ✓ Pinned MCP runtime and exact Playwright Chromium installed")
     return True
 
 
@@ -729,28 +817,39 @@ def _openrouter_smoke_call(model_id: str, api_key: str) -> tuple[bool, str, bool
         "temperature": 0,
         "max_tokens": 12,
     }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=payload,
-        headers={
+    try:
+        raw, _destination = network_policy.openrouter_request_bytes(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=payload,
+            headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://ora-ai.app",
             "X-Title": "Ora installer smoke test",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
+            },
+            timeout=45,
+            max_bytes=8 * 1024 * 1024,
+        )
+        body = json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:240]
+        detail = network_policy.redact_sensitive_text(
+            detail, secrets=(api_key,),
+        )
         auth_failure = exc.code in {401, 403}
         return False, f"HTTP {exc.code}: {detail}", auth_failure
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
-        return False, f"{type(exc).__name__}: {exc}", False
+        detail = network_policy.redact_sensitive_text(
+            exc, secrets=(api_key,),
+        )
+        return False, f"{type(exc).__name__}: {detail}", False
     except json.JSONDecodeError as exc:
         return False, f"invalid JSON response: {exc}", False
+    except Exception as exc:
+        detail = network_policy.redact_sensitive_text(
+            exc, secrets=(api_key,),
+        )
+        return False, f"{type(exc).__name__}: {detail}", False
 
     content = ""
     try:

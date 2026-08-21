@@ -3,60 +3,120 @@
     {
       "name": "vault-fs",
       "transport": "stdio",
-      "command": "npx",
+      "command": "${ORA_NODE}",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
+        "${ORA_HOME}/mcp-runtime/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
         "${ORA_VAULT}"
       ],
-      "_purpose": "Structured filesystem operations (read, write, list, search) scoped to the Wisdom Nexus vault. Adds tool-calling-friendly file primitives over the dispatcher's existing file_read/file_write surface.",
-      "mutability": "reversible_write",
-      "sensitivity": "private",
-      "egress": "none"
+      "cwd": "${ORA_VAULT}",
+      "env_allowlist": ["HOME", "USERPROFILE", "PATH", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT"],
+      "_purpose": "Pinned filesystem MCP server. Ora canonicalizes every transmitted path into the configured vault before the child receives it.",
+      "tools": {
+        "read_file": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "read_text_file": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "read_media_file": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "read_multiple_files": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_paths", "destructive": false},
+        "write_file": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": true},
+        "edit_file": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": true},
+        "create_directory": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "list_directory": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "list_directory_with_sizes": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "directory_tree": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "move_file": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "none", "adapter": "vault_move", "destructive": true},
+        "search_files": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "get_file_info": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_path", "destructive": false},
+        "list_allowed_directories": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "none", "adapter": "vault_root", "destructive": false}
+      }
     },
     {
       "name": "playwright",
       "transport": "stdio",
-      "command": "npx",
+      "command": "${ORA_NODE}",
       "args": [
-        "-y",
-        "@playwright/mcp@latest"
+        "${ORA_HOME}/mcp-runtime/node_modules/@playwright/mcp/cli.js",
+        "--browser", "chromium",
+        "--isolated",
+        "--block-service-workers",
+        "--init-page", "${ORA_HOME}/orchestrator/mcp_playwright_init.mjs",
+        "--output-dir", "${ORA_SCRATCH}/mcp-playwright",
+        "--output-max-size", "52428800"
       ],
-      "_purpose": "Browser automation \u2014 navigate, click, fill, screenshot, console. Complements the existing internal Playwright path used by web_fetch's channel=local tier.",
-      "mutability": "external_write",
-      "sensitivity": "private",
-      "egress": "external"
+      "cwd": "${ORA_SCRATCH}/mcp-playwright",
+      "create_cwd": true,
+      "env_allowlist": ["HOME", "USERPROFILE", "PATH", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT"],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "0",
+        "ORA_MCP_POLICY_PYTHON": "${ORA_PYTHON}",
+        "ORA_MCP_POLICY_CLI": "${ORA_HOME}/orchestrator/mcp_network_policy_cli.py"
+      },
+      "_purpose": "Pinned Playwright MCP server using its exact repo-local Chromium, an isolated profile, blocked service workers, bounded scratch output, and best-effort HTTP(S)/WebSocket public-destination routing. Pinned Chromium does not deliver redirect hops to route callbacks; independent Chrome DNS resolution, WebRTC, and WebTransport are not covered by that hook.",
+      "tools": {
+        "browser_console_messages": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_observe", "destructive": false},
+        "browser_find": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_interact", "destructive": false},
+        "browser_network_request": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_observe", "destructive": false},
+        "browser_network_requests": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_observe", "destructive": false},
+        "browser_snapshot": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_observe", "destructive": false},
+        "browser_wait_for": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "local", "adapter": "playwright_interact", "destructive": false},
+        "browser_close": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "local", "adapter": "playwright_state", "destructive": false},
+        "browser_resize": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "local", "adapter": "playwright_state", "destructive": false},
+        "browser_take_screenshot": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "local", "adapter": "playwright_state", "destructive": false},
+        "browser_tabs": {"category": "write", "mutability": "reversible_write", "sensitivity": "private", "egress": "local", "adapter": "playwright_tabs", "destructive": false},
+        "browser_navigate": {"category": "read", "mutability": "read", "sensitivity": "public", "egress": "external", "adapter": "playwright_navigate", "destructive": false},
+        "browser_click": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_drag": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_drag", "destructive": false},
+        "browser_drop": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_drop", "destructive": false},
+        "browser_file_upload": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_upload", "destructive": false},
+        "browser_fill_form": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_handle_dialog": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_hover": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_navigate_back": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_press_key": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_select_option": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_type": {"category": "execute", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "playwright_interact", "destructive": false},
+        "browser_evaluate": {"category": "execute", "mutability": "irreversible", "sensitivity": "secret", "egress": "external", "adapter": "deny_opaque_code", "destructive": true},
+        "browser_run_code_unsafe": {"category": "execute", "mutability": "irreversible", "sensitivity": "secret", "egress": "external", "adapter": "deny_opaque_code", "destructive": true}
+      }
     },
     {
       "name": "github",
       "transport": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-github"
-      ],
-      "_purpose": "GitHub repo / issue / PR operations. Requires GITHUB_PERSONAL_ACCESS_TOKEN in the orchestrator's environment (inherited from the shell that started Ora). Fails-soft if the token is absent \u2014 the github server reports startup failure and the dispatcher routes the other two servers normally.",
-      "_env_required": "GITHUB_PERSONAL_ACCESS_TOKEN",
-      "mutability": "external_write",
-      "sensitivity": "private",
-      "egress": "external"
+      "command": "${ORA_NODE}",
+      "args": ["${ORA_HOME}/mcp-runtime/node_modules/@modelcontextprotocol/server-github/dist/index.js"],
+      "cwd": "${ORA_HOME}/mcp-runtime",
+      "env_allowlist": ["HOME", "USERPROFILE", "PATH", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT"],
+      "env_from_parent": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "required_env": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "_purpose": "Pinned GitHub MCP server. If its token is absent, only this server is skipped. Ora does not make a live identity call, so create_repository and implicit-destination fork_repository remain bound to an opaque token account rather than a verified login.",
+      "tools": {
+        "search_repositories": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_search", "destructive": false},
+        "get_file_contents": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "list_commits": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "list_issues": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "search_code": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_search", "destructive": false},
+        "search_issues": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_search", "destructive": false},
+        "search_users": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_search", "destructive": false},
+        "get_issue": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "get_pull_request": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "list_pull_requests": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "get_pull_request_files": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "get_pull_request_status": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "get_pull_request_comments": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "get_pull_request_reviews": {"category": "read", "mutability": "read", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "create_or_update_file": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "create_repository": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_create_repo", "destructive": false},
+        "create_issue": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "create_pull_request": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "fork_repository": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_fork", "destructive": false},
+        "create_branch": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "update_issue": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "add_issue_comment": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "create_pull_request_review": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "update_pull_request_branch": {"category": "write", "mutability": "external_write", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": false},
+        "push_files": {"category": "write", "mutability": "irreversible", "sensitivity": "private", "egress": "external", "adapter": "github_push_files", "destructive": true},
+        "merge_pull_request": {"category": "write", "mutability": "irreversible", "sensitivity": "private", "egress": "external", "adapter": "github_repo", "destructive": true}
+      }
     }
   ],
-  "notes": "Each server entry: {name, transport (stdio|http), command (for stdio) or url (for http), args (optional), env (optional)}. Servers are initialized at orchestrator startup. Servers that fail to start are logged but do not block the orchestrator. The _purpose / _env_required fields are documentation only \u2014 the MCP client ignores underscore-prefixed keys. Path values in command/args/env/url may use ${ORA_HOME} / ${ORA_VAULT} / ${ORA_CONVERSATIONS} / ${ORA_SCRATCH} placeholders \u2014 resolved at launch time from the same-named env var when set, else from orchestrator/runtime_paths.py defaults \u2014 so the checked-in config carries no machine- or platform-specific absolute paths.",
-  "examples": [
-    {
-      "name": "playwright",
-      "transport": "stdio",
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    },
-    {
-      "name": "custom-server",
-      "transport": "http",
-      "url": "http://localhost:8080/mcp"
-    }
-  ],
-  "_execution_review": "Per-server mutability/sensitivity/egress axes are read by tool_events.mcp_axes for the gate. A server without declared axes fails closed (gated). All MCP calls record enforcement_model=boundary_only regardless \u2014 the server subprocess is opaque to per-call interception."
+  "notes": "Only these three pinned stdio declarations are supported. Startup resolves exact local Node entrypoints from mcp-runtime; it never invokes npm or npx. Each child receives a fresh allowlisted environment. Discovery exposes only the intersection of the child's catalog and this exact tool map. Per-tool policy is an authority boundary; no server-wide axes are an authorization fallback.",
+  "_playwright_transport_residual": "The init hook is defense in depth, not complete egress confinement: pinned Chromium does not deliver redirect hops to route callbacks, Chrome resolves DNS independently after Python validation, and WebRTC/WebTransport are not covered. Complete enforcement would require an approved proxy, firewall/network sandbox, or maintained browser interception fork."
 }

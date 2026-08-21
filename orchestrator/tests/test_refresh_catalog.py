@@ -8,9 +8,12 @@ they belong in a separate integration runner.
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
@@ -21,6 +24,22 @@ SPEC = importlib.util.spec_from_file_location(
 )
 refresh_catalog = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(refresh_catalog)
+
+
+class TestAuthenticatedFetchBoundary(unittest.TestCase):
+    def test_optional_bearer_catalog_uses_origin_locked_transport(self):
+        payload = {"data": [{"id": "vendor/model"}]}
+        with mock.patch.dict(os.environ, {"OPENROUTER_API_KEY": "secret"}), \
+             mock.patch.object(
+                 refresh_catalog.network_policy, "openrouter_request_bytes",
+                 return_value=(json.dumps(payload).encode(), mock.sentinel.destination),
+             ) as request:
+            self.assertEqual(refresh_catalog.fetch_openrouter(), payload)
+        self.assertEqual(request.call_args.args[0], refresh_catalog.OPENROUTER_URL)
+        self.assertEqual(
+            request.call_args.kwargs["headers"]["Authorization"],
+            "Bearer secret",
+        )
 
 
 class TestBlendCost(unittest.TestCase):

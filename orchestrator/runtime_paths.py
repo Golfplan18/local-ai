@@ -493,24 +493,39 @@ PLACEHOLDER_ATTRS = {
 }
 
 
-def expand_placeholders(value):
+def expand_placeholders(value, extra=None):
     """Recursively expand ``${ORA_*}`` placeholders in a config value.
 
     Walks strings, lists and dicts; leaves every other type alone. Unknown
     placeholders are left verbatim (the caller fails with a visible bad path
-    rather than silently pointing somewhere else)."""
+    rather than silently pointing somewhere else).
+
+    ``extra`` lets a caller add placeholder names of its own, as a mapping of
+    name to a no-argument callable resolved at expansion time. It exists for
+    the names that are NOT storage roots and so have no attribute here to
+    stand behind them — mcp_client's ``${ORA_NODE}`` (the exact Node binary on
+    PATH) and ``${ORA_PYTHON}`` (this interpreter). A caller resolver owns its
+    whole lookup, env overrides included; returning None or "" leaves the
+    placeholder verbatim, which is the same visible-failure contract unknown
+    names get."""
     if isinstance(value, str):
-        for name, attr in PLACEHOLDER_ATTRS.items():
+        for name in (*PLACEHOLDER_ATTRS, *(extra or ())):
             token = "${" + name + "}"
-            if token in value:
-                value = value.replace(
-                    token,
-                    os.environ.get(name) or getattr(sys.modules[__name__], attr))
+            if token not in value:
+                continue
+            attr = PLACEHOLDER_ATTRS.get(name)
+            if attr:
+                replacement = (os.environ.get(name)
+                               or getattr(sys.modules[__name__], attr))
+            else:
+                replacement = extra[name]()
+            if replacement:
+                value = value.replace(token, replacement)
         return value
     if isinstance(value, list):
-        return [expand_placeholders(v) for v in value]
+        return [expand_placeholders(v, extra) for v in value]
     if isinstance(value, dict):
-        return {k: expand_placeholders(v) for k, v in value.items()}
+        return {k: expand_placeholders(v, extra) for k, v in value.items()}
     return value
 
 

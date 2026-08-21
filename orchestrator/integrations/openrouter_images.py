@@ -47,6 +47,7 @@ shapes (Kling, Veo, Wan, Seedance all differ) and need per-model adapters.
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -57,8 +58,14 @@ import time
 import urllib.error
 from typing import Any, Callable
 
+try:
+    from orchestrator import network_policy
+except ImportError:  # pragma: no cover
+    import network_policy
+
 _OPENROUTER_CATALOG_PATH = os.path.expanduser("~/ora/config/openrouter-catalog.json")
 _API_BASE                = "https://openrouter.ai/api/v1"
+_OPENROUTER_ORIGIN       = "https://openrouter.ai"
 _OPENROUTER_IMAGE_TIMEOUT_SECONDS = float(
     os.environ.get("OPENROUTER_IMAGE_TIMEOUT_SECONDS", "120"))
 
@@ -125,6 +132,7 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     """
     msg = str(exc) or exc.__class__.__name__
     msg_lower = msg.lower()
+    safe_msg = network_policy.redact_sensitive_text(msg)[:240]
 
     # Status code may live on the exception (OpenAI SDK) or be embedded
     # in the message (urllib.error.HTTPError, generic OpenAI proxies).
@@ -147,7 +155,7 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     )):
         return _capability_error(
             "prompt_rejected",
-            f"OpenRouter content-policy refusal: {msg[:240]}",
+            f"OpenRouter content-policy refusal: {safe_msg}",
             slot=slot,
         )
 
@@ -158,7 +166,7 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     )):
         return _capability_error(
             "quota_exceeded",
-            f"OpenRouter quota/rate-limit: {msg[:240]}",
+            f"OpenRouter quota/rate-limit: {safe_msg}",
             slot=slot,
         )
 
@@ -169,7 +177,7 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     )):
         return _capability_error(
             "model_unavailable",
-            f"OpenRouter availability error: {msg[:240]}",
+            f"OpenRouter availability error: {safe_msg}",
             slot=slot,
         )
 
@@ -178,7 +186,7 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     )):
         return _capability_error(
             "model_unavailable",
-            f"OpenRouter network/5xx: {msg[:240]}",
+            f"OpenRouter network/5xx: {safe_msg}",
             slot=slot,
         )
 
@@ -186,9 +194,23 @@ def _classify_openrouter_failure(exc: Exception, slot: str):
     # rather than fail-stopping the whole chain on a novel error shape.
     return _capability_error(
         "model_unavailable",
-        f"OpenRouter unclassified error: {msg[:240]}",
+        f"OpenRouter unclassified error: {safe_msg}",
         slot=slot,
     )
+
+
+def _validate_openrouter_request(request: Any) -> None:
+    """httpx request hook: refuse before a bearer can leave the exact origin."""
+    network_policy.validate_openrouter_request(request)
+
+
+@contextmanager
+def _openrouter_sdk_client(key: str):
+    """Yield the SDK over one no-redirect, exact-origin checked transport."""
+    with network_policy.openrouter_sdk_client(
+        key, request_validator=_validate_openrouter_request,
+    ) as client:
+        yield client
 
 
 def _decode_image_url_to_bytes(url: str) -> bytes:
@@ -212,9 +234,18 @@ def _decode_image_url_to_bytes(url: str) -> bytes:
         return urllib.parse.unquote_to_bytes(payload)
 
     if url.startswith(("http://", "https://")):
-        import urllib.request
-        with urllib.request.urlopen(url, timeout=60) as r:
-            return r.read()
+        try:
+            body, _destination = network_policy.urllib_request_bytes(
+                url, timeout=60,
+            )
+            return body
+        except Exception as exc:
+            # Provider-returned asset URLs are commonly signed.  Never copy a
+            # transport exception containing that raw URL into model-visible
+            # capability errors.
+            raise ValueError(
+                f"public image asset fetch failed: {type(exc).__name__}",
+            ) from exc
 
     raise ValueError(f"unsupported image URL scheme: {url[:64]}...")
 
@@ -357,23 +388,22 @@ def _call_image_model(model_id: str, prompt: str,
     # the more-permissive request first; on the specific "no endpoints
     # found" rejection, retry with image-only.
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=key, base_url=_API_BASE)
-        def _do(modalities):
-            return client.chat.completions.create(
-                model=model_id,
-                messages=messages,
-                modalities=modalities,
-                timeout=_OPENROUTER_IMAGE_TIMEOUT_SECONDS,
-                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
-            )
-        try:
-            resp = _with_image_deadline(lambda: _do(["image", "text"]))
-        except Exception as e:
-            if "No endpoints found that support the requested output modalities" in str(e):
-                resp = _with_image_deadline(lambda: _do(["image"]))
-            else:
-                raise
+        with _openrouter_sdk_client(key) as client:
+            def _do(modalities):
+                return client.chat.completions.create(
+                    model=model_id,
+                    messages=messages,
+                    modalities=modalities,
+                    timeout=_OPENROUTER_IMAGE_TIMEOUT_SECONDS,
+                    extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+                )
+            try:
+                resp = _with_image_deadline(lambda: _do(["image", "text"]))
+            except Exception as e:
+                if "No endpoints found that support the requested output modalities" in str(e):
+                    resp = _with_image_deadline(lambda: _do(["image"]))
+                else:
+                    raise
     except Exception as exc:
         raise _classify_openrouter_failure(exc, slot=slot) from exc
 
@@ -415,14 +445,13 @@ def _call_video_model(model_id: str, prompt: str,
     OpenRouter's video endpoint (``POST /v1/videos``) is async — it
     returns ``{"id":..., "polling_url":..., "status":"pending"}``. The
     polling URL returns the same envelope with ``status`` transitioning
-    to ``completed`` and result links in ``unsigned_urls``. We fetch
-    the first URL (with the bearer token) and return its bytes — matching
-    the image-handler contract.
+    to ``completed`` and result links in ``unsigned_urls``. Authenticated
+    polling is origin-locked to OpenRouter; public result assets receive no
+    bearer header.
 
     Raises ``CapabilityError`` on any failure so the cascade walks.
     Verified end-to-end against ``google/veo-3.1-fast`` (~77s, ~1 MB MP4).
     """
-    import urllib.request
     key = _resolve_key()
     if not key:
         raise _capability_error("model_unavailable",
@@ -442,9 +471,15 @@ def _call_video_model(model_id: str, prompt: str,
     # ── Submit job
     try:
         body = json.dumps({"model": model_id, "prompt": prompt}).encode()
-        req = urllib.request.Request(_API_BASE + "/videos", data=body, headers=headers)
-        with urllib.request.urlopen(req, timeout=60) as r:
-            job = json.loads(r.read().decode("utf-8"))
+        payload, _destination = network_policy.urllib_request_bytes(
+            _API_BASE + "/videos",
+            data=body,
+            headers=headers,
+            timeout=60,
+            required_origin="https://openrouter.ai",
+            max_redirects=0,
+        )
+        job = json.loads(payload.decode("utf-8"))
     except Exception as exc:
         raise _classify_openrouter_failure(exc, slot=slot) from exc
 
@@ -452,16 +487,21 @@ def _call_video_model(model_id: str, prompt: str,
     job_id   = job.get("id")
     if not poll_url:
         raise _capability_error("model_unavailable",
-            f"OpenRouter video submit returned no polling_url: {job}", slot=slot)
+            "OpenRouter video submit returned no polling URL.", slot=slot)
 
     # ── Poll for completion
     last_state = None
     while time.time() - started < max_wait_s:
         time.sleep(poll_interval_s)
         try:
-            req = urllib.request.Request(poll_url, headers={"Authorization": f"Bearer {key}"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                last_state = json.loads(r.read().decode("utf-8"))
+            payload, _destination = network_policy.urllib_request_bytes(
+                poll_url,
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=30,
+                required_origin="https://openrouter.ai",
+                max_redirects=0,
+            )
+            last_state = json.loads(payload.decode("utf-8"))
         except Exception as exc:
             raise _classify_openrouter_failure(exc, slot=slot) from exc
 
@@ -470,24 +510,27 @@ def _call_video_model(model_id: str, prompt: str,
             url = _extract_video_url(last_state)
             if not url:
                 raise _capability_error("model_unavailable",
-                    f"Video job {job_id} completed but no URL found. Body: {str(last_state)[:240]}",
+                    f"Video job {job_id} completed but no URL was present.",
                     slot=slot)
-            # ── Fetch the video bytes
+            # ── Fetch the public result bytes without provider authority.
             try:
-                req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
-                with urllib.request.urlopen(req, timeout=180) as r:
-                    return r.read()
+                payload, _destination = network_policy.urllib_request_bytes(
+                    url, timeout=180,
+                )
+                return payload
             except Exception as exc:
                 raise _capability_error("model_unavailable",
-                    f"Video fetch failed for {url}: {exc}", slot=slot) from exc
+                    "Video fetch failed for "
+                    f"{network_policy.safe_url_label(url)}: {type(exc).__name__}",
+                    slot=slot) from exc
         if status in ("failed", "error", "errored"):
             raise _capability_error("model_unavailable",
-                f"OpenRouter video job {job_id} failed: {last_state.get('error') or last_state}",
+                f"OpenRouter video job {job_id} failed.",
                 slot=slot)
         # pending / running / queued — continue polling
 
     raise _capability_error("model_unavailable",
-        f"OpenRouter video job {job_id} timed out after {max_wait_s}s (poll: {poll_url})",
+        f"OpenRouter video job {job_id} timed out after {max_wait_s}s.",
         slot=slot)
 
 
@@ -496,9 +539,8 @@ def _extract_video_url(state: dict) -> str | None:
     The exact field name varies upstream — try several common shapes.
 
     OpenRouter's observed completion shape carries the result URL in
-    ``unsigned_urls`` (a list); fetching that URL with the bearer key
-    returns the actual video bytes. ``signed_urls`` covers the
-    alternate form for time-limited links.
+    ``unsigned_urls`` (a list). Public result assets are fetched without the
+    OpenRouter bearer. ``signed_urls`` covers time-limited public links.
     """
     if not isinstance(state, dict):
         return None
@@ -603,20 +645,22 @@ def _call_image_model_two_images(model_id: str, prompt: str,
         ],
     }]
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=key, base_url=_API_BASE)
-        def _do(modalities):
-            return client.chat.completions.create(
-                model=model_id, messages=messages, modalities=modalities,
-                extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
-            )
-        try:
-            resp = _do(["image", "text"])
-        except Exception as e:
-            if "No endpoints found that support the requested output modalities" in str(e):
-                resp = _do(["image"])
-            else:
-                raise
+        with _openrouter_sdk_client(key) as client:
+            def _do(modalities):
+                return client.chat.completions.create(
+                    model=model_id,
+                    messages=messages,
+                    modalities=modalities,
+                    timeout=_OPENROUTER_IMAGE_TIMEOUT_SECONDS,
+                    extra_headers={"HTTP-Referer": "https://ora.local", "X-Title": "Ora"},
+                )
+            try:
+                resp = _with_image_deadline(lambda: _do(["image", "text"]))
+            except Exception as e:
+                if "No endpoints found that support the requested output modalities" in str(e):
+                    resp = _with_image_deadline(lambda: _do(["image"]))
+                else:
+                    raise
     except Exception as exc:
         raise _classify_openrouter_failure(exc, slot=slot) from exc
 

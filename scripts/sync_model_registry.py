@@ -55,6 +55,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from orchestrator import network_policy
+
 # ──────────────────────────────────────────────────────────────────────────
 # Paths
 # ──────────────────────────────────────────────────────────────────────────
@@ -1754,6 +1759,7 @@ def _resolve_vision_capable(or_view: dict, ll_view: dict) -> dict:
 
 def _load_openrouter_client():
     try:
+        import httpx
         from openai import OpenAI
     except ImportError as e:
         raise RuntimeError(
@@ -1766,7 +1772,15 @@ def _load_openrouter_client():
     )
     if not key:
         raise RuntimeError("no OpenRouter API key available (env OPENROUTER_API_KEY or keyring 'ora/openrouter-api-key')")
-    return OpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
+    transport = httpx.Client(
+        follow_redirects=False,
+        event_hooks={"request": [network_policy.validate_openrouter_request]},
+    )
+    return OpenAI(
+        api_key=key,
+        base_url=network_policy.OPENROUTER_API_BASE,
+        http_client=transport,
+    )
 
 
 def _try_keyring(service: str, key: str) -> str:
@@ -1835,7 +1849,7 @@ def probe_one(client, model_id: str) -> dict:
         except Exception as e:
             per["raw"] = ""
             per["finish_reason"] = None
-            per["error"] = str(e)[:300]
+            per["error"] = network_policy.redact_sensitive_text(e)[:300]
         per["outcome"] = _probe_outcome(per, digit)
         details.append(per)
 
@@ -2404,7 +2418,7 @@ def reach_probe_one(client, model_id: str) -> dict:
                 "rate_limited": rate_limited,
                 "status_code": status,
                 "error_kind": kind,
-                "error_message": str(e)[:300],
+                "error_message": network_policy.redact_sensitive_text(e)[:300],
             }
 
     record = attempt()
