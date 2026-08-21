@@ -1068,7 +1068,7 @@ def _sed_write_targets(expression: str) -> list[str] | None:
         # an ordinary positional input, so refuse both spaced and attached
         # spellings instead of allowing that read to disappear from the
         # authority record.
-        if re.match(r"^" + command_prefix + r"[rR](?:\s|/|$)", stripped):
+        if re.match(r"^" + command_prefix + r"[rR]", stripped):
             return None
         # GNU sed's ``e`` command and the ``s///e`` flag execute a helper
         # process.  Its filesystem/network effects cannot be represented by

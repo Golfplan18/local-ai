@@ -491,11 +491,23 @@ class TestUtilityEffects(PreparedCommandCase):
             "sed '1r /etc/hosts' input.txt",
             "sed '1,3r /etc/hosts' input.txt",
             "sed '1~2r/etc/hosts' input.txt",
+            "sed '1rfoo' input.txt",
+            "sed '1r-foo' input.txt",
             "sed '1R /etc/hosts' input.txt",
+            "sed '1Rfoo' input.txt",
+            "sed '1R-foo' input.txt",
             "tar -xPf archive -C target",
         ):
             with self.subTest(command=command):
                 self.assertTrue(self.prepare(command).unknown)
+
+    def test_sed_ordinary_substitutions_remain_admitted(self):
+        for command in (
+            "sed 's/a/rfoo/' input.txt",
+            "sed '1s/a/R-foo/' input.txt",
+        ):
+            with self.subTest(command=command):
+                self.assertFalse(self.prepare(command).unknown)
 
     def test_clustered_commit_message_file_options_fail_closed(self):
         for command in (
