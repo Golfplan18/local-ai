@@ -20715,7 +20715,7 @@ def api_export():
 
         {
           "scope": "current_output" | "full_conversation",
-          "format": "markdown",            # docx/pdf need the bundled Pandoc
+          "format": "markdown",            # docx/pdf need Pandoc (+ a PDF engine)
           "content": "<markdown>",         # for current_output
           "title": "<optional>",
           "conversation_id": "<for full_conversation>",
@@ -20727,7 +20727,9 @@ def api_export():
     else at the vault root for Commons. ``full_conversation`` delegates to the
     existing canonical session export. ``docx`` / ``pdf`` render the output's markdown via
     Pandoc into ``~/Documents/Ora Exports/`` when Pandoc (+ a PDF engine) is
-    present; otherwise they return ``deferred``."""
+    present; otherwise they return ``deferred``. The installer provisions both
+    (``python3 scripts/install.py converters``); an existing install always
+    wins over Ora's own copy."""
     try:
         from orchestrator import export as _export
     except Exception as exc:
@@ -20743,6 +20745,7 @@ def api_export():
             return _json_response(
                 {"ok": False, "deferred": True,
                  "error": f"{fmt.upper()} export needs {missing} installed. "
+                          "Run `python3 scripts/install.py converters` to fetch it. "
                           "Save to Vault (Markdown) and Print work now."}, 501)
         content = data.get("content")
         if not isinstance(content, str) or not content.strip():

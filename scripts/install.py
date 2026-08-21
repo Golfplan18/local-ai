@@ -14,11 +14,22 @@ Steps the script performs in order:
      existing vault is reported and left untouched; nothing is ever written
      into one. A creation that fails part-way removes the directories it
      just made, so a re-run never inherits a half-built vault.
-  2. Deployment profile selection (Solo today; Hybrid / Organization future)
-  3. Catalog refresh — fetches OpenRouter operational fields and writes
+  2. Python dependencies from requirements.txt, plus the pinned MCP runtime
+     and its exact Playwright browser. Falls back to an isolated .venv/ when
+     the interpreter is PEP 668 externally managed.
+  3. Document converters — Ora renders Word (.docx) and PDF by handing its
+     markdown to Pandoc, with Typst as the PDF engine. Neither program ships
+     in this repository (Pandoc is GPL; vendoring it would be redistribution),
+     so scripts/converters.py uses whatever the machine already has and
+     otherwise downloads the publishers' own pinned, checksum-verified
+     releases into data/converters/bin. No package manager is required. This
+     step never halts the install: Word and PDF export are all that depend on
+     it, so a failure prints the cause and one retry command and moves on.
+  4. Deployment profile selection (Solo today; Hybrid / Organization future)
+  5. Catalog refresh — fetches OpenRouter operational fields and writes
      config/model-catalog.json (legacy snapshot, still consumed by
      auto-populate-configuration).
-  4. Model-registry sync — fetches OpenRouter + LiteLLM + Chatbot Arena
+  6. Model-registry sync — fetches OpenRouter + LiteLLM + Chatbot Arena
       and runs the empirical vision-capability probe, writing
       config/model-registry.json. This replaces the prior Artificial
       Analysis (AA) dependency: intelligence rankings come from Chatbot
@@ -26,12 +37,12 @@ Steps the script performs in order:
       verified rather than trusted from any single provider's metadata.
       An optional AA key improves the registry path after install, but it is
       not required for installation.
-  5. Auto-populate user-pipeline configuration from the Budget preset.
-  6. Smoke test: populate the Free configuration, then make one tiny
+  7. Auto-populate user-pipeline configuration from the Budget preset.
+  8. Smoke test: populate the Free configuration, then make one tiny
      OpenRouter chat round-trip when a key is already available. Without a
      key, the smoke test validates config and tells the user to add keys
      later in Settings → External APIs.
-  7. Optional account/API orientation: explain ChatGPT browser sign-in and
+  9. Optional account/API orientation: explain ChatGPT browser sign-in and
      the recommended API-key set, open official provider pages one at a time
      if the user wants them, and print the install-complete summary. The tail
      of ~/ora/install.log lands a deterministic marker the test protocol
@@ -57,6 +68,7 @@ Usage:
     python3 scripts/install.py --dry-run      # preview, no changes
     python3 scripts/install.py --reset        # clear install state
     python3 scripts/install.py --resume       # continue from last completed step
+    python3 scripts/install.py converters     # re-run only the Pandoc/Typst step
 """
 
 from __future__ import annotations
@@ -83,6 +95,8 @@ from orchestrator import network_policy
 STATE_PATH = REPO_ROOT / "install-state.json"
 LOG_PATH = REPO_ROOT / "install.log"
 COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"
+# The one line a user retypes when Word/PDF converters did not download.
+CONVERTER_RETRY_COMMAND = "python3 scripts/install.py converters"
 
 DEPLOYMENT_PROFILES = {
     "solo": {
@@ -159,6 +173,50 @@ MCP_RUNTIME_PACKAGES = {
     "@playwright/mcp": "0.0.79",
     "@modelcontextprotocol/server-github": "2025.4.8",
 }
+
+
+def _converter_environment() -> dict[str, str]:
+    """The child environment for ``scripts/converters.py``, ``ORA_HOME`` settled.
+
+    ``converters.py`` asks ``runtime_paths`` where Ora's home is, and that
+    answer picks the directory the downloaded Pandoc and Typst land in. The
+    running server never asks — ``run-ora-server.sh``, ``start.sh`` and
+    ``start.bat`` each decide for themselves, by one rule: an ``ORA_HOME``
+    that actually names something wins, and anything else falls back to the
+    checkout the launcher itself lives in.
+
+    This helper applies that rule by the same test the launchers use, so the
+    installer writes where the server reads in *every* case rather than only
+    the common one:
+
+    * **``ORA_HOME`` naming a path** — left exactly as it is, because the
+      launchers honor it and the server really will read from there.
+    * **``ORA_HOME`` missing, empty, or nothing but whitespace** — replaced
+      with this clone, because that is what the launchers fall back to.
+      ``${ORA_HOME:-$SCRIPT_DIR}`` counts an exported-but-empty value as no
+      value at all, and ``runtime_paths`` strips a setting before deciding
+      whether anybody set one, so a blank ``ORA_HOME`` names a home for
+      nobody. Passed through blank it would not stay blank for long:
+      ``runtime_paths`` would answer ``$HOME/ora``, and a clone that is not at
+      ``~/ora`` would have its converters downloaded into a directory the
+      server never looks in — the installer reporting Word and PDF ready while
+      the toolbar kept them greyed out.
+
+    Wherever a launcher will start a server, then, the installer downloads
+    into the directory that server reads from. (Whitespace alone starts no
+    server anywhere: the launchers reject it as "not a directory" before any
+    Python runs, so there is no reading side left to disagree with, and the
+    clone is the only answer left that is any use.)
+
+    Overriding rather than following would only turn that failure around
+    instead of removing it: the launcher would honor the user's ``ORA_HOME``
+    while the installer wrote into the clone, and the toolbar would stay
+    exactly as grey.
+    """
+    env = os.environ.copy()
+    if not env.get("ORA_HOME", "").strip():
+        env["ORA_HOME"] = str(REPO_ROOT)
+    return env
 
 
 def _missing_document_dependencies() -> list[str]:
@@ -449,6 +507,50 @@ def _runtime_path_preflight(dry_run: bool) -> bool:
         log(f"  ✗ Runtime path configuration is invalid: {exc}")
         return False
 
+    # Ora home first, and its source with it. An ORA_HOME nobody set — or
+    # one set to nothing at all, which counts the same everywhere — is not
+    # "unconfigured", it is "$HOME/ora" — so on any clone that is not at
+    # ~/ora this line and the clone below it disagree, and every root derived
+    # from Ora home follows the reported value rather than the checkout. That
+    # silent disagreement is what sent the downloaded converters to a
+    # directory the server never reads; reporting it makes it visible.
+    log(f"  ✓ Ora home: {roots.ora_home} ({roots.sources['ora_home']})")
+    log(f"    This clone: {REPO_ROOT}")
+    if os.path.normcase(os.path.realpath(str(roots.ora_home))) != os.path.normcase(
+        os.path.realpath(str(REPO_ROOT))
+    ):
+        log("    ⚠ Ora home is not this clone.")
+        if roots.sources["ora_home"] == "ORA_HOME":
+            # This branch is a home that names a path: a blank ORA_HOME
+            # never reaches it, because runtime_paths discounts one. The
+            # launchers honor a real setting, so the server reads from there,
+            # and _converter_environment keeps it by the same test, so that is
+            # where the converters install too. The disagreement left to
+            # report is with the clone, not between the installer and the
+            # server. Say so plainly, because running Ora out of a
+            # directory that is not the checkout you installed from is worth
+            # knowing either way.
+            log("      ORA_HOME is set explicitly and the launchers honor it, "
+                "so the running")
+            log("      server reads from there, not from this clone. The "
+                "Word/PDF converters")
+            log("      install there too, so export will work — but every "
+                "other root follows")
+            log("      ORA_HOME as well. Unset it, or point it at this clone, "
+                "if you meant to")
+            log("      run Ora out of the checkout you are installing from.")
+        else:
+            log("      Nothing usable set ORA_HOME — it is unset, or set to "
+                "nothing — so it")
+            log("      defaults to $HOME/ora. But start.sh, start.bat and "
+                "run-ora-server.sh read")
+            log("      a blank one as no setting too, and export the checkout "
+                "they live in, so")
+            log("      the running server uses this clone. The Word/PDF "
+                "converters install here")
+            log("      to match, blank ORA_HOME included. Set ORA_HOME to this "
+                "clone to make")
+            log("      every other root agree as well.")
     log(f"  ✓ Documents: {roots.documents} ({roots.sources['documents']})")
     for label, path, source_key in (
         ("Vault", roots.vault, "vault"),
@@ -497,7 +599,7 @@ def _runtime_path_preflight(dry_run: bool) -> bool:
 
 
 def step_preflight(state: dict, dry_run: bool) -> bool:
-    log("Step 1/8: Pre-flight checks")
+    log("Step 1/9: Pre-flight checks")
     ok = _runtime_path_preflight(dry_run)
 
     # Python version
@@ -565,7 +667,7 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
     server/app.py imports flask, requests, chromadb, keyring, openai and yaml
     at module scope, and nothing else in the repo installs them.
     """
-    log("Step 2/8: Python dependencies")
+    log("Step 2/9: Python dependencies")
     req = REPO_ROOT / "requirements.txt"
     if not req.exists():
         log(f"  ✗ {req} not found — cannot install dependencies")
@@ -708,8 +810,65 @@ def _install_mcp_runtime(*, dry_run: bool) -> bool:
     return True
 
 
+def step_converters(state: dict, dry_run: bool) -> bool:
+    """Make Word and PDF export work on a machine that has no converters.
+
+    Ora renders those two formats by handing its markdown to Pandoc, with
+    Typst as the PDF engine. ``scripts/converters.py`` uses whatever the
+    machine already has and downloads the publishers' pinned releases when it
+    has nothing — no Homebrew, WinGet or Chocolatey required.
+
+    This step never halts the install. Export to Word and PDF is the only
+    thing that depends on it, so a failed download costs the user those two
+    formats and nothing else; the cause and the retry command are printed and
+    the install carries on. The step is not recorded as completed unless it
+    succeeded, so ``--resume`` picks it up again.
+
+    The child resolves ``ORA_HOME`` by the launchers' own rule — a setting
+    that names a path wins, and a missing, empty or whitespace-only one falls
+    back to this clone, which is what ``${ORA_HOME:-$SCRIPT_DIR}`` does too;
+    see ``_converter_environment`` — so the converters land where the
+    launchers make the server look, whatever ``ORA_HOME`` happens to hold.
+    """
+    log("Step 3/9: Document converters (Pandoc + Typst, for Word/PDF export)")
+    script = REPO_ROOT / "scripts" / "converters.py"
+    if not script.exists():
+        log(f"  ⚠ {script} missing — Word and PDF export stay unavailable")
+        return True
+    cmd = [sys.executable, str(script)]
+    if dry_run:
+        log(f"  [dry-run] would run: {' '.join(cmd)}")
+        return True
+
+    try:
+        result = subprocess.run(
+            cmd, cwd=str(REPO_ROOT), env=_converter_environment(),
+            capture_output=True, text=True, timeout=1800,
+        )
+    except subprocess.TimeoutExpired:
+        log("  ⚠ Converter provisioning timed out after 30 minutes")
+        log("    Word (.docx) and PDF export stay unavailable; nothing else is affected.")
+        log(f"    Retry with: {CONVERTER_RETRY_COMMAND}")
+        return True
+
+    for line in (result.stdout or "").strip().splitlines():
+        log(f"  {line}")
+    if result.returncode != 0:
+        for line in (result.stderr or "").strip().splitlines()[-6:]:
+            log(f"      {line}")
+        log("  ⚠ Converters were not fully provisioned. The install continues:")
+        log("    only Word (.docx) and PDF export are affected, and re-running the")
+        log("    line below fixes them without re-running the whole install.")
+        log(f"    Retry with: {CONVERTER_RETRY_COMMAND}")
+        return True
+
+    state["steps_completed"].append("converters")
+    save_state(state)
+    return True
+
+
 def step_select_profile(state: dict, profile: str | None, dry_run: bool) -> bool:
-    log("Step 3/8: Deployment profile selection")
+    log("Step 4/9: Deployment profile selection")
     if profile is None:
         if sys.stdin.isatty():
             print()
@@ -775,7 +934,7 @@ def _open_provider_page(url: str) -> bool:
 
 
 def step_catalog_refresh(state: dict, dry_run: bool) -> bool:
-    log("Step 4/8: Catalog refresh (OpenRouter operational fields)")
+    log("Step 5/9: Catalog refresh (OpenRouter operational fields)")
     log("")
 
     # Artificial Analysis intelligence-index check.
@@ -840,7 +999,7 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
 
     Replaces the prior AA enrichment step.
     """
-    log("Step 5/8: Sync curated model registry (OpenRouter + LiteLLM + Chatbot Arena + empirical probe)")
+    log("Step 6/9: Sync curated model registry (OpenRouter + LiteLLM + Chatbot Arena + empirical probe)")
     if dry_run:
         log("  [dry-run] would run scripts/sync_model_registry.py sync")
         return True
@@ -881,7 +1040,7 @@ def step_model_registry_sync(state: dict, dry_run: bool) -> bool:
 
 
 def step_autopopulate(state: dict, dry_run: bool) -> bool:
-    log("Step 6/8: Auto-populate user-pipeline configuration (Budget preset)")
+    log("Step 7/9: Auto-populate user-pipeline configuration (Budget preset)")
     if dry_run:
         log("  [dry-run] would run scripts/auto-populate-configuration.py budget user-pipeline")
         return True
@@ -989,7 +1148,7 @@ def _openrouter_smoke_call(model_id: str, api_key: str) -> tuple[bool, str, bool
 
 
 def step_smoke_test(state: dict, dry_run: bool) -> bool:
-    log("Step 7/8: Smoke test (Free configuration + optional OpenRouter round-trip)")
+    log("Step 8/9: Smoke test (Free configuration + optional OpenRouter round-trip)")
     if dry_run:
         log("  [dry-run] would auto-populate Free + send one test prompt when an OpenRouter key is available")
         return True
@@ -1050,7 +1209,7 @@ def step_smoke_test(state: dict, dry_run: bool) -> bool:
 
 
 def step_external_api_walkthrough(state: dict, dry_run: bool) -> bool:
-    log("Step 8/8: Optional ChatGPT subscription and External APIs orientation")
+    log("Step 9/9: Optional ChatGPT subscription and External APIs orientation")
     log("")
     log("  Optional ChatGPT subscription route:")
     log("    - Open Settings → External APIs → OpenAI (ChatGPT), then click Connect.")
@@ -1113,6 +1272,26 @@ def _delegate_to_local_models(extra_argv: list[str]) -> int:
     return subprocess.call([sys.executable, str(script), *extra_argv])
 
 
+def _delegate_to_converters(extra_argv: list[str]) -> int:
+    """Re-entry point for `install.py converters`: defers to scripts/converters.py.
+
+    This is the retry command the install step prints. It re-checks what the
+    machine has and downloads only what is still missing, so running it twice
+    is harmless. Like the install step it settles ``ORA_HOME`` by the
+    launchers' rule — a setting that names a path is kept, a missing or blank
+    one becomes this clone — so the retry writes to the same place the first
+    attempt did, and the same place the server reads from.
+    """
+    script = REPO_ROOT / "scripts" / "converters.py"
+    if not script.exists():
+        print(f"[install] {script} missing", file=sys.stderr)
+        return 1
+    return subprocess.call(
+        [sys.executable, str(script), *extra_argv],
+        cwd=str(REPO_ROOT), env=_converter_environment(),
+    )
+
+
 def _next_launch_instructions(
     platform_name: str | None = None, os_name: str | None = None
 ) -> list[str]:
@@ -1135,9 +1314,15 @@ def main():
     # selection flow standalone.
     if len(sys.argv) >= 2 and sys.argv[1] == "models":
         sys.exit(_delegate_to_local_models(sys.argv[2:]))
+    if len(sys.argv) >= 2 and sys.argv[1] == "converters":
+        sys.exit(_delegate_to_converters(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(
-        description="Ora source-install script (Solo public profile). Subcommand: 'models' re-enters local-model selection.",
+        description=(
+            "Ora source-install script (Solo public profile). Subcommands: "
+            "'models' re-enters local-model selection; 'converters' re-runs the "
+            "Pandoc + Typst download that Word/PDF export needs."
+        ),
     )
     parser.add_argument("--profile", choices=list(DEPLOYMENT_PROFILES.keys()), help="Skip the interactive profile prompt.")
     parser.add_argument("--dry-run", action="store_true", help="Preview actions without making changes.")
@@ -1163,6 +1348,7 @@ def main():
     pipeline = [
         ("preflight",      step_preflight,    (state, args.dry_run)),
         ("dependencies",   step_dependencies, (state, args.dry_run)),
+        ("converters",     step_converters,   (state, args.dry_run)),
         ("profile",        step_select_profile, (state, args.profile, args.dry_run)),
         ("catalog",        step_catalog_refresh, (state, args.dry_run)),
         ("registry_sync",  step_model_registry_sync, (state, args.dry_run)),

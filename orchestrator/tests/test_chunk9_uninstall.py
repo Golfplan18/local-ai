@@ -115,6 +115,7 @@ class TestGatherTargets(unittest.TestCase):
         self.assertIn(uninstall.REPO_ROOT / "install.log", targets)
         self.assertNotIn(uninstall.REPO_ROOT / "models", targets)
         self.assertNotIn(uninstall.CONVERSATIONS, targets)
+        self.assertNotIn(uninstall.REPO_ROOT / "data" / "converters", targets)
 
     def test_include_models_adds_models_dir(self):
         targets = uninstall._gather_targets(include_models=True, include_conversations=False)
@@ -123,6 +124,25 @@ class TestGatherTargets(unittest.TestCase):
     def test_include_conversations_adds_conversations_dir(self):
         targets = uninstall._gather_targets(include_models=False, include_conversations=True)
         self.assertIn(uninstall.CONVERSATIONS, targets)
+
+    def test_include_converters_adds_the_downloaded_pandoc_and_typst(self):
+        # Same category as models: large, downloaded per machine, and fetched
+        # again with one command. So the same treatment — preserved unless the
+        # user asks, never silently left behind on a full uninstall.
+        targets = uninstall._gather_targets(
+            include_models=False, include_conversations=False,
+            include_converters=True)
+        self.assertIn(uninstall.REPO_ROOT / "data" / "converters", targets)
+
+    def test_the_converters_target_is_the_directory_the_installer_writes(self):
+        # Anchored to the clone, because that is what the launchers make
+        # ORA_HOME — and therefore where scripts/converters.py puts them.
+        from orchestrator import export
+        with mock.patch.object(
+            uninstall._rp, "DATA_DIR_STR", str(uninstall.REPO_ROOT / "data")
+        ):
+            self.assertEqual(
+                export.converters_dir().parent, uninstall.OPT_IN_CONVERTERS[0])
 
     def test_both_opt_ins(self):
         targets = uninstall._gather_targets(include_models=True, include_conversations=True)

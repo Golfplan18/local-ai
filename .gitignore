@@ -16,6 +16,12 @@ agents/*.md
 # Large binaries (each user downloads their own)
 models/
 
+# Document converters the installer fetches (scripts/converters.py): the
+# publishers' own Pandoc and Typst releases, downloaded per machine. Pandoc is
+# GPL-2.0-or-later — committing a copy here would be redistribution, which is
+# exactly why the installer downloads it instead.
+data/converters/
+
 # User-specific data
 chromadb/
 reconciliation/

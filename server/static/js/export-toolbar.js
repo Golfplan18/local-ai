@@ -1,13 +1,17 @@
 /* Output-pane export toolbar — G1.34 (§2.7).
  *
  * A disappearing lower-right I/O cluster on the output pane: one Export button
- * that expands a submenu (Save output / Save full conversation to Vault;
- * Word/PDF deferred to the bundled-Pandoc step) plus a Print… item → the OS
- * print dialog. Reveal-on-hover, per the Zen toolbar convention.
+ * that expands a submenu (Save output / Save full conversation to Vault; Word
+ * and PDF, which stay disabled until the server reports Pandoc + a PDF engine)
+ * plus a Print… item → the OS print dialog. Reveal-on-hover, per the Zen
+ * toolbar convention. The installer provisions those two converters; a user
+ * can re-run that step with `python3 scripts/install.py converters`.
  *
- * Markdown is canonical: "Save to Vault" writes a markdown note (into the
- * active project's folder when set) via POST /api/export. The current output's
- * raw markdown comes from window.OraConversation.getCurrentTurn().
+ * Markdown is canonical: "Save to Vault" writes a markdown note via POST
+ * /api/export — into the active project's folder when one is set, and at the
+ * vault root for Commons. Word and PDF land in ~/Documents/Ora Exports/.
+ * The current output's raw markdown comes from
+ * window.OraConversation.getCurrentTurn().
  */
 (() => {
   const mount = () => {
@@ -44,8 +48,8 @@
           <button type="button" class="export-toolbar__item" role="menuitem" data-action="output">Save output to Vault</button>
           <button type="button" class="export-toolbar__item" role="menuitem" data-action="conversation">Save full Dialogue</button>
           <div class="export-toolbar__sep"></div>
-          <button type="button" class="export-toolbar__item is-disabled" id="exportDocx" role="menuitem" disabled data-action="docx" title="Checking Pandoc…">Word (.docx)</button>
-          <button type="button" class="export-toolbar__item is-disabled" id="exportPdf" role="menuitem" disabled data-action="pdf" title="Checking Pandoc…">PDF</button>
+          <button type="button" class="export-toolbar__item is-disabled" id="exportDocx" role="menuitem" disabled data-action="docx" title="Checking for Pandoc…">Word (.docx)</button>
+          <button type="button" class="export-toolbar__item is-disabled" id="exportPdf" role="menuitem" disabled data-action="pdf" title="Checking for Pandoc…">PDF</button>
         </div>
       </div>`;
     pane.appendChild(bar);
@@ -125,12 +129,12 @@
       if (docx) {
         docx.disabled = !caps.docx;
         docx.classList.toggle('is-disabled', !caps.docx);
-        docx.title = caps.docx ? 'Export this output as a Word document' : 'Install Pandoc to enable';
+        docx.title = caps.docx ? 'Export this output as a Word document' : 'Run `python3 scripts/install.py converters` to enable';
       }
       if (pdf) {
         pdf.disabled = !caps.pdf;
         pdf.classList.toggle('is-disabled', !caps.pdf);
-        pdf.title = caps.pdf ? 'Export this output as a PDF' : 'Install Pandoc + a PDF engine (Typst) to enable';
+        pdf.title = caps.pdf ? 'Export this output as a PDF' : 'Run `python3 scripts/install.py converters` to enable';
       }
     }).catch(() => {});
   };
