@@ -932,5 +932,87 @@ class RouteForImageInputThreadsExecutionContext(unittest.TestCase):
         self.assertEqual(sel["id"], "openrouter:openai/gpt-5")
 
 
+class VisualTypePreflightAcceptSetTests(unittest.TestCase):
+    """Regression: a mode's declared visual types are an ACCEPT-SET.
+
+    ``_append_visual_type_preflight`` used to compare the emitted type against
+    ``visual_types[0]`` alone and append a note ordering the next revision to
+    replace it. Thirteen of the twenty-seven configured modes declare more than
+    one type, so a correctly-chosen sibling — a sequence diagram in
+    process-mapping, a time-series in information-density — was reported as a
+    defect and revised away in favour of the first-listed type. The note is
+    injected into gear 4's cross-evaluation output, which the revisers read.
+    """
+
+    import boot  # noqa: E402  (module-scoped import keeps the class self-contained)
+
+    def _draft(self, vtype: str) -> str:
+        return (
+            "Prose.\n\n```ora-visual\n"
+            + json.dumps({"id": "fig-1", "type": vtype})
+            + "\n```\n"
+        )
+
+    def _preflight(self, vtype: str, mode: str, ctx=None) -> str:
+        return self.boot._append_visual_type_preflight(
+            self._draft(vtype), ctx or {}, mode, "step4-eval")
+
+    def test_sibling_type_is_accepted_not_corrected(self):
+        """process-mapping declares flowchart / sequence / state."""
+        for vtype in ("flowchart", "sequence", "state"):
+            with self.subTest(vtype=vtype):
+                out = self._preflight(vtype, "process-mapping")
+                self.assertNotIn("visual preflight", out)
+
+    def test_every_declared_type_of_a_multi_type_mode_is_accepted(self):
+        out = self._preflight("heatmap", "information-density")
+        self.assertNotIn("visual preflight", out)
+
+    def test_type_outside_the_accept_set_is_still_flagged(self):
+        out = self._preflight("bow_tie", "process-mapping")
+        self.assertIn("visual preflight", out)
+        self.assertIn("bow_tie", out)
+        # The note names what the mode does produce, rather than only its first.
+        self.assertIn("flowchart", out)
+        self.assertIn("sequence", out)
+
+    def test_explicitly_requested_kind_still_forces_that_kind(self):
+        """A named request is the one case where a sibling IS wrong."""
+        out = self._preflight("sequence", "process-mapping",
+                              ctx={"visual_kind": "flowchart"})
+        self.assertIn("visual preflight", out)
+        self.assertIn("requested visual type", out)
+
+    def test_explicitly_requested_kind_matching_emission_is_silent(self):
+        out = self._preflight("flowchart", "process-mapping",
+                              ctx={"visual_kind": "flowchart"})
+        self.assertNotIn("visual preflight", out)
+
+    def test_underscore_and_hyphen_spellings_are_the_same_type(self):
+        out = self._preflight("causal-loop-diagram", "root-cause-analysis")
+        self.assertNotIn("visual preflight", out)
+
+    def test_unconfigured_mode_flags_nothing(self):
+        """No declared types means no expectation to violate."""
+        out = self._preflight("fishbone", "stakeholder-mapping")
+        self.assertNotIn("visual preflight", out)
+
+    def test_draft_without_an_envelope_is_untouched(self):
+        text = "Just prose, no envelope."
+        self.assertEqual(
+            text,
+            self.boot._append_visual_type_preflight(text, {}, "process-mapping",
+                                                    "step4-eval"))
+
+    def test_accept_set_helper_reports_explicitness(self):
+        accepted, explicit = self.boot._visual_accepted_kinds({}, "process-mapping")
+        self.assertFalse(explicit)
+        self.assertIn("sequence", accepted)
+        accepted, explicit = self.boot._visual_accepted_kinds(
+            {"visual_kind": "tornado"}, "process-mapping")
+        self.assertTrue(explicit)
+        self.assertEqual(["tornado"], accepted)
+
+
 if __name__ == "__main__":
     unittest.main()

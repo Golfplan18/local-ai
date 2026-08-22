@@ -2440,36 +2440,64 @@ def _maybe_review_and_refine_visual(text: str, context_pkg: dict | None,
                 pass
 
 
-def _visual_expected_kind(context_pkg: dict | None, mode: str | None) -> str | None:
+def _visual_accepted_kinds(context_pkg: dict | None,
+                           mode: str | None) -> tuple[list[str], bool]:
+    """Return ``(accepted_kinds, explicit)`` for the visual-type preflight.
+
+    A mode may legitimately produce ANY of the types it declares in
+    ``mode-to-visual.json`` — process-mapping draws a flowchart OR a sequence
+    OR a state diagram depending on what the analysis found. So the whole
+    declared list is the accept-set, not just its first entry.
+
+    ``explicit`` is True only when a specific kind was requested by name
+    (threaded as ``visual_kind`` by the visual-tool campaign or a UI "draw a
+    <kind>" affordance). That is the one case where a sibling type really is
+    the wrong answer and a correction is warranted.
+    """
     preferred = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
     if preferred:
-        return preferred
-    kinds = _mode_target_types(mode, None)
-    return kinds[0] if kinds else None
+        return [preferred], True
+    return _mode_target_types(mode, None), False
 
 
 def _append_visual_type_preflight(text: str, context_pkg: dict | None,
                                   mode: str | None, stage: str) -> str:
+    """Flag a genuinely wrong visual type to the next revision.
+
+    Only fires when the emitted type is outside everything the mode accepts,
+    or when a specific kind was requested by name and a different one arrived.
+    It previously compared against ``visual_types[0]`` alone, which meant a
+    correctly-chosen sibling — a sequence diagram in process-mapping, a
+    time-series in information-density — was reported as a defect and the next
+    revision was told to replace it with the first-listed type. Thirteen of the
+    twenty-seven configured modes declare more than one type, so half the
+    configured set was being steered off its own valid choices.
+    """
     env, _raw = _extract_first_visual_envelope(text)
     if not env:
         return text
-    expected = _visual_expected_kind(context_pkg, mode)
+    accepted, explicit = _visual_accepted_kinds(context_pkg, mode)
     actual = env.get("type")
-    if not expected or not actual:
+    if not accepted or not actual:
         return text
-    if str(expected).replace("_", "-") == str(actual).replace("_", "-"):
+    _norm = lambda k: str(k).replace("_", "-")
+    if _norm(actual) in {_norm(k) for k in accepted}:
         return text
-    note = (
-        f"\n\n[visual preflight at {stage}: expected visual type `{expected}`, "
-        f"but this draft emitted `{actual}`. The next revision must correct the "
-        f"visual type before final output.]"
-    )
+    if explicit:
+        detail = (f"the requested visual type is `{accepted[0]}`, but this "
+                  f"draft emitted `{actual}`")
+    else:
+        detail = (f"this draft emitted `{actual}`, which is not among the "
+                  f"types this mode produces ({', '.join('`%s`' % k for k in accepted)})")
+    note = (f"\n\n[visual preflight at {stage}: {detail}. The next revision "
+            f"must correct the visual type before final output.]")
     trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
     if PIPELINE_TRACE_AVAILABLE and trace_dir:
         try:
             pipeline_trace.append_jsonl(trace_dir, "visual-preflight.jsonl", {
                 "stage": stage,
-                "expected": expected,
+                "accepted": list(accepted),
+                "explicit": explicit,
                 "actual": actual,
                 "status": "type_mismatch",
             })
