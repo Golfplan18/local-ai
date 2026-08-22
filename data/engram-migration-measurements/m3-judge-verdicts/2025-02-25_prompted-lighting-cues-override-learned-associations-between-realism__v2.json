@@ -1,6 +1,0 @@
-{
- "case_id": "2025-02-25_prompted-lighting-cues-override-learned-associations-between-realism::v2",
- "verdict": "SOUND",
- "defect_kind": "none",
- "reason": "The note's claims are directly traceable to the three sources. Source 1 supports the learned association between photorealistic portraits and dark backgrounds, and the utility of explicit brightness terms. Source 2 supports the high-key lighting technique and its effect on background and subject. Source 3 supports the studio lighting terms and their function. The minor causal inference ('trained on portraits with dramatic lighting') is a reasonable paraphrase of 'patterns in training data' from Source 1, not a fabrication. No qualifications are dropped, no terms of art are imported, and the domain is preserved."
-}

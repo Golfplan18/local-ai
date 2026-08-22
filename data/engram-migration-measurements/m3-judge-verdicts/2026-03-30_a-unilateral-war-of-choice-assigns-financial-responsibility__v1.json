@@ -1,6 +1,0 @@
-{
- "case_id": "2026-03-30_a-unilateral-war-of-choice-assigns-financial-responsibility::v1",
- "verdict": "DEFECT",
- "defect_kind": "overbroad_noun",
- "reason": "The source is specifically about wars of choice and alliance structures (military campaigns, allied nations, mutual defense obligations). The note generalizes the nouns: 'discretionary military campaign' becomes 'discretionary decision'/'unilateral choice,' 'allied nations' becomes 'other members'/'cost-sharing group,' and 'alliance' becomes 'cost-sharing group.' The claim that the initiator automatically bears full costs is plausible for wars of choice within alliance structures (where there is no shared strategic decision-making authority) but does not generalize to any cost-sharing group with any discretionary action (e.g., a roommate unilaterally buying furniture, a partner picking a vacation). The broadened nouns make the claim false of things it now covers."
-}

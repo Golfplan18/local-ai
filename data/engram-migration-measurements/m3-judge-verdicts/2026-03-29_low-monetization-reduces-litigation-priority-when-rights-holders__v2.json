@@ -1,6 +1,0 @@
-{
- "case_id": "2026-03-29_low-monetization-reduces-litigation-priority-when-rights-holders::v2",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The note's title and second bullet add the claim that non-monetized operators are left unlitigated 'even when their conduct is comparable to a commercial rival's.' The source only states that 'Non-monetized operations running on personal infrastructure fall beneath the threshold of corporate litigation interest' \u2014 it never addresses conduct comparability or whether non-monetized operators' behavior matches commercial rivals'. The note also adds 'because litigation costs require damages large enough to justify the expense' as the mechanism for targeting commercial startups; the source only says publishers 'focus enforcement on commercial AI startups with significant valuations' without explaining that litigation economics are the reason."
-}

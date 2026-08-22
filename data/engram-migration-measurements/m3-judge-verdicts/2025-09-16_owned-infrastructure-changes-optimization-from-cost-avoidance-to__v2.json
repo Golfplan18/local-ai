@@ -1,6 +1,0 @@
-{
- "case_id": "2025-09-16_owned-infrastructure-changes-optimization-from-cost-avoidance-to::v2",
- "verdict": "SOUND",
- "defect_kind": "none",
- "reason": "The note accurately captures the economic principles from the sources. Source 1 states that 'Commercial AI services incentivize minimizing usage because each token costs money' (supports bullet 1), that 'Self-hosted AI infrastructure makes idle compute cycles a wasting asset since electricity cost is fixed' (supports bullet 2), and that 'The optimization goal flips from use less to keep resources busy because unused capacity generates zero value while still consuming baseline resources' (supports bullet 3). Source 2 supports bullets 4 and 5 with 'Commercial providers view always-on agents as cost centers that degrade margins at scale' and 'optimization paths that are suicidal for commercial models but optimal for individual sovereignty.' While the note generalizes from AI/compute specifically to 'fixed-cost assets' broadly, the underlying economic principle (fixed costs create utilization incentives) is genuinely general, and the sources' 'analogous-to' relationships indicate the principle extends beyond the specific AI context. The generalizations are not overbroad\u2014the principles articulated apply to fixed-cost assets as a class."
-}

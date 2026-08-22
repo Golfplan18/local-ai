@@ -1,6 +1,0 @@
-{
- "case_id": "2025-04-16_policy-uncertainty-prevents-high-cost-relocation-decisions-with::v1",
- "verdict": "SOUND",
- "defect_kind": "none",
- "reason": "All four bullets are well-supported by the sources. Bullet 1's 'high capital expenditure, multi-year commitment horizons, and path dependencies built up over decades' maps to Source 1's 'high-cost decisions with long payback periods' and Source 3's 'optimized over 30+ years... creating path dependencies.' Bullet 2's 'wait it out' framing matches Source 1's 'the rational business response is to wait out the policy rather than commit capital.' Bullet 3's three conditions (predictable duration, legal permanence, bipartisan support) match Source 2's enumeration exactly, with each sub-clause supported. Bullet 4's 'two-year tariff windows' and the listed time-consuming activities (construction, regulatory approval, workforce training, supplier integration) match Source 3 verbatim. The use of 'offer' rather than 'policy/tariff' is a light stylistic generalization, but the sources themselves generalize to 'policy' and 'regulatory stability' broadly (e.g., Source 2's 'Businesses require long-term regulatory stability to justify capital investment in affected industries'), so this is not an overbroad noun defect."
-}

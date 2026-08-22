@@ -73,8 +73,8 @@ When the project's framework-configurations profile sets `search_paths` to a non
 
 ```yaml
 search_paths:
-  - /Users/oracle/Documents/vault
-  - /Users/oracle/Documents/vault/Sources/<Project Research Dir>
+  - <VAULT_ROOT>
+  - <VAULT_ROOT>/Sources/<Project Research Dir>
 ```
 
 Search-path resolution is opt-in per run. It supports the pattern where source dossiers physically live in a project-scoped subdirectory while the consuming references (Mind files, Trackers, methodology docs, Editorial Routers, Registries) continue to reference them by bare canonical filename. The search-path list lets the framework locate them without forcing every consuming reference to update its path. The first-matching-wins resolution preserves backward compatibility for any reference still pointing at vault root.
