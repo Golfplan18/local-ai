@@ -381,23 +381,209 @@ def manifest_key_for_record(rec: dict) -> str:
     return technique or ""
 
 
-def capture_output_dir(tech: Technique, pipe: str) -> Path:
-    """Directory used for new captures."""
-    return CAPTURES_DIR / (tech.capture_slug or tech.id) / pipe
+def _captures_dir(campaign_dir: Path | None = None) -> Path:
+    """Return the capture root for the active or explicitly audited campaign."""
+    if campaign_dir is None:
+        return CAPTURES_DIR
+    return Path(campaign_dir).expanduser().resolve() / "captures"
 
 
-def capture_read_dir(tech: Technique, pipe: str) -> Path:
-    """Directory used when reading captures, with legacy fallback.
+def capture_output_dir(tech: Technique, pipe: str,
+                       campaign_dir: Path | None = None) -> Path:
+    """Directory used for new captures.
 
-    Older captures for duplicate ids were written under ``captures/<id>/``.
-    New captures use ``captures/<kind>-<id>/`` for duplicate ids; keep the
-    reader backward-compatible so existing data remains usable.
+    ``parse_corpus`` assigns a kind-qualified slug only when a public id
+    collides.  That is the writer's existing layout: unique ids use the bare
+    id, while duplicate ids get one independent root per kind.
     """
-    primary = capture_output_dir(tech, pipe)
-    legacy = CAPTURES_DIR / tech.id / pipe
-    if primary != legacy and not primary.exists() and legacy.exists():
-        return legacy
-    return primary
+    return _captures_dir(campaign_dir) / (tech.capture_slug or tech.id) / pipe
+
+
+def _legacy_capture_dir(tech: Technique, pipe: str,
+                        campaign_dir: Path | None = None) -> Path:
+    return _captures_dir(campaign_dir) / tech.id / pipe
+
+
+def capture_read_dir(tech: Technique, pipe: str,
+                     campaign_dir: Path | None = None) -> Path:
+    """Directory used when reading a capture.
+
+    A duplicate id must resolve only to its kind-qualified root.  Falling back
+    to ``captures/<id>/<pipeline>`` would make two declared cells read the
+    same historical capture.  Unique ids already use that bare path, so their
+    legacy layout remains compatible without a special fallback.
+    """
+    return capture_output_dir(tech, pipe, campaign_dir)
+
+
+_CAPTURE_REQUIRED_FILES = ("answer.md", "cost.json")
+
+
+def _manifest_identity_violations(tech: Technique, pipe: str,
+                                  rec: dict) -> list[dict]:
+    """Return mismatches between a manifest row and its declared cell.
+
+    ``technique_key`` and ``capture_slug`` were added after the first
+    campaign runs, so their absence is compatible with older records.  The
+    original manifest fields are the cell identity and must always agree.
+    """
+    expected = {
+        "technique": tech.id,
+        "kind": tech.kind,
+        "pipeline": pipe,
+    }
+    violations = []
+    for field, value in expected.items():
+        actual = rec.get(field)
+        if actual != value:
+            violations.append({
+                "kind": "manifest_identity_mismatch",
+                "field": field,
+                "expected": value,
+                "actual": actual,
+                "detail": f"manifest {field} does not match declared cell",
+            })
+    for field, value in (
+        ("technique_key", tech.key or f"{tech.kind}:{tech.id}"),
+        ("capture_slug", tech.capture_slug or tech.id),
+    ):
+        actual = rec.get(field)
+        if actual is not None and actual != value:
+            violations.append({
+                "kind": "manifest_identity_mismatch",
+                "field": field,
+                "expected": value,
+                "actual": actual,
+                "detail": f"manifest {field} does not match declared cell",
+            })
+    return violations
+
+
+def verify_capture_integrity(tech: Technique, pipe: str,
+                             rec: dict | None = None,
+                             campaign_dir: Path | None = None) -> dict:
+    """Verify one declared campaign cell against its physical capture.
+
+    Manifest status is necessary but not sufficient.  The expected root must
+    exist independently, contain the files written by every capture lane, and
+    contain valid JSON in ``cost.json``.  For a duplicate public id, the bare
+    id directory is deliberately reported as invalid evidence rather than
+    accepted as a fallback.
+    """
+    root = capture_output_dir(tech, pipe, campaign_dir)
+    legacy = _legacy_capture_dir(tech, pipe, campaign_dir)
+    duplicate_id = bool(tech.capture_slug and tech.capture_slug != tech.id)
+    violations: list[dict] = []
+
+    if not rec:
+        violations.append({
+            "kind": "manifest_missing",
+            "detail": "no manifest record for declared cell",
+        })
+    elif rec.get("status") != "ok":
+        violations.append({
+            "kind": "manifest_not_ok",
+            "status": rec.get("status"),
+            "detail": "manifest status is not an accepted capture",
+        })
+    else:
+        violations.extend(_manifest_identity_violations(tech, pipe, rec))
+
+    if root.is_symlink():
+        violations.append({
+            "kind": "capture_root_symlink",
+            "root": str(root),
+            "detail": "capture roots must be independent directories",
+        })
+    elif not root.exists():
+        if duplicate_id and legacy.exists():
+            violations.append({
+                "kind": "legacy_bare_id_root",
+                "root": str(legacy),
+                "detail": (
+                    "duplicate public ids cannot use a shared bare-id "
+                    "capture root"),
+            })
+        violations.append({
+            "kind": "capture_root_missing",
+            "root": str(root),
+            "detail": "expected kind-qualified capture root is absent",
+        })
+    elif not root.is_dir():
+        violations.append({
+            "kind": "capture_root_not_directory",
+            "root": str(root),
+            "detail": "expected capture root is not a directory",
+        })
+    else:
+        for filename in _CAPTURE_REQUIRED_FILES:
+            path = root / filename
+            if path.is_symlink() or not path.is_file():
+                violations.append({
+                    "kind": "capture_file_missing",
+                    "file": str(path),
+                    "detail": f"required capture file is absent: {filename}",
+                })
+        cost_path = root / "cost.json"
+        if cost_path.is_file() and not cost_path.is_symlink():
+            try:
+                cost = json.loads(cost_path.read_text(encoding="utf-8"))
+                if not isinstance(cost, dict):
+                    raise ValueError("cost record is not an object")
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError,
+                    ValueError) as exc:
+                violations.append({
+                    "kind": "capture_file_invalid",
+                    "file": str(cost_path),
+                    "detail": f"invalid cost.json: {exc}",
+                })
+
+    return {
+        "technique_key": tech.key or f"{tech.kind}:{tech.id}",
+        "technique": tech.id,
+        "kind": tech.kind,
+        "pipeline": pipe,
+        "root": str(root),
+        "legacy_root": str(legacy),
+        "ok": not violations,
+        "violations": violations,
+    }
+
+
+def verify_campaign_captures(techniques: list[Technique],
+                             pipelines: list[str], done: dict,
+                             campaign_dir: Path | None = None) -> dict:
+    """Verify every declared cell and return the exact affected set."""
+    cells: dict[tuple[str, str], dict] = {}
+    affected: list[dict] = []
+    affected_by_pipeline: dict[str, list[str]] = {p: [] for p in pipelines}
+    for tech in techniques:
+        for pipe in pipelines:
+            result = verify_capture_integrity(
+                tech, pipe, done.get((tech.key, pipe)), campaign_dir)
+            cells[(tech.key, pipe)] = result
+            if not result["ok"]:
+                affected.append(result)
+                affected_by_pipeline.setdefault(pipe, []).append(tech.key)
+    return {
+        "cells": cells,
+        "affected_cells": affected,
+        "affected_by_pipeline": affected_by_pipeline,
+        "checked_cells": len(cells),
+        "valid_cells": len(cells) - len(affected),
+    }
+
+
+def select_resume_cells(techniques: list[Technique], pipelines: list[str],
+                        done: dict, force: bool = False) -> list[tuple[Technique, str]]:
+    """Return only cells not accepted by both manifest and physical verifier."""
+    verification = verify_campaign_captures(techniques, pipelines, done)
+    return [
+        (tech, pipe)
+        for tech in techniques
+        for pipe in pipelines
+        if force or not verification["cells"][(tech.key, pipe)]["ok"]
+    ]
 
 
 _SEVERITY_RANK = {
@@ -1624,8 +1810,7 @@ def run_sweep(args) -> int:
 
     done = load_manifest()
     force = bool(getattr(args, "force_rerun", False))
-    todo = [(t, p) for t in techniques for p in pipelines
-            if force or (done.get((t.key, p)) or {}).get("status") != "ok"]
+    todo = select_resume_cells(techniques, pipelines, done, force=force)
     total = len(techniques) * len(pipelines)
     print(f"[run] {len(techniques)} techniques × {len(pipelines)} pipelines = "
           f"{total} captures ({total - len(todo)} already complete, {len(todo)} to run)")
@@ -2154,6 +2339,12 @@ def audit_campaign(corpus_path: Path,
     techs = parse_corpus(corpus_path)
     done = load_manifest(manifest_path)
     corpus_keys = {t.key for t in techs}
+    verification = verify_campaign_captures(
+        techs, selected_pipelines, done, campaign_dir=source_dir)
+    verified_cells = verification["cells"]
+    main4_verification = verify_campaign_captures(
+        techs, MAIN_PIPELINES, done, campaign_dir=source_dir)
+    main4_cells = main4_verification["cells"]
 
     duplicates: dict[str, list[str]] = {}
     by_public_id: dict[str, list[Technique]] = {}
@@ -2172,8 +2363,9 @@ def audit_campaign(corpus_path: Path,
         failed: list[dict] = []
         for tech in techs:
             rec = done.get((tech.key, pipe))
+            cell = verified_cells[(tech.key, pipe)]
             status = (rec or {}).get("status")
-            if status == "ok":
+            if cell["ok"]:
                 pipe_rows["ok"] += 1
             elif status == "failed":
                 pipe_rows["failed"] += 1
@@ -2191,12 +2383,12 @@ def audit_campaign(corpus_path: Path,
 
     complete_main4 = sum(
         1 for tech in techs
-        if all((done.get((tech.key, p)) or {}).get("status") == "ok"
+        if all(main4_cells[(tech.key, p)]["ok"]
                for p in MAIN_PIPELINES)
     )
     complete_selected = sum(
         1 for tech in techs
-        if all((done.get((tech.key, p)) or {}).get("status") == "ok"
+        if all(verified_cells[(tech.key, p)]["ok"]
                for p in selected_pipelines)
     )
 
@@ -2210,8 +2402,9 @@ def audit_campaign(corpus_path: Path,
 
     for tech in techs:
         for pipe in selected_pipelines:
+            cell = verified_cells[(tech.key, pipe)]
             rec = done.get((tech.key, pipe)) or {}
-            if rec.get("status") != "ok":
+            if not cell["ok"]:
                 continue
             # Both bare controls intentionally have no Ora pipeline trace.
             # Counting either as missing step-health turns control shape into
@@ -2288,6 +2481,12 @@ def audit_campaign(corpus_path: Path,
             "missing_by_pipeline": missing_by_pipeline,
             "failed_latest_by_pipeline": failed_latest_by_pipeline,
         },
+        "capture_integrity": {
+            "checked_cells": verification["checked_cells"],
+            "valid_cells": verification["valid_cells"],
+            "affected_cells": verification["affected_cells"],
+            "affected_by_pipeline": verification["affected_by_pipeline"],
+        },
         "accepted_trace_health": {
             "accepted_trace_count": accepted_trace_count,
             "accepted_trace_with_health": accepted_trace_with_health,
@@ -2355,6 +2554,7 @@ def write_campaign_audit(summary: dict,
     json_path.write_text(json.dumps(summary, indent=2) + "\n")
 
     comp = summary["completeness"]
+    integrity = summary["capture_integrity"]
     health = summary["accepted_trace_health"]
     lines = [
         "# Campaign Audit",
@@ -2387,11 +2587,7 @@ def write_campaign_audit(summary: dict,
         lines.append(
             f"| {pipe} | {row['ok']} | {row['failed']} | {row['missing']} | {row['total']} |"
         )
-    premium_missing = comp["missing_by_pipeline"].get("premium") or []
-    premium_failed = [
-        r["technique_key"] for r in comp["failed_latest_by_pipeline"].get("premium", [])
-    ]
-    premium_resume = sorted(set(premium_missing + premium_failed))
+    premium_resume = integrity["affected_by_pipeline"].get("premium") or []
     if premium_resume:
         lines += [
             "",
@@ -2403,6 +2599,24 @@ def write_campaign_audit(summary: dict,
             ",".join(premium_resume),
             "```",
         ]
+
+    lines += [
+        "",
+        "## Capture Integrity",
+        "",
+        f"- Declared cells checked by the physical verifier: {integrity['checked_cells']}",
+        f"- Cells accepted by both manifest and capture verifier: {integrity['valid_cells']}",
+        f"- Verifier-reported affected cells: {len(integrity['affected_cells'])}",
+        "",
+        "### Verifier-Reported Resume Selectors",
+        "",
+        "These selectors are derived from the current manifest and physical "
+        "capture check; they are not a hard-coded exception list.",
+        "",
+    ]
+    for pipe, keys in integrity["affected_by_pipeline"].items():
+        if keys:
+            lines += [f"#### {pipe}", "", "```text", ",".join(keys), "```", ""]
 
     lines += [
         "",
@@ -2646,6 +2860,12 @@ def cmd_audit(args) -> int:
         f"with_contingencies={len(health['traces_with_contingencies'])} "
         f"historical_missing_health={len(health['accepted_trace_missing_health'])} "
         f"bare_controls_excluded={health['bare_control_records_excluded']}"
+    )
+    integrity = summary["capture_integrity"]
+    print(
+        f"[audit] capture_cells={integrity['checked_cells']} "
+        f"capture_valid={integrity['valid_cells']} "
+        f"capture_affected={len(integrity['affected_cells'])}"
     )
     print(f"[audit] severity_counts={health['severity_counts']}")
     print(

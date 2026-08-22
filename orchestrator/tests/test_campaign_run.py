@@ -290,14 +290,17 @@ class TestCampaignAudit(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.corpus_path = self.root / "mini-corpus.md"
         self.corpus_path.write_text(MINI_CORPUS)
-        self._orig = (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH)
+        self._orig = (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH,
+                      campaign.CAPTURES_DIR)
         campaign.CAMPAIGN_DIR = self.root / "campaign"
         campaign.MANIFEST_PATH = campaign.CAMPAIGN_DIR / "campaign-manifest.jsonl"
+        campaign.CAPTURES_DIR = campaign.CAMPAIGN_DIR / "captures"
         campaign.CAMPAIGN_DIR.mkdir()
         self.addCleanup(self._restore)
 
     def _restore(self):
-        campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH = self._orig
+        (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH,
+         campaign.CAPTURES_DIR) = self._orig
 
     def _trace(self, name, contingencies):
         trace = self.root / name
@@ -307,11 +310,157 @@ class TestCampaignAudit(unittest.TestCase):
         }))
         return str(trace)
 
+    def _capture(self, technique_key, pipe, *, cost=None):
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == technique_key)
+        root = campaign.capture_output_dir(tech, pipe)
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "answer.md").write_text("Captured answer.\n")
+        (root / "cost.json").write_text(json.dumps(cost or {
+            "total_cost_usd": 0,
+        }))
+
+    def _ok_manifest(self, technique_key, pipe):
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == technique_key)
+        campaign.append_manifest({
+            "technique": tech.id,
+            "technique_key": tech.key,
+            "kind": tech.kind,
+            "pipeline": pipe,
+            "status": "ok",
+        })
+
+    def test_status_ok_without_capture_root_is_not_accepted(self):
+        self._ok_manifest("mode:argument-audit", "premium")
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == "mode:argument-audit")
+        result = campaign.verify_capture_integrity(
+            tech, "premium", campaign.load_manifest()[(tech.key, "premium")])
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "capture_root_missing", {v["kind"] for v in result["violations"]})
+
+        summary = campaign.audit_campaign(
+            self.corpus_path, pipelines=["premium"])
+        self.assertEqual(
+            summary["completeness"]["per_pipeline"]["premium"]["ok"], 0)
+        self.assertIn(
+            "mode:argument-audit",
+            summary["capture_integrity"]["affected_by_pipeline"]["premium"],
+        )
+
+    def test_duplicate_legacy_bare_root_is_not_shared_evidence(self):
+        bare = campaign.CAPTURES_DIR / "shared-name" / "premium"
+        bare.mkdir(parents=True)
+        (bare / "answer.md").write_text("wrong shared answer\n")
+        (bare / "cost.json").write_text(json.dumps({"total_cost_usd": 0}))
+        for key in ("visual:shared-name", "lens:shared-name"):
+            self._ok_manifest(key, "premium")
+
+        techs = campaign.parse_corpus(self.corpus_path)
+        done = campaign.load_manifest()
+        report = campaign.verify_campaign_captures(
+            [t for t in techs if t.id == "shared-name"],
+            ["premium"], done)
+        self.assertEqual(report["valid_cells"], 0)
+        self.assertEqual(
+            {v["technique_key"] for v in report["affected_cells"]},
+            {"visual:shared-name", "lens:shared-name"},
+        )
+        for cell in report["affected_cells"]:
+            self.assertIn(
+                "legacy_bare_id_root",
+                {v["kind"] for v in cell["violations"]},
+            )
+
+    def test_kind_qualified_duplicate_roots_are_independently_valid(self):
+        for key in ("visual:shared-name", "lens:shared-name"):
+            self._capture(key, "premium")
+            self._ok_manifest(key, "premium")
+        techs = [t for t in campaign.parse_corpus(self.corpus_path)
+                 if t.id == "shared-name"]
+        report = campaign.verify_campaign_captures(
+            techs, ["premium"], campaign.load_manifest())
+        self.assertEqual(report["valid_cells"], 2)
+        self.assertEqual(report["affected_cells"], [])
+        self.assertNotEqual(
+            campaign.capture_read_dir(techs[0], "premium"),
+            campaign.capture_read_dir(techs[1], "premium"),
+        )
+
+    def test_unique_bare_capture_root_remains_compatible(self):
+        self._capture("mode:argument-audit", "premium")
+        self._ok_manifest("mode:argument-audit", "premium")
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == "mode:argument-audit")
+        result = campaign.verify_capture_integrity(
+            tech, "premium", campaign.load_manifest()[(tech.key, "premium")])
+        self.assertTrue(result["ok"])
+
+    def test_status_ok_with_invalid_required_file_is_not_accepted(self):
+        self._capture("mode:argument-audit", "premium", cost={})
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == "mode:argument-audit")
+        cost_path = campaign.capture_output_dir(tech, "premium") / "cost.json"
+        cost_path.write_text("not json\n")
+        self._ok_manifest("mode:argument-audit", "premium")
+        result = campaign.verify_capture_integrity(
+            tech, "premium", campaign.load_manifest()[(tech.key, "premium")])
+        self.assertFalse(result["ok"])
+        self.assertIn(
+            "capture_file_invalid", {v["kind"] for v in result["violations"]})
+
+    def test_status_ok_with_mismatched_identity_is_not_accepted(self):
+        tech = next(t for t in campaign.parse_corpus(self.corpus_path)
+                    if t.key == "mode:argument-audit")
+        self._capture(tech.key, "premium")
+        valid = {
+            "technique": tech.id,
+            "technique_key": tech.key,
+            "capture_slug": tech.capture_slug,
+            "kind": tech.kind,
+            "pipeline": "premium",
+            "status": "ok",
+        }
+        for field, value in (
+            ("technique", "cui-bono"),
+            ("technique_key", "lens:argument-audit"),
+            ("capture_slug", "lens-argument-audit"),
+            ("kind", "lens"),
+            ("pipeline", "single-pass"),
+        ):
+            with self.subTest(field=field):
+                rec = {**valid, field: value}
+                result = campaign.verify_capture_integrity(
+                    tech, "premium", rec)
+                self.assertFalse(result["ok"])
+                self.assertIn(
+                    "manifest_identity_mismatch",
+                    {v["kind"] for v in result["violations"]},
+                )
+
+    def test_resume_rechecks_physical_capture_and_selects_only_affected_cells(self):
+        self._capture("mode:argument-audit", "premium")
+        self._ok_manifest("mode:argument-audit", "premium")
+        self._ok_manifest("mode:cui-bono", "premium")
+        techs = [t for t in campaign.parse_corpus(self.corpus_path)
+                 if t.key in {"mode:argument-audit", "mode:cui-bono"}]
+        todo = campaign.select_resume_cells(
+            techs, ["premium"], campaign.load_manifest())
+        self.assertEqual(
+            [(t.key, pipe) for t, pipe in todo],
+            [("mode:cui-bono", "premium")],
+        )
+
     def test_audit_completeness_and_trace_health(self):
         clean = self._trace("trace-clean", [])
         broken = self._trace("trace-broken", [
             "step6-cycle1-depth-verifier-BROKEN-not-verified",
         ])
+        self._capture("mode:argument-audit", "premium")
+        self._capture("mode:cui-bono", "premium")
+        self._capture("mode:cui-bono", "single-pass")
         campaign.append_manifest({
             "technique": "argument-audit", "kind": "mode",
             "pipeline": "premium", "status": "failed",
@@ -368,6 +517,7 @@ class TestCampaignAudit(unittest.TestCase):
             ("single-pass", None),
             ("single-pass-9b", None),
         ):
+            self._capture("mode:argument-audit", pipe)
             campaign.append_manifest({
                 "technique": "argument-audit",
                 "kind": "mode",
@@ -395,6 +545,7 @@ class TestCampaignAudit(unittest.TestCase):
             )
 
     def test_write_campaign_audit_outputs_json_and_markdown(self):
+        self._capture("mode:argument-audit", "premium")
         campaign.append_manifest({
             "technique": "argument-audit", "kind": "mode",
             "pipeline": "premium", "status": "ok",
@@ -423,6 +574,7 @@ class TestCampaignAudit(unittest.TestCase):
         write today's. outputs/g1-2 was overwritten exactly this way on
         2026-08-19 and had to be restored from git.
         """
+        self._capture("mode:argument-audit", "premium")
         campaign.append_manifest({
             "technique": "argument-audit", "kind": "mode",
             "pipeline": "premium", "status": "ok",
@@ -450,6 +602,7 @@ class TestCampaignAudit(unittest.TestCase):
 
     def test_explicit_override_still_writes_into_accepted_evidence(self):
         """The refusal is a guard, not a wall — you can still mean it."""
+        self._capture("mode:argument-audit", "premium")
         campaign.append_manifest({
             "technique": "argument-audit", "kind": "mode",
             "pipeline": "premium", "status": "ok",
