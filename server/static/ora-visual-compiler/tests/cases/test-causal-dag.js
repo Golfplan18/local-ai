@@ -125,6 +125,9 @@ const validCases = [
       focal_outcome: 'y',
     }),
     expectNodes: 2,
+    // Named explicitly: the raw DSL carries the graph-level attribute the
+    // renderer strips, and the parser rejects it on its own.
+    expectNodeIds: ['x', 'y'],
     expectClasses: ['ora-visual__node--exposure', 'ora-visual__node--outcome'],
   },
   {
@@ -379,9 +382,23 @@ async function runValid() {
       }
 
       // Semantic node ID checks — every declared node gets id="node-<name>".
-      const parsed = OVC._renderers.causalDag._parseDagitty(tc.env.spec.dsl);
+      //
+      // The default derives the expected set by re-parsing the case's DSL. A
+      // case whose whole point is that the renderer NORMALIZES its DSL first
+      // cannot use that route: `_parseDagitty` is handed the raw source and
+      // rejects the very construct under test. Such a case names its nodes
+      // directly via `expectNodeIds` instead of duplicating the renderer's
+      // normalization here, where the two copies would drift apart.
+      let expectedIds;
+      if (tc.expectNodeIds) {
+        expectedIds = tc.expectNodeIds;
+      } else {
+        expectedIds = Array.from(
+          OVC._renderers.causalDag._parseDagitty(tc.env.spec.dsl).nodes.keys()
+        );
+      }
       let missing = [];
-      for (const id of parsed.nodes.keys()) {
+      for (const id of expectedIds) {
         if (!hasNodeId(result.svg, id)) missing.push(id);
       }
       if (missing.length) {
