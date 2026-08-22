@@ -980,10 +980,15 @@ def process_response(response: str, mode: str | None = None) -> tuple[str, dict]
     """
     import re
 
+    from visual_recovery import ORA_VISUAL_FENCE_RE
+
     diagnostics: dict[str, list] = {"visuals": []}
 
-    # Match fenced ora-visual blocks. Greedy until next ``` on its own line.
-    pattern = re.compile(r"```ora-visual\s*\n(.*?)\n```", re.DOTALL)
+    # Canonical fence pattern — see visual_recovery.ORA_VISUAL_FENCE_RE. It
+    # refuses to match an unterminated fence, which is what stops this
+    # substitution from deleting the prose between a broken block and the
+    # next unrelated code fence.
+    pattern = ORA_VISUAL_FENCE_RE
 
     def replace(match: re.Match) -> str:
         raw = match.group(1)
@@ -1072,13 +1077,13 @@ def inspect_response(response: str, mode: str | None = None) -> dict:
     parallel implementation (rather than refactoring ``process_response``) so
     the live suppression path stays byte-for-byte unchanged.
     """
-    import re
+    from visual_recovery import ORA_VISUAL_FENCE_RE
 
     diagnostics: dict[str, list] = {"visuals": []}
     if not response or "ora-visual" not in response:
         return diagnostics
 
-    pattern = re.compile(r"```ora-visual\s*\n(.*?)\n```", re.DOTALL)
+    pattern = ORA_VISUAL_FENCE_RE
     for match in pattern.finditer(response):
         raw = match.group(1)
         try:

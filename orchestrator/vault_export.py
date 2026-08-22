@@ -388,9 +388,17 @@ def _load_conversation(
 # Fenced-code scanner. Captures the raw JSON body between the fences so we
 # can both validate it AND preserve the exact original text in the exported
 # markdown.
+# The body may not contain a fence line. An ora-visual body is JSON, so a line
+# of backticks inside it always means the opening fence was never terminated —
+# and a non-greedy body would then run on to some later block's fence, reporting
+# a span that swallows unrelated prose. See
+# ``visual_recovery.ORA_VISUAL_FENCE_RE`` for the same invariant on the runtime
+# path; this variant keeps the backreferenced fence width the exporter relies on.
 _FENCE_RE = re.compile(
-    r"(?P<fence>```+)\s*ora-visual\s*\n(?P<body>.*?)(?P=fence)",
-    re.DOTALL | re.IGNORECASE,
+    r"(?P<fence>```+)[ \t]*ora-visual[ \t]*\n"
+    r"(?P<body>(?:(?![ \t]*```)[^\n]*\n)*?)"
+    r"[ \t]*(?P=fence)[ \t]*(?=\n|$)",
+    re.IGNORECASE,
 )
 
 
