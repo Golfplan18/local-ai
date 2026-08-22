@@ -932,6 +932,62 @@ class RouteForImageInputThreadsExecutionContext(unittest.TestCase):
         self.assertEqual(sel["id"], "openrouter:openai/gpt-5")
 
 
+class ModeToVisualIntegrityTests(unittest.TestCase):
+    """Regression: nothing validated mode-to-visual.json against reality.
+
+    Two silent-drift classes had accumulated. A key naming a mode file that no
+    longer exists routes nothing — `red-team` sat where neither
+    red-team-assessment nor red-team-advocate would ever look, leaving both
+    unconfigured, and `systems-dynamics` outlived its split into the causal and
+    structural modes that already have their own entries. A `visual_types`
+    string outside the recognized set is dropped without an error, a warning or
+    a log line — `custom_annotated_svg` had been inert on spatial-reasoning.
+
+    Both classes fail silently at runtime, so they only surface as "why does
+    this mode never draw anything". These assertions make them loud.
+    """
+
+    CONFIG = WORKSPACE / "config" / "mode-to-visual.json"
+    MODES_DIR = WORKSPACE / "modes"
+
+    def _modes(self) -> dict:
+        with open(self.CONFIG, encoding="utf-8") as fh:
+            return json.load(fh)["modes"]
+
+    def test_every_configured_key_names_a_real_mode_file(self):
+        available = {p.stem for p in self.MODES_DIR.glob("*.md")}
+        orphans = sorted(set(self._modes()) - available)
+        self.assertEqual(
+            [], orphans,
+            f"mode-to-visual.json configures modes with no mode file: {orphans}. "
+            "Such an entry routes nothing and hides that its real successors "
+            "are unconfigured.")
+
+    def test_every_declared_visual_type_is_recognized(self):
+        import boot
+        offenders = {
+            mode: [t for t in cfg.get("visual_types", [])
+                   if t not in boot._KNOWN_VISUAL_TYPES]
+            for mode, cfg in self._modes().items()
+        }
+        offenders = {m: t for m, t in offenders.items() if t}
+        self.assertEqual(
+            {}, offenders,
+            f"unrecognized visual_types are dropped silently: {offenders}")
+
+    def test_both_red_team_successors_are_configured(self):
+        modes = self._modes()
+        for name in ("red-team-assessment", "red-team-advocate"):
+            with self.subTest(mode=name):
+                self.assertIn(name, modes)
+
+    def test_retired_split_parents_are_gone(self):
+        modes = self._modes()
+        for retired in ("red-team", "systems-dynamics"):
+            with self.subTest(retired=retired):
+                self.assertNotIn(retired, modes)
+
+
 class VisualTypePreflightAcceptSetTests(unittest.TestCase):
     """Regression: a mode's declared visual types are an ACCEPT-SET.
 

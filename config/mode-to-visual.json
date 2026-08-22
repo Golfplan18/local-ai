@@ -16,15 +16,10 @@
       "notes": "Added 2026-06-13: live mode for the comparison / time-series / distribution / scatter / heatmap chart tools. Multi-kind QUANT family — the technique's target chart kind is threaded so synthesis builds that chart rather than visual_types[0]."
     },
     "spatial-reasoning": {
-      "visual_types": ["concept_map", "causal_loop_diagram", "flowchart", "custom_annotated_svg"],
+      "visual_types": ["concept_map", "causal_loop_diagram", "flowchart"],
       "relation_to_prose_default": "visually_native",
       "adversarial_strictness": "critical",
       "notes": "Annotations overlaid on user's original input; preserves spatial arrangement."
-    },
-    "systems-dynamics": {
-      "visual_types": ["causal_loop_diagram", "stock_and_flow"],
-      "relation_to_prose_default": "visually_native",
-      "adversarial_strictness": "critical"
     },
     "systems-dynamics-causal": {
       "visual_types": ["causal_loop_diagram"],
@@ -165,11 +160,17 @@
       "adversarial_strictness": "standard",
       "notes": "Structured Output renders existing content. Passes through visuals from source; does not generate new visuals."
     },
-    "red-team": {
+    "red-team-assessment": {
       "visual_types": ["concept_map", "flowchart", "causal_loop_diagram"],
       "relation_to_prose_default": "no_visual",
       "adversarial_strictness": "standard",
-      "notes": "Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). Severity coded via dual encoding (colour + prefix label in callout text) for WCAG and colour-blind safety. canvas_action is annotate, never replace. Depth (Internal) and Breadth (External) findings consolidate into one envelope per turn."
+      "notes": "Repaired 2026-08-22: inherits the entry that was keyed to the retired `red-team` mode, which no dispatch has resolved to since the split into assessment/advocate — leaving both successors unconfigured. Ranks vulnerabilities by severity for the user's own fix-prioritisation. Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). Severity coded via dual encoding (colour + prefix label in callout text) for WCAG and colour-blind safety. canvas_action is annotate, never replace. Depth (Internal) and Breadth (External) findings consolidate into one envelope per turn."
+    },
+    "red-team-advocate": {
+      "visual_types": ["concept_map", "flowchart", "causal_loop_diagram"],
+      "relation_to_prose_default": "no_visual",
+      "adversarial_strictness": "standard",
+      "notes": "Repaired 2026-08-22: see `red-team-assessment` — same split, same inherited entry. Ranks attacks by persuasive force with a named external audience rather than by severity. Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). canvas_action is annotate, never replace."
     }
   }
 }
