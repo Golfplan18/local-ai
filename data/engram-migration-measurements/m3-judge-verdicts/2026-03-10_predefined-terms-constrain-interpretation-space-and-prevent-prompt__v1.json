@@ -1,6 +1,0 @@
-{
- "case_id": "2026-03-10_predefined-terms-constrain-interpretation-space-and-prevent-prompt::v1",
- "verdict": "SOUND",
- "defect_kind": "none",
- "reason": "The note's body accurately reflects the source engram's three bullet points: 82.3% accuracy figure, 12-15 percentage point drop without definitions, and disambiguation as one of six core prompt themes. The title paraphrases the source's own title concept of constraining interpretation space. The slight addition of 'major class' to 'preventing failures' is a minor inference rather than fabrication. All claims trace to the source."
-}

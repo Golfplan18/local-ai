@@ -1,6 +1,0 @@
-{
- "case_id": "2025-01-11_a-research-grounded-concept-system-reaches-different-audiences::v1",
- "verdict": "DEFECT",
- "defect_kind": "fabrication",
- "reason": "The note's fourth bullet claims that maintaining consistency prevents 'fragmenting into incompatible versions,' but the source only states that 'conceptual consistency' is maintained as part of the distribution approach. The source never mentions fragmentation, incompatible versions, or what would occur without consistency. Additionally, the bullet introduces 'one body of knowledge' serving audiences, a phrase with no counterpart in the source. These are interpretive additions that introduce specific claims not present in the source."
-}

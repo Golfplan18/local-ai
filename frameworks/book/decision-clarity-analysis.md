@@ -12,7 +12,7 @@
 
 This framework was previously titled "Wicked Problems Framework" (v1.0, 2026-04-24). Per Decision H of the 2026-05-01 architectural lock, the analytical work this framework performs has been split into two operations sharing source material:
 
-1. **Wicked Problems Analysis (mode)** — molecular integrated multi-perspective analysis per research report §6.2. Produces a synthesis artifact (reconciled framing + dynamic projection + intervention catalog + stress-test findings + residual tensions). Lives in `/Users/oracle/Documents/vault/Modes/wicked-problems.md`. T2 (Interest and Power Analysis), depth-molecular.
+1. **Wicked Problems Analysis (mode)** — molecular integrated multi-perspective analysis per research report §6.2. Produces a synthesis artifact (reconciled framing + dynamic projection + intervention catalog + stress-test findings + residual tensions). Lives in the vault's `Modes/wicked-problems.md`. T2 (Interest and Power Analysis), depth-molecular.
 
 2. **Decision Clarity Analysis (mode + this framework)** — depth-molecular operation that produces a **Decision Clarity Document** for a decision-maker. The mode will be built in Wave 4 of Phase 4. **This framework carries the procedural detail (elicitation prompts, intermediate output formats, Decision Clarity Document template) for the decision-clarity mode.** Phase 2 prepares the framework's structural alignment based on the existing 4-stage protocol; Wave 4 finalizes the mode spec to align fully.
 

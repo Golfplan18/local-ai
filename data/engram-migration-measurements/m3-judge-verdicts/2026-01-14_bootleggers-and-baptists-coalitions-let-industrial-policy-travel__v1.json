@@ -1,6 +1,0 @@
-{
- "case_id": "2026-01-14_bootleggers-and-baptists-coalitions-let-industrial-policy-travel::v1",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The source consistently hedges its core claims with modal language (\"can be disguised,\" \"can simultaneously restructure markets,\" \"can use consumer protection framing\"), but the note restates them as flat outcomes. The title says the sponsor \"gets the gains passed as public protection,\" whereas the source only says it \"can be disguised.\" Bullet 1 says the sponsor \"presents\" the policy, whereas the source says it \"can\" present it. Bullet 4's case description drops \"can\" from \"can simultaneously restructure markets\" and \"can use consumer protection framing,\" stating both as accomplished facts rather than as possibilities the source describes. These hardenings change the epistemic status of the claim from a possible mechanism to an asserted outcome without source support."
-}

@@ -1,6 +1,0 @@
-{
- "case_id": "2026-03-10_predefined-terms-constrain-interpretation-space-and-prevent-prompt::v2",
- "verdict": "DEFECT",
- "defect_kind": "domain_stripped",
- "reason": "The source is specifically about LLM prompt engineering \u2014 it speaks of 'the model's interpretation space,' 'prompt failures,' and an empirical test on GPT-4. The note's TITLE and its first two bullets strip this domain entirely, reframing the finding as general advice about 'a writer' and 'the reader.' The mechanism claimed (an 'unconstrained reader will pick from the surface reading rather than the one the writer needed') is asserted as general writing wisdom, when the source's claim is that constraining an LLM's probability distribution over word senses eliminates a class of prompt failures. The domain IS the subject of the source, and the note restates it as a general factual claim. The fourth bullet preserves the LLM context, making the domain-stripping in the earlier bullets even clearer."
-}

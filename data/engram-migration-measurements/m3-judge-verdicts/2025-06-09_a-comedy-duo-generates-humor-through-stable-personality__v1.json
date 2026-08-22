@@ -1,6 +1,0 @@
-{
- "case_id": "2025-06-09_a-comedy-duo-generates-humor-through-stable-personality::v1",
- "verdict": "DEFECT",
- "defect_kind": "fabrication",
- "reason": "Bullet 4's counterfactual ('Without the straight partner's normality, the funny partner's behavior would read as merely odd rather than as comedy') is a specific causal claim that does not appear anywhere in the source. The source only states that 'humor emerges from the interaction and tension between these opposing approaches' \u2014 it never asserts what would happen in the absence of one partner. This fabricated counterfactual is also load-bearing for the note's overall argument. Additionally, 'impulsiveness, or misunderstanding' (bullet 2) and 'order, or social normality' (bullet 1) expand beyond the source's 'grounded reactions' and 'absurdity' without support."
-}

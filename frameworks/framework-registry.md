@@ -248,7 +248,7 @@ Each framework has one entry with these fields:
 - **Output Summary:** Drift reports, authenticated escalation findings, description backfill, deprecation candidates, decision records, and run history; no framework-pair remediation occurs in the G1.14 detector
 - **Proven Applications:** G1.14's deterministic framework-library audit reproduced 49 clean pairs, 14 drifted pairs and seven missing twins on 2026-07-22; as of 2026-08-17 the same detector reports 60 clean, 3 drifted and seven missing, with 38 active no-twin frameworks classified throughout. Consult the detector for the current count rather than this line
 - **Known Limitations:** Semantic drift outside exact-body pairs still requires model judgment; framework-pair findings remain open until separately reviewed and reconciled; G1.24 owns the external full-state proof
-- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md (canonical); mechanical detector at `/Users/oracle/ora/scripts/verify-implementation.py`; no runtime framework twin exists
+- **File Location:** ~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md (canonical); mechanical detector at `scripts/verify-implementation.py` relative to the Ora repository; no runtime framework twin exists
 - **Provenance:** human-created; deterministic G1.14 extension
 - **Confidence:** high for manifest coverage and exact-body detection; judgment-bound for semantic remediation
 - **Version:** 1.0 with G1.14 coverage extension and the G1.25 DCP-Reconcile mode

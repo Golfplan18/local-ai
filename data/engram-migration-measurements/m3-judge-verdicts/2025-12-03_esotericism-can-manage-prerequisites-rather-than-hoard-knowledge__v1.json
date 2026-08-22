@@ -1,6 +1,0 @@
-{
- "case_id": "2025-12-03_esotericism-can-manage-prerequisites-rather-than-hoard-knowledge::v1",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The source says techniques 'become inert busywork or destabilizing,' but the note states they 'become inert busywork or actively destabilizing.' The addition of 'actively' intensifies the claim \u2014 converting a passive description (having a destabilizing effect) into one implying the techniques take active steps to destabilize \u2014 which the source does not support."
-}

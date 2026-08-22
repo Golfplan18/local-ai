@@ -1,6 +1,0 @@
-{
- "case_id": "2026-01-26_procedural-misinformation-turns-scheduled-legal-events-into-completed::v1",
- "verdict": "SOUND",
- "defect_kind": "none",
- "reason": "The note's claims are well-supported by the source. The White House renovation case and the confusion between a scheduled preliminary injunction hearing and an actual injunction appear directly in the source. The temporal distinction between 'will consider' and 'has ordered' being collapsed is explicitly stated. The framing as 'viral misinformation' matches the source. The slight generalization from 'judicial' to 'institution' and use of 'mechanism' instead of 'pattern' are stylistic choices that don't materially change the claim or strip necessary context."
-}

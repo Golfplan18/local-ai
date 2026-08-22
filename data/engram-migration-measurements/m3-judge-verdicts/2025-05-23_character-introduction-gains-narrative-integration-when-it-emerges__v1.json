@@ -1,6 +1,0 @@
-{
- "case_id": "2025-05-23_character-introduction-gains-narrative-integration-when-it-emerges::v1",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The source says the new scene is absorbed 'without disrupting narrative flow,' but the note specifies 'without the pacing break an inserted introduction would create.' The source never invokes the concept of 'pacing break' or identifies 'inserted introduction' as the alternative mechanism; the note hardens a vague claim about non-disruption into a specific comparative claim about pacing breaks from inserted introductions, which is unsupported."
-}

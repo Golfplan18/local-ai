@@ -1,6 +1,0 @@
-{
- "case_id": "2026-01-01_continuity-governance-accumulates-pressure-when-voters-demanded-change::v1",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The fourth bullet claims 'The accumulated pressure makes the eventual disruption larger than the change the mandate originally asked for.' The source only says the pressure 'accumulates' and 'increases the magnitude of eventual political disruption' \u2014 it never asserts that the resulting disruption exceeds the scale of the change the mandate originally demanded. This adds a specific comparative claim (larger than the original mandate) that is not in the source."
-}

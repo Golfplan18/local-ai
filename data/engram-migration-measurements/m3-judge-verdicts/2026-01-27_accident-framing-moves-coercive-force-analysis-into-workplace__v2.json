@@ -1,6 +1,0 @@
-{
- "case_id": "2026-01-27_accident-framing-moves-coercive-force-analysis-into-workplace::v2",
- "verdict": "DEFECT",
- "defect_kind": "unsupported_hardening",
- "reason": "The source frames the recharacterization as a possibility/strategic effect: the title says framing 'can strategically shift legal analysis,' and bullet 2 says subsequent shots 'can then be reframed as justified confusion.' The note hardens both into declarations: the title says the advocate 'makes every subsequent act read as confusion,' and bullet 2 says every subsequent act 'is read as justified confusion.' The modal 'can' is doing load-bearing work in the source, indicating that the shift is a rhetorical/strategic move whose effect is contingent \u2014 the note removes that contingency and asserts it as automatic."
-}
