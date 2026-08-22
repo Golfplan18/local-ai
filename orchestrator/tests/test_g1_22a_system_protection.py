@@ -1143,7 +1143,7 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             )
         )
         for token in (
-            "G1.19 is independently accepted",
+            "Current verdict — replacement end to end.",
             "G1.22A IMPLEMENTED / JUDGMENT PENDING",
             "G1.22A SECURITY CORRECTION SUBMITTED",
             "G1.22A RESIDUAL AUTHORITY CORRECTION SUBMITTED",
@@ -1151,7 +1151,7 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             "fc731394128bcad5350c77d87248707274228c4c",
             "7fe125d9fa87e41bcb64be4bdc9db6967c1a9329",
             "independent re-judgment pending",
-            "full G1.22 can pass",
+            "No channel, unattended-Programming, Windows, full G1.22, or release-candidate completion claim is made.",
             "G1.21 remains blocked on G1.17",
             # The Windows-refusal claim moved when the 2026-08-07 consolidation
             # made this entry the single record. Same guarantee, asserted
