@@ -48,6 +48,28 @@ MERMAID_NATIVE_KINDS = frozenset({"flowchart", "sequence", "state"})
 # Any fenced block language we treat as a diagram source.
 _FENCE_RE = re.compile(r"```([A-Za-z0-9_-]*)\s*\n(.*?)```", re.DOTALL)
 
+# The canonical ``ora-visual`` fenced-block pattern. Every consumer that
+# extracts, deletes or REPLACES an ora-visual block must use this one.
+#
+# Why it is shaped this way. The obvious pattern — ```` ```ora-visual\s*\n(.*?)\n``` ````
+# — is non-greedy, so an UNTERMINATED opening fence does not fail to match:
+# it runs forward and closes on the next ``` it can find, which is normally
+# the opening fence of an unrelated code block much further down. Every line
+# in between is then captured, and the suppression/strip paths replace all of
+# it with a one-line marker — deleting real analytical prose from a delivered
+# response, and mangling the innocent block whose fence was consumed.
+#
+# The fix is an invariant rather than a heuristic: an ora-visual body is JSON,
+# so it can never legitimately contain a fence line. Forbidding fence lines in
+# the body means an unterminated fence matches NOTHING and the raw text is left
+# in place, visible and inspectable — the same failure posture the client-side
+# dispatcher already takes for unparseable JSON.
+ORA_VISUAL_FENCE_RE = re.compile(
+    r"```ora-visual[ \t]*\n"            # opening fence, alone on its line
+    r"((?:(?![ \t]*```)[^\n]*\n)*?)"    # body: no line may open or close a fence
+    r"[ \t]*```+[ \t]*(?=\n|$)"         # closing fence, alone on its line
+)
+
 
 def _extract_brace_block(text: str, keyword: str) -> str | None:
     """Return ``<keyword> { … }`` with BALANCED braces, starting at the first

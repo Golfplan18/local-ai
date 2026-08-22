@@ -1764,9 +1764,13 @@ def _strip_visual_blocks_and_markers(text: str) -> str:
     so synthesis sees clean analytical prose (and so a recovered turn doesn't
     leave confusing failure markers in the output)."""
     import re
+
+    from visual_recovery import ORA_VISUAL_FENCE_RE
     if not text:
         return text or ""
-    t = re.sub(r"```ora-visual\s*\n.*?\n```", "", text, flags=re.DOTALL)
+    # Canonical fence pattern — an unterminated fence must not match, or this
+    # strip deletes every line between it and the next unrelated code fence.
+    t = ORA_VISUAL_FENCE_RE.sub("", text)
     t = re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", t)
     return t.strip()
 
@@ -2010,9 +2014,10 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
 
 
 def _extract_first_visual_envelope(text: str):
+    from visual_recovery import ORA_VISUAL_FENCE_RE
     if not text or "ora-visual" not in text:
         return None, None
-    m = re.search(r"```ora-visual\s*\n(.*?)\n```", text, re.DOTALL)
+    m = ORA_VISUAL_FENCE_RE.search(text)
     if not m:
         return None, None
     try:

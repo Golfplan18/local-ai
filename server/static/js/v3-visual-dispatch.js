@@ -24,9 +24,14 @@
 (() => {
   'use strict';
 
-  // Same fence grammar the classic extractor used (WP-2.3): opening fence
-  // tagged ora-visual, JSON payload, closing fence on its own line.
-  const FENCE_RE = /```ora-visual\s*\n([\s\S]*?)\n[ \t]*```/g;
+  // Opening fence tagged ora-visual, JSON payload, closing fence on its own
+  // line. The payload may not contain a fence line: an ora-visual body is
+  // JSON, so a run of backticks inside it always means the opening fence was
+  // never terminated. Without that guard the non-greedy body runs on to the
+  // next unrelated block's fence, and `stripBlocks` then replaces all of the
+  // prose in between with the handoff placeholder. Mirrors
+  // `visual_recovery.ORA_VISUAL_FENCE_RE` on the server side.
+  const FENCE_RE = /```ora-visual[ \t]*\n((?:(?![ \t]*```)[^\n]*\n)*?)[ \t]*```+[ \t]*(?=\n|$)/g;
 
   const PLACEHOLDER = '*\u{1F4CA} Visual request sent to the Exhibits pane.*';
 

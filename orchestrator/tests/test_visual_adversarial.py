@@ -495,5 +495,90 @@ class TestProcessResponseIntegration(unittest.TestCase):
         self.assertTrue(diag["visuals"][1]["blocked"])
 
 
+class TestUnterminatedFenceDoesNotEatProse(unittest.TestCase):
+    """Regression: an unterminated ``ora-visual`` fence must not consume the
+    prose that follows it.
+
+    The old pattern (```` ```ora-visual\\s*\\n(.*?)\\n``` ````) was non-greedy,
+    so an unterminated opening fence closed on the next ``` it could find —
+    normally the OPENING fence of an unrelated code block further down. Every
+    line in between was captured and replaced with the one-line suppression
+    marker, deleting delivered analytical prose and mangling the innocent
+    block whose fence was eaten.
+    """
+
+    BROKEN = (
+        "## Findings\n\n"
+        "The mechanism fails under load.\n\n"
+        "```ora-visual\n"
+        '{"schema_version": "0.2", "id": "fig-1"\n'   # never terminated
+        "\n"
+        "## Second finding\n\n"
+        "This paragraph is real analysis.\n\n"
+        "```python\n"
+        'print("unrelated code")\n'
+        "```\n\n"
+        "## Conclusion\n"
+    )
+
+    def test_prose_after_unterminated_fence_survives(self):
+        new_text, _diag = process_response(self.BROKEN)
+        self.assertIn("## Second finding", new_text)
+        self.assertIn("This paragraph is real analysis.", new_text)
+        self.assertIn("## Conclusion", new_text)
+
+    def test_unrelated_code_fence_is_not_consumed(self):
+        new_text, _diag = process_response(self.BROKEN)
+        self.assertIn("```python", new_text)
+        self.assertIn('print("unrelated code")', new_text)
+
+    def test_unterminated_fence_is_left_inspectable(self):
+        """No match means the raw text stays put — the same failure posture
+        the client-side dispatcher takes for unparseable JSON."""
+        new_text, diag = process_response(self.BROKEN)
+        self.assertEqual(self.BROKEN, new_text)
+        self.assertEqual([], diag["visuals"])
+
+    def test_language_tagged_fence_is_not_a_closer(self):
+        """```` ```python ```` opens a block; it must never close an
+        ora-visual block."""
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+        text = "```ora-visual\n{}\n```python\nx = 1\n```\n"
+        m = ORA_VISUAL_FENCE_RE.search(text)
+        self.assertIsNone(m)
+
+    def test_well_formed_block_still_matches(self):
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+        text = 'Above.\n\n```ora-visual\n{"id": "fig-1"}\n```\n\nBelow.\n'
+        m = ORA_VISUAL_FENCE_RE.search(text)
+        self.assertIsNotNone(m)
+        self.assertEqual({"id": "fig-1"}, json.loads(m.group(1)))
+        self.assertEqual("Above.\n\n[X]\n\nBelow.\n",
+                         ORA_VISUAL_FENCE_RE.sub("[X]", text))
+
+    def test_two_well_formed_blocks_match_separately(self):
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+        text = ('A\n\n```ora-visual\n{"id":"a"}\n```\n\n'
+                'B\n\n```ora-visual\n{"id":"b"}\n```\n\nC\n')
+        self.assertEqual(2, len(ORA_VISUAL_FENCE_RE.findall(text)))
+        self.assertEqual("A\n\n[X]\n\nB\n\n[X]\n\nC\n",
+                         ORA_VISUAL_FENCE_RE.sub("[X]", text))
+
+    def test_strip_helper_shares_the_invariant(self):
+        """``boot._strip_visual_blocks_and_markers`` deletes matched blocks
+        outright, so it carries the same data-loss risk and must use the same
+        pattern."""
+        import boot
+        stripped = boot._strip_visual_blocks_and_markers(self.BROKEN)
+        self.assertIn("This paragraph is real analysis.", stripped)
+        self.assertIn('print("unrelated code")', stripped)
+
+    def test_vault_export_span_does_not_overrun(self):
+        """The exporter reports spans into the source document; an overrunning
+        match would splice away unrelated prose on export."""
+        import vault_export
+        self.assertEqual([], vault_export._extract_ora_visuals(self.BROKEN))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
