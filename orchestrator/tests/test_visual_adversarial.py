@@ -32,6 +32,7 @@ HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
+import visual_adversarial as va  # noqa: E402
 from visual_adversarial import (  # noqa: E402
     Finding,
     ReviewResult,
@@ -67,10 +68,25 @@ class TestT1T2ZeroBaseline(unittest.TestCase):
         self.assertIn("T2", rules)
 
     def test_lie_factor_outside_range_blocks(self):
+        """A floor just under the data inflates the apparent ratio.
+
+        Values 100 and 105 differ by 5%. Floored at 99 they read as 6:1.
+        (This case previously asserted the opposite property — that a WIDE
+        zero-based domain blocks — which is an honest chart. See
+        TestT1LieFactorDirection for the full inversion.)
+        """
         env = self._bar()
-        env["spec"]["encoding"]["y"]["scale"] = {"zero": False, "domain": [0, 1000]}  # wide range → lie < 0.95
+        env["spec"]["encoding"]["y"]["scale"] = {"zero": False, "domain": [99, 110]}
         result = review_envelope(env)
         self.assertTrue(any(f.rule == "T1" for f in result.blocks))
+
+    def test_wide_zero_based_domain_is_honest(self):
+        """Headroom is not a lie. A zero floor gives lie factor 1.0 however
+        much empty space sits above the data."""
+        env = self._bar()
+        env["spec"]["encoding"]["y"]["scale"] = {"domain": [0, 1000]}
+        result = review_envelope(env)
+        self.assertFalse(any(f.rule == "T1" for f in result.blocks))
 
     def test_zero_baseline_justification_clears_block(self):
         env = self._bar()
@@ -493,6 +509,81 @@ class TestProcessResponseIntegration(unittest.TestCase):
         self.assertEqual(2, len(diag["visuals"]))
         self.assertFalse(diag["visuals"][0]["blocked"])
         self.assertTrue(diag["visuals"][1]["blocked"])
+
+
+class TestT1LieFactorDirection(unittest.TestCase):
+    """Regression: T1 scored its two decisive cases backwards.
+
+    It computed ``data_range / domain_range`` — a fill ratio, how much of the
+    axis the data happens to occupy — and called it a lie factor. Consequences:
+    an honest zero-baseline chart with any headroom fell below 0.95 and was
+    blocked Critical, while the textbook truncated axis fitted snugly to its
+    data scored exactly 1.000 and passed. The declaration its own suggestion
+    text advertised was never read.
+    """
+
+    def _chart(self, values, domain, declared=None) -> dict:
+        env = {
+            "type": "comparison",
+            "spec": {
+                "mark": "bar",
+                "data": {"values": [{"k": str(i), "v": v}
+                                    for i, v in enumerate(values)]},
+                "encoding": {"y": {"field": "v", "type": "quantitative",
+                                   "scale": {"domain": domain}}},
+            },
+        }
+        if declared:
+            env["integrity_declarations"] = {"non_zero_baseline_justified": declared}
+        return env
+
+    def _fires(self, values, domain, declared=None) -> bool:
+        return bool(va._t1_lie_factor(self._chart(values, domain, declared),
+                                      "comparison"))
+
+    # -- honest charts must pass -------------------------------------------
+    def test_zero_baseline_with_headroom_passes(self):
+        self.assertFalse(self._fires([10, 55, 100], [0, 110]))
+
+    def test_zero_baseline_exact_fit_passes(self):
+        self.assertFalse(self._fires([10, 55, 100], [0, 100]))
+
+    def test_zero_baseline_with_tightly_clustered_data_passes(self):
+        """The case that most looks like a lie and isn't: near-identical
+        values on a zero axis read as near-identical bars."""
+        self.assertFalse(self._fires([90, 95, 100], [0, 100]))
+
+    # -- dishonest charts must block ---------------------------------------
+    def test_truncated_axis_fitted_to_data_blocks(self):
+        """The classic deception, and the exact case the old rule passed."""
+        self.assertTrue(self._fires([90, 95, 100], [90, 100]))
+
+    def test_floor_just_below_the_data_blocks(self):
+        self.assertTrue(self._fires([90, 95, 100], [88, 102]))
+
+    def test_small_difference_magnified_by_a_high_floor_blocks(self):
+        self.assertTrue(self._fires([48, 50, 52], [47, 53]))
+
+    # -- the escape hatch the suggestion advertised ------------------------
+    def test_declared_non_zero_baseline_clears_the_block(self):
+        self.assertFalse(self._fires([90, 95, 100], [88, 102],
+                                     declared="index rebased to 88"))
+
+    # -- scope guards -------------------------------------------------------
+    def test_non_length_mark_is_out_of_scope(self):
+        env = self._chart([90, 95, 100], [88, 102])
+        env["spec"]["mark"] = "line"
+        self.assertEqual([], va._t1_lie_factor(env, "comparison"))
+
+    def test_negative_values_are_left_to_other_rules(self):
+        self.assertFalse(self._fires([-10, 5, 20], [-20, 30]))
+
+    def test_reported_factor_names_both_ratios(self):
+        f = va._t1_lie_factor(self._chart([90, 95, 100], [88, 102]), "comparison")
+        self.assertEqual(1, len(f))
+        self.assertEqual("Critical", f[0].severity)
+        self.assertIn("lie factor", f[0].message)
+        self.assertIn("non_zero_baseline_justified", f[0].suggestion)
 
 
 class TestUnterminatedFenceDoesNotEatProse(unittest.TestCase):

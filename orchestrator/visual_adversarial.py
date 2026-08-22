@@ -177,16 +177,31 @@ QUANT_TYPES = {"comparison", "time_series", "distribution", "scatter", "heatmap"
 
 
 def _t1_lie_factor(envelope: dict, vtype: str) -> list[Finding]:
-    """T1: lie factor in [0.95, 1.05].
+    """T1: Tufte's lie factor within [0.95, 1.05].
 
-    Lie factor is the ratio of visual-magnitude-change to data-magnitude-change.
-    For a bar/column/dot plot, the visual channel is length — so the lie
-    factor evaluates to 1.0 exactly if the chart is honestly linear. We
-    can't compute pixel geometry here (we only have the spec), but we can
-    detect a common dishonest pattern: bar/area charts whose
-    ``encoding.y.scale.domain`` does not include 0 when the data is
-    quantitative (T2 overlaps here; T1 adds a numeric lie when the domain
-    minimum is an arbitrary nonzero floor).
+    The lie factor is the size of the effect SHOWN divided by the size of the
+    effect IN THE DATA. On a length-encoded mark a value ``v`` is drawn from
+    the axis floor, so it reads as length ``v - lo``. Two values therefore
+    *appear* to stand in the ratio ``(v_max - lo) / (v_min - lo)`` while their
+    true ratio is ``v_max / v_min``, and::
+
+        lie_factor = ((v_max - lo) / (v_min - lo)) / (v_max / v_min)
+
+    With a zero floor this is exactly 1.0 however the axis is padded. As the
+    floor climbs toward the smallest value the ratio inflates without bound —
+    which is the truncated-axis deception the rule exists to catch.
+
+    This previously computed ``data_range / domain_range``, which is a
+    *fill ratio* — how much of the axis the data happens to span — and is not
+    a lie factor at all. It scored the two cases that matter backwards: an
+    honest zero-baseline chart with any headroom fell below 0.95 and was
+    blocked Critical (data 10–100 on a [0, 100] axis scored 0.900), while the
+    textbook truncated axis, fitted snugly to its data, scored exactly 1.000
+    and sailed through (data 90–100 on a [90, 100] axis). The escape hatch its
+    own suggestion advertised was never read.
+
+    Only exaggeration is reported. A floor below zero understates differences
+    rather than overstating them, and zero-baseline policy is T2's job.
     """
     findings: list[Finding] = []
     if vtype not in {"comparison", "distribution", "time_series"}:
@@ -209,18 +224,45 @@ def _t1_lie_factor(envelope: dict, vtype: str) -> list[Finding]:
         dom_lo, dom_hi = float(domain[0]), float(domain[1])
     except (TypeError, ValueError):
         return findings
-    dom_range = dom_hi - dom_lo
-    data_range = max(data_vals) - min(data_vals)
-    if dom_range <= 0 or data_range <= 0:
+    if dom_hi <= dom_lo:
         return findings
-    lie_factor = data_range / dom_range
-    if lie_factor < 0.95 or lie_factor > 1.05:
+    # The honest declaration T2 already recognizes covers T1's single cause:
+    # a deliberately non-zero floor. The old suggestion text pointed at this
+    # field without anything ever reading it.
+    if bool((envelope.get("integrity_declarations") or {}).get("non_zero_baseline_justified")):
+        return findings
+    v_min, v_max = min(data_vals), max(data_vals)
+    # Ratio reasoning needs positive magnitudes; diverging/negative series are
+    # a different encoding question and are left to T2 and T9.
+    if v_min <= 0:
+        return findings
+    if dom_lo <= 0:
+        return findings  # zero (or lower) floor — lie factor is 1.0 by construction
+    if v_min <= dom_lo:
         findings.append(Finding(
             rule="T1",
             severity="Critical",
-            message=f"lie factor {lie_factor:.3f} outside [0.95, 1.05] (domain range {dom_range}, data range {data_range})",
+            message=(f"axis floor {dom_lo:g} is at or above the smallest value "
+                     f"{v_min:g} — that mark is drawn with no length at all, so "
+                     f"the comparison it appears to support cannot be read"),
             path="spec.encoding.y.scale.domain",
-            suggestion="Expand scale.domain to match data range, or declare integrity_declarations.non_zero_baseline_justified.",
+            suggestion="Set scale.domain to start at 0, or declare integrity_declarations.non_zero_baseline_justified.",
+        ))
+        return findings
+    shown_ratio = (v_max - dom_lo) / (v_min - dom_lo)
+    true_ratio = v_max / v_min
+    if true_ratio <= 0:
+        return findings
+    lie_factor = shown_ratio / true_ratio
+    if lie_factor > 1.05:
+        findings.append(Finding(
+            rule="T1",
+            severity="Critical",
+            message=(f"lie factor {lie_factor:.3f} exceeds 1.05 — an axis floor of "
+                     f"{dom_lo:g} makes {v_max:g} look {shown_ratio:.1f}x "
+                     f"{v_min:g} when it is {true_ratio:.1f}x"),
+            path="spec.encoding.y.scale.domain",
+            suggestion="Set scale.domain to start at 0, or declare integrity_declarations.non_zero_baseline_justified.",
         ))
     return findings
 
