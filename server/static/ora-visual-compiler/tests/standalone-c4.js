@@ -248,7 +248,10 @@ function testContainerNested() {
     'container nested');
   assert(res.svg.indexOf('ora-visual--c4-container') !== -1,
     'container nested — container level class');
-  assert(res.svg.indexOf('[React]') !== -1,
+  // C4 notation puts the element type and its technology on one metatype
+  // line, matching the '[Person]' / '[System]' lines beside it. This assertion
+  // pinned a bare '[React]' that the renderer has never produced.
+  assert(res.svg.indexOf('[Container: React]') !== -1,
     'container nested — technology label rendered');
   assert(res.svg.indexOf('Calls') !== -1 && res.svg.indexOf('Queries') !== -1,
     'container nested — relationship labels rendered');
