@@ -133,6 +133,22 @@
   gap: 8px;
 }
 
+.ora-cap-runbtn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.ora-cap-prereq-status {
+  max-width: 360px;
+  margin: 0;
+  color: var(--text-muted, #c8ccd8);
+  font-size: var(--font-ui-smaller, 12px);
+  line-height: 1.35;
+  text-align: right;
+}
+
 .ora-cap-btn,
 .ora-cap-runbtn,
 .ora-cap-image-ref__pick,

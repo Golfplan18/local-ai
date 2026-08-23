@@ -378,13 +378,6 @@ def project_command_specs(projects: Iterable) -> list[SlashCommandSpec]:
     return specs
 
 
-def registry_payload(projects: Iterable | None = None) -> dict:
-    specs = list(COMMAND_SPECS)
-    if projects is not None:
-        specs.extend(project_command_specs(projects))
-    return {"commands": [spec.to_dict() for spec in specs]}
-
-
 def runtime_command_names() -> set[str]:
     return set(SERVER_COMMANDS) | set(SERVER_ALIASES)
 

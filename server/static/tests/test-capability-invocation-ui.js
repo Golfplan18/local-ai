@@ -4,8 +4,8 @@
  * End-to-end test for OraCapabilityInvocationUI. Spins up a jsdom host,
  * loads the module against a stub slot, walks the §13.3 happy/sad path:
  *
- *   1. Stub slot requires `prompt` (text). Run button disabled, tooltip
- *      mentions the missing prompt.
+ *   1. Stub slot requires `prompt` (text). Run button disabled, inline
+ *      prerequisite status mentions the missing prompt.
  *   2. Type a prompt → button enables.
  *   3. Submit → spinner visible, button locked, dispatch event fires
  *      with the right shape.
@@ -180,12 +180,15 @@ async function testButtonDisabledWhenPromptMissing() {
   record('button disabled when no prompt typed',
     btn && btn.disabled === true,
     btn ? ('disabled=' + btn.disabled) : 'btn not found');
-  var tooltip = host.querySelector('.ora-cap-tooltip');
-  record('disabled-button tooltip names the missing input',
-    tooltip && /test prompt input/i.test(tooltip.textContent),
-    tooltip ? ('tooltip="' + tooltip.textContent + '"') : 'tooltip not found');
-  record('disabled-button has native title attribute too',
-    btn && /test prompt input/i.test(btn.getAttribute('title') || ''),
+  var status = host.querySelector('.ora-cap-prereq-status');
+  record('disabled-button inline status names the missing input',
+    status && /test prompt input/i.test(status.textContent) && status.hidden === false,
+    status ? ('status="' + status.textContent + '"') : 'status not found');
+  record('disabled-button describes its inline prerequisite status',
+    btn && btn.getAttribute('aria-describedby') === (status && status.id),
+    btn ? ('aria-describedby="' + btn.getAttribute('aria-describedby') + '"') : 'btn not found');
+  record('disabled-button has no native title fallback',
+    btn && !btn.hasAttribute('title'),
     btn ? ('title="' + btn.getAttribute('title') + '"') : 'btn not found');
 }
 
@@ -505,10 +508,10 @@ async function testImageRefAndMaskUseContext() {
   var btn = host.querySelector('.ora-cap-runbtn');
   record('image_edits button starts disabled (no image, no mask)',
     btn && btn.disabled === true);
-  var tooltip = host.querySelector('.ora-cap-tooltip');
-  record('disabled tooltip mentions multiple missing inputs',
-    tooltip && /Missing inputs/i.test(tooltip.textContent || ''),
-    tooltip ? tooltip.textContent : 'no tooltip');
+  var status = host.querySelector('.ora-cap-prereq-status');
+  record('disabled status mentions multiple missing inputs',
+    status && /Missing inputs/i.test(status.textContent || ''),
+    status ? status.textContent : 'no status');
 
   // Provide a selection + mask via the context provider, refresh via
   // setContextProvider. The prompt is still missing, so the gate must hold.
@@ -522,13 +525,13 @@ async function testImageRefAndMaskUseContext() {
 
   // Exactly one input is outstanding, and it is `prompt` — not image, not
   // mask. The single-missing tooltip form pins that down by name.
-  tooltip = host.querySelector('.ora-cap-tooltip');
-  record('disabled tooltip names the missing prompt specifically',
-    tooltip && (tooltip.textContent || '') === 'Missing: ' + promptLabel,
-    tooltip ? ('tooltip="' + tooltip.textContent + '"') : 'no tooltip');
-  record('disabled title attribute names the missing prompt too',
-    btn && (btn.getAttribute('title') || '') === 'Missing: ' + promptLabel,
-    btn ? ('title="' + btn.getAttribute('title') + '"') : 'no btn');
+  status = host.querySelector('.ora-cap-prereq-status');
+  record('disabled status names the missing prompt specifically',
+    status && (status.textContent || '') === 'Missing: ' + promptLabel,
+    status ? ('status="' + status.textContent + '"') : 'no status');
+  record('disabled button describes the missing prompt status',
+    btn && status && btn.getAttribute('aria-describedby') === status.id,
+    btn ? ('aria-describedby="' + btn.getAttribute('aria-describedby') + '"') : 'no btn');
 
   var dispatchedBlank = null;
   function onBlank(e) { dispatchedBlank = e.detail; }

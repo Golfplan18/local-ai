@@ -66,8 +66,17 @@ import redefinition_handler  # noqa: E402
 import tool_events  # noqa: E402
 
 # Modules whose HEARTBEAT_FILE is derived from OVERSIGHT_DATA_DIR at
-# import time — the single source of truth is the daemon's startup list.
-from oversight_daemon import WATCHER_HEARTBEAT_MODULES as _HEARTBEAT_MODULES  # noqa: E402
+# import time. These modules still write heartbeats when their manual sweep
+# is exercised; the production daemon no longer owns an interval startup list.
+_HEARTBEAT_MODULES = (
+    "ped_watcher",
+    "corpus_watcher",
+    "workflow_spec_sweeper",
+    "revisit_sweeper",
+    "retention_sweeper",
+    "maintenance_scheduler",
+    "resources_watcher",
+)
 
 
 def redirect_oversight_logs(test_case: unittest.TestCase) -> str:

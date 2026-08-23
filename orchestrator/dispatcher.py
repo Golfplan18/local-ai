@@ -197,20 +197,6 @@ def _wrap_spawn_subagent(params):
         params.get("timeout", 120),
     )
 
-def _wrap_schedule_task(params):
-    """Reject legacy recurring prompts.
-
-    This previously pointed callers at G1.19's Trigger Manager as the
-    successor. That runtime was deleted on 2026-08-05 (commit 519294b1),
-    so the message no longer promises a replacement that is coming.
-    """
-    raise RuntimeError(
-        "schedule_task is retired: bind work to an exact event or a one-shot "
-        "deadline. There is no scheduler to route this to — the Trigger "
-        "Manager was removed on 2026-08-05."
-    )
-
-
 # Each entry carries the existing function axis ("category" — untouched)
 # plus the Execution Review capability axes: "mutability" / "sensitivity" /
 # "egress" (tool_events.py vocabularies). "sensitivity" is the tool default;

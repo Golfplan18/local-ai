@@ -39,7 +39,6 @@ from slash_commands import (  # noqa: E402
 from slash_command_registry import (  # noqa: E402
     find_command,
     project_command_specs,
-    registry_payload,
     runtime_command_names,
 )
 
@@ -530,15 +529,6 @@ class TestSlashCommandRegistry(unittest.TestCase):
             slash_commands={command_name: command},
         )
 
-    def test_registry_payload_shape(self):
-        payload = registry_payload()
-        self.assertIn("commands", payload)
-        commands = {c["command"] for c in payload["commands"]}
-        self.assertIn("/framework", commands)
-        self.assertIn("/settings", commands)
-        self.assertIn("/maintenance", commands)
-        self.assertIn("/review", commands)
-
     def test_runtime_names_include_server_aliases_only(self):
         names = runtime_command_names()
         self.assertIn("/help", names)
@@ -560,12 +550,6 @@ class TestSlashCommandRegistry(unittest.TestCase):
         self.assertEqual(specs[0].category, "Project Commands")
         self.assertEqual(specs[0].status, "project-specific")
         self.assertIn("Main Street Independent", specs[0].notes)
-
-    def test_registry_payload_can_include_project_commands(self):
-        payload = registry_payload(projects=[self._fake_project()])
-        commands = {c["command"]: c for c in payload["commands"]}
-        self.assertIn("/publish-cycle", commands)
-        self.assertEqual(commands["/publish-cycle"]["category"], "Project Commands")
 
     def test_project_command_help_is_dynamic(self):
         fake_registry = SimpleNamespace(

@@ -6051,23 +6051,6 @@ def programming_recover():
     return _json_response({"ok": True, **result})
 
 
-@app.route("/api/slash-commands", methods=["GET"])
-def slash_commands_registry():
-    """Read-only registry of user-facing slash commands.
-
-    The registry includes server-dispatched commands, framework commands, and
-    browser-only UI commands so autocomplete/help surfaces can use one source.
-    """
-    from slash_command_registry import registry_payload
-    projects = None
-    try:
-        from orchestrator import project_registry as _pr
-        projects = _pr.list_projects()
-    except Exception:
-        projects = None
-    return json.dumps(registry_payload(projects=projects)), 200, {"Content-Type": "application/json"}
-
-
 def _project_summary(project) -> dict:
     """Serialize a project-registry Project for browser management UI."""
     tools = [
