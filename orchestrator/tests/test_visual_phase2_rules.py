@@ -85,8 +85,9 @@ class TestClarityGates(unittest.TestCase):
 
     def test_redundant_does_not_block_in_strict_review(self):
         env = {"type": "concept_map", "relation_to_prose": "redundant",
-               "mode_context": "synthesis", "spec": {}}
-        review = va.review_envelope(env, "synthesis")
+               "mode_context": "spatial-reasoning", "spec": {}}
+        self.assertEqual(va._strictness_for("spatial-reasoning"), "strict")
+        review = va.review_envelope(env, "spatial-reasoning")
         self.assertFalse(any(b.rule == "clarity.redundant" for b in review.blocks))
         self.assertTrue(any(w.rule == "clarity.redundant" for w in review.warns))
 
