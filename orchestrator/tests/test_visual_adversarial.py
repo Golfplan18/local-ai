@@ -347,11 +347,11 @@ class TestDefaultSettings(unittest.TestCase):
 
 class TestStrictness(unittest.TestCase):
     def test_strict_mode_escalates_major_to_critical(self):
-        # systems-dynamics is 'critical' strictness
+        # systems-dynamics-causal is a tracked 'critical' visual mode.
         env = _load("comparison.valid.json")
         env.pop("title", None)
         # With no title we expect a T7 Major finding — escalated to Critical.
-        result = review_envelope(env, mode="systems-dynamics")
+        result = review_envelope(env, mode="systems-dynamics-causal")
         self.assertTrue(any(f.rule == "T7" and f.severity == "Critical" for f in result.blocks))
 
     def test_lax_mode_demotes_major_to_minor(self):
@@ -375,11 +375,11 @@ class TestStrictness(unittest.TestCase):
         self.assertTrue(any(f.rule == "T5" and f.severity == "Critical" for f in result.blocks))
 
     def test_apply_strictness_unit(self):
-        self.assertEqual("Critical", _apply_strictness("Major", "systems-dynamics"))
+        self.assertEqual("Critical", _apply_strictness("Major", "systems-dynamics-causal"))
         self.assertEqual("Minor",    _apply_strictness("Major", "passion-exploration"))
         self.assertEqual("Major",    _apply_strictness("Major", "synthesis"))
         self.assertEqual("Critical", _apply_strictness("Critical", "passion-exploration"))
-        self.assertEqual("Minor",    _apply_strictness("Minor", "systems-dynamics"))
+        self.assertEqual("Minor",    _apply_strictness("Minor", "systems-dynamics-causal"))
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +527,7 @@ class TestProcessResponseIntegration(unittest.TestCase):
 
         with mock.patch.object(va, "review_envelope", side_effect=review):
             process_response(
-                self._wrap(env), mode="systems-dynamics",
+                self._wrap(env), mode="systems-dynamics-causal",
                 prose="The accepted answer explains the relationship in full.",
             )
 

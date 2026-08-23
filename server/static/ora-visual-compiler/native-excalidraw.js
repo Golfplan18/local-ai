@@ -43,28 +43,49 @@
     var nodes = [];
     var edges = [];
     var seen = new Set();
+    var match;
 
-    function node(id, label, kind) {
+    function node(id, label, kind, metadata) {
       var key = text(id, 'node-' + nodes.length);
       if (!seen.has(key)) {
         seen.add(key);
-        nodes.push({ id: key, label: text(label, key), kind: kind || 'node' });
+        nodes.push(Object.assign({
+          id: key,
+          label: text(label, key),
+          kind: kind || 'node',
+        }, metadata || {}));
       } else {
         var existing = nodes.find(function (entry) { return entry.id === key; });
         if (existing && (!existing.label || existing.label === key) && label) {
           existing.label = text(label, key);
         }
+        if (existing && kind && (!existing.kind || existing.kind === 'node'
+          || existing.kind === 'causal-node')) {
+          existing.kind = kind;
+        }
+        if (existing && metadata) {
+          Object.keys(metadata).forEach(function (name) {
+            existing[name] = metadata[name];
+          });
+        }
       }
       return key;
     }
 
-    function edge(from, to, label, kind) {
+    function edge(from, to, label, kind, metadata) {
       var source = node(from, from);
       var target = node(to, to);
       if (!edges.some(function (entry) {
-        return entry.from === source && entry.to === target && entry.label === text(label, '');
+        return entry.from === source && entry.to === target
+          && entry.label === text(label, '')
+          && (entry.operator || '') === ((metadata && metadata.operator) || '');
       })) {
-        edges.push({ from: source, to: target, label: text(label, ''), kind: kind || 'relationship' });
+        edges.push(Object.assign({
+          from: source,
+          to: target,
+          label: text(label, ''),
+          kind: kind || 'relationship',
+        }, metadata || {}));
       }
     }
 
@@ -95,13 +116,39 @@
       (spec.info_links || []).forEach(function (entry) { edge(entry.from, entry.to, 'information', 'info-link'); });
     } else if (type === 'causal_dag') {
       var dag = text(spec.dsl, '');
-      var declaration = /([A-Za-z_][\w-]*)\s*\[([^\]]+)\]/g;
-      var match;
-      while ((match = declaration.exec(dag))) node(match[1], match[2], 'causal-node');
-      var relation = /([A-Za-z_][\w-]*)\s*[-=]+>\s*([A-Za-z_][\w-]*)/g;
-      while ((match = relation.exec(dag))) edge(match[1], match[2], 'causes', 'causal-edge');
-      node(spec.focal_exposure, spec.focal_exposure, 'exposure');
-      node(spec.focal_outcome, spec.focal_outcome, 'outcome');
+      var dagRenderer = ns._renderers && ns._renderers.causalDag;
+      var dagParser = dagRenderer && dagRenderer._parseDagitty;
+      if (typeof dagParser !== 'function') {
+        throw new Error('The canonical DAGitty parser is unavailable');
+      }
+      var parsedDag = dagParser(dag);
+      parsedDag.nodes.forEach(function (entry, id) {
+        var roles = entry && entry.kinds ? Array.from(entry.kinds) : [];
+        node(id, id, roles[0] || 'causal-node', { dagRoles: roles });
+      });
+      parsedDag.edges.forEach(function (entry) {
+        edge(
+          entry.from,
+          entry.to,
+          entry.op === '--' ? '' : 'causes',
+          'causal-edge',
+          { operator: entry.op }
+        );
+      });
+      function focalDagNode(id, role) {
+        var existing = nodes.find(function (entry) { return entry.id === id; });
+        var roles = existing && Array.isArray(existing.dagRoles) ? existing.dagRoles : [];
+        if (existing) existing.kind = role;
+        node(id, id, role, {
+          dagRoles: Array.from(new Set(roles.concat(role))),
+        });
+      }
+      if (spec.focal_exposure) {
+        focalDagNode(spec.focal_exposure, 'exposure');
+      }
+      if (spec.focal_outcome) {
+        focalDagNode(spec.focal_outcome, 'outcome');
+      }
     } else if (type === 'fishbone') {
       var effect = node('effect', spec.effect, 'effect');
       (spec.categories || []).forEach(function (category, index) {
@@ -151,25 +198,33 @@
       (spec.edges || []).forEach(function (entry) { edge(entry.from, entry.to, entry.type, 'argument'); });
     } else if (type === 'pro_con') {
       var claim = node('claim', spec.claim, 'claim');
-      (spec.pros || []).forEach(function (entry, index) {
-        var id = node('pro-' + index, entry.text, 'pro');
-        edge(claim, id, 'supports', 'pro');
+      function argumentLabel(entry) {
+        var label = text(entry && entry.text, 'Argument');
+        return Number.isInteger(entry && entry.weight)
+          ? label + ' [weight ' + entry.weight + '/5]'
+          : label;
+      }
+      function addArgument(parent, entry, path, kind, relation, reverse) {
+        var weight = Number.isInteger(entry && entry.weight) ? entry.weight : null;
+        var id = node(path, argumentLabel(entry), kind, { argumentWeight: weight });
+        edge(reverse ? id : parent, reverse ? parent : id, relation, kind);
         (entry.children || []).forEach(function (child, childIndex) {
-          var childId = node('pro-' + index + '-' + childIndex, child.text, 'pro');
-          edge(id, childId, 'because', 'pro');
+          addArgument(id, child, path + '-' + childIndex, kind, 'because', false);
         });
+      }
+      (spec.pros || []).forEach(function (entry, index) {
+        addArgument(claim, entry, 'pro-' + index, 'pro', 'supports', false);
       });
       (spec.cons || []).forEach(function (entry, index) {
-        var id = node('con-' + index, entry.text, 'con');
-        edge(id, claim, 'challenges', 'con');
-        (entry.children || []).forEach(function (child, childIndex) {
-          var childId = node('con-' + index + '-' + childIndex, child.text, 'con');
-          edge(id, childId, 'because', 'con');
-        });
+        addArgument(claim, entry, 'con-' + index, 'con', 'challenges', true);
       });
       if (spec.decision) edge(claim, node('decision', spec.decision, 'decision'), 'decision', 'decision');
     } else if (type === 'concept_map') {
-      (spec.concepts || []).forEach(function (entry) { node(entry.id, entry.label, 'concept'); });
+      (spec.concepts || []).forEach(function (entry) {
+        node(entry.id, entry.label, 'concept', {
+          hierarchyLevel: entry.hierarchy_level,
+        });
+      });
       var phrases = {};
       (spec.linking_phrases || []).forEach(function (entry) { phrases[entry.id] = entry.text; });
       (spec.propositions || []).forEach(function (entry) {
@@ -209,13 +264,15 @@
 
     var columns = {};
     graphData.nodes.forEach(function (entry) {
-      var column = depth(entry.id, {});
+      var column = Number.isInteger(entry.hierarchyLevel) && entry.hierarchyLevel >= 0
+        ? entry.hierarchyLevel : depth(entry.id, {});
       (columns[column] = columns[column] || []).push(entry);
     });
 
     var positions = {};
     graphData.nodes.forEach(function (entry) {
-      var column = depth(entry.id, {});
+      var column = Number.isInteger(entry.hierarchyLevel) && entry.hierarchyLevel >= 0
+        ? entry.hierarchyLevel : depth(entry.id, {});
       var columnEntries = columns[column];
       var row = columnEntries.indexOf(entry);
       var width = Math.max(150, Math.min(280, entry.label.length * 7 + 32));
@@ -260,8 +317,29 @@
     };
   }
 
-  function tagFingerprint(element) {
-    element.customData.originalGenerationFingerprint = JSON.stringify({
+  function generationFingerprint(element) {
+    var roundness = element && element.roundness;
+    var boundElements = Array.isArray(element && element.boundElements)
+      ? element.boundElements.map(function (binding) {
+        return {
+          id: String(binding && binding.id || ''),
+          type: String(binding && binding.type || ''),
+        };
+      }).sort(function (left, right) {
+        return (left.type + '\u0000' + left.id).localeCompare(right.type + '\u0000' + right.id);
+      })
+      : [];
+    function pointBinding(binding) {
+      if (!binding || typeof binding !== 'object') return null;
+      return {
+        elementId: binding.elementId || null,
+        focus: Number(binding.focus) || 0,
+        gap: Number(binding.gap) || 0,
+        fixedPoint: Array.isArray(binding.fixedPoint)
+          ? binding.fixedPoint.slice() : (binding.fixedPoint || null),
+      };
+    }
+    return JSON.stringify({
       x: Number(element.x) || 0,
       y: Number(element.y) || 0,
       width: Number(element.width) || 0,
@@ -273,7 +351,37 @@
       strokeColor: element.strokeColor || '',
       backgroundColor: element.backgroundColor || '',
       fillStyle: element.fillStyle || '',
+      opacity: Number(element.opacity) || 0,
+      strokeWidth: Number(element.strokeWidth) || 0,
+      strokeStyle: element.strokeStyle || '',
+      roughness: Number(element.roughness) || 0,
+      roundness: roundness && typeof roundness === 'object'
+        ? { type: roundness.type == null ? null : roundness.type,
+          value: roundness.value == null ? null : roundness.value }
+        : (roundness || null),
+      originalText: String(element.originalText || ''),
+      fontSize: Number(element.fontSize) || 0,
+      fontFamily: Number(element.fontFamily) || 0,
+      textAlign: element.textAlign || '',
+      verticalAlign: element.verticalAlign || '',
+      lineHeight: Number(element.lineHeight) || 0,
+      autoResize: element.autoResize === true,
+      containerId: element.containerId || null,
+      boundElements: boundElements.length ? boundElements : null,
+      startBinding: pointBinding(element && element.startBinding),
+      endBinding: pointBinding(element && element.endBinding),
+      groupIds: Array.isArray(element && element.groupIds)
+        ? element.groupIds.map(String) : [],
+      frameId: element && element.frameId || null,
+      index: element && element.index == null ? null : String(element.index),
+      link: element.link || null,
+      startArrowhead: element.startArrowhead || null,
+      endArrowhead: element.endArrowhead || null,
     });
+  }
+
+  function tagFingerprint(element) {
+    element.customData.originalGenerationFingerprint = generationFingerprint(element);
     return element;
   }
 
@@ -289,15 +397,28 @@
     var elements = [];
     var byId = {};
 
-    function owned(kind, semanticElementId) {
-      return {
+    function owned(kind, semanticElementId, metadata) {
+      return Object.assign({
         oraAssistantVisual: true,
         oraAssistantVisualKind: 'native',
         assistantVisualId: assistantVisualId,
         generationRevision: revision,
         semanticElementId: semanticElementId,
         nativeKind: kind,
-      };
+      }, metadata || {});
+    }
+
+    function semanticMetadata(entry) {
+      var metadata = {};
+      if (Array.isArray(entry.dagRoles)) metadata.dagRoles = entry.dagRoles.slice();
+      if (entry.operator) metadata.dagOperator = entry.operator;
+      if (Number.isInteger(entry.argumentWeight)) {
+        metadata.argumentWeight = entry.argumentWeight;
+      }
+      if (Number.isInteger(entry.hierarchyLevel)) {
+        metadata.hierarchyLevel = entry.hierarchyLevel;
+      }
+      return metadata;
     }
 
     graphData.nodes.forEach(function (entry) {
@@ -307,17 +428,17 @@
         'ora-' + hash(assistantVisualId + ':' + semantic + ':shape'),
         entry.kind === 'decision' ? 'diamond' : 'rectangle',
         bounds,
-        owned(entry.kind, semantic)
+        owned(entry.kind, semantic, semanticMetadata(entry))
       );
       nodeElement.groupIds = [groupId + '-' + safe(entry.id)];
-      elements.push(tagFingerprint(nodeElement));
+      elements.push(nodeElement);
       byId[entry.id] = { element: nodeElement, bounds: bounds, semantic: semantic };
 
       var label = baseElement(
         'ora-' + hash(assistantVisualId + ':' + semantic + ':label'),
         'text',
         { x: bounds.x + 10, y: bounds.y + 16, width: bounds.width - 20, height: 24 },
-        owned(entry.kind + '-label', semantic + ':label')
+        owned(entry.kind + '-label', semantic + ':label', semanticMetadata(entry))
       );
       label.text = entry.label;
       label.originalText = entry.label;
@@ -329,7 +450,7 @@
       label.autoResize = false;
       label.lineHeight = 1.25;
       label.groupIds = nodeElement.groupIds.slice();
-      elements.push(tagFingerprint(label));
+      elements.push(label);
       nodeElement.boundElements.push({ id: label.id, type: 'text' });
     });
 
@@ -341,35 +462,54 @@
       var toCenter = { x: to.bounds.x + to.bounds.width / 2, y: to.bounds.y + to.bounds.height / 2 };
       var dx = toCenter.x - fromCenter.x;
       var dy = toCenter.y - fromCenter.y;
-      var scale = Math.min(
+      var sourceScale = Math.min(
         (from.bounds.width / 2) / Math.max(Math.abs(dx), 1),
-        (from.bounds.height / 2) / Math.max(Math.abs(dy), 1),
+        (from.bounds.height / 2) / Math.max(Math.abs(dy), 1)
+      );
+      var targetScale = Math.min(
         (to.bounds.width / 2) / Math.max(Math.abs(dx), 1),
         (to.bounds.height / 2) / Math.max(Math.abs(dy), 1)
       );
-      if (!isFinite(scale) || scale <= 0) scale = 0.25;
-      var start = { x: fromCenter.x + dx * scale, y: fromCenter.y + dy * scale };
-      var end = { x: toCenter.x - dx * scale, y: toCenter.y - dy * scale };
-      var semantic = text(envelope.type, 'visual') + ':edge:' + entry.from + '->' + entry.to + ':' + entry.label;
+      if (!isFinite(sourceScale) || sourceScale <= 0) sourceScale = 0.25;
+      if (!isFinite(targetScale) || targetScale <= 0) targetScale = 0.25;
+      var start = {
+        x: fromCenter.x + dx * sourceScale,
+        y: fromCenter.y + dy * sourceScale,
+      };
+      var end = {
+        x: toCenter.x - dx * targetScale,
+        y: toCenter.y - dy * targetScale,
+      };
+      var operator = entry.operator || '->';
+      var semantic = text(envelope.type, 'visual') + ':edge:' + entry.from
+        + operator + entry.to + ':' + entry.label;
+      var origin = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y) };
+      var relativeStart = [start.x - origin.x, start.y - origin.y];
+      var relativeEnd = [end.x - origin.x, end.y - origin.y];
       var arrow = baseElement(
         'ora-' + hash(assistantVisualId + ':' + semantic),
         'arrow',
-        { x: start.x, y: start.y, width: end.x - start.x, height: end.y - start.y },
-        owned(entry.kind, semantic)
+        {
+          x: origin.x,
+          y: origin.y,
+          width: Math.max(Math.abs(end.x - start.x), 1),
+          height: Math.max(Math.abs(end.y - start.y), 1),
+        },
+        owned(entry.kind, semantic, semanticMetadata(entry))
       );
-      arrow.width = 0;
-      arrow.height = 0;
-      arrow.points = [[0, 0], [end.x - start.x, end.y - start.y]];
-      arrow.lastCommittedPoint = [end.x - start.x, end.y - start.y];
-      arrow.startArrowhead = null;
-      arrow.endArrowhead = 'arrow';
+      arrow.points = [relativeStart, relativeEnd];
+      arrow.lastCommittedPoint = relativeEnd;
+      arrow.startArrowhead = operator === '<->' ? 'arrow' : null;
+      arrow.endArrowhead = operator === '--' ? null : 'arrow';
       arrow.startBinding = { elementId: from.element.id, focus: 0, gap: 4, fixedPoint: null };
       arrow.endBinding = { elementId: to.element.id, focus: 0, gap: 4, fixedPoint: null };
       arrow.boundElements = null;
-      elements.push(tagFingerprint(arrow));
+      elements.push(arrow);
       from.element.boundElements.push({ id: arrow.id, type: 'arrow' });
       to.element.boundElements.push({ id: arrow.id, type: 'arrow' });
     });
+
+    elements.forEach(tagFingerprint);
 
     var maxX = 0;
     var maxY = 0;
@@ -409,6 +549,7 @@
     isNativeType: function (type) { return NATIVE_SET.has(type); },
     buildLayout: buildLayout,
     buildScene: buildScene,
+    generationFingerprint: generationFingerprint,
     _graph: graph,
     _layout: layout,
   };

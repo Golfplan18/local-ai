@@ -23,8 +23,9 @@ Public API::
     blob  = write_bytes(state, compressed=True)        # → gzip bytes
     again = read_bytes(blob)                           # auto-detects gzip
 
-The schema lives at ``~/ora/config/schemas/canvas-state.schema.json`` and
-is the source of truth for the structure described here. The structural
+The schema lives under the active runtime configuration root at
+``config/schemas/canvas-state.schema.json`` and is the source of truth for the
+structure described here. The structural
 fallback validator below is a stripped-down mirror of the JS module's,
 used when ``jsonschema`` is unavailable.
 
@@ -49,6 +50,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    import runtime_paths as _rp
+except ImportError:  # package import
+    from orchestrator import runtime_paths as _rp
+
 # ── Constants ───────────────────────────────────────────────────────────────
 
 SCHEMA_VERSION = "0.1.0"
@@ -63,7 +69,7 @@ _GZIP_MAGIC = b"\x1f\x8b"
 
 # Canonical schema location (informational; this module is self-contained
 # and does not need to import the schema for the structural fallback).
-SCHEMAS_ROOT = Path(os.path.expanduser("~/ora/config/schemas"))
+SCHEMAS_ROOT = _rp.CONFIG_DIR / "schemas"
 SCHEMA_PATH  = SCHEMAS_ROOT / "canvas-state.schema.json"
 
 # ── Compression ─────────────────────────────────────────────────────────────

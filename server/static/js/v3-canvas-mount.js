@@ -689,24 +689,84 @@
       );
     };
 
-    const assistantGenerationFingerprint = (element) => JSON.stringify({
-      x: Number(element && element.x) || 0,
-      y: Number(element && element.y) || 0,
-      width: Number(element && element.width) || 0,
-      height: Number(element && element.height) || 0,
-      angle: Number(element && element.angle) || 0,
-      locked: element && element.locked === true,
-      text: String(element && element.text || ''),
-      points: Array.isArray(element && element.points) ? element.points : null,
-      strokeColor: element && element.strokeColor || '',
-      backgroundColor: element && element.backgroundColor || '',
-      fillStyle: element && element.fillStyle || '',
-    });
+    const assistantGenerationFingerprint = (element) => {
+      const shared = window.OraVisualCompiler
+        && window.OraVisualCompiler.nativeExcalidraw
+        && window.OraVisualCompiler.nativeExcalidraw.generationFingerprint;
+      if (typeof shared === 'function') return shared(element || {});
+      const roundness = element && element.roundness;
+      const boundElements = Array.isArray(element && element.boundElements)
+        ? element.boundElements.map((binding) => ({
+          id: String(binding && binding.id || ''),
+          type: String(binding && binding.type || ''),
+        })).sort((left, right) => (
+          `${left.type}\u0000${left.id}`.localeCompare(`${right.type}\u0000${right.id}`)
+        ))
+        : [];
+      const pointBinding = (binding) => {
+        if (!binding || typeof binding !== 'object') return null;
+        return {
+          elementId: binding.elementId || null,
+          focus: Number(binding.focus) || 0,
+          gap: Number(binding.gap) || 0,
+          fixedPoint: Array.isArray(binding.fixedPoint)
+            ? binding.fixedPoint.slice() : (binding.fixedPoint || null),
+        };
+      };
+      return JSON.stringify({
+        x: Number(element && element.x) || 0,
+        y: Number(element && element.y) || 0,
+        width: Number(element && element.width) || 0,
+        height: Number(element && element.height) || 0,
+        angle: Number(element && element.angle) || 0,
+        locked: element && element.locked === true,
+        text: String(element && element.text || ''),
+        points: Array.isArray(element && element.points) ? element.points : null,
+        strokeColor: element && element.strokeColor || '',
+        backgroundColor: element && element.backgroundColor || '',
+        fillStyle: element && element.fillStyle || '',
+        opacity: Number(element && element.opacity) || 0,
+        strokeWidth: Number(element && element.strokeWidth) || 0,
+        strokeStyle: element && element.strokeStyle || '',
+        roughness: Number(element && element.roughness) || 0,
+        roundness: roundness && typeof roundness === 'object'
+          ? { type: roundness.type == null ? null : roundness.type,
+            value: roundness.value == null ? null : roundness.value }
+          : (roundness || null),
+        originalText: String(element && element.originalText || ''),
+        fontSize: Number(element && element.fontSize) || 0,
+        fontFamily: Number(element && element.fontFamily) || 0,
+        textAlign: element && element.textAlign || '',
+        verticalAlign: element && element.verticalAlign || '',
+        lineHeight: Number(element && element.lineHeight) || 0,
+        autoResize: element && element.autoResize === true,
+        containerId: element && element.containerId || null,
+        boundElements: boundElements.length ? boundElements : null,
+        startBinding: pointBinding(element && element.startBinding),
+        endBinding: pointBinding(element && element.endBinding),
+        groupIds: Array.isArray(element && element.groupIds)
+          ? element.groupIds.map(String) : [],
+        frameId: element && element.frameId || null,
+        index: element && element.index == null ? null : String(element.index),
+        link: element && element.link || null,
+        startArrowhead: element && element.startArrowhead || null,
+        endArrowhead: element && element.endArrowhead || null,
+      });
+    };
 
     const assistantElementWasModified = (element) => {
       const data = element && element.customData;
       return !!(data && data.originalGenerationFingerprint
         && data.originalGenerationFingerprint !== assistantGenerationFingerprint(element));
+    };
+
+    const nativeGenerationKey = (element) => {
+      const data = element && element.customData;
+      if (!data || data.oraAssistantVisualKind !== 'native'
+          || !data.assistantVisualId || !Number.isFinite(Number(data.generationRevision))) {
+        return null;
+      }
+      return JSON.stringify([data.assistantVisualId, Number(data.generationRevision)]);
     };
 
     const placeExcalidrawPng = async (
@@ -757,9 +817,7 @@
           || `${(customData && (customData.assistantVisualId
             || customData.oraAssistantVisualKey)) || 'assistant-visual'}:image`,
       });
-      placed.customData = Object.assign(placedData, {
-        originalGenerationFingerprint: assistantGenerationFingerprint(placed),
-      });
+      placed.customData = placedData;
       const retainedElementIds = new Set(existing.map((element) => element.fileId).filter(Boolean));
       const removedAssistantFileIds = new Set(
         assistantArtifacts
@@ -777,6 +835,9 @@
         elements: [...existing, placed],
         appState: current.appState,
         files,
+      });
+      placed.customData = Object.assign({}, placed.customData || {}, {
+        originalGenerationFingerprint: assistantGenerationFingerprint(placed),
       });
       return placed;
     };
@@ -796,19 +857,56 @@
       // behind would stack two diagrams. Modified assistant objects remain
       // because the preservation rule below retains them.
       const owned = allElements.filter((element) => isAssistantArtifact(element));
-      const reusable = owned.filter((element) => !assistantElementWasModified(element));
+      const annotationGroupIds = new Set(owned
+        .filter((element) => (
+          element.customData && element.customData.oraAssistantVisualKind === 'annotation'
+        ))
+        .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : []));
+      const modifiedAnnotationGroupIds = new Set(owned
+        .filter((element) => assistantElementWasModified(element))
+        .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : [])
+        .filter((groupId) => annotationGroupIds.has(groupId)));
+      const belongsToModifiedAnnotationGroup = (element) => (
+        Array.isArray(element && element.groupIds)
+        && element.groupIds.some((groupId) => modifiedAnnotationGroupIds.has(groupId))
+      );
+      const annotationTargetGenerations = new Set(owned
+        .filter((element) => nativeGenerationKey(element)
+          && belongsToModifiedAnnotationGroup(element))
+        .map(nativeGenerationKey));
+      const preservedNativeGenerations = new Set(owned
+        .filter((element) => nativeGenerationKey(element)
+          && (assistantElementWasModified(element)
+            || annotationTargetGenerations.has(nativeGenerationKey(element))))
+        .map(nativeGenerationKey));
+      const preservedNativeElements = owned.filter((element) => (
+        preservedNativeGenerations.has(nativeGenerationKey(element))
+      ));
+      const preservedAnnotationElements = owned.filter((element) => (
+        element.customData && element.customData.oraAssistantVisualKind === 'annotation'
+        && belongsToModifiedAnnotationGroup(element)
+      ));
+      const preservedOwnedElements = new Set(
+        preservedNativeElements.concat(preservedAnnotationElements)
+      );
+      const reusable = owned.filter((element) => (
+        !assistantElementWasModified(element) && !preservedOwnedElements.has(element)
+      ));
+      const reusableNative = reusable.filter((element) => nativeGenerationKey(element));
       const retained = (action === 'replace' || action === 'update')
         ? allElements.filter((element) => !owned.includes(element)
-          || assistantElementWasModified(element))
+          || assistantElementWasModified(element)
+          || preservedOwnedElements.has(element))
         : allElements.slice();
       const retainedIds = new Set(retained.map((element) => element.id));
-      const reusableBySemantic = new Map(reusable.map((element) => [
+      const reusableBySemantic = new Map(reusableNative.map((element) => [
         element.customData && element.customData.semanticElementId, element,
       ]));
       const maxX = retained.reduce(
         (value, element) => Math.max(value, (Number(element.x) || 0) + (Number(element.width) || 0)), 0
       );
-      const offsetX = reusable.length || !retained.length ? 0 : maxX + PADDING * 2;
+      const offsetX = retained.length && !reusableNative.length
+        ? maxX + PADDING * 2 : 0;
       const generated = (scene && Array.isArray(scene.elements) ? scene.elements : [])
         .filter((element) => element && !element.isDeleted)
         .map((element) => clone(element));
@@ -818,7 +916,7 @@
         const prior = reusableBySemantic.get(semantic);
         const oldId = element.id;
         if (prior) {
-          element.x = prior.x;
+          element.x = (Number(prior.x) || 0) + offsetX;
           element.y = prior.y;
           element.width = prior.width;
           element.height = prior.height;
@@ -835,9 +933,7 @@
           generationRevision: revision,
           semanticElementId: semantic || `${assistantVisualId}:native:${element.id}`,
         });
-        element.customData = Object.assign(data, {
-          originalGenerationFingerprint: assistantGenerationFingerprint(element),
-        });
+        element.customData = data;
       });
       generated.forEach((element) => {
         if (element.startBinding && idMap.has(element.startBinding.elementId)) {
@@ -856,10 +952,16 @@
           ));
         }
       });
+      const nextElements = retained.concat(generated);
       updateExcalidraw({
-        elements: retained.concat(generated),
+        elements: nextElements,
         appState: current.appState,
         files: Object.assign({}, current.files || {}, scene && scene.files || {}),
+      });
+      generated.forEach((element) => {
+        element.customData = Object.assign({}, element.customData || {}, {
+          originalGenerationFingerprint: assistantGenerationFingerprint(element),
+        });
       });
       return generated;
     };
@@ -868,99 +970,255 @@
       const current = snapshotExcalidraw();
       const annotations = Array.isArray(envelope && envelope.annotations)
         ? envelope.annotations : [];
-      const targets = current.elements.filter((element) => (
-        isAssistantArtifact(element) && element.customData && element.customData.semanticElementId
+      const stagedElements = current.elements.map((element) => clone(element));
+      const baselineRefreshable = new Set(stagedElements.filter((element) => (
+        isAssistantArtifact(element) && !assistantElementWasModified(element)
+      )));
+      const associationMutations = new Set();
+      const targets = stagedElements.filter((element) => (
+        !element.isDeleted && isAssistantArtifact(element) && element.customData
+        && element.customData.oraAssistantVisualKind === 'native'
+        && element.customData.semanticElementId
       ));
-      const assistantVisualId = (envelope && envelope.assistant_visual_id)
-        || (targets[0] && targets[0].customData.assistantVisualId)
-        || `assistant:${envelope && envelope.id || assistantKey || 'visual'}`;
-      const revision = current.elements.reduce((value, element) => {
-        const data = element && element.customData;
-        return data && data.assistantVisualId === assistantVisualId
-          ? Math.max(value, Number(data.generationRevision) || 0) : value;
-      }, 0) || 1;
+      const usedIds = new Set(stagedElements.map((element) => element.id));
       const created = [];
       const warnings = [];
+
+      const uniqueId = (value) => {
+        const base = String(value || 'ora-annotation').replace(/[^A-Za-z0-9_-]+/g, '-');
+        let candidate = base;
+        let suffix = 2;
+        while (usedIds.has(candidate)) {
+          candidate = `${base}-${suffix}`;
+          suffix += 1;
+        }
+        usedIds.add(candidate);
+        return candidate;
+      };
+
+      const baseElement = (id, type, bounds, customData) => ({
+        id,
+        type,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        angle: 0,
+        strokeColor: '#1e1e1e',
+        backgroundColor: type === 'rectangle' ? '#fff7cc' : 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        roundness: type === 'rectangle' ? { type: 3 } : null,
+        seed: 1,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        boundElements: [],
+        updated: 1,
+        link: null,
+        locked: false,
+        customData,
+      });
+
+      const attachGroup = (target, elements, groupId) => {
+        const targetGroups = Array.isArray(target.groupIds) ? target.groupIds : [];
+        const groupMembers = targetGroups.length
+          ? targets.filter((candidate) => (
+            candidate.customData.assistantVisualId === target.customData.assistantVisualId
+            && Number(candidate.customData.generationRevision)
+              === Number(target.customData.generationRevision)
+            && Array.isArray(candidate.groupIds)
+            && candidate.groupIds.some((id) => targetGroups.includes(id))
+          ))
+          : [target];
+        groupMembers.forEach((member) => {
+          const groups = Array.isArray(member.groupIds) ? member.groupIds.slice() : [];
+          if (!groups.includes(groupId)) groups.push(groupId);
+          member.groupIds = groups;
+          associationMutations.add(member);
+        });
+        elements.forEach((element) => { element.groupIds = [groupId]; });
+      };
+
+      const addBinding = (element, binding) => {
+        const bindings = Array.isArray(element.boundElements)
+          ? element.boundElements.slice() : [];
+        if (!bindings.some((entry) => entry.id === binding.id)) bindings.push(binding);
+        element.boundElements = bindings;
+        associationMutations.add(element);
+      };
+
+      let applied = 0;
       annotations.forEach((annotation, index) => {
+        if (!annotation || typeof annotation !== 'object') {
+          warnings.push(`Annotation ${index + 1} is not an object`);
+          return;
+        }
+        const kind = String(annotation.kind || '').trim();
+        if (kind !== 'callout' && kind !== 'highlight') {
+          warnings.push(`Native semantic annotation kind '${kind || 'unknown'}' is unsupported`);
+          return;
+        }
         const targetId = annotation && (annotation.target_id || annotation.targetId || annotation.semanticElementId);
-        const target = targets.find((element) => {
+        const matches = targets.filter((element) => {
           const semantic = element.customData.semanticElementId;
           return semantic === targetId || semantic.endsWith(`:node:${targetId}`)
             || element.id === targetId;
         });
+        const target = matches.sort((left, right) => (
+          (Number(right.customData.generationRevision) || 0)
+          - (Number(left.customData.generationRevision) || 0)
+        ))[0];
         if (!target) {
           warnings.push(`No assistant-owned semantic element matched annotation target '${targetId || 'unknown'}'`);
           return;
         }
         const message = String(annotation.text || annotation.label || annotation.note || '').trim();
-        if (!message) {
-          warnings.push(`Annotation ${index + 1} has no text`);
-          return;
-        }
         const targetData = target.customData || {};
-        const semantic = `${targetData.semanticElementId}:annotation:${index}`;
-        const id = `${assistantVisualId}:annotation:${index}:r${revision}`.replace(/[^A-Za-z0-9_-]+/g, '-');
-        const element = {
-          id,
-          type: 'text',
-          x: (Number(target.x) || 0) + (Number(target.width) || 0) + 12,
-          y: Number(target.y) || 0,
-          width: Math.max(120, Math.min(320, message.length * 7 + 20)),
-          height: 28,
-          angle: 0,
-          strokeColor: '#1e1e1e',
-          backgroundColor: '#fff7cc',
-          fillStyle: 'solid',
-          strokeWidth: 1,
-          strokeStyle: 'solid',
-          roughness: 0,
-          opacity: 100,
-          groupIds: [],
-          frameId: null,
-          roundness: { type: 3 },
-          seed: 1,
-          version: 1,
-          versionNonce: 1,
-          isDeleted: false,
-          boundElements: null,
-          updated: 1,
-          link: null,
-          locked: false,
-          text: message,
-          originalText: message,
-          fontSize: 14,
-          fontFamily: 1,
-          textAlign: 'left',
-          verticalAlign: 'middle',
-          containerId: null,
-          autoResize: true,
-          lineHeight: 1.25,
-          customData: {
-            oraAssistantVisual: true,
-            oraAssistantVisualKind: 'annotation',
-            annotationSource: 'model',
-            assistantVisualId,
-            generationRevision: revision,
-            semanticElementId: semantic,
-          },
-        };
-        element.customData.originalGenerationFingerprint = assistantGenerationFingerprint(element);
-        created.push(element);
+        const assistantVisualId = targetData.assistantVisualId
+          || (envelope && envelope.assistant_visual_id)
+          || `assistant:${envelope && envelope.id || assistantKey || 'visual'}`;
+        const revision = Number(targetData.generationRevision) || 1;
+        const annotationKey = `${envelope && envelope.id || assistantKey || 'visual'}:${index}`;
+        const semantic = `${targetData.semanticElementId}:annotation:${annotationKey}`;
+        const metadata = (role) => ({
+          oraAssistantVisual: true,
+          oraAssistantVisualKind: 'annotation',
+          annotationSource: 'model',
+          annotationKind: kind,
+          nativeAnnotationRole: role,
+          annotationTargetSemanticId: targetData.semanticElementId,
+          assistantVisualId,
+          generationRevision: revision,
+          semanticElementId: `${semantic}:${role}`,
+        });
+        const groupId = uniqueId(`${assistantVisualId}:annotation-group:${annotationKey}:r${revision}`);
+        const annotationElements = [];
+        const color = String(annotation.color || (kind === 'highlight' ? '#ff5722' : '#fff4a3'));
+
+        if (kind === 'highlight') {
+          const pad = 6;
+          const highlight = baseElement(
+            uniqueId(`${assistantVisualId}:annotation:${annotationKey}:highlight:r${revision}`),
+            'rectangle',
+            {
+              x: (Number(target.x) || 0) - pad,
+              y: (Number(target.y) || 0) - pad,
+              width: Math.max((Number(target.width) || 0) + pad * 2, 2),
+              height: Math.max((Number(target.height) || 0) + pad * 2, 2),
+            },
+            metadata('highlight')
+          );
+          highlight.strokeColor = color;
+          highlight.backgroundColor = color;
+          highlight.strokeWidth = 3;
+          highlight.strokeStyle = 'dashed';
+          highlight.opacity = 25;
+          annotationElements.push(highlight);
+        } else {
+          const boxWidth = Math.max(80, Math.min(320, message.length * 7 + 24));
+          const boxHeight = 36;
+          const box = baseElement(
+            uniqueId(`${assistantVisualId}:annotation:${annotationKey}:box:r${revision}`),
+            'rectangle',
+            {
+              x: (Number(target.x) || 0) + (Number(target.width) || 0) + 52,
+              y: Number(target.y) || 0,
+              width: boxWidth,
+              height: boxHeight,
+            },
+            metadata('container')
+          );
+          box.backgroundColor = color;
+          box.strokeWidth = 1;
+          annotationElements.push(box);
+
+          if (message) {
+            const label = baseElement(
+              uniqueId(`${assistantVisualId}:annotation:${annotationKey}:text:r${revision}`),
+              'text',
+              { x: box.x + 8, y: box.y + 8, width: box.width - 16, height: 20 },
+              metadata('text')
+            );
+            label.boundElements = null;
+            label.text = message;
+            label.originalText = message;
+            label.fontSize = 14;
+            label.fontFamily = 1;
+            label.textAlign = 'left';
+            label.verticalAlign = 'middle';
+            label.containerId = box.id;
+            label.autoResize = false;
+            label.lineHeight = 1.25;
+            addBinding(box, { id: label.id, type: 'text' });
+            annotationElements.push(label);
+          }
+
+          const start = {
+            x: (Number(target.x) || 0) + (Number(target.width) || 0),
+            y: (Number(target.y) || 0) + (Number(target.height) || 0) / 2,
+          };
+          const end = { x: box.x, y: box.y + box.height / 2 };
+          const origin = { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y) };
+          const connector = baseElement(
+            uniqueId(`${assistantVisualId}:annotation:${annotationKey}:connector:r${revision}`),
+            'arrow',
+            {
+              x: origin.x,
+              y: origin.y,
+              width: Math.max(Math.abs(end.x - start.x), 2),
+              height: Math.max(Math.abs(end.y - start.y), 2),
+            },
+            metadata('connector')
+          );
+          connector.points = [
+            [start.x - origin.x, start.y - origin.y],
+            [end.x - origin.x, end.y - origin.y],
+          ];
+          connector.lastCommittedPoint = connector.points[1];
+          connector.startArrowhead = null;
+          connector.endArrowhead = 'arrow';
+          connector.startBinding = { elementId: target.id, focus: 0, gap: 4, fixedPoint: null };
+          connector.endBinding = { elementId: box.id, focus: 0, gap: 4, fixedPoint: null };
+          connector.boundElements = null;
+          addBinding(target, { id: connector.id, type: 'arrow' });
+          addBinding(box, { id: connector.id, type: 'arrow' });
+          annotationElements.push(connector);
+        }
+
+        attachGroup(target, annotationElements, groupId);
+        annotationElements.forEach((element) => {
+          created.push(element);
+        });
+        applied += 1;
       });
       if (!created.length) {
         return {
           action: 'annotate', unsupported: true, warnings: warnings.concat(
-            'No valid assistant-owned semantic annotation target was found; scene preserved.'
+            'No supported annotation could be applied; scene preserved.'
           ),
         };
       }
       updateExcalidraw({
-        elements: current.elements.concat(created),
+        elements: stagedElements.concat(created),
         appState: current.appState,
         files: current.files,
       });
+      associationMutations.forEach((element) => {
+        if (baselineRefreshable.has(element)) {
+          element.customData.originalGenerationFingerprint = assistantGenerationFingerprint(element);
+        }
+      });
+      created.forEach((element) => {
+        element.customData.originalGenerationFingerprint = assistantGenerationFingerprint(element);
+      });
       await persistExcalidrawMutation(persist);
-      return { action: 'annotate', applied: created.length, warnings };
+      return { action: 'annotate', applied, warnings };
     };
 
     const persistExcalidrawMutation = async (persist) => {

@@ -48,6 +48,7 @@ from canvas_file_format import (  # noqa: E402
     write_json_string,
     write_path,
 )
+import runtime_paths  # noqa: E402
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
@@ -137,10 +138,13 @@ def _make_test_canvas() -> dict:
 # ── Tests ───────────────────────────────────────────────────────────────────
 
 class TestSchemaFileExists(unittest.TestCase):
-    """The schema doc lives at ~/ora/config/schemas/canvas-state.schema.json
-    per WP-7.0.2 deliverable. Confirm it's present and well-formed JSON."""
+    """The schema doc lives below the active runtime configuration root."""
 
     def test_schema_file_present(self) -> None:
+        self.assertEqual(
+            SCHEMA_PATH,
+            runtime_paths.CONFIG_DIR / "schemas" / "canvas-state.schema.json",
+        )
         self.assertTrue(SCHEMA_PATH.exists(), f"schema not found at {SCHEMA_PATH}")
 
     def test_schema_file_parses(self) -> None:

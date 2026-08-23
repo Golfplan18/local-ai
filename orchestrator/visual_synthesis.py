@@ -20,11 +20,14 @@ resolved, JSON-reliable endpoint.
 from __future__ import annotations
 
 import json
-import os
 import re
-from pathlib import Path
 
-SCHEMAS_ROOT = Path(os.path.expanduser("~/ora/config/visual-schemas"))
+try:
+    import runtime_paths as _rp
+except ImportError:  # package import
+    from orchestrator import runtime_paths as _rp
+
+SCHEMAS_ROOT = _rp.CONFIG_DIR / "visual-schemas"
 SCHEMA_VERSION = "0.2"
 
 # Total model calls = 1 + MAX_REPAIR_ROUNDS. Two repairs is enough to converge

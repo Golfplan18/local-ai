@@ -38,7 +38,6 @@ review). The ``boot.py`` integration helper in ``_visual_hook`` runs both.
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -47,6 +46,11 @@ from typing import Any, Callable
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
+
+try:
+    import runtime_paths as _rp
+except ImportError:  # package import
+    from orchestrator import runtime_paths as _rp
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +134,7 @@ def _warn(code: str, message: str, path: str = "") -> Error:
 # Schema loading — once at import time, cached in module globals
 # ---------------------------------------------------------------------------
 
-SCHEMAS_ROOT = Path(os.path.expanduser("~/ora/config/visual-schemas"))
+SCHEMAS_ROOT = _rp.CONFIG_DIR / "visual-schemas"
 KNOWN_MAJOR = 0  # schema_version major we understand; 0.x is current
 
 _ENVELOPE_VALIDATOR: Draft202012Validator | None = None

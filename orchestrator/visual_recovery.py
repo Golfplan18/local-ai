@@ -36,11 +36,14 @@ from __future__ import annotations
 
 import json
 import hashlib
-import os
 import re
-from pathlib import Path
 
-SCHEMAS_ROOT = Path(os.path.expanduser("~/ora/config/visual-schemas"))
+try:
+    import runtime_paths as _rp
+except ImportError:  # package import
+    from orchestrator import runtime_paths as _rp
+
+SCHEMAS_ROOT = _rp.CONFIG_DIR / "visual-schemas"
 
 # Kinds whose spec is just a DSL string (we can wrap the model's own diagram
 # verbatim, no re-authoring needed).

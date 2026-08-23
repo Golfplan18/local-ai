@@ -1579,6 +1579,80 @@ except ImportError:
     pass
 
 
+_VISUAL_NOT_APPLICABLE_REASONS = {
+    "explicit_opt_out": (
+        "Visual output was skipped because the user explicitly opted out."
+    ),
+    "greeting_or_acknowledgement": (
+        "Visual output was not applicable to this greeting or acknowledgement."
+    ),
+    "turn_error": (
+        "Visual output was not applicable because the turn ended in an error."
+    ),
+    "no_relationships": (
+        "Visual output was not applicable because the response contains no "
+        "relationship-bearing content."
+    ),
+}
+
+
+def _visual_exception_outcome(context_pkg: dict | None) -> dict | None:
+    """Return a positively established no-visual outcome, if one exists.
+
+    Only explicit visual exceptions belong here. Lookup, translation, and
+    ordinary analytical routes may still produce relationship-bearing output,
+    so their broader pipeline bypass classifications are deliberately ignored.
+    """
+    if not isinstance(context_pkg, dict):
+        return None
+
+    error_detail = (
+        context_pkg.get("_visual_error_reason")
+        or context_pkg.get("_terminal_input_error")
+    )
+    if (context_pkg.get("_trace_terminal_status") == "error"
+            or context_pkg.get("terminal_status") == "error"
+            or error_detail):
+        reason = _VISUAL_NOT_APPLICABLE_REASONS["turn_error"]
+        if error_detail:
+            reason += " " + str(error_detail).strip()[:300]
+        return {"state": "not_applicable", "reason": reason}
+
+    fallback_origin = context_pkg.get("_visual_fallback_origin")
+    if fallback_origin == "failed_claim_extraction":
+        return {
+            "state": "not_applicable",
+            "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
+            "origin": fallback_origin,
+        }
+
+    pre_routing = context_pkg.get("pre_routing") or {}
+    kind = (
+        context_pkg.get("visual_exception")
+        or (pre_routing.get("visual_exception")
+            if isinstance(pre_routing, dict) else None)
+    )
+    if kind is None:
+        prompt = (
+            context_pkg.get("raw_prompt")
+            or context_pkg.get("cleaned_prompt")
+            or ""
+        )
+        if prompt:
+            try:
+                detected = pre_phase_a_bypass_check(str(prompt))
+            except Exception:
+                detected = None
+            if isinstance(detected, dict):
+                kind = detected.get("visual_exception")
+    if kind not in {"explicit_opt_out", "greeting_or_acknowledgement"}:
+        return None
+    return {
+        "state": "not_applicable",
+        "reason": _VISUAL_NOT_APPLICABLE_REASONS[kind],
+    }
+
+
 def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     """Run the WP-1.6 visual validator + adversarial pass over the response.
 
@@ -1596,6 +1670,17 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     suppression was wrong, no post-hoc audit was possible because the
     record never landed on disk).
     """
+    exception_outcome = _visual_exception_outcome(context_pkg)
+    if exception_outcome is not None:
+        if isinstance(context_pkg, dict):
+            context_pkg["visual_diagnostics"] = {"visuals": []}
+            context_pkg["_visual_outcome"] = exception_outcome
+        if not response:
+            return response
+        try:
+            return _strip_visual_blocks_and_markers(response)
+        except Exception:
+            return response
     if not VISUAL_HOOK_AVAILABLE or not response:
         return response
     trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
@@ -1832,7 +1917,7 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         elif context_pkg.get("_visual_fallback_origin") == "failed_claim_extraction":
             context_pkg["_visual_outcome"] = {
                 "state": "not_applicable",
-                "reason": "This response contains no relationship-bearing propositions.",
+                "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
             }
         elif _mode_target_types(mode, (context_pkg or {}).get("visual_kind")):
             context_pkg["_visual_outcome"] = {
@@ -1843,7 +1928,7 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         else:
             context_pkg["_visual_outcome"] = {
                 "state": "not_applicable",
-                "reason": "This response contains no relationship-bearing content.",
+                "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
             }
         if context_pkg.get("_visual_fallback_origin"):
             context_pkg["_visual_outcome"]["origin"] = context_pkg[
@@ -4261,7 +4346,12 @@ def load_educational_name(mode_id: str) -> str | None:
 #   - STRONG_BYPASS: always wins over analytical signals (system commands,
 #     prior-conversation references, factual lookups)
 #   - WEAK_BYPASS: loses to strong analytical signals (greetings, ack)
-STRONG_BYPASS_TRIGGERS = [
+EXPLICIT_ANALYSIS_OPT_OUT_TRIGGERS = [
+    "don't analyze", "do not analyze", "no analysis",
+    "skip the analysis", "no need to analyze", "without analysis",
+]
+
+STRONG_BYPASS_TRIGGERS = EXPLICIT_ANALYSIS_OPT_OUT_TRIGGERS + [
     # factual / lookup — answerable from system state or training, no RAG needed
     "what time", "what's the date", "what's the time",
     "what time is it", "what's today", "what day is it",
@@ -4283,9 +4373,6 @@ STRONG_BYPASS_TRIGGERS = [
     # mechanical translation / formatting
     "translate this", "spell-check", "spell check",
     "fix the spelling", "fix the grammar", "fix the typo",
-    # explicit user opt-out from the analytical pipeline
-    "don't analyze", "do not analyze", "no analysis",
-    "skip the analysis", "no need to analyze", "without analysis",
 ]
 
 WEAK_BYPASS_TRIGGERS = [
@@ -5493,11 +5580,14 @@ def _check_strong_bypass(prompt: str) -> dict | None:
     for trigger in STRONG_BYPASS_TRIGGERS:
         stripped = trigger.strip()
         if _signal_present(prompt, stripped) and not _is_negated(prompt, stripped):
-            return {
+            result = {
                 "bypass_to_direct_response": True,
                 "matches": [],
                 "rationale": f"strong bypass trigger: '{stripped}'",
             }
+            if stripped in EXPLICIT_ANALYSIS_OPT_OUT_TRIGGERS:
+                result["visual_exception"] = "explicit_opt_out"
+            return result
     return None
 
 
@@ -5572,6 +5662,7 @@ def _check_weak_bypass(prompt: str) -> dict | None:
                 "bypass_to_direct_response": True,
                 "matches": [],
                 "rationale": f"weak bypass trigger: '{stripped}'",
+                "visual_exception": "greeting_or_acknowledgement",
             }
     return None
 
@@ -7448,6 +7539,7 @@ def run_pre_routing_pipeline(prompt: str,
             "confidence": "n/a",
             "completeness_gaps": [],
             "dispatch_announcement": None,
+            "visual_exception": s1.get("visual_exception"),
         }
 
     # Gear 2 RAG dispatch: retrieval-needed information request with no
@@ -8057,6 +8149,7 @@ def run_step1_cleanup(raw_prompt: str, conversation_context: str,
                 "stage1_match_count": 0,
                 "pre_phase_a_bypass": True,
                 "pre_phase_a_rationale": early_bypass["rationale"],
+                "visual_exception": early_bypass.get("visual_exception"),
             },
         }
         if PIPELINE_TRACE_AVAILABLE:
@@ -8458,6 +8551,10 @@ AMBIGUITY_MODE: {ambiguity_mode}
         "lighter_sibling_mode_id": routing.get("lighter_sibling_mode_id"),
         "confidence": routing.get("confidence", "low"),
         "stage1_match_count": len(routing.get("stage1_output", {}).get("matches", [])),
+        "visual_exception": (
+            routing.get("visual_exception")
+            or (routing.get("stage1_output") or {}).get("visual_exception")
+        ),
     }
 
     # --- Trace: pre-routing pipeline decisions ---

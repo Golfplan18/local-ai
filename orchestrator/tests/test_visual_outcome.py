@@ -15,6 +15,149 @@ import boot  # noqa: E402
 
 
 class VisualOutcomePersistenceTests(unittest.TestCase):
+    def test_positive_exceptions_skip_visual_recovery_and_synthesis(self):
+        contexts = [
+            {
+                "cleaned_prompt": "Don't analyze this; just answer.",
+                "mode_name": "simple",
+                "pre_routing": {"visual_exception": "explicit_opt_out"},
+            },
+            {
+                "cleaned_prompt": "Hi there!",
+                "mode_name": "simple",
+                "pre_routing": {
+                    "visual_exception": "greeting_or_acknowledgement",
+                },
+            },
+        ]
+        reasons = []
+        with mock.patch.object(boot, "_maybe_recover_visual") as recover, \
+             mock.patch.object(boot, "_maybe_synthesize_visual") as synthesize, \
+             mock.patch.object(boot, "_maybe_build_concept_map") as fallback:
+            for context in contexts:
+                self.assertEqual(boot._run_visual_hook("Short response.", context),
+                                 "Short response.")
+                self.assertEqual(context["_visual_outcome"]["state"],
+                                 "not_applicable")
+                reasons.append(context["_visual_outcome"]["reason"])
+        recover.assert_not_called()
+        synthesize.assert_not_called()
+        fallback.assert_not_called()
+        self.assertNotEqual(reasons[0], reasons[1])
+
+    def test_lookup_translation_and_analysis_are_not_visual_exceptions(self):
+        contexts = [
+            {
+                "cleaned_prompt": "Translate this paragraph into French.",
+                "mode_name": "simple",
+                "pre_routing": boot.run_pre_routing_pipeline(
+                    "Translate this paragraph into French."
+                ),
+            },
+            {
+                "cleaned_prompt": "Explain how the service depends on the database.",
+                "mode_name": "causal-dag",
+                "pre_routing": {},
+            },
+        ]
+        with mock.patch.object(
+            boot, "_maybe_recover_visual", return_value=(None, None)
+        ), mock.patch.object(
+            boot,
+            "_maybe_synthesize_visual",
+            return_value=("response with visual", {"blocked": False}),
+        ) as synthesize:
+            for context in contexts:
+                boot._run_visual_hook("Relationship-bearing response.", context)
+        self.assertEqual(synthesize.call_count, 2)
+
+    def test_error_and_no_relationship_reasons_are_distinct(self):
+        error_context = {
+            "cleaned_prompt": "Explain this.",
+            "mode_name": "simple",
+            "_trace_terminal_status": "error",
+        }
+        no_relation_context = {
+            "cleaned_prompt": "State the isolated fact.",
+            "mode_name": "simple",
+            "_visual_fallback_origin": "failed_claim_extraction",
+        }
+        boot._run_visual_hook("Endpoint failed.", error_context)
+        with mock.patch.object(
+            boot, "_maybe_recover_visual", return_value=(None, None)
+        ) as recover, mock.patch.object(
+            boot, "_maybe_synthesize_visual", return_value=(None, None)
+        ) as synthesize, mock.patch.object(
+            boot, "_maybe_build_concept_map", return_value=(None, None)
+        ) as fallback:
+            boot._run_visual_hook("One isolated fact.", no_relation_context)
+        recover.assert_not_called()
+        synthesize.assert_not_called()
+        fallback.assert_not_called()
+        self.assertEqual(error_context["_visual_outcome"]["state"],
+                         "not_applicable")
+        self.assertEqual(no_relation_context["_visual_outcome"]["state"],
+                         "not_applicable")
+        self.assertNotEqual(error_context["_visual_outcome"]["reason"],
+                            no_relation_context["_visual_outcome"]["reason"])
+
+    def test_direct_error_reason_reaches_persistence_context(self):
+        from server import app as server_app
+        import conversation_memory as server_memory
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            conversation_id = "visual-direct-error"
+            context = {}
+            endpoint = {"name": "configured", "type": "api"}
+            direct_step = {
+                "mode": "standard",
+                "triage_tier": 1,
+                "classification_confidence": "high",
+                "detected_invocation": "",
+                "pre_routing": {
+                    "bypass_to_direct_response": True,
+                    "pending_clarification": None,
+                    "dispatched_mode_id": None,
+                },
+            }
+            with mock.patch.object(
+                memory, "_DEFAULT_SESSIONS_ROOT", root,
+            ), mock.patch.object(
+                server_memory, "_DEFAULT_SESSIONS_ROOT", root,
+            ), mock.patch.object(
+                server_app, "load_config", return_value={},
+            ), mock.patch.object(
+                server_app, "get_endpoint",
+                side_effect=[endpoint, endpoint, None],
+            ), mock.patch.object(
+                server_app, "run_step1_cleanup", return_value=direct_step,
+            ), mock.patch(
+                "orchestrator.pipeline_trace.start_trace", return_value=None,
+            ):
+                reply = server_app._invoke_pipeline_unlocked(
+                    "Hi", [], conversation_id, False,
+                    extra_context=context,
+                )
+
+            payload = json.loads(reply[0] if isinstance(reply, tuple) else reply)
+            durable = memory.load_conversation_json(
+                conversation_id, sessions_root=root,
+            )
+        self.assertEqual(payload["status"], "errored")
+        self.assertIn("No AI endpoints configured", payload["failure_summary"])
+        self.assertEqual(context["_visual_outcome"]["state"], "not_applicable")
+        self.assertIn("error", context["_visual_outcome"]["reason"].lower())
+        self.assertEqual(durable["last_status"], "errored")
+        self.assertEqual(
+            durable["messages"][-1]["visual_outcome"]["state"],
+            "not_applicable",
+        )
+        self.assertIn(
+            "error",
+            durable["messages"][-1]["visual_outcome"]["reason"].lower(),
+        )
+
     def test_bypass_context_carries_terminal_outcome_to_persistence(self):
         from server import app as server_app
 

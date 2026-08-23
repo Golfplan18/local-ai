@@ -1942,6 +1942,7 @@ def mark_conversation_errored(
     timestamp: str | None = None,
     interrupted_input: str | None = None,
     interrupted_submission_id: str | None = None,
+    visual_outcome: dict[str, Any] | None = None,
 ) -> Path | None:
     """Mark a conversation's most recent run as errored on its envelope.
 
@@ -1950,7 +1951,9 @@ def mark_conversation_errored(
     off conversation.json envelopes — so we mirror the error state on
     the envelope: ``last_status: "errored"`` + ``last_error_summary``. When
     the authoritative append failed, ``interrupted_input`` also preserves the
-    exact unacknowledged prompt for the existing retry path.
+    exact unacknowledged prompt for the existing retry path. When the failed
+    turn still has a building assistant placeholder, ``visual_outcome``
+    completes that same record inside this envelope mutation.
 
     The list endpoint then groups conversations with that status into
     an Errored group, and the sidebar UI surfaces retry + dismiss
@@ -1962,6 +1965,7 @@ def mark_conversation_errored(
     from datetime import datetime as _dt
 
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    clean_visual_outcome = _normalize_visual_outcome(visual_outcome)
 
     def mutate(data: dict[str, Any]) -> None:
         errored_at = timestamp or _dt.now().isoformat(timespec="seconds")
@@ -1973,6 +1977,19 @@ def mark_conversation_errored(
             data["interrupted_at"] = errored_at
             if interrupted_submission_id:
                 data["interrupted_submission_id"] = interrupted_submission_id
+        if clean_visual_outcome is not None:
+            messages = data.get("messages")
+            if isinstance(messages, list):
+                for message in reversed(messages):
+                    if not (isinstance(message, dict)
+                            and message.get("role") == "assistant"):
+                        continue
+                    if ((message.get("visual_outcome") or {}).get("state")
+                            == "building"):
+                        message["visual_outcome"] = copy.deepcopy(
+                            clean_visual_outcome
+                        )
+                    break
 
     return _mutate_conversation_envelope(conversation_id, root, mutate)
 
