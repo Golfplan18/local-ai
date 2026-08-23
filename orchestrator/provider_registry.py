@@ -51,6 +51,7 @@ GROUP_ORDER = [
     ("search",        "Web search"),
     ("metadata",      "Model intelligence"),
     ("econ",          "Economic data"),
+    ("communications", "Communications"),
     ("transcription", "Transcription"),
     ("tts",           "Text-to-speech"),
     ("image",         "Image & video"),
@@ -273,6 +274,19 @@ PROVIDERS: list[dict] = [
         "key_prefix": None, "essential": False, "auto_activate": True,
         "dispatch": None, "native_service": None, "base_url": None, "or_prefix": None,
         "verifiable": True, "note": "Free. Economic time-series for charts / analyses.",
+    },
+
+    # ── Communications (G1.21: one manual outbound email action) ────────
+    {
+        "id": "fastmail", "label": "Fastmail", "category": "communications",
+        "keyring_username": "fastmail-api-key", "env_var": None,
+        "signup_url": "https://www.fastmail.com/signup/",
+        "console_url": "https://app.fastmail.com/settings/security/tokens",
+        "key_prefix": None, "essential": False, "auto_activate": False,
+        "dispatch": None, "native_service": None,
+        "base_url": "https://api.fastmail.com/jmap/session", "or_prefix": None,
+        "verifiable": False,
+        "note": "Manual outbound email only; the API token stays in the system keyring.",
     },
 
     # ── Transcription (explicit provider choice; not silent default) ─────

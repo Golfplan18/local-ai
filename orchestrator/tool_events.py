@@ -196,6 +196,12 @@ ACTION_MANIFEST: dict[str, dict] = {
     "engram_git_push": {"category": "write", "mutability": "external_write",
                         "sensitivity": "private", "egress": "external",
                         "enforcement": "in_harness"},
+    # G1.21's sole outbound channel action.  The actual one-shot human gate
+    # is bound by system_protection.authorize_channel_action; this manifest
+    # entry only keeps the mechanically recorded event classified honestly.
+    "email_send": {"category": "execute", "mutability": "irreversible",
+                    "sensitivity": "private", "egress": "external",
+                    "enforcement": "in_harness", "user_initiated": True},
     # Execution Review Phase 8 (Chunk A): the pipeline's own web reads are
     # recorded by the library guard in tools/web_search.py / tools/web_fetch.py
     # (design §2.3, judge OQ-5 condition). Axes MATCH dispatcher.TOOL_REGISTRY's

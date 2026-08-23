@@ -6,5 +6,15 @@
   "chat_endpoint": "/chat",
   "default_model": "MODEL_SLUG",
   "boot_spec": "YOUR_WORKSPACE/boot/boot.md",
+  "channel": {
+    "email": {
+      "enabled": false,
+      "mask_mailbox": "agent@example.com",
+      "draft_folder": "Drafts",
+      "recipient_allowlist": [],
+      "attachment_policy": "none",
+      "endpoint_base_url": "https://api.fastmail.com/jmap/session"
+    }
+  },
   "version": "3.0"
 }

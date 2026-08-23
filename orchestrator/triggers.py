@@ -58,7 +58,7 @@ except ImportError:  # pragma: no cover - package import context
 SCHEMA_VERSION = 1
 
 CAUSES = ("manual", "file_change", "calendar", "trigger_completion")
-ACTION_KINDS = ("project_tool", "framework")
+ACTION_KINDS = ("project_tool", "framework", "email_send")
 STATUSES = ("draft", "active", "paused", "retired")
 CADENCES = ("daily", "weekly")
 MISSED_POLICIES = ("run_once", "skip")
@@ -416,10 +416,19 @@ def _validate_action(raw: Any) -> dict:
         if raw.get("project_nexus"):
             action["project_nexus"] = _safe_id(raw["project_nexus"], "project_nexus")
         return action
+    if kind == "email_send":
+        try:
+            try:
+                from email_channel import normalize_action
+            except ImportError:  # pragma: no cover - package import context
+                from orchestrator.email_channel import normalize_action
+            return normalize_action(raw)
+        except Exception as exc:
+            raise TriggerInputRequired(str(exc)) from exc
     raise TriggerInputRequired(
-        "action kind must be project_tool or framework. A literal command is not "
-        "accepted: declare the script once as a project tool in an "
-        "ora-project.json manifest, then name it here."
+        "action kind must be project_tool, framework, or email_send. A literal "
+        "command is not accepted: declare the script once as a project tool in "
+        "an ora-project.json manifest, then name it here."
     )
 
 
@@ -451,13 +460,18 @@ def normalize_spec(raw: Mapping[str, Any]) -> dict:
         raise TriggerInputRequired(
             "only a calendar Trigger carries a runtime-impossibility justification"
         )
+    action = _validate_action(raw.get("action"))
+    if action["kind"] == "email_send" and cause != "manual":
+        raise TriggerInputRequired(
+            "email_send is manual-only in this slice; use cause=manual"
+        )
     return {
         "schema_version": SCHEMA_VERSION,
         "trigger_id": _safe_id(raw.get("trigger_id"), "trigger_id"),
         "name": _safe_text(raw.get("name"), "name", limit=200),
         "cause": cause,
         "condition": _validate_condition(cause, raw.get("condition")),
-        "action": _validate_action(raw.get("action")),
+        "action": action,
         "runtime_justification": justification or None,
         "principal_id": _safe_id(
             raw.get("principal_id") or "principal:user", "principal_id"),
@@ -523,6 +537,23 @@ def resolve_action_binding(action: Mapping[str, Any]) -> dict:
             "path": identity["path"],
             "command_digest": "sha256:" + identity["sha256"],
         }
+    if kind == "email_send":
+        try:
+            try:
+                from email_channel import prepare_message
+            except ImportError:  # pragma: no cover - package import context
+                from orchestrator.email_channel import prepare_message
+            message = prepare_message(action)
+        except Exception as exc:
+            raise TriggerConflict(f"email message is not usable: {exc}") from exc
+        return {
+            "kind": kind,
+            "provider": "fastmail",
+            "message_digest": message.digest,
+            "mime_digest": "sha256:" + hashlib.sha256(message.mime).hexdigest(),
+            "persona_id": message.persona_id,
+            "persona_name": message.persona_name,
+        }
     raise TriggerInputRequired(f"unknown action kind {kind!r}")
 
 
@@ -555,6 +586,9 @@ def _resolution_note(spec: Mapping[str, Any]) -> str:
     if action["kind"] == "project_tool":
         args = " ".join(action.get("args") or [])
         return f"project tool {action['nexus']}:{action['tool']} {args}".strip()
+    if action["kind"] == "email_send":
+        return (f"email via Fastmail to {', '.join(action['to'])}: "
+                f"{action['subject']}")
     return f"framework {action['framework']}"
 
 
@@ -600,6 +634,21 @@ class TriggerService:
         record = self._require(_safe_id(trigger_id, "trigger_id"))
         return _record_view(record, firings=self.firings(
             record["spec"]["trigger_id"], limit=firing_limit))
+
+    def inspect(self, trigger_id: str) -> dict:
+        """Return the exact local email message, without provider contact."""
+        record = self._require(_safe_id(trigger_id, "trigger_id"))
+        action = record["spec"]["action"]
+        if action["kind"] != "email_send":
+            raise TriggerConflict("only an email Trigger has an exact message to inspect")
+        try:
+            try:
+                from email_channel import inspect_message
+            except ImportError:  # pragma: no cover - package import context
+                from orchestrator.email_channel import inspect_message
+            return inspect_message(action)
+        except Exception as exc:
+            raise TriggerConflict(f"email message is not usable: {exc}") from exc
 
     def _require(self, trigger_id: str) -> dict:
         with _PROCESS_LOCK, _exclusive():
@@ -808,6 +857,45 @@ class TriggerService:
             self._arm_calendar(trigger_id)
         return self.get(trigger_id)
 
+    def rollback(self, trigger_id: str) -> dict:
+        """Cancel an unsent email and retire its Trigger.
+
+        Once a successful firing has crossed the provider boundary there is
+        no recall promise; the caller must resolve that state rather than
+        pretending rollback can undo an external send.
+        """
+        trigger_id = _safe_id(trigger_id, "trigger_id")
+        # Keep run admission, authority revocation, and retirement under one
+        # process lock.  A run claims its EventLedger row and enters _RUNNING
+        # under the same lock in _fire, so this cannot retire between a run's
+        # admission check and approval consumption.
+        with _PROCESS_LOCK:
+            record = self._require(trigger_id)
+            action = record["spec"]["action"]
+            if action["kind"] != "email_send":
+                raise TriggerConflict("rollback is only available for email Triggers")
+            if _RUNNING.get(trigger_id):
+                raise TriggerConflict(
+                    "this email send is still running; rollback cannot race it"
+                )
+            for firing in self.firings(trigger_id, limit=0):
+                receipt = firing.get("receipt") or {}
+                if receipt.get("provider_contacted"):
+                    raise TriggerConflict(
+                        "this email has reached the provider; rollback cannot recall it"
+                    )
+            try:
+                try:
+                    from email_channel import rollback_authority
+                except ImportError:  # pragma: no cover - package import context
+                    from orchestrator.email_channel import rollback_authority
+                authority = rollback_authority(action, trigger_id)
+            except Exception as exc:
+                raise TriggerConflict(f"email approval rollback failed: {exc}") from exc
+            view = self.lifecycle(trigger_id, "retire")
+        view["rollback"] = authority
+        return view
+
     # ---- calendar arming ----
 
     def _cancel_deadline(self, key: str | None, reason: str) -> None:
@@ -971,27 +1059,33 @@ class TriggerService:
               *, forced_receipt: dict | None = None,
               extra_receipt: dict | None = None) -> dict:
         """Claim one firing in the shared ledger, then run it off-lane."""
-        spec = record["spec"]
-        trigger_id = spec["trigger_id"]
-        subject = {
-            "trigger_id": trigger_id,
-            "spec_digest": _digest(spec),
-            "cause": cause,
-            "source": copy.deepcopy(dict(source)),
-        }
-        event_id = event_identity(FIRING_EVENT_TYPE, subject)
         ledger = self.ledger
-        claim, created = ledger.claim(
-            event_id=event_id, event_type=FIRING_EVENT_TYPE, subject=subject)
-        if not created:
-            return {"event_id": event_id, "status": claim.get("status"),
-                    "duplicate": True}
-        if forced_receipt is not None:
-            ledger.transition(event_id, {"claimed"}, "completed",
-                              receipt=forced_receipt, completed_at=_now())
-            return {"event_id": event_id, "status": "completed",
-                    "receipt": forced_receipt}
         with _PROCESS_LOCK:
+            # Re-read under the same lock used by rollback.  The caller's
+            # earlier view may have been retired while it was preparing this
+            # firing, and must not be allowed to mint a claim afterward.
+            trigger_id = record["spec"]["trigger_id"]
+            current = self._require(trigger_id)
+            if current.get("status") == "retired":
+                raise TriggerConflict("a retired Trigger cannot be fired")
+            spec = current["spec"]
+            subject = {
+                "trigger_id": trigger_id,
+                "spec_digest": _digest(spec),
+                "cause": cause,
+                "source": copy.deepcopy(dict(source)),
+            }
+            event_id = event_identity(FIRING_EVENT_TYPE, subject)
+            claim, created = ledger.claim(
+                event_id=event_id, event_type=FIRING_EVENT_TYPE, subject=subject)
+            if not created:
+                return {"event_id": event_id, "status": claim.get("status"),
+                        "duplicate": True}
+            if forced_receipt is not None:
+                ledger.transition(event_id, {"claimed"}, "completed",
+                                  receipt=forced_receipt, completed_at=_now())
+                return {"event_id": event_id, "status": "completed",
+                        "receipt": forced_receipt}
             already = _RUNNING.get(trigger_id)
             if already:
                 receipt = {
@@ -1028,7 +1122,18 @@ class TriggerService:
                         "has changed since it was approved. Re-review and "
                         "re-activate it."
                     )
-            receipt = _execute_action(spec["action"], binding)
+            # The Trigger identity scopes the email approval request but is
+            # not part of the provider binding digest itself.
+            if spec["action"]["kind"] == "email_send":
+                binding = {**binding, "trigger_id": trigger_id}
+            receipt = _execute_action(
+                spec["action"], binding,
+                on_provider_contact=lambda: ledger.transition(
+                    event_id, {"claimed"}, "claimed",
+                    receipt={"outcome": "sending", "provider_contacted": True},
+                    provider_contacted=True,
+                ),
+            )
             if extra_receipt:
                 receipt.update(extra_receipt)
             ledger.transition(event_id, {"claimed"}, "completed",
@@ -1114,7 +1219,10 @@ def _spawn_firing_thread(work: Callable[[], None]) -> None:
     threading.Thread(target=work, daemon=True, name="ora-trigger-firing").start()
 
 
-def _execute_action(action: Mapping[str, Any], binding: Mapping[str, Any]) -> dict:
+def _execute_action(
+    action: Mapping[str, Any], binding: Mapping[str, Any], *,
+    on_provider_contact: Callable[[], None] | None = None,
+) -> dict:
     """Run one already-authenticated unit of work and describe the result."""
     started = time.time()
     if action["kind"] == "project_tool":
@@ -1159,6 +1267,23 @@ def _execute_action(action: Mapping[str, Any], binding: Mapping[str, Any]) -> di
             "duration_seconds": round(time.time() - started, 3),
             "output_excerpt": _excerpt(getattr(result, "final_output", "")),
         }
+    if action["kind"] == "email_send":
+        try:
+            try:
+                from email_channel import send_trigger
+            except ImportError:  # pragma: no cover - package import context
+                from orchestrator.email_channel import send_trigger
+            result = send_trigger(
+                action, binding.get("trigger_id") or "",
+                on_provider_contact=on_provider_contact,
+            )
+        except Exception:
+            # The caller adds the Trigger id to the binding only for this
+            # local dispatch seam. Keep the fallback explicit for direct
+            # helper tests that call _execute_action with a bare binding.
+            raise
+        result["duration_seconds"] = round(time.time() - started, 3)
+        return result
     raise TriggerInputRequired(f"unknown action kind {action['kind']!r}")
 
 
@@ -1212,6 +1337,14 @@ def available_actions() -> dict:
     return {
         "project_tools": tools,
         "frameworks": frameworks,
+        # G1.21 intentionally exposes one channel action.  It is manual-only
+        # and is created with an exact message payload, then inspected locally
+        # before its first provider call.
+        "channel_actions": [{
+            "kind": "email_send", "provider": "fastmail",
+            "cause": "manual",
+            "description": "Send one exact, Persona-disclosed email via Fastmail/JMAP",
+        }],
         "watch_roots": _watch_roots(),
         "intermittency": INTERMITTENCY_NOTICE,
     }
