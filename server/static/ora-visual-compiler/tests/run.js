@@ -375,7 +375,7 @@ function runStandaloneSuite(label, relativePath) {
       spec: {
         dsl: [
           'dag {',
-          '  Exposure [exposure]',
+          '  Exposure [outcome,exposure,adjusted]',
           '  Outcome [outcome]',
           '  BareNode',
           '  ReverseNode',
@@ -401,10 +401,14 @@ function runStandaloneSuite(label, relativePath) {
       element.customData && element.customData.dagOperator === operator
     ));
     const exposure = dagGraph.nodes.find((node) => node.id === 'Exposure');
+    const exposureRoles = exposure && Array.isArray(exposure.dagRoles)
+      ? exposure.dagRoles : [];
     record('native DAG uses roles as metadata and retains bare-node labels',
       dagGraph.nodes.some((node) => node.id === 'BareNode' && node.label === 'BareNode')
       && exposure && exposure.label === 'Exposure'
-      && Array.isArray(exposure.dagRoles) && exposure.dagRoles.includes('exposure')
+      && exposure.kind === 'exposure'
+      && exposureRoles.length === 3
+      && ['exposure', 'outcome', 'adjusted'].every((role) => exposureRoles.includes(role))
       && !dagGraph.nodes.some((node) => node.label === 'exposure' || node.label === 'outcome'));
     record('native DAG parser retains forward, reverse, bidirectional, and undirected edges',
       dagGraph.edges.some((edge) => edge.from === 'Exposure' && edge.to === 'Outcome'

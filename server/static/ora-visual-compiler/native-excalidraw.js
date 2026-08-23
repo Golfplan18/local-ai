@@ -135,15 +135,19 @@
           { operator: entry.op }
         );
       });
-      if (spec.focal_exposure) {
-        node(spec.focal_exposure, spec.focal_exposure, 'exposure', {
-          dagRoles: ['exposure'],
+      function focalDagNode(id, role) {
+        var existing = nodes.find(function (entry) { return entry.id === id; });
+        var roles = existing && Array.isArray(existing.dagRoles) ? existing.dagRoles : [];
+        if (existing) existing.kind = role;
+        node(id, id, role, {
+          dagRoles: Array.from(new Set(roles.concat(role))),
         });
       }
+      if (spec.focal_exposure) {
+        focalDagNode(spec.focal_exposure, 'exposure');
+      }
       if (spec.focal_outcome) {
-        node(spec.focal_outcome, spec.focal_outcome, 'outcome', {
-          dagRoles: ['outcome'],
-        });
+        focalDagNode(spec.focal_outcome, 'outcome');
       }
     } else if (type === 'fishbone') {
       var effect = node('effect', spec.effect, 'effect');
@@ -315,6 +319,26 @@
 
   function generationFingerprint(element) {
     var roundness = element && element.roundness;
+    var boundElements = Array.isArray(element && element.boundElements)
+      ? element.boundElements.map(function (binding) {
+        return {
+          id: String(binding && binding.id || ''),
+          type: String(binding && binding.type || ''),
+        };
+      }).sort(function (left, right) {
+        return (left.type + '\u0000' + left.id).localeCompare(right.type + '\u0000' + right.id);
+      })
+      : [];
+    function pointBinding(binding) {
+      if (!binding || typeof binding !== 'object') return null;
+      return {
+        elementId: binding.elementId || null,
+        focus: Number(binding.focus) || 0,
+        gap: Number(binding.gap) || 0,
+        fixedPoint: Array.isArray(binding.fixedPoint)
+          ? binding.fixedPoint.slice() : (binding.fixedPoint || null),
+      };
+    }
     return JSON.stringify({
       x: Number(element.x) || 0,
       y: Number(element.y) || 0,
@@ -343,6 +367,13 @@
       lineHeight: Number(element.lineHeight) || 0,
       autoResize: element.autoResize === true,
       containerId: element.containerId || null,
+      boundElements: boundElements.length ? boundElements : null,
+      startBinding: pointBinding(element && element.startBinding),
+      endBinding: pointBinding(element && element.endBinding),
+      groupIds: Array.isArray(element && element.groupIds)
+        ? element.groupIds.map(String) : [],
+      frameId: element && element.frameId || null,
+      index: element && element.index == null ? null : String(element.index),
       link: element.link || null,
       startArrowhead: element.startArrowhead || null,
       endArrowhead: element.endArrowhead || null,
@@ -400,7 +431,7 @@
         owned(entry.kind, semantic, semanticMetadata(entry))
       );
       nodeElement.groupIds = [groupId + '-' + safe(entry.id)];
-      elements.push(tagFingerprint(nodeElement));
+      elements.push(nodeElement);
       byId[entry.id] = { element: nodeElement, bounds: bounds, semantic: semantic };
 
       var label = baseElement(
@@ -419,7 +450,7 @@
       label.autoResize = false;
       label.lineHeight = 1.25;
       label.groupIds = nodeElement.groupIds.slice();
-      elements.push(tagFingerprint(label));
+      elements.push(label);
       nodeElement.boundElements.push({ id: label.id, type: 'text' });
     });
 
@@ -473,10 +504,12 @@
       arrow.startBinding = { elementId: from.element.id, focus: 0, gap: 4, fixedPoint: null };
       arrow.endBinding = { elementId: to.element.id, focus: 0, gap: 4, fixedPoint: null };
       arrow.boundElements = null;
-      elements.push(tagFingerprint(arrow));
+      elements.push(arrow);
       from.element.boundElements.push({ id: arrow.id, type: 'arrow' });
       to.element.boundElements.push({ id: arrow.id, type: 'arrow' });
     });
+
+    elements.forEach(tagFingerprint);
 
     var maxX = 0;
     var maxY = 0;

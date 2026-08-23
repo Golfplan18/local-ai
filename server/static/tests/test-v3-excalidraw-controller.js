@@ -833,6 +833,43 @@ const exportThroughMenu = async (format) => {
       || !annotateResult[0].warnings[0].includes('switch to Konva')) {
     throw new Error('unsupported Excalidraw annotate was not reported while preserving the scene exactly');
   }
+  const renderedArtifactTarget = artifactsAfterModifiedUpdate[0];
+  const sceneBeforeRenderedArtifactAnnotate = JSON.stringify({
+    elements: api.elements, appState: api.appState, files: api.files,
+  });
+  const draftBeforeRenderedArtifactAnnotate = drafts.get('target-dialogue');
+  const draftsBeforeRenderedArtifactAnnotate = calls.filter(
+    (call) => call.url === '/api/canvas/draft' && call.method === 'POST'
+  ).length;
+  const renderedArtifactAnnotateResult = await w.OraPanels.visual.onBridgeUpdate({
+    envelope: {
+      id: 'rendered-artifact-annotate',
+      type: 'concept_map',
+      canvas_action: 'annotate',
+      annotations: [{
+        target_id: renderedArtifactTarget.customData.semanticElementId,
+        kind: 'callout',
+        text: 'Must not attach to the rendered artifact',
+      }],
+    },
+    ora_visual_dispatch_key: 'actions#rendered-artifact-annotate',
+  });
+  const renderedArtifactWarnings = renderedArtifactAnnotateResult[0]
+    && renderedArtifactAnnotateResult[0].warnings;
+  if (JSON.stringify({ elements: api.elements, appState: api.appState, files: api.files })
+        !== sceneBeforeRenderedArtifactAnnotate
+      || drafts.get('target-dialogue') !== draftBeforeRenderedArtifactAnnotate
+      || calls.filter((call) => call.url === '/api/canvas/draft'
+        && call.method === 'POST').length !== draftsBeforeRenderedArtifactAnnotate
+      || !renderedArtifactAnnotateResult[0]
+      || renderedArtifactAnnotateResult[0].unsupported !== true
+      || !Array.isArray(renderedArtifactWarnings)
+      || !renderedArtifactWarnings.some((warning) => warning.includes(
+        'No assistant-owned semantic element matched annotation target'
+      ))
+      || !renderedArtifactWarnings.some((warning) => warning.includes('scene preserved'))) {
+    throw new Error('rendered assistant artifact accepted a semantic annotation or changed scene/draft');
+  }
   await w.OraPanels.visual.onBridgeUpdate({
     envelope: { id: 'explicit-replace', type: 'comparison', canvas_action: 'replace' },
     ora_visual_dispatch_key: 'actions#replace',
@@ -901,10 +938,152 @@ const exportThroughMenu = async (format) => {
       ))) {
     throw new Error('native structural visual did not install editable owned objects with bound initial arrows');
   }
-
   const fingerprint = w.OraVisualCompiler.nativeExcalidraw.generationFingerprint;
+
+  const nativeAnnotationResult = await w.OraPanels.visual.onBridgeUpdate({
+    envelope: {
+      id: 'native-annotations',
+      type: 'concept_map',
+      canvas_action: 'annotate',
+      annotations: [
+        { target_id: 'A', kind: 'highlight', color: '#ff5722' },
+        { target_id: 'B', kind: 'callout', text: 'Keep this connected' },
+      ],
+    },
+    ora_visual_dispatch_key: 'native#annotations',
+  });
+  const nativeAnnotations = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'annotation');
+  const highlight = nativeAnnotations.find((element) => (
+    element.customData.annotationKind === 'highlight'
+  ));
+  const calloutBox = nativeAnnotations.find((element) => (
+    element.customData.annotationKind === 'callout'
+    && element.customData.nativeAnnotationRole === 'container'
+  ));
+  const calloutText = nativeAnnotations.find((element) => (
+    element.customData.annotationKind === 'callout'
+    && element.customData.nativeAnnotationRole === 'text'
+  ));
+  const calloutConnector = nativeAnnotations.find((element) => (
+    element.customData.annotationKind === 'callout'
+    && element.customData.nativeAnnotationRole === 'connector'
+  ));
+  const highlightTarget = api.elements.find((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native' && (
+    element.customData.semanticElementId.endsWith(':node:A')
+  ));
+  const calloutTarget = api.elements.find((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native' && (
+    element.customData.semanticElementId.endsWith(':node:B')
+  ));
+  const commonGroup = (left, right) => left && right
+    && Array.isArray(left.groupIds) && Array.isArray(right.groupIds)
+    && left.groupIds.find((groupId) => right.groupIds.includes(groupId));
+  const calloutGroup = commonGroup(calloutTarget, calloutBox);
+  if (!Array.isArray(nativeAnnotationResult)
+      || !nativeAnnotationResult[0]
+      || nativeAnnotationResult[0].applied !== 2
+      || nativeAnnotationResult[0].unsupported
+      || !Array.isArray(nativeAnnotationResult[0].warnings)
+      || nativeAnnotationResult[0].warnings.length !== 0
+      || !highlight || highlight.type !== 'rectangle'
+      || !commonGroup(highlightTarget, highlight)
+      || !calloutBox || !calloutText || !calloutConnector
+      || !calloutGroup
+      || !calloutText.groupIds.includes(calloutGroup)
+      || !calloutConnector.groupIds.includes(calloutGroup)
+      || calloutText.containerId !== calloutBox.id
+      || !Array.isArray(calloutBox.boundElements)
+      || !calloutBox.boundElements.some((binding) => (
+        binding.id === calloutText.id && binding.type === 'text'
+      ))
+      || !calloutBox.boundElements.some((binding) => (
+        binding.id === calloutConnector.id && binding.type === 'arrow'
+      ))
+      || !calloutConnector.startBinding
+      || calloutConnector.startBinding.elementId !== calloutTarget.id
+      || !calloutConnector.endBinding
+      || calloutConnector.endBinding.elementId !== calloutBox.id
+      || !Array.isArray(calloutTarget.boundElements)
+      || !calloutTarget.boundElements.some((binding) => (
+        binding.id === calloutConnector.id && binding.type === 'arrow'
+      ))
+      || api.elements.filter((element) => element.customData && (
+        element.customData.oraAssistantVisualKind === 'native'
+        || element.customData.oraAssistantVisualKind === 'annotation'
+      )).some((element) => (
+        element.customData.originalGenerationFingerprint !== fingerprint(element)
+      ))) {
+    throw new Error('native highlight/callout annotations were not grouped and bound to their semantic targets');
+  }
+
+  const originalCalloutMemberIds = [calloutBox.id, calloutText.id, calloutConnector.id];
+  const originalCalloutTargetId = calloutTarget.id;
+  const originalNativeRevision = Number(calloutTarget.customData.generationRevision);
+  calloutText.text = 'User kept this callout connected';
+  calloutText.originalText = calloutText.text;
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
+    ora_visual_dispatch_key: 'native#annotation-edit',
+  });
+  const preservedCalloutBox = api.elements.find((element) => element.id === calloutBox.id);
+  const preservedCalloutText = api.elements.find((element) => element.id === calloutText.id);
+  const preservedCalloutConnector = api.elements.find(
+    (element) => element.id === calloutConnector.id
+  );
+  const preservedCalloutTarget = api.elements.find((element) => element.id === calloutTarget.id);
+  const freshNativeAfterCalloutEdit = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && Number(element.customData.generationRevision) > originalNativeRevision);
+  const preservedNativeMaxX = api.elements
+    .filter((element) => element.customData
+      && element.customData.oraAssistantVisualKind === 'native'
+      && Number(element.customData.generationRevision) === originalNativeRevision)
+    .reduce((value, element) => Math.max(
+      value, (Number(element.x) || 0) + (Number(element.width) || 0)
+    ), 0);
+  const freshNativeMinX = freshNativeAfterCalloutEdit.reduce(
+    (value, element) => Math.min(value, Number(element.x) || 0), Infinity
+  );
+  if (!originalCalloutMemberIds.every((id) => api.elements.some((element) => element.id === id))
+      || !preservedCalloutBox || !preservedCalloutText || !preservedCalloutConnector
+      || !preservedCalloutTarget
+      || preservedCalloutText.text !== 'User kept this callout connected'
+      || preservedCalloutText.originalText !== preservedCalloutText.text
+      || !preservedCalloutText.groupIds.includes(calloutGroup)
+      || !preservedCalloutBox.groupIds.includes(calloutGroup)
+      || !preservedCalloutConnector.groupIds.includes(calloutGroup)
+      || preservedCalloutText.containerId !== preservedCalloutBox.id
+      || !preservedCalloutBox.boundElements.some((binding) => (
+        binding.id === preservedCalloutText.id && binding.type === 'text'
+      ))
+      || !preservedCalloutBox.boundElements.some((binding) => (
+        binding.id === preservedCalloutConnector.id && binding.type === 'arrow'
+      ))
+      || preservedCalloutConnector.startBinding.elementId !== originalCalloutTargetId
+      || preservedCalloutConnector.endBinding.elementId !== preservedCalloutBox.id
+      || !preservedCalloutTarget.boundElements.some((binding) => (
+        binding.id === preservedCalloutConnector.id && binding.type === 'arrow'
+      ))
+      || freshNativeAfterCalloutEdit.length !== nativeElements.length
+      || freshNativeMinX <= preservedNativeMaxX
+      || api.elements.some((element) => element.id === highlight.id)) {
+    throw new Error('user-edited native callout did not survive regeneration as one bound group');
+  }
+
+  api.elements = api.elements.filter((element) => element.id === 'native-user');
+  api.files = {};
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: nativeEnvelope }],
+    ora_visual_dispatch_key: 'native#annotation-reset',
+  });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+
   const shapeProbe = nativeElements.find((element) => element.type === 'rectangle');
   const textProbe = nativeElements.find((element) => element.type === 'text');
+  const arrowProbe = nativeElements.find((element) => element.type === 'arrow');
   const fingerprintCases = [
     ['opacity', shapeProbe, (element) => { element.opacity = 72; }],
     ['stroke width', shapeProbe, (element) => { element.strokeWidth = 4; }],
@@ -918,6 +1097,14 @@ const exportThroughMenu = async (format) => {
     ['vertical alignment', textProbe, (element) => { element.verticalAlign = 'top'; }],
     ['line height', textProbe, (element) => { element.lineHeight = 1.5; }],
     ['text resize mode', textProbe, (element) => { element.autoResize = true; }],
+    ['bound element attachment', shapeProbe, (element) => {
+      element.boundElements.push({ id: 'user-arrow-probe', type: 'arrow' });
+    }],
+    ['start binding', arrowProbe, (element) => { element.startBinding.gap += 3; }],
+    ['end binding', arrowProbe, (element) => { element.endBinding.focus = 0.5; }],
+    ['group membership', shapeProbe, (element) => { element.groupIds.push('user-group'); }],
+    ['frame membership', shapeProbe, (element) => { element.frameId = 'user-frame'; }],
+    ['stacking order', shapeProbe, (element) => { element.index = 'a9'; }],
   ];
   fingerprintCases.forEach(([label, original, mutate]) => {
     const changed = JSON.parse(JSON.stringify(original));
@@ -941,7 +1128,80 @@ const exportThroughMenu = async (format) => {
     throw new Error('freshly generated untouched native objects were falsely classified as modified');
   }
 
-  const modifiedNative = nativeElements.find((element) => element.type === 'rectangle');
+  const associatedGeneration = nativeElements.slice();
+  const associatedTarget = associatedGeneration.find((element) => (
+    element.type === 'rectangle'
+    && element.customData.semanticElementId.endsWith(':node:A')
+  ));
+  const userBoundArrow = {
+    id: 'user-bound-to-native',
+    type: 'arrow',
+    x: associatedTarget.x - 90,
+    y: associatedTarget.y + associatedTarget.height / 2,
+    width: 86,
+    height: 2,
+    points: [[0, 0], [86, 0]],
+    startBinding: null,
+    endBinding: { elementId: associatedTarget.id, focus: 0, gap: 4, fixedPoint: null },
+    boundElements: null,
+    groupIds: [],
+    frameId: null,
+    index: 'user-arrow-after-native',
+  };
+  associatedTarget.boundElements = associatedTarget.boundElements.concat({
+    id: userBoundArrow.id,
+    type: 'arrow',
+  });
+  api.elements.push(userBoundArrow);
+  const associatedIds = new Set(associatedGeneration.map((element) => element.id));
+  const associatedMaxX = associatedGeneration.reduce((value, element) => Math.max(
+    value, (Number(element.x) || 0) + (Number(element.width) || 0)
+  ), 0);
+  const freshAssociationEnvelope = Object.assign({}, nativeEnvelope, {
+    id: 'native-user-association-fresh',
+    canvas_action: 'update',
+  });
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: freshAssociationEnvelope }],
+    ora_visual_dispatch_key: 'native#user-association-fresh-id',
+  });
+  const preservedAssociationTarget = api.elements.find(
+    (element) => element.id === associatedTarget.id
+  );
+  const preservedUserArrow = api.elements.find((element) => element.id === userBoundArrow.id);
+  const freshAssociationGeneration = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && element.customData.assistantVisualId === 'assistant:native-user-association-fresh');
+  const freshAssociationMinX = freshAssociationGeneration.reduce(
+    (value, element) => Math.min(value, Number(element.x) || 0), Infinity
+  );
+  if (!associatedGeneration.every((element) => (
+    api.elements.some((candidate) => candidate.id === element.id)
+  ))
+      || !preservedAssociationTarget
+      || !preservedUserArrow
+      || !associatedIds.has(preservedAssociationTarget.id)
+      || !Array.isArray(preservedAssociationTarget.boundElements)
+      || !preservedAssociationTarget.boundElements.some((binding) => (
+        binding.id === preservedUserArrow.id && binding.type === 'arrow'
+      ))
+      || !preservedUserArrow.endBinding
+      || preservedUserArrow.endBinding.elementId !== preservedAssociationTarget.id
+      || freshAssociationGeneration.length !== associatedGeneration.length
+      || freshAssociationMinX <= associatedMaxX) {
+    throw new Error('user-bound arrow did not preserve its complete native target generation across a fresh visual id');
+  }
+
+  api.elements = api.elements.filter((element) => element.id === 'native-user');
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: nativeEnvelope }],
+    ora_visual_dispatch_key: 'native#association-reset',
+  });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+
+  const priorNativeGeneration = nativeElements.slice();
+  const modifiedNative = priorNativeGeneration.find((element) => element.type === 'rectangle');
   const modifiedNativeBounds = {
     x: modifiedNative.x,
     y: modifiedNative.y,
@@ -957,6 +1217,8 @@ const exportThroughMenu = async (format) => {
     ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
     ora_visual_dispatch_key: 'native#2',
   });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
   const sameSemanticNative = api.elements.filter((element) => element.customData
     && element.customData.semanticElementId === modifiedNative.customData.semanticElementId);
   const regeneratedNative = api.elements.filter((element) => element.customData
@@ -965,7 +1227,40 @@ const exportThroughMenu = async (format) => {
   const regeneratedMinX = regeneratedNative.reduce(
     (value, element) => Math.min(value, Number(element.x) || 0), Infinity
   );
-  if (sameSemanticNative.length !== 2
+  const priorNativeIds = new Set(priorNativeGeneration.map((element) => element.id));
+  const preservedPriorGeneration = priorNativeGeneration.every((element) => (
+    api.elements.some((candidate) => candidate.id === element.id)
+  ));
+  const preservedLabelsAreBound = priorNativeGeneration
+    .filter((element) => element.type === 'text')
+    .every((element) => {
+      const label = api.elements.find((candidate) => candidate.id === element.id);
+      const container = label && api.elements.find(
+        (candidate) => candidate.id === label.containerId
+      );
+      return label && priorNativeIds.has(label.containerId) && container
+        && Array.isArray(container.boundElements)
+        && container.boundElements.some((binding) => binding.id === label.id);
+    });
+  const preservedArrowsAreBound = priorNativeGeneration
+    .filter((element) => element.type === 'arrow')
+    .every((element) => {
+      const arrow = api.elements.find((candidate) => candidate.id === element.id);
+      const startId = arrow && arrow.startBinding && arrow.startBinding.elementId;
+      const endId = arrow && arrow.endBinding && arrow.endBinding.elementId;
+      const start = api.elements.find((candidate) => candidate.id === startId);
+      const end = api.elements.find((candidate) => candidate.id === endId);
+      return arrow && priorNativeIds.has(startId) && priorNativeIds.has(endId)
+        && start && end
+        && [start, end].every((endpoint) => Array.isArray(endpoint.boundElements)
+          && endpoint.boundElements.some((binding) => binding.id === arrow.id));
+    });
+  if (nativeElements.length !== priorNativeGeneration.length * 2
+      || !preservedPriorGeneration
+      || !preservedLabelsAreBound
+      || !preservedArrowsAreBound
+      || regeneratedNative.length !== priorNativeGeneration.length
+      || sameSemanticNative.length !== 2
       || !sameSemanticNative.some((element) => element.id === modifiedNative.id
         && element.x === modifiedNativeBounds.x
         && element.y === modifiedNativeBounds.y
@@ -983,7 +1278,46 @@ const exportThroughMenu = async (format) => {
         && element.width === modifiedNativeBounds.width
         && element.height === modifiedNativeBounds.height)
       || regeneratedMinX <= modifiedNativeBounds.x + modifiedNativeBounds.width) {
-    throw new Error('style-only native edit was not preserved beside a distinctly placed regenerated scene');
+    throw new Error('modified native generation did not retain its labels and arrows beside the regenerated scene');
+  }
+
+  const firstFreshGeneration = regeneratedNative.map((element) => ({
+    id: element.id,
+    semanticElementId: element.customData.semanticElementId,
+    x: element.x,
+    y: element.y,
+    width: element.width,
+    height: element.height,
+    generationRevision: element.customData.generationRevision,
+  }));
+  const firstFreshIds = new Set(firstFreshGeneration.map((element) => element.id));
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
+    ora_visual_dispatch_key: 'native#3',
+  });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+  const secondFreshGeneration = nativeElements.filter((element) => (
+    element.customData.generationRevision > firstFreshGeneration[0].generationRevision
+  ));
+  const secondFreshBySemantic = new Map(secondFreshGeneration.map((element) => [
+    element.customData.semanticElementId, element,
+  ]));
+  if (nativeElements.length !== priorNativeGeneration.length * 2
+      || priorNativeGeneration.some((element) => (
+        !api.elements.some((candidate) => candidate.id === element.id)
+      ))
+      || api.elements.some((element) => firstFreshIds.has(element.id))
+      || secondFreshGeneration.length !== firstFreshGeneration.length
+      || firstFreshGeneration.some((element) => {
+        const replacement = secondFreshBySemantic.get(element.semanticElementId);
+        return !replacement
+          || replacement.x !== element.x
+          || replacement.y !== element.y
+          || replacement.width !== element.width
+          || replacement.height !== element.height;
+      })) {
+    throw new Error('untouched fresh native generation did not replace in place beside the preserved edit');
   }
 
   const draftCountBeforeCapability = calls.filter(
