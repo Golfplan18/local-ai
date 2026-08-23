@@ -1126,6 +1126,41 @@
     }
 
     right._oraPanel = panel;
+
+    const resetCanvas = () => {
+      if (excalidrawApi) {
+        applyingScene += 1;
+        try {
+          excalidrawApi.resetScene();
+          syncExcalidrawGrid(excalidrawApi.getAppState());
+          draftDirty = false;
+          sceneReady = true;
+        } finally {
+          queueMicrotask(() => {
+            applyingScene = Math.max(0, applyingScene - 1);
+            updateCanvasState();
+          });
+        }
+      }
+      if (panel && typeof panel.resetCanvas === 'function') panel.resetCanvas();
+      updateCanvasState();
+    };
+
+    const clearForUser = () => {
+      if (editor === 'excalidraw' && excalidrawApi) {
+        const elements = excalidrawApi.getSceneElements().map((element) => (
+          Object.assign({}, element, { isDeleted: true })
+        ));
+        excalidrawApi.updateScene({
+          elements,
+          captureUpdate: 'IMMEDIATELY',
+        });
+        return;
+      }
+      if (panel && typeof panel.clearCanvas === 'function') panel.clearCanvas();
+      updateCanvasState();
+    };
+
     window.OraCanvas = {
       panel,
       getActiveEditor: () => editor,
@@ -1152,13 +1187,8 @@
           return false;
         }
       },
-      clear: () => {
-        if (excalidrawApi) updateExcalidraw({ elements: [], appState: {}, files: {} });
-        if (panel) {
-          if (typeof panel.clearArtifact === 'function') panel.clearArtifact();
-          if (typeof panel.loadCanvasState === 'function') panel.loadCanvasState({ objects: [] });
-        }
-      },
+      reset: resetCanvas,
+      clearForUser,
       snapshotForSubmit: snapshotActive,
       materializeSnapshot: materialize,
       persistSnapshotDraft: (
@@ -1386,6 +1416,7 @@
           scheduleDraft();
           updateCanvasState();
         },
+        onClearCanvas: clearForUser,
         onFailure(error) {
           console.warn('[v3-canvas-mount] Excalidraw render failed; using Konva:', error);
           excalidrawApi = null;

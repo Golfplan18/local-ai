@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import {
   Excalidraw,
+  MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
   exportToSvg,
@@ -204,7 +205,29 @@ function mount(host, options = {}) {
         },
         tools: { image: false },
       },
-    });
+    }, React.createElement(
+      MainMenu,
+      null,
+      React.createElement(MainMenu.DefaultItems.SearchMenu),
+      React.createElement(MainMenu.DefaultItems.Help),
+      React.createElement(
+        MainMenu.Item,
+        {
+          onSelect: () => options.onClearCanvas?.(),
+          "aria-label": "Clear canvas",
+          "data-testid": "ora-clear-canvas-button",
+        },
+        "Clear canvas",
+      ),
+      React.createElement(MainMenu.Separator),
+      React.createElement(
+        MainMenu.Group,
+        { title: "Excalidraw links" },
+        React.createElement(MainMenu.DefaultItems.Socials),
+      ),
+      React.createElement(MainMenu.Separator),
+      React.createElement(MainMenu.DefaultItems.ToggleTheme),
+    ));
   }
 
   root.render(React.createElement(

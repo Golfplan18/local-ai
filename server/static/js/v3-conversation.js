@@ -453,37 +453,16 @@
           && typeof window.OraV3VisualDispatch.resetDedupe === 'function') {
         window.OraV3VisualDispatch.resetDedupe();
       }
-      if (window.OraCanvas && typeof window.OraCanvas.clear === 'function') {
-        window.OraCanvas.clear();
+      if (window.OraCanvas && typeof window.OraCanvas.reset === 'function') {
+        window.OraCanvas.reset();
         return;
       }
       if (window.OraPanels && window.OraPanels.visual) {
         const visual = window.OraPanels.visual;
-        if (typeof visual.clearArtifact === 'function') {
-          visual.clearArtifact();
-        }
-        if (typeof visual.clearUserInput === 'function') {
-          visual.clearUserInput();
+        if (typeof visual.resetCanvas === 'function') {
+          visual.resetCanvas();
         }
       }
-      const panels = [];
-      const canvasPanel = window.OraCanvas && window.OraCanvas.panel;
-      if (canvasPanel) panels.push(canvasPanel);
-      const activePanel = (window.OraPanels && window.OraPanels.visual
-                            && typeof window.OraPanels.visual._getActive === 'function')
-                          ? window.OraPanels.visual._getActive()
-                          : null;
-      if (activePanel && panels.indexOf(activePanel) === -1) {
-        panels.push(activePanel);
-      }
-      panels.forEach((panel) => {
-        if (panel && typeof panel.clearArtifact === 'function') {
-          panel.clearArtifact();
-        }
-        if (panel && typeof panel.loadCanvasState === 'function') {
-          panel.loadCanvasState({ objects: [] });
-        }
-      });
     } catch (e) {
       console.warn('[v3-conversation] visual clear failed:', e);
     }

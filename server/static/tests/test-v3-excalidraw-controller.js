@@ -102,6 +102,8 @@ VisualPanel.prototype.clearPendingImage = function () {
   konvaPendingImageClearCalls += 1;
   liveObjects = [];
 };
+VisualPanel.prototype.resetCanvas = function () { liveObjects = []; };
+VisualPanel.prototype.clearCanvas = function () { liveObjects = []; };
 VisualPanel.prototype.loadCanvasState = function (state) {
   if (state && Array.isArray(state.objects) && state.objects.length === 0) {
     konvaEmptyStateLoadCalls += 1;
@@ -462,7 +464,7 @@ const exportThroughMenu = async (format) => {
   // load() starts but before its target envelope resolves. Binding dirtiness
   // to its owner prevents the subsequent target load from stealing the draft.
   w.OraCanvas.setConversationContext('old-dialogue', '');
-  w.OraCanvas.clear();
+  w.OraCanvas.reset();
   await Promise.resolve();
   api.elements = [{ id: 'dirty-old-scene', type: 'rectangle' }];
   islandOptions.onChange(api.elements, api.appState, api.files);
