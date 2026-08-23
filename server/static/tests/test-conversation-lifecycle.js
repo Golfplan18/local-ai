@@ -991,6 +991,12 @@ async function runIndexPrivacyEgressTests() {
   blankContext.requireMutableInquiry = function () { return true; };
   blankContext.imageGenerateMode = false;
   blankContext._looksLikeImageGenerationRequest = function () { return false; };
+  var selectedFramework = false;
+  blankContext.OraInputState = {
+    getFramework: function () {
+      return selectedFramework ? { id: 'terrain-mapping' } : null;
+    },
+  };
   blankContext.submitWithFrameworkCheck = function (text) {
     gatedSubmissions.push(text);
   };
@@ -1007,10 +1013,15 @@ async function runIndexPrivacyEgressTests() {
   backgroundState.objects = [];
   await bw.__submitInput();
   record('blank text and blank canvas remain blocked', gatedSubmissions.length === 0);
+  selectedFramework = true;
+  await bw.__submitInput();
+  record('selected framework allows blank text and blank canvas through the framework path',
+    gatedSubmissions.length === 1 && gatedSubmissions[0] === '');
+  selectedFramework = false;
   backgroundState.objects.push({ id: 'drawn-rect', kind: 'shape', layer: 'user_input' });
   await bw.__submitInput();
   record('drawing-only Inquiry passes the send gate without invented model text',
-    gatedSubmissions.length === 1 && gatedSubmissions[0] === '');
+    gatedSubmissions.length === 2 && gatedSubmissions[1] === '');
   blankDom.window.close();
 }
 

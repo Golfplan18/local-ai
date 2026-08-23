@@ -47,7 +47,7 @@ Disk space used by models: ~116 GB total (45 + 61 + 10)
 ## AI Connections
 - Commercial AI: OpenRouter and direct provider APIs when the user supplies optional keys
 - Local model: gpt-oss-120b (default endpoint)
-- API keys: not configured — available in Settings -> External APIs or `/framework api-key-setup`
+- API keys: not configured — available in Settings -> External APIs; conversational guidance remains in the API Key Setup document
 - Routing config: ~/ora/config/routing-config.json
 - Named configurations: ~/ora/config/configurations/
 - Model registry: ~/ora/config/model-registry.json
