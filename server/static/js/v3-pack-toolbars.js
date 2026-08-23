@@ -185,7 +185,13 @@
     reg['tool:redo']     = function () { if (panel.redo) panel.redo(); };
     reg['tool:save']     = function () { if (panel.saveCanvas) panel.saveCanvas(); };
     reg['tool:export']   = function () { if (panel.exportCanvas) panel.exportCanvas(); };
-    reg['tool:clear']    = function () { if (panel.clearUserInput) panel.clearUserInput(); };
+    reg['tool:clear']    = function () {
+      if (window.OraCanvas && typeof window.OraCanvas.clearForUser === 'function') {
+        window.OraCanvas.clearForUser();
+      } else if (panel.clearCanvas) {
+        panel.clearCanvas();
+      }
+    };
     reg['tool:resize_canvas']     = function () { _openResizeCanvas(panel); };
     reg['tool:crop_to_content']   = function () { _cropToContent(panel); };
     reg['tool:crop_to_selection'] = function () { _cropToSelection(panel); };

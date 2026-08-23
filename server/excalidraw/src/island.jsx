@@ -1,11 +1,14 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import {
+  CaptureUpdateAction,
   Excalidraw,
+  MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
   exportToSvg,
   loadFromBlob,
+  newElementWith,
   serializeAsJSON,
 } from "@excalidraw/excalidraw";
 
@@ -178,6 +181,15 @@ async function insertPng(api, pngBlob, locked = true, customData = null) {
   return placed;
 }
 
+function clearForUser(api) {
+  api.updateScene({
+    elements: api.getSceneElements().map((element) => (
+      newElementWith(element, { isDeleted: true })
+    )),
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  });
+}
+
 function mount(host, options = {}) {
   if (!host) throw new Error("Excalidraw host is required");
   let api = null;
@@ -204,7 +216,29 @@ function mount(host, options = {}) {
         },
         tools: { image: false },
       },
-    });
+    }, React.createElement(
+      MainMenu,
+      null,
+      React.createElement(MainMenu.DefaultItems.SearchMenu),
+      React.createElement(MainMenu.DefaultItems.Help),
+      React.createElement(
+        MainMenu.Item,
+        {
+          onSelect: () => options.onClearCanvas?.(),
+          "aria-label": "Clear canvas",
+          "data-testid": "ora-clear-canvas-button",
+        },
+        "Clear canvas",
+      ),
+      React.createElement(MainMenu.Separator),
+      React.createElement(
+        MainMenu.Group,
+        { title: "Excalidraw links" },
+        React.createElement(MainMenu.DefaultItems.Socials),
+      ),
+      React.createElement(MainMenu.Separator),
+      React.createElement(MainMenu.DefaultItems.ToggleTheme),
+    ));
   }
 
   root.render(React.createElement(
@@ -227,5 +261,6 @@ window.OraExcalidrawIsland = {
   exportSvg: exportSvgBlob,
   imageBackedScene,
   insertPng,
+  clearForUser,
   constants: { background: WHITE, maxSide: MAX_SIDE, padding: PADDING },
 };

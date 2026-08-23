@@ -11,8 +11,8 @@
 # What it does:
 #   1. Verifies Linux + Python 3.11+; apt-installs python3-venv, pip, git, curl
 #      if missing.
-#   2. Creates a virtualenv at .venv/ and installs the Linux subset of
-#      Ora's Python deps (no mlx-lm).
+#   2. Creates a virtualenv at .venv/, installs the Linux subset of Ora's
+#      Python deps (no mlx-lm), and provisions the managed Chromium browsers.
 #   3. Installs ollama and pulls bge-m3 (1024 dimensions), matching Ora's
 #      tracked fresh-install ChromaDB profile.
 #   4. Rewrites config/routing-config.json's slot_assignments + default
@@ -147,6 +147,10 @@ if [[ ! -f requirements.txt ]]; then
 fi
 run "python3 -m pip install --quiet -r requirements.txt"
 log "  ✓ Installed dependencies from requirements.txt"
+
+log "Installing Python Playwright Chromium and its Linux shared libraries"
+run "python3 -m playwright install --with-deps chromium"
+log "  ✓ Installed Python Playwright Chromium"
 
 if [[ ! -f mcp-runtime/package-lock.json ]]; then
   log "  ✗ mcp-runtime/package-lock.json not found"

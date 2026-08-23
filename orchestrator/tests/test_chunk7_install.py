@@ -413,6 +413,48 @@ class TestMCPRuntimeInstall(unittest.TestCase):
         self.assertNotIn("npx", " ".join(browser_call.args[0]))
 
 
+class TestPythonPlaywrightInstall(unittest.TestCase):
+    def test_dependencies_install_managed_chromium_with_resolved_interpreter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "requirements.txt").write_text("playwright\n", encoding="utf-8")
+            venv_python = root / ".venv" / "bin" / "python3"
+            venv_python.parent.mkdir(parents=True)
+            venv_python.write_text("", encoding="utf-8")
+            results = [
+                subprocess.CompletedProcess(
+                    [], 1, "", "externally-managed-environment",
+                ),
+                subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 0, "", ""),
+            ]
+            state = {"steps_completed": []}
+            with mock.patch.object(install, "REPO_ROOT", root), \
+                 mock.patch.object(install, "LOG_PATH", root / "install.log"), \
+                 mock.patch.object(install.sys, "executable", "/system/python3"), \
+                 mock.patch.object(install.sys, "platform", "linux"), \
+                 mock.patch.object(
+                     install.subprocess, "run", side_effect=results,
+                 ) as run, \
+                 mock.patch.object(
+                     install, "_install_mcp_runtime", return_value=True,
+                 ), \
+                 mock.patch.object(install, "save_state"):
+                self.assertTrue(install.step_dependencies(state, dry_run=False))
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands[2][0], str(venv_python))
+        self.assertEqual(
+            commands[3],
+            [
+                str(venv_python), "-m", "playwright", "install",
+                "--with-deps", "chromium",
+            ],
+        )
+        self.assertEqual(state["steps_completed"], ["dependencies"])
+
+
 class TestProfileStep(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

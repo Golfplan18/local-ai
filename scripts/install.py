@@ -808,6 +808,11 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
     if dry_run:
         log(f"  [dry-run] would run: {' '.join(cmd)}")
         log("  [dry-run] would fall back to a .venv/ if the interpreter is PEP 668 externally managed")
+        browser_cmd = [target, "-m", "playwright", "install"]
+        if sys.platform.startswith("linux"):
+            browser_cmd.append("--with-deps")
+        browser_cmd.append("chromium")
+        log(f"  [dry-run] would run after the import probe: {' '.join(browser_cmd)}")
         return _install_mcp_runtime(dry_run=True)
 
     log(f"  · {' '.join(cmd)}")
@@ -850,7 +855,22 @@ def step_dependencies(state: dict, dry_run: bool) -> bool:
         log(f"      {tail[-1] if tail else 'unknown error'}")
         return False
 
-    log(f"  ✓ Dependencies installed and core imports verified ({target})")
+    browser_cmd = [target, "-m", "playwright", "install"]
+    if sys.platform.startswith("linux"):
+        browser_cmd.append("--with-deps")
+    browser_cmd.append("chromium")
+    log(f"  · {' '.join(browser_cmd)}")
+    browser_install = subprocess.run(
+        browser_cmd, capture_output=True, text=True,
+    )
+    if browser_install.returncode != 0:
+        log("  ✗ Python Playwright Chromium install failed:")
+        for line in (browser_install.stderr or browser_install.stdout or "").strip().splitlines()[-8:]:
+            log(f"      {line}")
+        log(f"    Retry manually: {' '.join(browser_cmd)}")
+        return False
+
+    log(f"  ✓ Dependencies, core imports, and Python Playwright Chromium verified ({target})")
     if target != sys.executable:
         log("    Ora will start against this .venv/ automatically.")
     if not _install_mcp_runtime(dry_run=False):

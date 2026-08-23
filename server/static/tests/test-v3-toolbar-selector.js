@@ -408,7 +408,7 @@ test('extended registry wires drawing, annotation, and canvas commands', functio
   var panel = makePanel();
   var calls = [];
   panel.setActiveTool = function (tool) { calls.push('tool:' + tool); };
-  panel.clearUserInput = function () { calls.push('clearUserInput'); };
+  panel.clearCanvas = function () { calls.push('clearCanvas'); };
   panel.zoomToExtents = function () { calls.push('zoomToExtents'); };
   panel._showErrorBar = function (msg) { calls.push('error:' + msg); };
   b.sandbox.window.OraResizeCanvas = {
@@ -439,7 +439,7 @@ test('extended registry wires drawing, annotation, and canvas commands', functio
     'tool:text',
     'tool:callout',
     'tool:pan',
-    'clearUserInput',
+    'clearCanvas',
     'resize:true',
     'cropContent:true',
     'zoomToExtents',

@@ -9,6 +9,34 @@ const modules = path.resolve(
   __dirname, '..', 'ora-visual-compiler', 'tests', 'node_modules'
 );
 const { JSDOM } = require(path.join(modules, 'jsdom'));
+const islandDom = new JSDOM(
+  '<!doctype html><html><body></body></html>',
+  { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true }
+);
+islandDom.window.HTMLCanvasElement.prototype.getContext = function () {
+  return {
+    canvas: this,
+    measureText() {
+      return { width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 };
+    },
+    fillText() {}, save() {}, restore() {}, scale() {}, translate() {}, rotate() {},
+    beginPath() {}, closePath() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    moveTo() {}, lineTo() {}, stroke() {}, fill() {}, arc() {}, rect() {}, drawImage() {},
+    transform() {}, setTransform() {}, bezierCurveTo() {}, quadraticCurveTo() {}, clip() {},
+    getImageData() { return { data: new Uint8ClampedArray(4) }; },
+    putImageData() {}, createImageData() { return { data: new Uint8ClampedArray(4) }; },
+    createLinearGradient() { return { addColorStop() {} }; },
+    createRadialGradient() { return { addColorStop() {} }; },
+    createPattern() { return null; },
+    globalAlpha: 1,
+  };
+};
+const islandContext = islandDom.getInternalVMContext();
+islandContext.console = { log() {}, warn() {}, error() {} };
+vm.runInContext(fs.readFileSync(
+  path.resolve(__dirname, '..', 'vendor', 'excalidraw', 'ora-excalidraw.js'), 'utf8'
+), islandContext, { filename: 'ora-excalidraw.js' });
+const productionExcalidrawIsland = islandDom.window.OraExcalidrawIsland;
 const source = fs.readFileSync(
   path.resolve(__dirname, '..', 'js', 'v3-canvas-mount.js'), 'utf8'
 );
@@ -52,6 +80,8 @@ let checkpointFailure = null;
 let imageBackedCalls = 0;
 let assistantImageCalls = 0;
 let capabilityImageCalls = 0;
+let excalidrawClearCalls = 0;
+let excalidrawClearCapture = null;
 let konvaAttachCalls = 0;
 let konvaArtifactClearCalls = 0;
 let konvaPendingImageClearCalls = 0;
@@ -105,6 +135,8 @@ VisualPanel.prototype.clearPendingImage = function () {
   konvaPendingImageClearCalls += 1;
   liveObjects = [];
 };
+VisualPanel.prototype.resetCanvas = function () { liveObjects = []; };
+VisualPanel.prototype.clearCanvas = function () { liveObjects = []; };
 VisualPanel.prototype.loadCanvasState = function (state) {
   if (state && Array.isArray(state.objects) && state.objects.length === 0) {
     konvaEmptyStateLoadCalls += 1;
@@ -131,11 +163,26 @@ const api = {
     files.forEach((file) => { this.files[file.id] = file; });
   },
   updateScene(scene) {
+    if (scene.elements && scene.captureUpdate === 'IMMEDIATELY') {
+      excalidrawClearCapture = scene.captureUpdate;
+      const previous = new Map(this.elements.map((element) => [element.id, element]));
+      const changed = scene.elements.some((element) => (
+        !previous.has(element.id)
+        || previous.get(element.id).versionNonce !== element.versionNonce
+      ));
+      if (changed) this.undoElements = this.elements.map((element) => ({ ...element }));
+    }
     if (scene.elements) this.elements = scene.elements;
     if (scene.appState) this.appState = { ...this.appState, ...scene.appState };
     if (scene.files) this.files = scene.files;
     // Exercise the real hazard: Excalidraw reports programmatic updates.
     islandOptions.onChange(this.elements, this.appState, this.files);
+  },
+  undo() {
+    if (!this.undoElements) return false;
+    this.elements = this.undoElements;
+    this.undoElements = null;
+    return true;
   },
   scrollToContent() {},
 };
@@ -224,6 +271,10 @@ w.OraExcalidrawIsland = {
       }],
       appState: {}, files: { [id]: { id } },
     });
+  },
+  clearForUser(targetApi) {
+    excalidrawClearCalls += 1;
+    productionExcalidrawIsland.clearForUser(targetApi);
   },
 };
 w.OraExportRaster = {
@@ -463,11 +514,25 @@ const exportThroughMenu = async (format) => {
       || Math.abs(anchoredY - 30) > 0.0001) {
     throw new Error('ordinary wheel did not zoom around the pointer without native panning');
   }
+  api.elements = [{
+    id: 'undoable-clear', type: 'rectangle', isDeleted: false,
+    version: 1, versionNonce: 101,
+  }];
+  islandOptions.onClearCanvas();
+  if (excalidrawClearCalls !== 1
+      || excalidrawClearCapture !== 'IMMEDIATELY'
+      || !api.elements[0].isDeleted
+      || api.elements[0].version !== 2
+      || api.elements[0].versionNonce === 101
+      || !api.undo()
+      || api.elements[0].isDeleted) {
+    throw new Error('user Clear was not one versioned native-history update restored by Undo');
+  }
   // A user edit made while the old Dialogue is visible may become dirty after
   // load() starts but before its target envelope resolves. Binding dirtiness
   // to its owner prevents the subsequent target load from stealing the draft.
   w.OraCanvas.setConversationContext('old-dialogue', '');
-  w.OraCanvas.clear();
+  w.OraCanvas.reset();
   await Promise.resolve();
   api.elements = [{ id: 'dirty-old-scene', type: 'rectangle' }];
   islandOptions.onChange(api.elements, api.appState, api.files);
@@ -1030,6 +1095,7 @@ const exportThroughMenu = async (format) => {
   }
 
   console.log('ok - Excalidraw wheel/export, exact identity, and durable switches');
+  islandDom.window.close();
   dom.window.close();
 })().catch((error) => {
   console.error(error.stack || error);

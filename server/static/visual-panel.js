@@ -1703,6 +1703,13 @@
   VisualPanel.prototype._wireKeyboard = function () {
     var self = this;
     this._onKeyDown = function (e) {
+      // The Excalidraw island bubbles through the same right-pane element as
+      // Konva. Its shortcuts and native history must remain entirely owned by
+      // Excalidraw even if editor presentation state is briefly out of sync.
+      var eventTarget = e && e.target;
+      if (eventTarget && eventTarget.nodeType === 1 && eventTarget.closest &&
+          eventTarget.closest('.ora-excalidraw-island')) return;
+
       var key = e.key;
       var K = (typeof window !== 'undefined' && window.OraKeyboardShortcuts) || null;
       var kmatch = function (id, opts) {
@@ -2509,7 +2516,13 @@
       'tool:redo':              function () { if (panel.redo) panel.redo(); },
       'tool:save':              function () { if (panel.saveCanvas) panel.saveCanvas(); },
       'tool:export':            function () { if (panel.exportCanvas) panel.exportCanvas(); },
-      'tool:clear':             function () { if (panel.clearUserInput) panel.clearUserInput(); },
+      'tool:clear':             function () {
+        if (window.OraCanvas && typeof window.OraCanvas.clearForUser === 'function') {
+          window.OraCanvas.clearForUser();
+        } else if (panel.clearCanvas) {
+          panel.clearCanvas();
+        }
+      },
       'tool:resize_canvas':     openResizeCanvas,
       'tool:crop_to_content':   cropToContent,
       'tool:crop_to_selection': cropToSelection,
@@ -4299,7 +4312,9 @@
    */
   VisualPanel.prototype._pushHistory = function (frame) {
     if (this._suppressHistory) return;
-    if (this._mutationGuardCancelled || !this._allowUserMutation(frame && frame.label)) {
+    var bypassUserMutationGuard = !!(frame && frame.bypassUserMutationGuard);
+    if (this._mutationGuardCancelled
+        || (!bypassUserMutationGuard && !this._allowUserMutation(frame && frame.label))) {
       // Callers construct the frame immediately after applying the candidate
       // mutation. Replaying its undo synchronously means Cancel leaves the
       // canvas unchanged and no history entry is committed. A same-stack flag
@@ -4330,9 +4345,10 @@
 
   VisualPanel.prototype.undo = function () {
     if (this._historyCursor <= 0) return false;
-    if (!this._allowUserMutation('undo')) return false;
+    var frame = this._history[this._historyCursor - 1];
+    if (!(frame && frame.bypassUserMutationGuard)
+        && !this._allowUserMutation('undo')) return false;
     this._historyCursor -= 1;
-    var frame = this._history[this._historyCursor];
     this._suppressHistory = true;
     try { frame.undoFn(); } finally { this._suppressHistory = false; }
     return true;
@@ -4340,8 +4356,9 @@
 
   VisualPanel.prototype.redo = function () {
     if (this._historyCursor >= this._history.length) return false;
-    if (!this._allowUserMutation('redo')) return false;
     var frame = this._history[this._historyCursor];
+    if (!(frame && frame.bypassUserMutationGuard)
+        && !this._allowUserMutation('redo')) return false;
     this._historyCursor += 1;
     this._suppressHistory = true;
     try { frame.redoFn(); } finally { this._suppressHistory = false; }
@@ -4350,6 +4367,253 @@
 
   VisualPanel.prototype.getHistoryCursor = function () { return this._historyCursor; };
   VisualPanel.prototype.getHistoryLength = function () { return this._history.length; };
+
+  // ── whole-canvas clear / lifecycle reset ────────────────────────────────
+
+  VisualPanel.prototype._cancelCanvasInteractions = function () {
+    this._cancelDraw();
+    this._cancelSelectionDrag();
+    this._dismissTextInput();
+    this._dismissAnnotationInput();
+    this._cancelPenStroke();
+  };
+
+  VisualPanel.prototype._clearCanvasContents = function (retainedImage, retainedAssistantImage) {
+    this._cancelCanvasInteractions();
+    if (retainedImage && retainedImage.remove) {
+      try { retainedImage.remove(); } catch (e) { /* ignore */ }
+    }
+    if (retainedAssistantImage && retainedAssistantImage.remove) {
+      try { retainedAssistantImage.remove(); } catch (e) { /* ignore */ }
+    }
+    this._backgroundImageNode = null;
+    this._assistantBackgroundImageNode = null;
+    this._pendingImage = null;
+    this._imageIndicatorOpen = false;
+    this._updateImageIndicator();
+    // canvas_action:"clear" deliberately removes assistant-owned material
+    // only. User Clear and lifecycle reset are the two whole-canvas callers,
+    // so finish their broader operation explicitly after reusing that
+    // assistant-state cleanup.
+    this._doClear();
+    if (this.backgroundLayer) {
+      this.backgroundLayer.destroyChildren();
+      this._bgSentinel = null;
+      if (typeof Konva !== 'undefined') {
+        this._bgSentinel = new Konva.Group({ name: 'svg-sentinel' });
+        this.backgroundLayer.add(this._bgSentinel);
+      }
+      this.backgroundLayer.draw();
+    }
+    if (this.userInputLayer) {
+      this.userInputLayer.destroyChildren();
+      this.userInputLayer.draw();
+    }
+    if (this.annotationLayer) {
+      this.annotationLayer.destroyChildren();
+      this.annotationLayer.draw();
+    }
+    if (this.selectionLayer) {
+      this.selectionLayer.destroyChildren();
+      this.selectionLayer.draw();
+    }
+    this._selectedShapeIds = [];
+    this._selectedAnnotIds = [];
+    this._selectedNodeId = null;
+    if (this.el) this.el.removeAttribute('aria-activedescendant');
+    this._redrawSelection();
+    this._redrawAnnotationSelection();
+  };
+
+  /**
+   * Clear every visible Konva canvas object as one undoable history frame.
+   * The viewport is deliberately untouched. Transient interactions are
+   * cancelled and are not restored by Undo.
+   */
+  VisualPanel.prototype.clearCanvas = function () {
+    this._cancelCanvasInteractions();
+
+    var self = this;
+    var imageNode = this._backgroundImageNode;
+    var assistantImageNode = this._assistantBackgroundImageNode;
+    var backgroundEntries = [];
+    var hasBackgroundContent = false;
+    var shapeSnapshots = [];
+    var annotationSnapshots = [];
+    var children;
+    var i;
+
+    if (this.backgroundLayer) {
+      children = this.backgroundLayer.getChildren();
+      for (i = 0; i < children.length; i++) {
+        if (children[i] === imageNode) {
+          backgroundEntries.push({ node: imageNode, owner: 'user' });
+          hasBackgroundContent = true;
+        } else if (children[i] === assistantImageNode) {
+          backgroundEntries.push({ node: assistantImageNode, owner: 'assistant' });
+          hasBackgroundContent = true;
+        } else if (children[i].toJSON) {
+          backgroundEntries.push({ json: children[i].toJSON() });
+          if (!children[i].getAttr || children[i].getAttr('name') !== 'svg-sentinel') {
+            hasBackgroundContent = true;
+          }
+        }
+      }
+    }
+    if (this.userInputLayer) {
+      children = this.userInputLayer.find('.user-shape');
+      for (i = 0; i < children.length; i++) shapeSnapshots.push(children[i].toJSON());
+    }
+    if (this.annotationLayer) {
+      children = this.annotationLayer.getChildren();
+      for (i = 0; i < children.length; i++) {
+        annotationSnapshots.push({
+          json: children[i].toJSON(),
+          user: !!(children[i].getAttr && children[i].getAttr('annotationSource') === 'user'),
+        });
+      }
+    }
+
+    var captureSurface = function (el) {
+      return el ? { html: el.innerHTML, hidden: !!el.hidden, className: el.className } : null;
+    };
+    var snapshot = {
+      envelope: this._currentEnvelope,
+      ariaDescription: this._ariaDescription,
+      svgHtml: this._svgHost ? this._svgHost.innerHTML : '',
+      hasPriorVisual: this._hasPriorVisual,
+      lastAction: this._lastAction,
+      pendingImage: this._pendingImage,
+      selectedNodeId: this._selectedNodeId,
+      selectedShapeIds: (this._selectedShapeIds || []).slice(),
+      selectedAnnotIds: (this._selectedAnnotIds || []).slice(),
+      ariaActiveDescendant: this.el && this.el.getAttribute('aria-activedescendant'),
+      fallback: captureSurface(this._fallbackEl),
+      errorBar: captureSurface(this._errorBar),
+    };
+    var hasContent = !!(
+      snapshot.envelope || snapshot.svgHtml || imageNode || assistantImageNode ||
+      snapshot.pendingImage || hasBackgroundContent ||
+      shapeSnapshots.length || annotationSnapshots.length ||
+      (snapshot.fallback && snapshot.fallback.html) ||
+      (snapshot.errorBar && snapshot.errorBar.html)
+    );
+    if (!hasContent) return false;
+
+    var restoreSurface = function (el, state) {
+      if (!el || !state) return;
+      el.innerHTML = state.html;
+      el.hidden = state.hidden;
+      el.className = state.className;
+    };
+    var restore = function () {
+      self._doClear();
+
+      if (self.backgroundLayer) {
+        self.backgroundLayer.destroyChildren();
+        self._bgSentinel = null;
+        for (var bi = 0; bi < backgroundEntries.length; bi++) {
+          var entry = backgroundEntries[bi];
+          if (entry.node) {
+            self.backgroundLayer.add(entry.node);
+            if (entry.owner === 'user') self._backgroundImageNode = entry.node;
+            if (entry.owner === 'assistant') self._assistantBackgroundImageNode = entry.node;
+            continue;
+          }
+          var bgNode = null;
+          try { bgNode = Konva.Node.create(entry.json); } catch (e) { bgNode = null; }
+          if (!bgNode) continue;
+          self.backgroundLayer.add(bgNode);
+          if (bgNode.getAttr && bgNode.getAttr('name') === 'svg-sentinel') {
+            self._bgSentinel = bgNode;
+          }
+        }
+        if (!self._bgSentinel && typeof Konva !== 'undefined') {
+          self._bgSentinel = new Konva.Group({ name: 'svg-sentinel' });
+          self.backgroundLayer.add(self._bgSentinel);
+        }
+        self.backgroundLayer.draw();
+      }
+
+      for (var si = 0; si < shapeSnapshots.length; si++) {
+        self._reinsertShapeJSON(shapeSnapshots[si]);
+      }
+      for (var ai = 0; ai < annotationSnapshots.length; ai++) {
+        var annot = annotationSnapshots[ai];
+        if (annot.user) {
+          self._reinsertAnnotationJSON(annot.json);
+        } else if (self.annotationLayer && typeof Konva !== 'undefined') {
+          try { self.annotationLayer.add(Konva.Node.create(annot.json)); } catch (e) { /* ignore */ }
+        }
+      }
+      if (self.annotationLayer) self.annotationLayer.draw();
+
+      self._currentEnvelope = snapshot.envelope;
+      self._ariaDescription = snapshot.ariaDescription;
+      self._hasPriorVisual = snapshot.hasPriorVisual;
+      self._lastAction = snapshot.lastAction;
+      if (self._svgHost) {
+        self._svgHost.innerHTML = snapshot.svgHtml;
+        if (snapshot.svgHtml) self._wireSemanticInteractions();
+      }
+      restoreSurface(self._fallbackEl, snapshot.fallback);
+      restoreSurface(self._errorBar, snapshot.errorBar);
+      self._pendingImage = snapshot.pendingImage;
+      self._imageIndicatorOpen = false;
+      self._updateImageIndicator();
+      self._selectedShapeIds = snapshot.selectedShapeIds.slice();
+      self._selectedAnnotIds = snapshot.selectedAnnotIds.slice();
+      self._selectedNodeId = snapshot.selectedNodeId;
+      if (snapshot.selectedNodeId && self._svgHost) self._focusNavId(snapshot.selectedNodeId);
+      self._redrawSelection();
+      self._redrawAnnotationSelection();
+      if (self.el) {
+        if (snapshot.ariaActiveDescendant == null) {
+          self.el.removeAttribute('aria-activedescendant');
+        } else {
+          self.el.setAttribute('aria-activedescendant', snapshot.ariaActiveDescendant);
+        }
+      }
+      self._applyTransform();
+    };
+    var clear = function () {
+      self._clearCanvasContents(imageNode, assistantImageNode);
+      self._lastAction = 'clear';
+    };
+
+    clear();
+    return this._pushHistory({
+      label: 'clear-canvas',
+      // Clear and its native Undo/Redo are one explicitly reversible user
+      // action. They must not consume the separate flattened-copy warning.
+      bypassUserMutationGuard: true,
+      undoFn: restore,
+      redoFn: clear,
+    });
+  };
+
+  /** Clear content and history at a Dialogue/turn lifecycle boundary. */
+  VisualPanel.prototype.resetCanvas = function () {
+    var imageNode = this._backgroundImageNode;
+    var assistantImageNode = this._assistantBackgroundImageNode;
+    this._suppressHistory = true;
+    try {
+      this._clearCanvasContents(imageNode, assistantImageNode);
+      if (imageNode && imageNode.destroy) {
+        try { imageNode.destroy(); } catch (e) { /* ignore */ }
+      }
+      if (assistantImageNode && assistantImageNode.destroy) {
+        try { assistantImageNode.destroy(); } catch (e) { /* ignore */ }
+      }
+      this._lastAction = 'clear';
+    } finally {
+      this._suppressHistory = false;
+    }
+    this._history = [];
+    this._historyCursor = 0;
+    this._mutationGuardCancelled = false;
+    return true;
+  };
 
   // ── clear-user-input ─────────────────────────────────────────────────────
 
@@ -6340,6 +6604,8 @@
     onBridgeUpdate: function (state) { if (_active) _active.onBridgeUpdate(state); },
     renderSpec: function (envelope) { return _active ? _active.renderSpec(envelope) : Promise.resolve(); },
     clearArtifact: function () { if (_active) _active.clearArtifact(); },
+    clearCanvas: function () { if (_active) _active.clearCanvas(); },
+    resetCanvas: function () { if (_active) _active.resetCanvas(); },
     // WP-3.1 surface
     setActiveTool: function (tool) { if (_active) _active.setActiveTool(tool); },
     getActiveTool: function () { return _active ? _active.getActiveTool() : null; },
