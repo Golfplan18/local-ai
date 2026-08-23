@@ -3,7 +3,7 @@
 Cascade (``channel="auto"``):
 
     1. httpx + Trafilatura  — cheap, fast baseline.
-    2. Playwright (chrome)  — handles JS-rendered pages.
+    2. Playwright (managed Chromium) — handles JS-rendered pages.
     3. Jina Reader          — final fallback (``r.jina.ai/<url>``).
 
 Each tier returns an acceptable result (markdown >= ``_MIN_USEFUL_CHARS``
@@ -263,7 +263,7 @@ def _fetch_playwright(url: str) -> dict[str, Any]:
             origin=network_policy.validate_public_url(url).origin,
         )
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel="chrome", headless=True)
+            browser = p.chromium.launch(headless=True)
             try:
                 context = browser.new_context(
                     user_agent=_USER_AGENT,

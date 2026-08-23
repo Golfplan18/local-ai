@@ -43,9 +43,8 @@ pillow
 watchfiles
 keyring
 
+# Browser automation
+playwright
+
 # Local MLX inference — Apple Silicon only
 mlx-lm; sys_platform == "darwin" and platform_machine == "arm64"
-
-# Deliberately NOT here: playwright. Browser automation is opt-in and needs a
-# separate `playwright install` for browser binaries; boot.py imports it lazily
-# so the server runs fine without it.

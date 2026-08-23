@@ -323,6 +323,25 @@ def _playwright_modules(browser):
 
 
 class TestBrowserBoundaries(unittest.TestCase):
+    def test_web_fetch_launches_managed_chromium_without_a_channel(self):
+        browser = _Browser([], [])
+        modules = _playwright_modules(browser)
+        with mock.patch.object(
+            network_policy.socket, "getaddrinfo", side_effect=_dns({}),
+        ), mock.patch.dict(sys.modules, modules), \
+             mock.patch.object(wf, "_trafilatura_to_result", return_value={
+                 "url": "https://public.example/", "markdown": "x" * 600,
+                 "title": None, "channel": "local", "fetched_at": "now",
+             }):
+            wf._fetch_playwright("https://public.example/")
+
+        launch = (
+            modules["playwright.sync_api"].sync_playwright.return_value
+            .__enter__.return_value.chromium.launch
+        )
+        launch.assert_called_once_with(headless=True)
+        self.assertNotIn("channel", launch.call_args.kwargs)
+
     def test_web_fetch_blocks_private_subrequest_and_websocket(self):
         private_http = _Route("http://private.example/data")
         private_ws = _WebSocketRoute("ws://private.example/socket")
