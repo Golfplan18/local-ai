@@ -3,9 +3,9 @@
 This module is the executable projection of the single System Protection and
 Outbound Security contract.  The pre-channel tranche deliberately implements
 only mechanical self-protection, credential, destructive-action, and generic
-non-channel external-write boundaries.  Telegram, email, agent masks, channel
-allowlists, communications audit, and live outbound proof remain unavailable
-until G1.17/G1.21.
+non-channel external-write boundaries.  G1.21 opens one exact ``email_send``
+action through the same approval and receipt path; every other channel action
+remains unavailable.
 
 The module does not create another approval system.  Review-required actions
 use :mod:`tool_events`' existing Paused -> /approve -> one-shot-token path.
@@ -47,10 +47,11 @@ except ImportError:  # pragma: no cover
 SCHEMA_VERSION = 2
 AUDIT_KIND = "system_protection"
 DEFERRED_CHANNEL_ACTIONS = frozenset({
-    "telegram_send", "telegram_receive", "email_send", "email_receive",
+    "telegram_send", "telegram_receive", "email_receive",
     "channel_send", "channel_receive", "send_message", "agent_mask_apply",
 })
 SERVER_ACTION_SELECTOR_PREFIXES = {
+    "email_send": ("email:", "credential:ora/", "path:"),
     "credential_store": ("credential:ora/",),
     "credential_delete": ("credential:ora/",),
     "project_register": ("path:",),
@@ -707,11 +708,26 @@ def classify_action(
     exact_selectors = tuple(sorted({str(item) for item in selectors if str(item)}))
     if not normalized_action:
         return PolicyDecision("deny", "unclassified action fails closed", "", exact_selectors, "unknown-action")
-    if normalized_action in DEFERRED_CHANNEL_ACTIONS or normalized_action.startswith(("telegram_", "email_", "channel_")):
+    if normalized_action in DEFERRED_CHANNEL_ACTIONS or normalized_action.startswith(("telegram_", "email_", "channel_")) and normalized_action != "email_send":
         return PolicyDecision(
-            "deny", "channel authority is unavailable until G1.17 and G1.21", normalized_action,
+            "deny", "channel authority is unavailable for this action", normalized_action,
             exact_selectors, "channel-deferred",
         )
+    if normalized_action == "email_send":
+        if not exact_selectors or not all(
+            selector.startswith(("email:", "credential:ora/", "path:"))
+            for selector in exact_selectors
+        ):
+            return PolicyDecision(
+                "deny", "email_send requires exact email selectors",
+                normalized_action, exact_selectors, "email-scope-required",
+            )
+        # The provider boundary owns these axes; a caller cannot relabel an
+        # outbound send as a harmless read and reach the provider without the
+        # one-shot review path.
+        mutability = "irreversible"
+        sensitivity = "private"
+        egress = "external"
 
     destructive = bool(_DESTRUCTIVE_WORDS.search(normalized_action)) if destructive_intent is None else bool(destructive_intent)
     mutating = destructive or mutability != "read"
@@ -1058,7 +1074,7 @@ def begin_execution(
 
     if decision.outcome != "review" or not approval_id:
         raise ProtectionAuditError("protected execution requires exact consumed approval")
-    if surface in {"server_api", "slash_command"}:
+    if surface in {"server_api", "slash_command", "channel"}:
         expected_approval_action = f"system_protection:{decision.action}"
     elif surface == "tool_dispatcher":
         if decision.action.startswith("bash:"):
@@ -1422,6 +1438,32 @@ def authorize_server_action(
     )
 
 
+def authorize_channel_action(
+    action: str,
+    *,
+    selectors: Sequence[str],
+    params: Mapping[str, Any],
+    pre_state: Sequence[Mapping[str, Any]],
+) -> ProtectionExecution:
+    """Authorize one channel action through the existing Paused path.
+
+    G1.21 intentionally exposes only the exact Fastmail ``email_send``
+    adapter.  Keeping this tiny adapter beside ``authorize_server_action``
+    means the channel has no second approval or audit implementation.
+    """
+    if str(action or "").strip().lower() != "email_send":
+        raise ProtectionDenied("only the exact email_send channel action is available")
+    exact = tuple(sorted({str(item) for item in selectors if str(item)}))
+    if not exact or not all(
+        item.startswith(("email:", "credential:ora/", "path:")) for item in exact
+    ) or not any(item.startswith("email:") for item in exact):
+        raise ProtectionDenied("email_send requires exact email selectors")
+    return authorize_server_action(
+        "email_send", selectors=exact, params=params, pre_state=pre_state,
+        surface="channel",
+    )
+
+
 def params_digest(parameters: Mapping[str, Any]) -> str:
     """Public helper used by boundaries without persisting raw parameters."""
 
@@ -1437,6 +1479,7 @@ __all__ = [
     "ProtectionReviewRequired",
     "SystemProtectionError",
     "authorize_server_action",
+    "authorize_channel_action",
     "begin_execution",
     "capture_local_model_identity",
     "capture_path_identity",

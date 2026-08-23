@@ -681,6 +681,18 @@ body.ora-auto-hide-controls .sidebar-collapsed-dashboard:not(:hover):not(:focus-
   margin-bottom: 3px;
 }
 
+.trigger-message-inspection {
+  max-height: 260px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary, transparent);
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 /* ── Trigger authoring form ──────────────────────────────────────────── */
 
 .trigger-form-overlay {
