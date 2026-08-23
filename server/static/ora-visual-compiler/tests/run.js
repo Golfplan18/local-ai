@@ -16,6 +16,7 @@
 const fs   = require('fs');
 const vm   = require('vm');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { JSDOM } = require('jsdom');
 
 // ── Paths ────────────────────────────────────────────────────────────────────
@@ -180,6 +181,7 @@ async function bootCompiler() {
   // in the enrichment stage, and before visual-panel so visual-panel's
   // rendering path can observe review findings on result.errors/.warnings.
   loadScript(path.join(COMPILER_DIR, 'artifact-adversarial.js'));
+  loadScript(path.join(COMPILER_DIR, 'native-excalidraw.js'));
 
   // WP-2.1 — Konva + visual-panel. Konva is a UMD bundle that assigns to
   // globalThis.Konva (our `win.globalThis = win` aliasing lands it on
@@ -307,6 +309,19 @@ async function runSuite(label, fn, ctx) {
   }
 }
 
+function runStandaloneSuite(label, relativePath) {
+  const script = path.resolve(__dirname, relativePath);
+  const result = spawnSync(process.execPath, [script], {
+    cwd: path.dirname(script),
+    encoding: 'utf8',
+  });
+  const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+  const detail = result.status === 0
+    ? (output.split('\n').slice(-1)[0] || 'passed')
+    : (output.split('\n').slice(-8).join(' ') || `exit ${result.status}`);
+  record(label, result.status === 0, detail);
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 (async function main() {
   console.log('Ora visual compiler — WP-1.2a test harness');
@@ -317,12 +332,44 @@ async function runSuite(label, fn, ctx) {
   console.log('Ajv bootstrapped: ' + (ctx.ajvOk ? 'yes (Layer 2)' : 'no (Layer 1 only)'));
   console.log('Known types: ' + ctx.win.OraVisualCompiler.KNOWN_TYPES.size);
 
-  // Suite files that export { label, run(ctx, record) }. test-c4.js,
-  // test-causal-dag.js, test-concept-map.js, and test-mermaid.js are
-  // standalone scripts from WP-1.2 that do not export a suite — run them
-  // individually via `node cases/test-<name>.js`. They're covered
-  // end-to-end in this harness through the envelope-valid/invalid suites
-  // (each envelope example is dispatched through compile()).
+  // Suite files that export { label, run(ctx, record) } are loaded below.
+  // The detailed DAG, concept-map, Mermaid, and C4 suites predate this
+  // harness and remain standalone runners. They are part of this canonical
+  // gate now; test-c4.js is their data-only case index, consumed by the C4
+  // runner rather than registered as a second runner.
+  runStandaloneSuite('detailed causal-DAG suite', './cases/test-causal-dag.js');
+  runStandaloneSuite('detailed concept-map suite', './cases/test-concept-map.js');
+  runStandaloneSuite('detailed Mermaid suite', './cases/test-mermaid.js');
+  runStandaloneSuite('detailed C4 suite', './standalone-c4.js');
+
+  await runSuite('native Excalidraw shared-layout contract', async ({ win }, record) => {
+    const envelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'concept_map.valid.json'), 'utf8'
+    ));
+    const result = await Promise.resolve(win.OraVisualCompiler.compileWithNav(envelope));
+    const builder = win.OraVisualCompiler.nativeExcalidraw;
+    const scene = builder.buildScene(envelope, {
+      assistantVisualId: 'harness-native',
+      generationRevision: 1,
+      layout: result.layout,
+    });
+    const arrows = scene.elements.filter((element) => element.type === 'arrow');
+    const owned = scene.elements.every((element) => {
+      const data = element.customData || {};
+      return data.assistantVisualId === 'harness-native'
+        && data.generationRevision === 1
+        && data.semanticElementId
+        && data.originalGenerationFingerprint;
+    });
+    const bindings = arrows.every((arrow) => arrow.startBinding && arrow.endBinding
+      && scene.elements.some((element) => element.id === arrow.startBinding.elementId)
+      && scene.elements.some((element) => element.id === arrow.endBinding.elementId));
+    record('compiler exposes one layout reused by native scene', !!result.layout
+      && scene.layout && scene.layout.nodes === result.layout.nodes);
+    record('native scene has editable owned objects and bound arrows', scene.elements.length > 4
+      && arrows.length > 0 && owned && bindings);
+  }, ctx);
+
   const caseFiles = [
     './cases/test-envelope-valid.js',
     './cases/test-envelope-invalid.js',

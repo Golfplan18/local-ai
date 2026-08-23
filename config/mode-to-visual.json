@@ -131,22 +131,22 @@
       "notes": "Flowchart for interest-flow tracing; concept map for institutional structure."
     },
     "steelman-construction": {
-      "visual_types": [],
-      "relation_to_prose_default": "no_visual",
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Linguistically native. The steelman is prose."
+      "notes": "Constrained single-sided concept map: reconstructed claim, supporting premises, and premise interactions."
     },
     "deep-clarification": {
       "visual_types": ["flowchart"],
-      "relation_to_prose_default": "no_visual",
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Flowchart only when the mechanism is itself spatial/procedural; otherwise no_visual."
+      "notes": "Flowchart when the mechanism is procedural; concept-map fallback for grounded relationships."
     },
     "paradigm-suspension": {
-      "visual_types": [],
-      "relation_to_prose_default": "no_visual",
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Questioning assumptions is linguistic; a diagram would force premature commitment."
+      "notes": "A constrained concept map keeps assumptions and alternatives provisional instead of collapsing them into a hierarchy."
     },
     "project-mode": {
       "visual_types": [],
@@ -155,22 +155,57 @@
       "notes": "Project Mode inherits visual configuration from the analytical mode it serves. Visual types and strictness are resolved at dispatch time based on the underlying mode."
     },
     "structured-output": {
-      "visual_types": [],
-      "relation_to_prose_default": "no_visual",
+      "visual_types": ["concept_map"],
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Structured Output renders existing content. Passes through visuals from source; does not generate new visuals."
+      "notes": "Pass through source envelopes byte-equivalent; a new concept map is allowed only for relationship-bearing source content not already represented."
     },
     "red-team-assessment": {
       "visual_types": ["concept_map", "flowchart", "causal_loop_diagram"],
-      "relation_to_prose_default": "no_visual",
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Repaired 2026-08-22: inherits the entry that was keyed to the retired `red-team` mode, which no dispatch has resolved to since the split into assessment/advocate — leaving both successors unconfigured. Ranks vulnerabilities by severity for the user's own fix-prioritisation. Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). Severity coded via dual encoding (colour + prefix label in callout text) for WCAG and colour-blind safety. canvas_action is annotate, never replace. Depth (Internal) and Breadth (External) findings consolidate into one envelope per turn."
+      "notes": "Ranks vulnerabilities by severity. Use annotate for a supplied diagram; otherwise emit a grounded concept map, causal loop, or flowchart matching the relationship structure. Severity uses colour plus prefix labels for accessibility. canvas_action is annotate when a source diagram exists, never replace."
     },
     "red-team-advocate": {
       "visual_types": ["concept_map", "flowchart", "causal_loop_diagram"],
-      "relation_to_prose_default": "no_visual",
+      "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Repaired 2026-08-22: see `red-team-assessment` — same split, same inherited entry. Ranks attacks by persuasive force with a named external audience rather than by severity. Annotated overlay only when input contains a diagram to be attacked; otherwise prose-only. Pick the type matching the user's input structure (feedback loops → causal_loop_diagram; sequential steps → flowchart; typed propositions → concept_map). canvas_action is annotate, never replace."
-    }
+      "notes": "Ranks attacks by persuasive force for a named external audience. Use annotate for a supplied diagram; otherwise emit a grounded concept map, causal loop, or flowchart matching the relationship structure. canvas_action is annotate when a source diagram exists, never replace."
+    },
+    "argument-audit": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map inferential moves and their supporting premises."},
+    "balanced-critique": {"visual_types": ["concept_map", "quadrant_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map strengths, weaknesses, and conditions without collapsing the balance."},
+    "bayesian-hypothesis-network": {"visual_types": ["concept_map", "ach_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Use a concept map for hypothesis/evidence dependencies; preserve numeric probabilities only when stated in prose."},
+    "boundary-critique": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map boundary judgments and the parties or purposes they serve."},
+    "coherence-audit": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map inferential moves, warrants, and named tensions."},
+    "compositional-dynamics": {"visual_types": ["concept_map", "annotated_image"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Annotate a supplied composition; use a concept map only for grounded verbal relationships."},
+    "conceptual-engineering": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map current use, function failure, and proposed conceptual change."},
+    "decision-clarity": {"visual_types": ["quadrant_matrix", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map decision criteria and dependencies without inventing scores."},
+    "differential-diagnosis": {"visual_types": ["causal_dag", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map candidate explanations and discriminating evidence."},
+    "domain-induction": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map the source-grounded domain structure and open questions."},
+    "factual-lookup": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Use only when the answer contains grounded relationships; otherwise text remains canonical."},
+    "frame-audit": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map the frame's assumptions, exclusions, and consequences."},
+    "frame-comparison": {"visual_types": ["concept_map", "quadrant_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map competing frames and their points of divergence."},
+    "general-inquiry": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Use a visual when the answer contains source-grounded relationships."},
+    "interest-mapping": {"visual_types": ["concept_map", "quadrant_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map parties to interests and their relationships."},
+    "ma-reading": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map the source's material and interpretive relationships."},
+    "market-dynamics": {"visual_types": ["time_series", "causal_loop_diagram"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Use stated time values or source-grounded feedback relationships only."},
+    "mechanism-design": {"visual_types": ["causal_dag", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map incentives, mechanisms, and resulting behaviour."},
+    "mechanism-understanding": {"visual_types": ["causal_dag", "flowchart"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Use a DAG for causal structure and a flowchart for procedural mechanism."},
+    "multi-criteria-decision": {"visual_types": ["quadrant_matrix", "comparison"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Compare only criteria and values stated in the response."},
+    "place-reading-genius-loci": {"visual_types": ["concept_map", "annotated_image"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Annotate a supplied place image; otherwise map grounded place relationships."},
+    "pre-mortem-action": {"visual_types": ["bow_tie", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map threat, preventive barrier, failure, and recovery relationships."},
+    "pre-mortem-fragility": {"visual_types": ["bow_tie", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map failure pathways and their grounded conditions."},
+    "principled-negotiation": {"visual_types": ["concept_map", "quadrant_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map interests, options, and objective-criteria relationships without inventing positions."},
+    "probabilistic-forecasting": {"visual_types": ["time_series", "distribution"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Plot only stated forecasts, dates, ranges, and probabilities."},
+    "process-tracing": {"visual_types": ["causal_dag", "flowchart"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map evidence through the causal or procedural chain."},
+    "propaganda-audit": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map claims, frames, audiences, and effects from the source."},
+    "quick-orientation": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "relaxed", "notes": "Provide a small source-grounded orientation map when relationships help navigation."},
+    "simple": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "relaxed", "notes": "Keep the visual optional and sparse; text remains canonical."},
+    "stakeholder-mapping": {"visual_types": ["concept_map", "quadrant_matrix"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map parties, interests, power, and relationships without dropping marginal parties."},
+    "subjective-inquiry": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "relaxed", "notes": "Map perspectives and criteria without implying an objective score."},
+    "third-side": {"visual_types": ["concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map community rings, parties, and mediator roles."},
+    "wicked-future": {"visual_types": ["time_series", "concept_map"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map scenarios and divergence points using only stated probabilities or dates."},
+    "wicked-problems": {"visual_types": ["concept_map", "causal_dag"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map competing framings, stakeholders, and systemic dependencies."},
+    "worldview-cartography": {"visual_types": ["concept_map", "ibis"], "relation_to_prose_default": "integrated", "adversarial_strictness": "standard", "notes": "Map paradigms and tensions while preserving incommensurability."}
   }
 }

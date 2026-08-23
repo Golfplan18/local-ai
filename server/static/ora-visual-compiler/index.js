@@ -108,6 +108,16 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
     return { svg: working, ariaDescription: description };
   }
 
+  function _attachSharedLayout(result, envelope) {
+    if (result && C.nativeExcalidraw
+        && typeof C.nativeExcalidraw.buildLayout === 'function'
+        && typeof C.nativeExcalidraw.isNativeType === 'function'
+        && C.nativeExcalidraw.isNativeType(envelope && envelope.type)) {
+      result.layout = C.nativeExcalidraw.buildLayout(envelope);
+    }
+    return result;
+  }
+
   /**
    * compile(spec) → { svg: string, errors: Array, warnings: Array }
    *
@@ -148,7 +158,7 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
           errors:   r.errors,
           warnings: validation.warnings.concat(r.warnings || []),
         };
-        return _applyArtifactAdversarial(out, envelope);
+        return _applyArtifactAdversarial(_attachSharedLayout(out, envelope), envelope);
       });
     }
     const enriched = _applyAccessibility(dispatched.svg, envelope);
@@ -157,7 +167,7 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
       errors:   dispatched.errors,
       warnings: validation.warnings.concat(dispatched.warnings || []),
     };
-    return _applyArtifactAdversarial(syncOut, envelope);
+    return _applyArtifactAdversarial(_attachSharedLayout(syncOut, envelope), envelope);
   }
 
   /**
@@ -194,7 +204,7 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
           warnings:        validation.warnings.concat(r.warnings || []),
           ariaDescription: enriched.ariaDescription,
         };
-        return _applyArtifactAdversarial(out, envelope);
+        return _applyArtifactAdversarial(_attachSharedLayout(out, envelope), envelope);
       });
     }
     const enriched = _applyAccessibility(dispatched.svg, envelope);
@@ -204,7 +214,7 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
       warnings:        validation.warnings.concat(dispatched.warnings || []),
       ariaDescription: enriched.ariaDescription,
     };
-    return _applyArtifactAdversarial(syncOut, envelope);
+    return _applyArtifactAdversarial(_attachSharedLayout(syncOut, envelope), envelope);
   }
 
   /**

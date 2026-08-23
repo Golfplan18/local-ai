@@ -1568,7 +1568,10 @@ class TestRunPipelineFinalization(unittest.TestCase):
             result = self.boot.run_pipeline(
                 "/framework fw-cli-happy do thing",
                 conversation_id="t-boot-fw-happy")
-        self.assertEqual(result, "framework complete")
+        self.assertEqual(
+            self.boot._strip_visual_blocks_and_markers(result),
+            "framework complete",
+        )
         self._assert_completed_framework_lineage("t-boot-fw-happy")
 
     def test_exception_finalizes_error_not_left_open(self):
@@ -3458,7 +3461,10 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
         events = [json.loads(chunk[6:]) for chunk in chunks]
         responses = [event.get("text") for event in events
                      if event.get("type") == "response"]
-        self.assertEqual(responses, ["stealth direct response"])
+        self.assertEqual(
+            [self.boot._strip_visual_blocks_and_markers(value) for value in responses],
+            ["stealth direct response"],
+        )
         self.assertFalse(any(event.get("type") == "trace_ref"
                              for event in events))
         self.assertFalse((Path(self.root) / conv).exists())

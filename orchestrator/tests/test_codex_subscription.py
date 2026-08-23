@@ -691,8 +691,10 @@ class SubscriptionRoutingAndDispatchTests(unittest.TestCase):
             event["text"] for event in events
             if event.get("type") == "response"
         ][-1]
+        # Direct responses now pass through the terminal visual authority;
+        # compare the subscription notice after removing its companion visual.
         self.assertEqual(
-            response,
+            boot._strip_visual_blocks_and_markers(response),
             "Answer\n\n" + boot.CODEX_CANVAS_IMAGE_NOTICE,
         )
         self.assertEqual(response.count(boot.CODEX_CANVAS_IMAGE_NOTICE), 1)

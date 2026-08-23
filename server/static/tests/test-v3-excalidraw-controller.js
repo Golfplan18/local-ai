@@ -12,6 +12,9 @@ const { JSDOM } = require(path.join(modules, 'jsdom'));
 const source = fs.readFileSync(
   path.resolve(__dirname, '..', 'js', 'v3-canvas-mount.js'), 'utf8'
 );
+const nativeSource = fs.readFileSync(
+  path.resolve(__dirname, '..', 'ora-visual-compiler', 'native-excalidraw.js'), 'utf8'
+);
 const dom = new JSDOM(
   '<!doctype html><html><body><section class="visual-pane-shell">'
     + '<div class="right-pane"></div><div id="visualPaneFooter">'
@@ -130,6 +133,7 @@ const api = {
   updateScene(scene) {
     if (scene.elements) this.elements = scene.elements;
     if (scene.appState) this.appState = { ...this.appState, ...scene.appState };
+    if (scene.files) this.files = scene.files;
     // Exercise the real hazard: Excalidraw reports programmatic updates.
     islandOptions.onChange(this.elements, this.appState, this.files);
   },
@@ -404,6 +408,7 @@ context.console = console;
 context.fetch = w.fetch;
 context.VisualPanel = VisualPanel;
 context.Konva = w.Konva;
+vm.runInContext(nativeSource, context, { filename: 'native-excalidraw.js' });
 vm.runInContext(source, context, { filename: 'v3-canvas-mount.js' });
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -712,38 +717,36 @@ const exportThroughMenu = async (format) => {
     envelope: { id: 'default-replace', type: 'comparison' },
     ora_visual_dispatch_key: 'actions#default',
   });
-  if (api.elements.length !== 1
-      || api.elements[0].customData.oraAssistantVisualKind !== 'artifact') {
-    throw new Error('first omitted canvas_action did not replace the whole scene');
+  if (!api.elements.some((element) => element.id === 'user-before-first')
+      || api.elements.filter((element) => element.customData
+        && element.customData.oraAssistantVisualKind === 'artifact').length !== 1) {
+    throw new Error('first omitted canvas_action did not preserve user material and add the artifact');
   }
-  const artifactBeforeUpdate = api.elements[0];
+  const artifactBeforeUpdate = api.elements.find((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'artifact');
   Object.assign(artifactBeforeUpdate, { x: 70, y: 80, width: 90, height: 60 });
   const replacedFileId = artifactBeforeUpdate.fileId;
   api.elements.push(
     { id: 'user-preserved', type: 'rectangle', x: 0, y: 0, width: 10, height: 10 },
     {
       id: 'annotation-preserved', type: 'image', x: 20, y: 0, width: 10, height: 10,
-      customData: { oraAssistantVisual: true, oraAssistantVisualKind: 'annotation' },
+      customData: { annotationSource: 'user' },
     }
   );
   await w.OraPanels.visual.onBridgeUpdate({
     envelope: { id: 'explicit-update', type: 'comparison', canvas_action: 'update' },
     ora_visual_dispatch_key: 'actions#update',
   });
+  const artifactsAfterModifiedUpdate = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'artifact');
   if (!api.elements.some((element) => element.id === 'user-preserved')
       || !api.elements.some((element) => element.id === 'annotation-preserved')
-      || api.elements.filter((element) => element.customData
-        && element.customData.oraAssistantVisualKind === 'artifact').length !== 1
-      || api.elements.find((element) => element.customData
-        && element.customData.oraAssistantVisualKind === 'artifact').x !== 70
-      || api.elements.find((element) => element.customData
-        && element.customData.oraAssistantVisualKind === 'artifact').y !== 80
-      || api.elements.find((element) => element.customData
-        && element.customData.oraAssistantVisualKind === 'artifact').width !== 90
-      || api.elements.find((element) => element.customData
-        && element.customData.oraAssistantVisualKind === 'artifact').height !== 60
-      || api.files[replacedFileId]) {
-    throw new Error('update did not replace only the whole assistant artifact');
+      || artifactsAfterModifiedUpdate.length !== 2
+      || !artifactsAfterModifiedUpdate.some((element) => element.x === 70
+        && element.y === 80 && element.width === 90 && element.height === 60)
+      || !api.files[replacedFileId]
+      || Object.keys(api.files).length !== 2) {
+    throw new Error('update did not preserve the modified assistant artifact and user material');
   }
   const sceneBeforeAnnotate = JSON.stringify({ elements: api.elements, files: api.files });
   const compiledBeforeAnnotate = compiledEnvelopeIds.length;
@@ -769,10 +772,14 @@ const exportThroughMenu = async (format) => {
     envelope: { id: 'explicit-replace', type: 'comparison', canvas_action: 'replace' },
     ora_visual_dispatch_key: 'actions#replace',
   });
-  if (api.elements.length !== 1
-      || api.elements[0].customData.oraAssistantVisualKind !== 'artifact'
-      || Object.keys(api.files).length !== 1) {
-    throw new Error('explicit replace did not remove user and annotation content');
+  const artifactsAfterReplace = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'artifact');
+  if (!api.elements.some((element) => element.id === 'user-before-first')
+      || !api.elements.some((element) => element.id === 'user-preserved')
+      || !api.elements.some((element) => element.id === 'annotation-preserved')
+      || artifactsAfterReplace.length !== 2
+      || Object.keys(api.files).length !== 2) {
+    throw new Error('explicit replace did not preserve user material and modified assistant content');
   }
   const compiledBeforeClear = compiledEnvelopeIds.length;
   const stateEventsBeforeClear = canvasStateEvents;
@@ -780,11 +787,81 @@ const exportThroughMenu = async (format) => {
     envelope: { id: 'explicit-clear', type: 'comparison', canvas_action: 'clear' },
     ora_visual_dispatch_key: 'actions#clear',
   });
-  if (api.elements.length !== 0
+  const assistantElementsAfterClear = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'artifact');
+  if (assistantElementsAfterClear.length !== 1
+      || !assistantElementsAfterClear.some((element) => element.x === 70
+        && element.y === 80 && element.width === 90 && element.height === 60)
+      || !api.elements.some((element) => element.id === 'user-before-first')
+      || !api.elements.some((element) => element.id === 'user-preserved')
+      || !api.elements.some((element) => element.id === 'annotation-preserved')
+      || Object.keys(api.files).length !== 1
+      || !api.files[replacedFileId]
       || compiledEnvelopeIds.length !== compiledBeforeClear
       || canvasStateEvents !== stateEventsBeforeClear + 1
-      || !w.document.getElementById('visualExportButton').disabled) {
-    throw new Error('clear did not empty the scene and refresh canvas/export state once');
+      || w.document.getElementById('visualExportButton').disabled) {
+    throw new Error('clear did not remove untouched assistant material while preserving modified output and user content');
+  }
+
+  api.elements = [{ id: 'native-user', type: 'rectangle', x: 8, y: 8, width: 20, height: 20 }];
+  const nativeEnvelope = {
+    id: 'native-visual', type: 'concept_map', canvas_action: 'replace',
+    spec: {
+      focus_question: 'How do the two ideas connect?',
+      concepts: [
+        { id: 'A', label: 'First idea', hierarchy_level: 0 },
+        { id: 'B', label: 'Second idea', hierarchy_level: 1 },
+      ],
+      linking_phrases: [{ id: 'L1', text: 'supports' }],
+      propositions: [{ from_concept: 'A', via_phrase: 'L1', to_concept: 'B' }],
+    },
+  };
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: nativeEnvelope }],
+    ora_visual_dispatch_key: 'native#1',
+  });
+  const nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+  if (!api.elements.some((element) => element.id === 'native-user')
+      || nativeElements.length < 5
+      || !nativeElements.some((element) => element.type === 'arrow')
+      || nativeElements.some((element) => !element.customData.assistantVisualId
+        || !element.customData.generationRevision
+        || !element.customData.semanticElementId
+        || !element.customData.originalGenerationFingerprint)
+      || nativeElements.filter((element) => element.type === 'arrow').some((element) => (
+        !element.startBinding || !element.endBinding
+        || !api.elements.some((candidate) => candidate.id === element.startBinding.elementId)
+        || !api.elements.some((candidate) => candidate.id === element.endBinding.elementId)
+      ))) {
+    throw new Error('native structural visual did not install editable owned objects with bound initial arrows');
+  }
+  const modifiedNative = nativeElements.find((element) => element.type === 'rectangle');
+  const modifiedNativeX = modifiedNative.x + 180;
+  modifiedNative.x = modifiedNativeX;
+  const modifiedNativeLabel = nativeElements.find((element) => element.type === 'text');
+  modifiedNativeLabel.text = 'User-edited label';
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
+    ora_visual_dispatch_key: 'native#2',
+  });
+  const sameSemanticNative = api.elements.filter((element) => element.customData
+    && element.customData.semanticElementId === modifiedNative.customData.semanticElementId);
+  if (sameSemanticNative.length !== 2
+      || !sameSemanticNative.some((element) => element.id === modifiedNative.id
+        && element.x === modifiedNativeX)
+      || sameSemanticNative.some((element) => element.id !== modifiedNative.id
+        && element.x === modifiedNativeX)) {
+    throw new Error('modified native assistant object was not preserved beside its regenerated replacement');
+  }
+  const sameSemanticLabel = api.elements.filter((element) => element.customData
+    && element.customData.semanticElementId === modifiedNativeLabel.customData.semanticElementId);
+  if (sameSemanticLabel.length !== 2
+      || !sameSemanticLabel.some((element) => element.id === modifiedNativeLabel.id
+        && element.text === 'User-edited label')
+      || sameSemanticLabel.some((element) => element.id !== modifiedNativeLabel.id
+        && element.text === 'User-edited label')) {
+    throw new Error('edited native label was not preserved beside its regenerated replacement');
   }
 
   const draftCountBeforeCapability = calls.filter(
@@ -796,11 +873,12 @@ const exportThroughMenu = async (format) => {
     x: 4488, y: 4488, width: 80, height: 60,
     image_data: { mime_type: 'image/png', encoding: 'base64', data: 'aW1hZ2U=' },
   });
+  const capabilityElement = api.elements.find((element) => element.id === 'capability-png-1');
   if (capabilityImageCalls !== 1
       || konvaAttachCalls !== konvaAttachBeforeExcalidrawCapability
-      || api.elements.length !== 1 || api.elements[0].id !== 'capability-png-1'
-      || api.elements[0].locked !== false
-      || api.elements[0].x !== 0 || api.elements[0].y !== 0
+      || !capabilityElement
+      || capabilityElement.locked !== false
+      || capabilityElement.x < 0 || capabilityElement.y < 0
       || calls.filter((call) => call.url === '/api/canvas/draft'
         && call.method === 'POST').length !== draftCountBeforeCapability + 1) {
     throw new Error('image capability result did not land in and persist the active Excalidraw scene');
@@ -815,9 +893,9 @@ const exportThroughMenu = async (format) => {
   if (w.OraCanvas.getActiveEditor() !== 'konva'
       || konvaAttachCalls !== attachBeforeEmptyXToK
       || konvaArtifactClearCalls !== artifactClearsBeforeEmptyXToK + 1
-      || konvaPendingImageClearCalls !== pendingClearsBeforeEmptyXToK + 1
-      || konvaEmptyStateLoadCalls !== stateClearsBeforeEmptyXToK + 1) {
-    throw new Error('empty X→K did not clear Konva without attaching the blank PNG');
+      || konvaPendingImageClearCalls !== pendingClearsBeforeEmptyXToK
+      || konvaEmptyStateLoadCalls !== stateClearsBeforeEmptyXToK) {
+    throw new Error('empty X→K did not clear the assistant artifact without erasing user material');
   }
   await w.OraCanvas.switchEditor();
   if (w.OraCanvas.getActiveEditor() !== 'excalidraw'

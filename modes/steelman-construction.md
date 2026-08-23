@@ -5,7 +5,7 @@ type: mode
 tags:
 date created: 2026-03-23
 date modified: 2026-05-24
-no_visual: true
+no_visual: false
 
 ---
 
@@ -166,7 +166,7 @@ Widening the lens means scanning for the proponent's full philosophical or strat
 
 ## ANALYTICAL BRIEF AND EVALUATION CRITERIA
 
-**What this analysis is.** Steelman Construction is a constructive-strong stance mode that reconstructs a position at its logical best — surfacing hidden premises, filling logical gaps charitably, and marshalling the best available evidence — then critiques only that strongest version. It is asymmetric by design: it is distinct from balanced-critique (neutral weighing), benefits-analysis (Plus/Minus/Interesting balanced evaluation), red-team-assessment (adversarial-stance evaluation of an artifact for the user's own decision), and red-team-advocate (adversarial brief for external use). The mode is prose-only — any visual emission is a structural failure.
+**What this analysis is.** Steelman Construction is a constructive-strong stance mode that reconstructs a position at its logical best — surfacing hidden premises, filling logical gaps charitably, and marshalling the best available evidence — then critiques only that strongest version. It is asymmetric by design: it is distinct from balanced-critique (neutral weighing), benefits-analysis (Plus/Minus/Interesting balanced evaluation), red-team-assessment (adversarial-stance evaluation of an artifact for the user's own decision), and red-team-advocate (adversarial brief for external use). When the reconstruction contains explicit relationships, a constrained single-sided concept map may accompany the prose; it must show only the reconstructed claim, supporting premises, and their source-grounded interactions.
 
 **Procedure.**
 
@@ -180,7 +180,7 @@ Widening the lens means scanning for the proponent's full philosophical or strat
 8. Produce the survival assessment — what remains compelling after critique. Even when the critique lands, name what holds, what is qualified, and what falls.
 9. When multiple positions are steelmanned, apply identical rigor to each (symmetry guard rail).
 
-**Goal.** Produce a constructive-strong charitable reconstruction with critique-at-steelman-strength, in prose only — where the steelman is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, and the survival assessment names what remains compelling.
+**Goal.** Produce a constructive-strong charitable reconstruction with critique-at-steelman-strength — where the steelman is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, the survival assessment names what remains compelling, and any accompanying concept map is single-sided and source-grounded.
 
 **Evaluation criteria (what evaluators grade against and analysts write to satisfy).**
 
@@ -189,7 +189,7 @@ Widening the lens means scanning for the proponent's full philosophical or strat
 - **CQ3 — critique targets steelman only.** Does the critique address only the steelmanned version, or does it retreat to the weaker original at any point? Failure mode if unmet: `retreat-to-original`.
 - **CQ4 — construction before critique.** Was the steelman built fully before critique began, or were construction and critique entangled? Failure mode if unmet: `entangled-construction`.
 
-A passing output has all six required sections, the steelmanned reconstruction is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, the survival assessment names what remains compelling after critique, and no visual envelope is emitted.
+A passing output has all six required sections, the steelmanned reconstruction is recognizably the same argument strengthened, at least two points of agreement are explicit, the critique addresses only the strongest version, the survival assessment names what remains compelling after critique, and any concept-map envelope is constrained to the reconstructed claim and its supporting premises.
 
 **Named failure modes.**
 
@@ -223,7 +223,7 @@ Organize the consolidated corpus as **a Rapoport/Dennett charitable-reconstructi
 
 7. **Construction-completes-before-critique ordering.** A standing structural commitment: the steelman is built *fully* before critique begins. Entangled-construction is the named failure mode; interleaved construction-and-critique gets reshaped to sequential ordering.
 
-8. **No-visual atom.** The mode is prose-only. Any visual envelope emission is a structural failure; if visual rendering is wanted, dialectical-analysis (T12) is the right sideways-route.
+8. **Single-sided visual atom.** When explicit relationships survive reconstruction, a concept map may show the reconstructed claim, its supporting premises, and their source-grounded interactions. It must not introduce opposing branches or generic labels.
 
 9. **Confidence per finding.** Each major claim (mirror-test pass, identity preservation, points-of-agreement, survival assessment) carries confidence with grounding.
 
@@ -236,7 +236,7 @@ Organize the consolidated corpus as **a Rapoport/Dennett charitable-reconstructi
 - **Projection** — reconstruction filtered through analyst's worldview rather than the proponent's values.
 - **Entangled construction** — interleaved construction-and-critique rather than sequential.
 - **Balanced presentation drift** — the mode is asymmetric by design (constructive-strong stance); balanced-presentation drift gets reshaped (if balance is wanted, route to benefits-analysis or balanced-critique).
-- **Visual emission** — any diagram, envelope, or visual summary is a structural failure.
+- **Unsupported visual abstraction** — a concept map adds claims, opposing branches, or labels not present in the reconstruction.
 - **Original-position dominance** — original-position paragraph exceeding ⅓ of the steelman length; reshape to construction-dominant proportions.
 
 **What NOT to collapse:**
@@ -249,7 +249,7 @@ Organize the consolidated corpus as **a Rapoport/Dennett charitable-reconstructi
 
 ## VERIFICATION CRITERIA
 
-Verified means: all six required sections present in order or clearly demarcated; original-position paragraph bounded (≤ ⅓ of steelman section length); mirror test passes (a thoughtful proponent would endorse the reconstruction); steelman is recognizably the same argument strengthened (not replaced); at least two points of agreement explicit; critique addresses only the steelmanned version with no retreat to the original; survival assessment present; no visual envelope emitted. The four critical questions are addressable from the output.
+Verified means: all six required sections present in order or clearly demarcated; original-position paragraph bounded (≤ ⅓ of steelman section length); mirror test passes (a thoughtful proponent would endorse the reconstruction); steelman is recognizably the same argument strengthened (not replaced); at least two points of agreement explicit; critique addresses only the steelmanned version with no retreat to the original; survival assessment present; any concept map is single-sided and source-grounded. The four critical questions are addressable from the output.
 
 ## OUTPUT FORMAT GUIDANCE
 
@@ -270,7 +270,7 @@ The deliverable is a **constructive-strong charitable reconstruction with critiq
 **Per-section conventions:**
 
 - Use H2 headings for sections 1 through 6.
-- Format is **prose-only**. No diagram, no envelope, no visual summary. If the user requests visual rendering, the deliverable surfaces a sideways-route: `**Note: visual rendering is not part of this mode's contract. Dialectical-analysis (T12) emits IBIS and may be the appropriate transition if the back-and-forth structure is what's wanted visually.**`
+- Format is prose first. When a concept map is emitted, it follows the prose and contains only the reconstructed claim, supporting premises, and source-grounded interactions; the map never becomes a balanced or generic outline.
 - Original-position (section 1) is bounded — repetition of the weak formulation does not dominate the deliverable. Original sections that exceed ⅓ of the steelman length get reshaped to bounded proportions.
 - The mirror test discipline is operative throughout: would a thoughtful proponent endorse the reconstruction in section 2? If not, the reconstruction is reshaped, not the critique.
 - Critique (section 5) anchors to the steelman's strengths from section 3. Passages that target the original-position weaknesses from section 1 get reshaped or removed.

@@ -461,12 +461,15 @@ class PublicChatStatusBoundaryTests(unittest.TestCase):
                 ), mock.patch.object(
                     server, "run_step1_cleanup", side_effect=stub_step1,
                 ), mock.patch.object(
-                    server,
-                    "run_step2_context_assembly",
-                    side_effect=capture_context,
-                ), mock.patch.object(
-                    server,
-                    "run_single_pass_with_tools",
+                server,
+                "run_step2_context_assembly",
+                side_effect=capture_context,
+            ), mock.patch.object(
+                server,
+                "_begin_visual_outcome",
+            ), mock.patch.object(
+                server,
+                "run_single_pass_with_tools",
                     side_effect=stub_execution,
                 ) as execute, mock.patch.object(
                     server,

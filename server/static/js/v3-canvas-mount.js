@@ -2,8 +2,9 @@
  *
  * Excalidraw is an isolated React island mounted over the existing Konva
  * VisualPanel.  Konva remains alive for legacy .ora-canvas files and is the
- * explicit fallback editor.  Native objects never cross the editor boundary:
- * a switch carries only the canonical flattened PNG.
+ * explicit fallback editor. Native objects remain authoritative in
+ * Excalidraw; switching carries a durable source checkpoint plus a preview
+ * without erasing user-owned material.
  */
 (() => {
   'use strict';
@@ -640,19 +641,18 @@
     const resetKonvaToPng = async (png, attachPng = true) => {
       if (!panel) throw new Error('Konva fallback is unavailable');
       if (typeof panel.clearArtifact === 'function') panel.clearArtifact();
-      if (typeof panel.clearPendingImage === 'function') panel.clearPendingImage();
-      if (typeof panel.loadCanvasState === 'function') panel.loadCanvasState({ objects: [] });
       if (!attachPng) return;
       const file = new File([png], 'excalidraw-flattened.png', { type: 'image/png' });
-      const attached = await panel.attachImage(file);
+      const attached = typeof panel.attachAssistantImage === 'function'
+        ? await panel.attachAssistantImage(file)
+        : await panel.attachImage(file);
       if (!attached) throw new Error('Konva rejected the flattened visual');
     };
 
-    const updateExcalidraw = (scene) => {
+    const updateExcalidraw = (scene, { fitToContent = false } = {}) => {
       if (!excalidrawApi) throw new Error('Excalidraw is not ready');
       applyingScene += 1;
       try {
-        excalidrawApi.resetScene();
         if (scene.files) excalidrawApi.addFiles(Object.values(scene.files));
         excalidrawApi.updateScene({
           elements: scene.elements || [],
@@ -660,8 +660,11 @@
             theme: 'light', viewBackgroundColor: EXCALIDRAW_UI_BACKGROUND,
             gridModeEnabled: false,
           }),
+          files: scene.files || {},
         });
-        excalidrawApi.scrollToContent(scene.elements || [], { fitToContent: true });
+        if (fitToContent) {
+          excalidrawApi.scrollToContent(scene.elements || [], { fitToContent: true });
+        }
         syncExcalidrawGrid(excalidrawApi.getAppState());
         draftDirty = false;
         sceneReady = true;
@@ -678,9 +681,32 @@
     const isAssistantArtifact = (element) => {
       const data = element && element.customData;
       return !!data && (
-        data.oraAssistantVisualKind === 'artifact'
-        || (data.oraAssistantVisualKey && data.oraAssistantVisualKind !== 'annotation')
+        data.assistantVisualId
+        || data.oraAssistantVisual === true
+        || data.oraAssistantVisualKind === 'artifact'
+        || data.oraAssistantVisualKind === 'annotation'
+        || data.oraAssistantVisualKey
       );
+    };
+
+    const assistantGenerationFingerprint = (element) => JSON.stringify({
+      x: Number(element && element.x) || 0,
+      y: Number(element && element.y) || 0,
+      width: Number(element && element.width) || 0,
+      height: Number(element && element.height) || 0,
+      angle: Number(element && element.angle) || 0,
+      locked: element && element.locked === true,
+      text: String(element && element.text || ''),
+      points: Array.isArray(element && element.points) ? element.points : null,
+      strokeColor: element && element.strokeColor || '',
+      backgroundColor: element && element.backgroundColor || '',
+      fillStyle: element && element.fillStyle || '',
+    });
+
+    const assistantElementWasModified = (element) => {
+      const data = element && element.customData;
+      return !!(data && data.originalGenerationFingerprint
+        && data.originalGenerationFingerprint !== assistantGenerationFingerprint(element));
     };
 
     const placeExcalidrawPng = async (
@@ -693,24 +719,27 @@
       const current = snapshotExcalidraw();
       let existing = current.elements.filter((element) => !element.isDeleted);
       const assistantArtifacts = existing.filter(isAssistantArtifact);
-      const replacedArtifact = assistantArtifacts[assistantArtifacts.length - 1] || null;
-      if (action === 'replace') existing = [];
-      if (action === 'update') existing = existing.filter(
-        (element) => !isAssistantArtifact(element)
-      );
+      const replacedArtifact = assistantArtifacts.slice().reverse().find(
+        (element) => !assistantElementWasModified(element)
+      ) || null;
+      if (action === 'replace' || action === 'update') {
+        existing = existing.filter((element) => (
+          !isAssistantArtifact(element) || assistantElementWasModified(element)
+        ));
+      }
       const maxX = existing.reduce(
         (value, element) => Math.max(value, element.x + element.width), 0
       );
       const [image] = raster.elements;
       let placement = {};
-      if (action === 'update' && replacedArtifact) {
+      if (replacedArtifact) {
         placement = {
           x: replacedArtifact.x,
           y: replacedArtifact.y,
           width: replacedArtifact.width,
           height: replacedArtifact.height,
         };
-      } else if (action === 'append' && existing.length) {
+      } else if (existing.length) {
         placement = { x: maxX + PADDING * 2 };
       } else {
         placement = { x: 0, y: 0 };
@@ -720,12 +749,29 @@
         bounds && bounds.width > 0 ? { width: bounds.width } : null,
         bounds && bounds.height > 0 ? { height: bounds.height } : null
       );
-      const files = {};
-      existing.forEach((element) => {
-        if (element.fileId && current.files[element.fileId]) {
-          files[element.fileId] = current.files[element.fileId];
-        }
+      const placedData = Object.assign({}, placed.customData || {}, {
+        assistantVisualId: (customData && (customData.assistantVisualId
+          || customData.oraAssistantVisualKey)) || 'assistant-visual',
+        generationRevision: (customData && customData.generationRevision) || 1,
+        semanticElementId: (customData && customData.semanticElementId)
+          || `${(customData && (customData.assistantVisualId
+            || customData.oraAssistantVisualKey)) || 'assistant-visual'}:image`,
       });
+      placed.customData = Object.assign(placedData, {
+        originalGenerationFingerprint: assistantGenerationFingerprint(placed),
+      });
+      const retainedElementIds = new Set(existing.map((element) => element.fileId).filter(Boolean));
+      const removedAssistantFileIds = new Set(
+        assistantArtifacts
+          .filter((element) => !existing.includes(element))
+          .map((element) => element.fileId)
+          .filter(Boolean)
+      );
+      // Keep user files and files belonging to preserved assistant elements;
+      // discard only blobs made unreachable by this assistant replacement.
+      const files = Object.fromEntries(Object.entries(current.files || {}).filter(
+        ([id]) => !removedAssistantFileIds.has(id) || retainedElementIds.has(id)
+      ));
       Object.assign(files, raster.files || {});
       updateExcalidraw({
         elements: [...existing, placed],
@@ -733,6 +779,188 @@
         files,
       });
       return placed;
+    };
+
+    const placeExcalidrawScene = async (
+      scene,
+      { action = 'replace', customData = null } = {}
+    ) => {
+      const current = snapshotExcalidraw();
+      const assistantVisualId = (customData && (customData.assistantVisualId
+        || customData.oraAssistantVisualKey)) || 'assistant-visual';
+      const revision = Number(customData && customData.generationRevision) || 1;
+      const allElements = current.elements.filter((element) => !element.isDeleted);
+      // Replacement is scoped to assistant material, not to the dispatch
+      // identity of the new envelope. A regenerated envelope may carry a
+      // fresh assistantVisualId; leaving older unmodified assistant objects
+      // behind would stack two diagrams. Modified assistant objects remain
+      // because the preservation rule below retains them.
+      const owned = allElements.filter((element) => isAssistantArtifact(element));
+      const reusable = owned.filter((element) => !assistantElementWasModified(element));
+      const retained = (action === 'replace' || action === 'update')
+        ? allElements.filter((element) => !owned.includes(element)
+          || assistantElementWasModified(element))
+        : allElements.slice();
+      const retainedIds = new Set(retained.map((element) => element.id));
+      const reusableBySemantic = new Map(reusable.map((element) => [
+        element.customData && element.customData.semanticElementId, element,
+      ]));
+      const maxX = retained.reduce(
+        (value, element) => Math.max(value, (Number(element.x) || 0) + (Number(element.width) || 0)), 0
+      );
+      const offsetX = reusable.length || !retained.length ? 0 : maxX + PADDING * 2;
+      const generated = (scene && Array.isArray(scene.elements) ? scene.elements : [])
+        .filter((element) => element && !element.isDeleted)
+        .map((element) => clone(element));
+      const idMap = new Map();
+      generated.forEach((element) => {
+        const semantic = element.customData && element.customData.semanticElementId;
+        const prior = reusableBySemantic.get(semantic);
+        const oldId = element.id;
+        if (prior) {
+          element.x = prior.x;
+          element.y = prior.y;
+          element.width = prior.width;
+          element.height = prior.height;
+        } else {
+          element.x = (Number(element.x) || 0) + offsetX;
+          element.y = Number(element.y) || 0;
+        }
+        if (retainedIds.has(element.id)) element.id = `${element.id}-r${revision}`;
+        idMap.set(oldId, element.id);
+        const data = Object.assign({}, element.customData || {}, customData || {}, {
+          oraAssistantVisual: true,
+          oraAssistantVisualKind: 'native',
+          assistantVisualId,
+          generationRevision: revision,
+          semanticElementId: semantic || `${assistantVisualId}:native:${element.id}`,
+        });
+        element.customData = Object.assign(data, {
+          originalGenerationFingerprint: assistantGenerationFingerprint(element),
+        });
+      });
+      generated.forEach((element) => {
+        if (element.startBinding && idMap.has(element.startBinding.elementId)) {
+          element.startBinding = Object.assign({}, element.startBinding, {
+            elementId: idMap.get(element.startBinding.elementId),
+          });
+        }
+        if (element.endBinding && idMap.has(element.endBinding.elementId)) {
+          element.endBinding = Object.assign({}, element.endBinding, {
+            elementId: idMap.get(element.endBinding.elementId),
+          });
+        }
+        if (Array.isArray(element.boundElements)) {
+          element.boundElements = element.boundElements.map((binding) => (
+            idMap.has(binding.id) ? Object.assign({}, binding, { id: idMap.get(binding.id) }) : binding
+          ));
+        }
+      });
+      updateExcalidraw({
+        elements: retained.concat(generated),
+        appState: current.appState,
+        files: Object.assign({}, current.files || {}, scene && scene.files || {}),
+      });
+      return generated;
+    };
+
+    const annotateExcalidrawScene = async (envelope, assistantKey, persist) => {
+      const current = snapshotExcalidraw();
+      const annotations = Array.isArray(envelope && envelope.annotations)
+        ? envelope.annotations : [];
+      const targets = current.elements.filter((element) => (
+        isAssistantArtifact(element) && element.customData && element.customData.semanticElementId
+      ));
+      const assistantVisualId = (envelope && envelope.assistant_visual_id)
+        || (targets[0] && targets[0].customData.assistantVisualId)
+        || `assistant:${envelope && envelope.id || assistantKey || 'visual'}`;
+      const revision = current.elements.reduce((value, element) => {
+        const data = element && element.customData;
+        return data && data.assistantVisualId === assistantVisualId
+          ? Math.max(value, Number(data.generationRevision) || 0) : value;
+      }, 0) || 1;
+      const created = [];
+      const warnings = [];
+      annotations.forEach((annotation, index) => {
+        const targetId = annotation && (annotation.target_id || annotation.targetId || annotation.semanticElementId);
+        const target = targets.find((element) => {
+          const semantic = element.customData.semanticElementId;
+          return semantic === targetId || semantic.endsWith(`:node:${targetId}`)
+            || element.id === targetId;
+        });
+        if (!target) {
+          warnings.push(`No assistant-owned semantic element matched annotation target '${targetId || 'unknown'}'`);
+          return;
+        }
+        const message = String(annotation.text || annotation.label || annotation.note || '').trim();
+        if (!message) {
+          warnings.push(`Annotation ${index + 1} has no text`);
+          return;
+        }
+        const targetData = target.customData || {};
+        const semantic = `${targetData.semanticElementId}:annotation:${index}`;
+        const id = `${assistantVisualId}:annotation:${index}:r${revision}`.replace(/[^A-Za-z0-9_-]+/g, '-');
+        const element = {
+          id,
+          type: 'text',
+          x: (Number(target.x) || 0) + (Number(target.width) || 0) + 12,
+          y: Number(target.y) || 0,
+          width: Math.max(120, Math.min(320, message.length * 7 + 20)),
+          height: 28,
+          angle: 0,
+          strokeColor: '#1e1e1e',
+          backgroundColor: '#fff7cc',
+          fillStyle: 'solid',
+          strokeWidth: 1,
+          strokeStyle: 'solid',
+          roughness: 0,
+          opacity: 100,
+          groupIds: [],
+          frameId: null,
+          roundness: { type: 3 },
+          seed: 1,
+          version: 1,
+          versionNonce: 1,
+          isDeleted: false,
+          boundElements: null,
+          updated: 1,
+          link: null,
+          locked: false,
+          text: message,
+          originalText: message,
+          fontSize: 14,
+          fontFamily: 1,
+          textAlign: 'left',
+          verticalAlign: 'middle',
+          containerId: null,
+          autoResize: true,
+          lineHeight: 1.25,
+          customData: {
+            oraAssistantVisual: true,
+            oraAssistantVisualKind: 'annotation',
+            annotationSource: 'model',
+            assistantVisualId,
+            generationRevision: revision,
+            semanticElementId: semantic,
+          },
+        };
+        element.customData.originalGenerationFingerprint = assistantGenerationFingerprint(element);
+        created.push(element);
+      });
+      if (!created.length) {
+        return {
+          action: 'annotate', unsupported: true, warnings: warnings.concat(
+            'No valid assistant-owned semantic annotation target was found; scene preserved.'
+          ),
+        };
+      }
+      updateExcalidraw({
+        elements: current.elements.concat(created),
+        appState: current.appState,
+        files: current.files,
+      });
+      await persistExcalidrawMutation(persist);
+      return { action: 'annotate', applied: created.length, warnings };
     };
 
     const persistExcalidrawMutation = async (persist) => {
@@ -842,7 +1070,7 @@
           const scene = await normalizeLegacyWhiteHandoff(
             await window.OraExcalidrawIsland.load(loaded.blob)
           );
-          updateExcalidraw(scene);
+          updateExcalidraw(scene, { fitToContent: true });
           setEditor('excalidraw');
         } catch (error) {
           console.warn('[Excalidraw] native scene failed to load; recovering preview in Konva:', error);
@@ -985,11 +1213,33 @@
           ? 'update'
           : 'replace';
       if (action === 'clear') {
-        updateExcalidraw({ elements: [], appState: {}, files: {} });
+        const current = snapshotExcalidraw();
+        const removableAssistant = current.elements.filter((element) => (
+          isAssistantArtifact(element) && !assistantElementWasModified(element)
+        ));
+        const assistantFileIds = new Set(removableAssistant
+          .map((element) => element.fileId).filter(Boolean));
+        const userFiles = Object.fromEntries(Object.entries(current.files || {}).filter(
+          ([id]) => !assistantFileIds.has(id)
+        ));
+        updateExcalidraw({
+          elements: current.elements.filter((element) => !removableAssistant.includes(element)),
+          appState: current.appState,
+          files: userFiles,
+        });
         await persistExcalidrawMutation(persist);
         return { action };
       }
       if (action === 'annotate') {
+        const nativeBuilder = window.OraVisualCompiler
+          && window.OraVisualCompiler.nativeExcalidraw;
+        if (nativeBuilder && nativeBuilder.isNativeType(envelope && envelope.type)
+            && currentElements.some((element) => (
+              isAssistantArtifact(element) && element.customData
+              && element.customData.semanticElementId
+            ))) {
+          return annotateExcalidrawScene(envelope, assistantKey, persist);
+        }
         console.warn(
           '[visual editor] Excalidraw cannot apply semantic annotations at the PNG boundary; scene preserved'
         );
@@ -1010,12 +1260,38 @@
       if (!result || (result.errors && result.errors.length) || !result.svg) {
         throw new Error('Ora visual compiler did not produce an SVG');
       }
-      const png = await rasterizeSvg(result.svg);
+      const assistantVisualId = (envelope && envelope.assistant_visual_id)
+        || `assistant:${envelope && envelope.id || 'visual'}`;
+      const generationRevision = currentElements.reduce((value, element) => {
+        const data = element && element.customData;
+        return data && data.assistantVisualId === assistantVisualId
+          ? Math.max(value, Number(data.generationRevision) || 0) : value;
+      }, 0) + 1;
       const customData = {
         oraAssistantVisual: true,
         oraAssistantVisualKind: 'artifact',
+        assistantVisualId,
+        generationRevision,
+        semanticElementId: `${assistantVisualId}:image`,
       };
       if (assistantKey) customData.oraAssistantVisualKey = assistantKey;
+      const nativeBuilder = compiler.nativeExcalidraw;
+      if (nativeBuilder && nativeBuilder.isNativeType(envelope && envelope.type)) {
+        const nativeScene = nativeBuilder.buildScene(envelope, {
+          assistantVisualId,
+          generationRevision,
+          layout: result.layout,
+        });
+        customData.oraAssistantVisualKind = 'native';
+        await placeExcalidrawScene(nativeScene, { action, customData });
+        await persistExcalidrawMutation(persist);
+        return Object.assign({}, result, {
+          action,
+          native: true,
+          layout: nativeScene.layout,
+        });
+      }
+      const png = await rasterizeSvg(result.svg);
       await placeExcalidrawPng(png, { action, locked: true, customData });
       await persistExcalidrawMutation(persist);
       return Object.assign({}, result, { action });

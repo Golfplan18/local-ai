@@ -27,12 +27,14 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
 import visual_adversarial as va  # noqa: E402
+from visual_recovery import build_concept_map  # noqa: E402
 from visual_adversarial import (  # noqa: E402
     Finding,
     ReviewResult,
@@ -440,6 +442,30 @@ class TestContract(unittest.TestCase):
         self.assertEqual(d["severity"], "Critical")
         self.assertEqual(d["suggestion"], "s")
 
+    def test_numeric_grounding_is_hard_block_when_final_prose_is_present(self):
+        env = _load("comparison.valid.json")
+        review = review_envelope(env, prose="Category A is 10; category B is 14.")
+        self.assertTrue(any(b.rule == "grounding.numeric" for b in review.blocks))
+
+    def test_numeric_grounding_accepts_percent_decimal_equivalence(self):
+        env = _load("comparison.valid.json")
+        env["spec"]["data"]["values"] = [{"c": "A", "v": 0.1}, {"c": "B", "v": 0.15}]
+        review = review_envelope(env, prose="Category A is 10% and category B is 15%.")
+        self.assertFalse(any(b.rule == "grounding.numeric" for b in review.blocks))
+
+    def test_concept_map_fallback_uses_source_relations_and_is_schema_valid(self):
+        env = build_concept_map(
+            "Hiring increases workload. Workload causes fatigue. Fatigue reduces focus.",
+            mode="root-cause-analysis",
+            inquiry="Why does delivery slow down?",
+        )
+        self.assertIsNotNone(env)
+        self.assertEqual(env["spec"]["focus_question"], "Why does delivery slow down?")
+        self.assertEqual([p["text"] for p in env["spec"]["linking_phrases"]],
+                         ["increases", "causes", "reduces"])
+        self.assertTrue(any(p["is_cross_link"] is False for p in env["spec"]["propositions"]))
+        self.assertNotIn("Key considerations", " ".join(c["label"] for c in env["spec"]["concepts"]))
+
     def test_template_trap_constant_nonempty(self):
         self.assertGreater(len(TEMPLATE_TRAP_STRINGS), 5)
         self.assertIn("untitled", TEMPLATE_TRAP_STRINGS)
@@ -465,7 +491,10 @@ class TestProcessResponseIntegration(unittest.TestCase):
 
     def test_valid_block_passes_through(self):
         env = _load("comparison.valid.json")
-        text = self._wrap(env)
+        text = self._wrap(env).replace(
+            "Here is prose context.",
+            "Here is prose context: category A is 10 and category B is 15.",
+        )
         new_text, diag = process_response(text, mode="root-cause-analysis")
         self.assertIn("ora-visual", new_text)
         self.assertEqual(1, len(diag["visuals"]))
@@ -487,6 +516,25 @@ class TestProcessResponseIntegration(unittest.TestCase):
         new_text, diag = process_response(text)
         self.assertTrue(diag["visuals"][0]["blocked"])
         self.assertIn("suppressed", new_text)
+
+    def test_final_prose_reaches_envelope_review(self):
+        env = _load("concept_map.valid.json")
+        seen = {}
+
+        def review(candidate, mode=None, prose=None):
+            seen["prose"] = prose
+            return ReviewResult()
+
+        with mock.patch.object(va, "review_envelope", side_effect=review):
+            process_response(
+                self._wrap(env), mode="systems-dynamics",
+                prose="The accepted answer explains the relationship in full.",
+            )
+
+        self.assertEqual(
+            seen["prose"],
+            "The accepted answer explains the relationship in full.",
+        )
 
     def test_no_visual_blocks_is_noop(self):
         text = "Just prose, no ora-visual here."

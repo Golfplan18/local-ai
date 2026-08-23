@@ -35,6 +35,7 @@ texts and target-kind ordering.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -324,6 +325,272 @@ def c4_envelope(dsl: str, mode: str | None, level: str | None = None) -> dict:
     env = _base_envelope("c4", mode)
     env["spec"] = {"level": level, "dsl": dsl.strip()}
     return env
+
+
+# ---------------------------------------------------------------------------
+# Deterministic universal fallback
+# ---------------------------------------------------------------------------
+
+_RELATION_RE = re.compile(
+    r"\b(because|causes?|caused by|leads? to|results? in|increases?|"
+    r"reduces?|supports?|depends? on|requires?|enables?|blocks?|drives?|"
+    r"produces?|creates?|slows?|constrains?|amplifies?|dampens?|"
+    r"reinforces?|limits?|shapes?|informs?|follows?)\b",
+    re.IGNORECASE,
+)
+
+
+def _clip_source_phrase(text: str, limit: int = 84) -> str:
+    """Clip source wording at a phrase boundary without re-abstracting it."""
+    value = re.sub(r"[`*_#]", "", str(text or ""))
+    value = re.sub(r"\s+", " ", value).strip(" \t\r\n-:;,.")
+    value = re.sub(r"^(?:the|a|an)\s+", "", value, flags=re.IGNORECASE)
+    if len(value) <= limit:
+        return value
+    boundary = max(
+        (value.rfind(mark, 0, limit) for mark in (",", ";", ":", " and ")),
+        default=-1,
+    )
+    if boundary >= 24:
+        value = value[:boundary]
+    else:
+        value = value[:limit].rsplit(" ", 1)[0]
+    return value.rstrip(" ,;:")
+
+
+def _concept_key(label: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", label.lower()).strip()
+
+
+def _focus_question(inquiry: str | None) -> str | None:
+    """Normalize the user's inquiry into a deterministic focus question."""
+    source = _clip_source_phrase(inquiry or "", 140)
+    if not source:
+        return None
+    source = source.rstrip(".!;:").strip()
+    if source.endswith("?"):
+        return source
+    lower = source.lower()
+    if lower.startswith((
+        "how ", "what ", "why ", "when ", "where ", "which ", "who ",
+        "can ", "could ", "should ", "would ", "will ", "is ", "are ",
+        "do ", "does ", "did ",
+    )):
+        return source + "?"
+    if lower.startswith((
+        "explain ", "describe ", "analyze ", "analyse ", "compare ",
+        "contrast ", "discuss ", "identify ", "show ", "map ", "trace ",
+    )):
+        subject = re.sub(
+            r"^(?:explain|describe|analyze|analyse|compare|contrast|discuss|"
+            r"identify|show|map|trace)\s+",
+            "",
+            source,
+            flags=re.IGNORECASE,
+        ).strip()
+        if not subject:
+            return "What does this response say?"
+        return "What does this response say about " + subject[0].lower() + subject[1:] + "?"
+    return "What is the answer to: " + source + "?"
+
+
+def _subject_size(edge_list: list[tuple[str, str, str]],
+                  labels: dict[str, str]) -> int:
+    """Estimate visual space from source wording and relationship count."""
+    keys = {key for source, _, target in edge_list for key in (source, target)}
+    return sum(70 + len(labels.get(key, key)) * 6 for key in keys) + len(edge_list) * 90
+
+
+def _narrow_grounded_subject(
+    edges: list[tuple[str, str, str]],
+    labels: dict[str, str],
+    inquiry: str | None,
+) -> list[tuple[str, str, str]]:
+    """Choose a grounded subject before the graph is constructed.
+
+    This is scope selection, not post-construction pruning. It only narrows a
+    response when the estimated label-and-edge footprint exceeds the visual
+    budget and the inquiry identifies a connected subject, or when the source
+    contains separate grounded components and one is the clear analytical
+    subject. Every retained edge still comes from its original sentence.
+    """
+    if not edges or _subject_size(edges, labels) <= 4200:
+        return edges
+
+    adjacency: dict[str, set[str]] = {key: set() for key in labels}
+    for source, _, target in edges:
+        adjacency.setdefault(source, set()).add(target)
+        adjacency.setdefault(target, set()).add(source)
+
+    inquiry_terms = {term for term in _concept_key(inquiry or "").split() if len(term) > 2}
+    anchors = [
+        key for key in labels
+        if inquiry_terms.intersection(set(key.split()))
+    ]
+    if anchors:
+        keep = set(anchors)
+        # One-hop expansion keeps the subject legible without inventing a
+        # boundary between two clauses that are actually connected.
+        for anchor in anchors:
+            keep.update(adjacency.get(anchor, set()))
+        candidate = [edge for edge in edges if edge[0] in keep and edge[2] in keep]
+        if candidate and _subject_size(candidate, labels) < _subject_size(edges, labels):
+            return candidate
+
+    components: list[set[str]] = []
+    unseen = set(adjacency)
+    while unseen:
+        start = next(iter(unseen))
+        component = {start}
+        queue = [start]
+        unseen.remove(start)
+        while queue:
+            current = queue.pop(0)
+            for neighbor in adjacency.get(current, set()):
+                if neighbor in unseen:
+                    unseen.remove(neighbor)
+                    component.add(neighbor)
+                    queue.append(neighbor)
+        components.append(component)
+    if len(components) <= 1:
+        return edges
+    candidates = [
+        [edge for edge in edges if edge[0] in component and edge[2] in component]
+        for component in components
+    ]
+    best = max(candidates, key=lambda candidate: (len(candidate), -_subject_size(candidate, labels)))
+    return best if best and _subject_size(best, labels) < _subject_size(edges, labels) else edges
+
+
+def build_concept_map(prose: str, mode: str | None = None,
+                      inquiry: str | None = None) -> dict | None:
+    """Build a grounded, schema-shaped concept map without a model call.
+
+    This is intentionally a conservative fallback. It emits only relations
+    whose connecting clause appears in the source sentence; if no such clause
+    exists it returns ``None`` rather than inventing a relationship. Labels are
+    clipped source phrases, hierarchy is derived from graph depth, and a
+    second incoming edge is preserved as a cross-link instead of being pruned.
+    """
+    if not isinstance(prose, str) or not prose.strip():
+        return None
+    sentences = [
+        part.strip() for part in re.split(r"(?<=[.!?])\s+|\n+", prose)
+        if part.strip()
+    ]
+    edges: list[tuple[str, str, str]] = []
+    labels: dict[str, str] = {}
+    for sentence in sentences:
+        match = _RELATION_RE.search(sentence)
+        if not match:
+            continue
+        left = _clip_source_phrase(sentence[:match.start()])
+        right = _clip_source_phrase(sentence[match.end():])
+        if not left or not right:
+            continue
+        left_key, right_key = _concept_key(left), _concept_key(right)
+        if not left_key or not right_key or left_key == right_key:
+            continue
+        labels.setdefault(left_key, left)
+        labels.setdefault(right_key, right)
+        phrase = re.sub(r"\s+", " ", match.group(0).lower()).strip()
+        edges.append((left_key, phrase, right_key))
+
+    if not edges:
+        return None
+
+    # Choose the subject before concepts and propositions are materialized;
+    # there is no later node-pruning pass that could silently break the claim
+    # graph. Labels are retained verbatim from the selected source clauses.
+    selected_edges = _narrow_grounded_subject(edges, labels, inquiry)
+    if selected_edges is not edges:
+        edges = selected_edges
+        used_keys = {key for source, _, target in edges for key in (source, target)}
+        labels = {key: value for key, value in labels.items() if key in used_keys}
+
+    # Stable first-seen order, then de-duplicate the source-derived phrases.
+    phrase_ids: dict[str, str] = {}
+    phrases: list[dict[str, str]] = []
+    for _, phrase, _ in edges:
+        if phrase not in phrase_ids:
+            phrase_ids[phrase] = f"L{len(phrases) + 1}"
+            phrases.append({"id": phrase_ids[phrase], "text": phrase})
+
+    adjacency: dict[str, list[str]] = {key: [] for key in labels}
+    incoming: dict[str, int] = {key: 0 for key in labels}
+    for source, _, target in edges:
+        adjacency[source].append(target)
+        incoming[target] += 1
+    roots = [key for key in labels if incoming[key] == 0]
+    if not roots:
+        roots = [next(iter(labels))]
+    levels = {key: 0 for key in roots}
+    queue = list(roots)
+    while queue:
+        source = queue.pop(0)
+        for target in adjacency.get(source, []):
+            candidate = levels[source] + 1
+            if target not in levels or candidate < levels[target]:
+                levels[target] = candidate
+                queue.append(target)
+    for key in labels:
+        levels.setdefault(key, 0)
+
+    propositions = []
+    seen_edges: set[tuple[str, str, str]] = set()
+    for source, phrase, target in edges:
+        edge = (source, phrase, target)
+        if edge in seen_edges:
+            continue
+        seen_edges.add(edge)
+        propositions.append({
+            "from_concept": source,
+            "via_phrase": phrase_ids[phrase],
+            "to_concept": target,
+            "is_cross_link": incoming[target] > 1 or levels[target] <= levels[source],
+        })
+
+    focus = _focus_question(inquiry)
+    if not focus:
+        first_source, _, first_target = edges[0]
+        focus = f"How does {labels[first_source]} {phrases[phrase_ids[edges[0][1]]]['text']} {labels[first_target]}?"
+        focus = _clip_source_phrase(focus, 140)
+        if not focus.endswith("?"):
+            focus += "?"
+    concept_list = [
+        {"id": key, "label": labels[key], "hierarchy_level": levels[key]}
+        for key in labels
+    ]
+    first = propositions[0]
+    first_label = labels[first["from_concept"]]
+    first_target = labels[first["to_concept"]]
+    first_phrase = phrases[int(first["via_phrase"][1:]) - 1]["text"]
+    digest = hashlib.sha1(prose.encode("utf-8")).hexdigest()[:12]
+    return {
+        "schema_version": "0.2",
+        "id": f"fig-concept-map-{digest}",
+        "type": "concept_map",
+        "mode_context": mode or "unknown",
+        "relation_to_prose": "integrated",
+        "spec": {
+            "focus_question": focus,
+            "concepts": concept_list,
+            "linking_phrases": phrases,
+            "propositions": propositions,
+        },
+        "semantic_description": {
+            "level_1_elemental": f"Concept map linking {len(concept_list)} source phrases.",
+            "level_2_statistical": f"{len(propositions)} source-derived propositions; {sum(1 for p in propositions if p.get('is_cross_link'))} cross-links.",
+            "level_3_perceptual": f"{first_label} {first_phrase} {first_target}.",
+            "level_4_contextual": None,
+            "short_alt": _clip_source_phrase(
+                f"Concept map showing how {first_label} {first_phrase} {first_target}.",
+                150,
+            ),
+            "data_table_fallback": None,
+        },
+        "title": _clip_source_phrase(f"Concept map: {focus}", 120),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -632,7 +899,8 @@ def repair_spec(env: dict, vtype: str | None = None) -> dict:
 # Candidate extraction + validation
 # ---------------------------------------------------------------------------
 
-def _validate_ok(env: dict, mode: str | None) -> bool:
+def _validate_ok(env: dict, mode: str | None,
+                 prose: str | None = None) -> bool:
     """Schema-valid AND not adversarially blocked."""
     try:
         from visual_validator import validate_envelope
@@ -643,7 +911,9 @@ def _validate_ok(env: dict, mode: str | None) -> bool:
         vres = validate_envelope(env)
         if not vres.valid:
             return False
-        review = review_envelope(env, mode or env.get("mode_context"))
+        review = review_envelope(
+            env, mode or env.get("mode_context"), prose=prose,
+        )
         return not review.blocks
     except Exception:
         return False
@@ -745,7 +1015,8 @@ def _build_kind(source_kind: str, body: str, natural_kind: str,
 
 
 def recover_envelope(texts: list[str], target_kinds: list[str] | None,
-                     mode: str | None = None) -> dict | None:
+                     mode: str | None = None,
+                     prose: str | None = None) -> dict | None:
     """Recover a valid envelope from the model's own diagrams.
 
     Args:
@@ -790,14 +1061,14 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
             for env, vtype, full in model_cands:
                 if vtype != kind:
                     continue
-                if _validate_ok(env, mode):
+                if _validate_ok(env, mode, prose=prose):
                     return {"envelope": env, "type": vtype, "source_text_index": idx,
                             "raw_block": (full if idx == 0 else None),
                             "via": "model_envelope"}
             # 2) A model-drawn DSL diagram convertible to this kind.
             for source_kind, body, natural_kind, full, is_fence in diagram_cands:
                 env = _build_kind(source_kind, body, natural_kind, kind, mode)
-                if env is not None and _validate_ok(env, mode):
+                if env is not None and _validate_ok(env, mode, prose=prose):
                     # raw_block (for verbatim in-place replacement) only for a
                     # FENCED diagram in the final response (idx 0). An unfenced
                     # brace block embedded in prose appends instead of replacing,
@@ -809,6 +1080,7 @@ def recover_envelope(texts: list[str], target_kinds: list[str] | None,
 
 
 __all__ = [
+    "build_concept_map",
     "recover_envelope",
     "repair_spec",
     "mermaid_envelope",

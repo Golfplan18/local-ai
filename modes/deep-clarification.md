@@ -229,7 +229,7 @@ The deliverable is a **deep clarification** — a prose explanation that walks f
 
 - Use H2 headings for sections 1 through 4.
 - The literal label prefixes — `**Surface:**`, `**Level 1 beneath:**`, `**Level 2 beneath:**`, `**Epistemic boundary:**`, `**Practical implication:**` — appear verbatim. They are operative depth-axis markers, not decoration.
-- Prose first; envelope optional. The default is no diagram. The narrow exception is a `flowchart` envelope when the mechanism being clarified is itself procedural or spatial (a multi-step process, a pipeline, a control-flow algorithm). When in doubt, suppress the envelope.
+- Prose first; envelope optional. Emit a `flowchart` when the mechanism being clarified is procedural or spatial (a multi-step process, a pipeline, or a control-flow algorithm); otherwise use a grounded concept map when the explanation contains explicit relationships.
 - Plain-terms mechanism takes precedence over terminology. When a technical term must appear, it is glossed alongside the plain-terms statement, not substituted for it.
 - When alternative mechanisms survived consolidation, render them as labelled sub-blocks inside section 2: `**Alternative Level 2 mechanism:** [the other axis or competing explanation]. [Plain-terms statement]. Epistemic standing: [how it relates to the primary mechanism].`
 - When analogies anchor the mechanism, they appear inline within the level they support: `Analogous to: [domain] [analogy]. The transfer holds because [mechanism in common]; it does not transfer where [disanalogy].` Analogies that decorate without transferring mechanism are reshaped or removed at this layer.
