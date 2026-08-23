@@ -346,6 +346,13 @@
       if (zoomValue) zoomValue.textContent = `${Math.round(zoom * 100)}%`;
     };
 
+    const restoreExcalidrawCanvasTransparency = () => {
+      if (!excalidrawApi) return;
+      excalidrawApi.updateScene({
+        appState: { viewBackgroundColor: EXCALIDRAW_UI_BACKGROUND },
+      });
+    };
+
     const normalizedZoom = (value) => Math.min(
       30, Math.max(0.1, Math.round(value * 1000000) / 1000000)
     );
@@ -1811,6 +1818,7 @@
         applyingScene += 1;
         try {
           excalidrawApi.resetScene();
+          restoreExcalidrawCanvasTransparency();
           syncExcalidrawGrid(excalidrawApi.getAppState());
           draftDirty = false;
           sceneReady = true;
@@ -2078,6 +2086,7 @@
         },
         onReady(api) {
           excalidrawApi = api;
+          restoreExcalidrawCanvasTransparency();
           syncExcalidrawGrid(api.getAppState());
           setEditor('excalidraw');
           updateCanvasState();
