@@ -286,12 +286,6 @@
     renderGroup(groupActive,  data.active  || []);
     renderGroup(groupPending, data.pending || []);
 
-    // The shared hover tooltip is anchored to a row; if that row is
-    // removed by a re-render while the cursor is over it, mouseleave
-    // never fires and the tooltip lingers. Dismiss it on every render
-    // so it can't outlive its anchor.
-    const tip = document.getElementById('ora-sidebar-row-tooltip');
-    if (tip) tip.style.display = 'none';
   };
 
   const renderGroup = (container, rows) => {
@@ -405,51 +399,13 @@
       el.appendChild(errLine);
     }
 
-    // Hover tooltip with the full title, extending past the sidebar's right
-    // edge over the output pane. Stored as a data attribute and rendered by
-    // a single shared overlay element (set up in attachHoverTooltip below)
-    // so we don't pile per-row DOM nodes.
-    el.dataset.fullTitle = row.title || '(untitled)';
-    attachHoverTooltip(el);
+    // The shared tooltip renderer handles the full conversation title.
+    el.setAttribute('data-tooltip', row.title || '(untitled)');
 
     el.addEventListener('click', () => onRowClick(row));
     return el;
   };
 
-  // Shared hover-tooltip overlay. Lives once on the body and is positioned
-  // per-row on mouseenter, hidden on mouseleave. Position: fixed so it can
-  // escape the sidebar's overflow:hidden and visually extend over the
-  // output pane to the right.
-  const ensureTooltipNode = () => {
-    let n = document.getElementById('ora-sidebar-row-tooltip');
-    if (n) return n;
-    n = document.createElement('div');
-    n.id = 'ora-sidebar-row-tooltip';
-    n.className = 'sidebar-row-tooltip';
-    n.style.display = 'none';
-    document.body.appendChild(n);
-    return n;
-  };
-  const attachHoverTooltip = (rowEl) => {
-    rowEl.addEventListener('mouseenter', () => {
-      const t = ensureTooltipNode();
-      t.textContent = rowEl.dataset.fullTitle || '';
-      const rect = rowEl.getBoundingClientRect();
-      const sidebar = document.querySelector('.left-sidebar');
-      const sidebarRight = sidebar
-        ? sidebar.getBoundingClientRect().right
-        : rect.right;
-      // Place tooltip just past the sidebar's right edge, vertically aligned
-      // to the row.
-      t.style.left = (sidebarRight + 8) + 'px';
-      t.style.top  = rect.top + 'px';
-      t.style.display = 'block';
-    });
-    rowEl.addEventListener('mouseleave', () => {
-      const t = document.getElementById('ora-sidebar-row-tooltip');
-      if (t) t.style.display = 'none';
-    });
-  };
 
   const onPinClick = async (row) => {
     const next = !row.pinned;

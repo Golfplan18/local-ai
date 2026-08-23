@@ -1,73 +1,39 @@
-/* ============================================================
-   Custom tooltips — replaces the browser's native title-attribute
-   tooltip (which appears below+right of the cursor and gets occluded
-   by the cursor itself). Tooltips here render ABOVE the element with
-   an 8-px gap so the cursor never covers them.
-
-   Activation: any element with a `data-tooltip="..."` attribute.
-   `tooltip.js` migrates `title` attributes to `data-tooltip` at page
-   load and on subsequent DOM mutations (sidebar rows, dynamically
-   inserted buttons, etc.) so legacy markup gets repositioned tooltips
-   without per-element edits. `aria-label` is left intact so screen
-   readers still announce the same string.
-   ============================================================ */
-
-/* Establish a positioning context so the ::before tooltip pseudo
-   anchors to the element. Most interactive controls are already
-   inline-block / button / svg — relative positioning is harmless.
-   `:where()` has zero specificity so any component that needs an
-   explicit position (e.g. an absolutely-positioned overlay button)
-   keeps its own value — we're only filling in `static` defaults. */
-:where([data-tooltip]) {
-  position: relative;
-}
-
-/* The tooltip itself. Hidden by default; fades in 0.4s after hover
-   begins so brief mouse-overs don't flash text everywhere. */
-[data-tooltip]::before {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
+/* Shared tooltip surface. tooltip.js is the only renderer. */
+.ora-tooltip {
+  position: fixed;
+  z-index: 10001;
+  max-width: min(320px, calc(100vw - 12px));
+  padding: 6px 9px;
   background: var(--background-secondary, #2A2218);
   color: var(--text-normal, #E8E0CC);
   border: 1px solid var(--background-modifier-border, #3A3022);
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 12px;
   font-family: var(--font-ui, inherit);
   font-weight: normal;
-  line-height: 1.3;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
   text-align: center;
   pointer-events: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.12s ease 0.4s, visibility 0s linear 0.52s;
-  z-index: 10000;
+  transition: opacity 0.12s ease-out;
 }
 
-[data-tooltip]:hover::before,
-[data-tooltip]:focus-visible::before {
+.ora-tooltip[aria-hidden="false"] {
   opacity: 1;
   visibility: visible;
-  transition-delay: 0.4s, 0s;
 }
 
-/* Some places need the tooltip below (rare — e.g. an element pinned
-   to the very top of the viewport). Opt-in via data-tooltip-below. */
-[data-tooltip][data-tooltip-below]::before {
-  bottom: auto;
-  top: calc(100% + 8px);
+.ora-tooltip[aria-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
 }
 
-/* Hide tooltips while the spine, bridge, or chatbot is being dragged
-   so they don't flicker over a moving cursor. */
-body.spine-dragging [data-tooltip]::before,
-body.dragging      [data-tooltip]::before,
-body.chat-dragging [data-tooltip]::before {
+body.spine-dragging .ora-tooltip,
+body.dragging .ora-tooltip,
+body.chat-dragging .ora-tooltip {
   opacity: 0 !important;
   visibility: hidden !important;
   transition: none !important;

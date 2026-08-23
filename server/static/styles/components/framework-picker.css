@@ -4,7 +4,6 @@
    Search-as-you-type filters rows in place. Each row shows the
    framework's Display Name + Display Description (Phase 2 metadata).
    Three category groups: standard / user-created / one-offs.
-   X-to-remove appears only on user-created and one-off rows.
    ============================================================ */
 
 .framework-picker {
@@ -109,72 +108,11 @@
   line-height: 1.4;
 }
 
-.framework-picker__remove {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin-top: 2px;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
-}
-.framework-picker__remove:hover {
-  color: var(--text-normal);
-  border-color: var(--background-modifier-border);
-  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
-}
-.framework-picker__remove svg {
-  width: 12px;
-  height: 12px;
-  display: block;
-}
-
 .framework-picker__empty {
   padding: 24px 14px;
   text-align: center;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
-}
-
-/* Confirmation row that the X click drops in place of the framework row,
-   asking whether to remove from the picker only or to delete the file. */
-.framework-picker__confirm {
-  padding: 10px 14px;
-  background: var(--background-modifier-form-field);
-  border-top: 1px solid var(--background-modifier-border);
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-.framework-picker__confirm-text {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-normal);
-  margin-bottom: 8px;
-}
-.framework-picker__confirm-actions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-}
-.framework-picker__confirm-btn {
-  font-size: var(--font-ui-smaller);
-  padding: 4px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--interactive-normal);
-  color: var(--text-normal);
-  cursor: pointer;
-}
-.framework-picker__confirm-btn:hover {
-  border-color: var(--icon-color-hover);
-}
-.framework-picker__confirm-btn--danger {
-  color: var(--ora-status-error, #ff6e6e);
 }
 
 @media (max-width: 700px) {

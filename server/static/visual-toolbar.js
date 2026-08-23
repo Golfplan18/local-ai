@@ -13,24 +13,9 @@
  *      Each tool item becomes a <button class="ora-toolbar__item" ...> with
  *      the resolved Lucide / inline SVG icon embedded. Each item is wired
  *      to an action handler, an enabled-state predicate, and a hover
- *      tooltip (label + shortcut on enabled items; label + shortcut +
- *      "missing prerequisite" reason on disabled items).
- *
- *      WP-7.7.4 — Contextual tooltips on hover. The renderer mounts a
- *      single shared tooltip surface (lazily, document-scoped) and wires
- *      each button's mouseenter/mouseleave/focus/blur/click events to
- *      show/hide it. The native `title` attribute is intentionally NOT
- *      set on items, because browsers render `title` immediately and
- *      with their own (uncontrolled) styling — we want a ~500ms fade-in
- *      delay, theme-matched chrome, and click-to-dismiss. Tooltips
- *      position themselves below the button by default, flipping above
- *      when the button is within ~tooltipHeight of the viewport top.
- *      They auto-hide when chrome blur fires (WP-7.1.4 dispatches a
- *      `ora-toolbar:chrome-hidden` CustomEvent on document, observed
- *      here) — no tooltips fire when chrome is hidden. Disabled buttons
- *      still receive tooltips (so users see the "missing prerequisite"
- *      reason); pointer-events on the tooltip surface itself are off,
- *      so hovering it never blocks clicks underneath.
+ *      tooltip text (label + shortcut on enabled items; label + shortcut +
+ *      "missing prerequisite" reason on disabled items). The shared
+ *      renderer in tooltip.js owns the actual tooltip surface and behavior.
  *
  * Action wiring contract
  * ----------------------
@@ -192,164 +177,6 @@
     return base + ' — unavailable';
   }
 
-  // ---- shared tooltip surface (WP-7.7.4) ------------------------------------
-  //
-  // One tooltip element per document. Lazily created on first hover. Hidden
-  // by default; shown after a ~500ms fade-in delay; positioned below the
-  // anchor button (or above if there isn't room). Click on the anchor
-  // dismisses immediately so the tooltip doesn't linger over the click
-  // result. WP-7.1.4 fires `ora-toolbar:chrome-hidden` on document when
-  // chrome blur kicks in; we listen for it and suppress hovers while
-  // chrome is hidden (cleared on `ora-toolbar:chrome-shown`).
-  //
-  // The surface uses inline styles (no global CSS dependency) so the
-  // tooltip works in any theme and in jsdom test environments where the
-  // stylesheet may not load.
-
-  var TOOLTIP_DELAY_MS = 500;
-  var TOOLTIP_OFFSET_PX = 8;       // gap between button and tooltip
-  var TOOLTIP_EDGE_GUARD_PX = 4;   // keep at least this much from viewport edges
-
-  function _getTooltipSurface(doc) {
-    if (!doc) return null;
-    var existing = doc.__oraToolbarTooltip;
-    if (existing && existing.el && (existing.doc === doc)) return existing;
-
-    var el = doc.createElement('div');
-    el.className = 'ora-toolbar__tooltip';
-    el.setAttribute('role', 'tooltip');
-    el.setAttribute('aria-hidden', 'true');
-    el.setAttribute('data-state', 'hidden');
-    // Inline styles — work without the host stylesheet.
-    var s = el.style;
-    s.position = 'fixed';
-    s.zIndex = '10000';
-    s.pointerEvents = 'none';
-    s.opacity = '0';
-    s.transition = 'opacity 120ms ease-out';
-    s.background = 'var(--ora-tooltip-bg, rgba(20, 22, 28, 0.95))';
-    s.color = 'var(--ora-tooltip-fg, #f6f7f9)';
-    s.font = '12px/1.35 var(--ora-tooltip-font, system-ui, -apple-system, sans-serif)';
-    s.padding = '6px 8px';
-    s.borderRadius = '4px';
-    s.maxWidth = '280px';
-    s.whiteSpace = 'nowrap';
-    s.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
-    s.top = '0px';
-    s.left = '0px';
-    s.visibility = 'hidden';
-    if (doc.body) doc.body.appendChild(el);
-
-    var state = {
-      doc: doc,
-      el: el,
-      anchor: null,
-      timerId: null,
-      chromeHidden: false,
-    };
-
-    function _onChromeHidden() {
-      state.chromeHidden = true;
-      _hideTooltipNow(state);
-    }
-    function _onChromeShown() {
-      state.chromeHidden = false;
-    }
-    try {
-      doc.addEventListener('ora-toolbar:chrome-hidden', _onChromeHidden);
-      doc.addEventListener('ora-toolbar:chrome-shown', _onChromeShown);
-    } catch (e) { /* ignore in non-DOM environments */ }
-    state._chromeHiddenListener = _onChromeHidden;
-    state._chromeShownListener = _onChromeShown;
-
-    doc.__oraToolbarTooltip = state;
-    return state;
-  }
-
-  function _positionTooltip(state, anchorEl) {
-    var doc = state.doc;
-    var win = (doc.defaultView || (typeof window !== 'undefined' ? window : null));
-    var rect = anchorEl.getBoundingClientRect();
-    var el = state.el;
-
-    // Make sure we measure the tooltip in its on-screen layout. Visibility
-    // is hidden but the element is still laid out.
-    el.style.visibility = 'hidden';
-    el.style.left = '0px';
-    el.style.top = '0px';
-
-    var tipRect = el.getBoundingClientRect();
-    var tipW = tipRect.width || 0;
-    var tipH = tipRect.height || 0;
-
-    var viewportW = (win && win.innerWidth)  || (doc.documentElement ? doc.documentElement.clientWidth  : 1024);
-    var viewportH = (win && win.innerHeight) || (doc.documentElement ? doc.documentElement.clientHeight : 768);
-
-    // Default: below the button. Flip above if there isn't enough room
-    // below AND there's more room above.
-    var spaceBelow = viewportH - rect.bottom;
-    var spaceAbove = rect.top;
-    var placement = 'below';
-    if (spaceBelow < (tipH + TOOLTIP_OFFSET_PX + TOOLTIP_EDGE_GUARD_PX)
-        && spaceAbove > spaceBelow) {
-      placement = 'above';
-    }
-
-    var top = (placement === 'below')
-      ? rect.bottom + TOOLTIP_OFFSET_PX
-      : rect.top - tipH - TOOLTIP_OFFSET_PX;
-
-    // Center the tooltip on the button, then clamp into the viewport.
-    var btnCenter = rect.left + (rect.width / 2);
-    var left = btnCenter - (tipW / 2);
-    if (left < TOOLTIP_EDGE_GUARD_PX) left = TOOLTIP_EDGE_GUARD_PX;
-    if (left + tipW > viewportW - TOOLTIP_EDGE_GUARD_PX) {
-      left = viewportW - tipW - TOOLTIP_EDGE_GUARD_PX;
-    }
-
-    el.style.left = Math.round(left) + 'px';
-    el.style.top  = Math.round(top)  + 'px';
-    el.setAttribute('data-placement', placement);
-    el.style.visibility = 'visible';
-  }
-
-  function _showTooltip(state, anchorEl, text) {
-    if (!state || !anchorEl || !text) return;
-    if (state.chromeHidden) return;
-    if (state.timerId) {
-      try { clearTimeout(state.timerId); } catch (e) { /* ignore */ }
-      state.timerId = null;
-    }
-    state.anchor = anchorEl;
-    state.timerId = setTimeout(function () {
-      state.timerId = null;
-      // Re-check that the anchor hasn't been replaced by another hover and
-      // that chrome wasn't hidden during the delay.
-      if (state.anchor !== anchorEl) return;
-      if (state.chromeHidden) return;
-      var el = state.el;
-      el.textContent = text;
-      el.setAttribute('aria-hidden', 'false');
-      el.setAttribute('data-state', 'visible');
-      _positionTooltip(state, anchorEl);
-      el.style.opacity = '1';
-    }, TOOLTIP_DELAY_MS);
-  }
-
-  function _hideTooltipNow(state) {
-    if (!state) return;
-    if (state.timerId) {
-      try { clearTimeout(state.timerId); } catch (e) { /* ignore */ }
-      state.timerId = null;
-    }
-    var el = state.el;
-    if (!el) return;
-    el.style.opacity = '0';
-    el.style.visibility = 'hidden';
-    el.setAttribute('aria-hidden', 'true');
-    el.setAttribute('data-state', 'hidden');
-    state.anchor = null;
-  }
 
   // ---- render ---------------------------------------------------------------
 
@@ -407,7 +234,6 @@
 
     var itemEls = Object.create(null);
     var listeners = [];
-    var tooltipState = _getTooltipSurface(doc);
 
     var items = Array.isArray(def.items) ? def.items : [];
     for (var i = 0; i < items.length; i++) {
@@ -450,20 +276,10 @@
       labelWrap.textContent = item.label;
       btn.appendChild(labelWrap);
 
-      // Bind click + tooltip lifecycle. Closure over `item` so the
-      // handler always sees the right tool definition.
+      // Bind the action lifecycle. Tooltip text stays on the button for the
+      // shared renderer in tooltip.js.
       (function (currentItem, currentBtn) {
-        function _currentTooltipText() {
-          // Prefer the live data-tooltip attribute (kept in sync by
-          // refreshEnabled when predicates change).
-          var t = currentBtn.getAttribute('data-tooltip');
-          return (t && t.length) ? t : _composeTooltip(currentItem, true);
-        }
-
         function onClick(e) {
-          // WP-7.7.4 — tooltip dismisses the moment the click registers,
-          // so it doesn't linger over the click result.
-          _hideTooltipNow(tooltipState);
           if (currentBtn.disabled) {
             // Disabled state should already prevent the click, but defensive.
             e.preventDefault();
@@ -482,21 +298,8 @@
           try { onStub(binding, currentItem, msg); }
           catch (err) { console.error('[OraVisualToolbar] stub error:', err); }
         }
-        function onEnter() { _showTooltip(tooltipState, currentBtn, _currentTooltipText()); }
-        function onLeave() { _hideTooltipNow(tooltipState); }
-        function onFocus() { _showTooltip(tooltipState, currentBtn, _currentTooltipText()); }
-        function onBlur()  { _hideTooltipNow(tooltipState); }
-
         currentBtn.addEventListener('click',      onClick);
-        currentBtn.addEventListener('mouseenter', onEnter);
-        currentBtn.addEventListener('mouseleave', onLeave);
-        currentBtn.addEventListener('focus',      onFocus);
-        currentBtn.addEventListener('blur',       onBlur);
         listeners.push({ el: currentBtn, type: 'click',      fn: onClick });
-        listeners.push({ el: currentBtn, type: 'mouseenter', fn: onEnter });
-        listeners.push({ el: currentBtn, type: 'mouseleave', fn: onLeave });
-        listeners.push({ el: currentBtn, type: 'focus',      fn: onFocus });
-        listeners.push({ el: currentBtn, type: 'blur',       fn: onBlur  });
       })(item, btn);
 
       rootEl.appendChild(btn);
@@ -555,18 +358,6 @@
           el.removeAttribute('data-disabled-reason');
         }
       }
-      // If the currently anchored tooltip is one of our items, refresh its
-      // text in place so a state change (e.g. selection toggle) updates the
-      // visible tooltip without forcing the user to mouse out and back in.
-      if (tooltipState && tooltipState.anchor && tooltipState.el
-          && tooltipState.el.getAttribute('data-state') === 'visible') {
-        var anchorId = tooltipState.anchor.getAttribute('data-item-id');
-        if (anchorId && itemEls[anchorId] === tooltipState.anchor) {
-          tooltipState.el.textContent =
-            tooltipState.anchor.getAttribute('data-tooltip') || '';
-          _positionTooltip(tooltipState, tooltipState.anchor);
-        }
-      }
     }
 
     refreshEnabled();
@@ -593,15 +384,6 @@
         catch (e) { /* ignore */ }
       }
       listeners = [];
-      // If the shared tooltip is anchored to one of our buttons, hide it
-      // before we yank the DOM out from under it.
-      if (tooltipState && tooltipState.anchor) {
-        var stillOurs = false;
-        for (var id in itemEls) {
-          if (itemEls[id] === tooltipState.anchor) { stillOurs = true; break; }
-        }
-        if (stillOurs) _hideTooltipNow(tooltipState);
-      }
       if (rootEl.parentNode) {
         try { rootEl.parentNode.removeChild(rootEl); } catch (e) { /* ignore */ }
       }

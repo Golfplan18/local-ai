@@ -378,8 +378,8 @@ def _save_sweeper_state(workflow_id: str, state: dict) -> bool:
     # would otherwise be seen as corrupt/empty and reset the episode. Write to
     # a PER-WRITER temp file in the same dir, then os.replace (atomic on the
     # same fs). The temp name is unique per process+thread so two concurrent
-    # writers (e.g. a watchdog-restarted fast lane running alongside a wedged
-    # one) can't interleave into a shared temp and publish a torn file; the
+    # writers (for example, two manual sweeps running concurrently) can't
+    # interleave into a shared temp and publish a torn file; the
     # worst residue is a last-writer-wins lost update, self-corrected next sweep.
     path = _sweeper_state_path(workflow_id)
     tmp = f"{path}.tmp.{os.getpid()}.{threading.get_ident()}"
