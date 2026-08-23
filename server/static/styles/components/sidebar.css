@@ -360,25 +360,6 @@ body.ora-auto-hide-controls .sidebar-collapsed-dashboard:not(:hover):not(:focus-
 .sidebar-row-pin:hover { color: var(--text-normal); }
 .sidebar-row-pin.is-pinned { color: var(--interactive-accent); }
 
-/* Hover tooltip overlay — single shared element positioned via JS so the
-   full conversation title can extend past the sidebar's right edge over
-   the output pane. */
-.sidebar-row-tooltip {
-  position: fixed;
-  z-index: 10000;
-  pointer-events: none;
-  background: var(--background-secondary);
-  color: var(--text-normal);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: nowrap;
-  max-width: 60vw;
-  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.4);
-}
-
 /* Pending row indicator: a small pulsing dot on the right edge */
 .sidebar-row[data-pending="true"]::after {
   content: "";

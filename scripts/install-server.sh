@@ -19,9 +19,11 @@
 #      endpoint to OpenRouter-routed picks (qwen3.6-plus for analysis,
 #      qwen3.6-35b-a3b for utility) so nothing references a local MLX model
 #      and the server only needs one API key.
-#   5. Prompts for OPENROUTER_API_KEY (and optionally ANTHROPIC_API_KEY)
+#   5. Creates an API-only config/models.json inventory if absent, preserving
+#      any existing machine inventory and carrying no credentials.
+#   6. Prompts for OPENROUTER_API_KEY (and optionally ANTHROPIC_API_KEY)
 #      and writes them to ~/.config/ora-server.env (600 perms).
-#   6. Runs a smoke test that loads the config, resolves a slot endpoint,
+#   7. Runs a smoke test that loads the config, resolves a slot endpoint,
 #      and reports the install state.
 #
 # What it does NOT do:
@@ -68,6 +70,19 @@ for arg in "$@"; do
   esac
 done
 
+# Match start.sh and run-ora-server.sh: an explicit ORA_HOME wins, while an
+# unset value means this installed clone. Normalize and enter that home before
+# any Python import so the installer and runtime resolve the same roots.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+WORKSPACE="${ORA_HOME:-${SCRIPT_DIR}/..}"
+if [[ ! -d "$WORKSPACE" ]]; then
+  echo "[install-server] ✗ ORA_HOME is not a directory: $WORKSPACE" >&2
+  exit 1
+fi
+WORKSPACE="$(cd -- "$WORKSPACE" && pwd -P)"
+export ORA_HOME="$WORKSPACE"
+cd "$WORKSPACE"
+
 # ─── helpers ───────────────────────────────────────────────────────────
 log() { printf '[install-server] %s\n' "$*" >&2; }
 run() {
@@ -79,7 +94,7 @@ run() {
 }
 
 # ─── 1. preflight ──────────────────────────────────────────────────────
-log "Step 1/6: Preflight checks"
+log "Step 1/7: Preflight checks"
 
 if [[ "$(uname -s)" != "Linux" ]]; then
   log "✗ This script targets Linux. On macOS use scripts/install.py instead."
@@ -120,7 +135,7 @@ fi
 log "  ✓ python ${PY_VERSION}"
 
 # ─── 2. venv + Python deps ─────────────────────────────────────────────
-log "Step 2/6: Virtualenv + Python dependencies"
+log "Step 2/7: Virtualenv + Python dependencies"
 
 if [[ ! -d .venv ]]; then
   log "Creating virtualenv at .venv/"
@@ -172,7 +187,7 @@ fi
 log "  ✓ Installed pinned MCP runtime and exact Playwright Chromium"
 
 # ─── 3. ollama for embeddings ──────────────────────────────────────────
-log "Step 3/6: ollama (for ChromaDB embeddings)"
+log "Step 3/7: ollama (for ChromaDB embeddings)"
 
 if (( SKIP_OLLAMA )); then
   log "  ⊘ --skip-ollama set; skipping ollama install and embedding model pull"
@@ -188,7 +203,7 @@ else
 fi
 
 # ─── 4. rewrite routing-config.json to API-only slots ─────────────────
-log "Step 4/6: Configure API-only slot assignments"
+log "Step 4/7: Configure API-only slot assignments"
 
 if (( DRY_RUN )); then
   log "  DRY: would rewrite config/routing-config.json::slot_assignments + default_endpoint"
@@ -196,8 +211,17 @@ else
   python3 scripts/install_server_config.py
 fi
 
-# ─── 5. API keys ───────────────────────────────────────────────────────
-log "Step 5/6: API key configuration"
+# ─── 5. machine-specific model inventory ──────────────────────────────
+log "Step 5/7: Initialize API-only model inventory"
+
+if (( DRY_RUN )); then
+  log "  DRY: would create config/models.json only when it is absent"
+else
+  python3 scripts/install_server_smoke.py --ensure-api-only-inventory
+fi
+
+# ─── 6. API keys ───────────────────────────────────────────────────────
+log "Step 6/7: API key configuration"
 
 ENV_FILE="${HOME}/.config/ora-server.env"
 
@@ -207,12 +231,14 @@ else
   if [[ -f "$ENV_FILE" ]]; then
     log "  ✓ ${ENV_FILE} exists; not overwriting (rm and re-run to change keys)"
   else
-    log "  Configuring ${ENV_FILE}"
-    mkdir -p "$(dirname "$ENV_FILE")"
-    : > "$ENV_FILE"
-    chmod 600 "$ENV_FILE"
+    if (( DRY_RUN )); then
+      log "  DRY: would configure ${ENV_FILE} without writing it"
+    else
+      log "  Configuring ${ENV_FILE}"
+      mkdir -p "$(dirname "$ENV_FILE")"
+      : > "$ENV_FILE"
+      chmod 600 "$ENV_FILE"
 
-    if (( ! DRY_RUN )); then
       printf 'OpenRouter API key (starts with sk-or-...): '
       read -rs OPENROUTER_KEY
       echo
@@ -228,8 +254,8 @@ else
   fi
 fi
 
-# ─── 6. smoke test ─────────────────────────────────────────────────────
-log "Step 6/6: Smoke test"
+# ─── 7. smoke test ─────────────────────────────────────────────────────
+log "Step 7/7: Smoke test"
 
 if (( DRY_RUN )); then
   log "  DRY: would run scripts/install_server_smoke.py"

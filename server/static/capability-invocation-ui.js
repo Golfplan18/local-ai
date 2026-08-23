@@ -39,9 +39,9 @@
  *
  * ── Button enabled-state ──────────────────────────────────────────────
  * The Run button is enabled iff every required input has a non-empty
- * value. When disabled, hover surfaces a tooltip listing what's missing,
- * worded against each unfilled required input's `description` (per the
- * §11.5 "missing prerequisite" requirement).
+ * value. When disabled, a persistent inline status lists what's missing,
+ * worded against each unfilled required input's `description` and associated
+ * to the button with `aria-describedby` (per the §11.5 requirement).
  *
  * Sync UX — spinner + active-input lock. Async UX — replace the spinner
  * with a "Sent — will arrive when ready" badge and emit a
@@ -258,7 +258,7 @@
       // DOM refs populated during render
       formEl: null,
       runBtn: null,
-      tooltipEl: null,
+      prereqEl: null,
       statusEl: null,
       errorEl: null,
       resultEl: null,
@@ -670,18 +670,17 @@
       state.resultEl.style.display = 'none';
       form.appendChild(state.resultEl);
 
-      // Run button + tooltip wrapper
+      // Run button + persistent prerequisite status
       var actions = _el('div', 'ora-cap-actions');
       var btnWrap = _el('span', 'ora-cap-runbtn-wrap');
       var btnLabel = (contract.execution_pattern === 'async') ? 'Send' : 'Run';
       state.runBtn = _el('button', 'ora-cap-runbtn', btnLabel);
       state.runBtn.type = 'submit';
+      state.prereqEl = _el('p', 'ora-cap-prereq-status');
+      state.prereqEl.id = 'ora-cap-prereq-' + Math.random().toString(36).slice(2, 10);
+      state.prereqEl.hidden = true;
+      btnWrap.appendChild(state.prereqEl);
       btnWrap.appendChild(state.runBtn);
-      // Tooltip for disabled-state explanation; positioned via CSS
-      state.tooltipEl = _el('span', 'ora-cap-tooltip');
-      state.tooltipEl.setAttribute('role', 'tooltip');
-      state.tooltipEl.style.display = 'none';
-      btnWrap.appendChild(state.tooltipEl);
       actions.appendChild(btnWrap);
       form.appendChild(actions);
 
@@ -779,27 +778,31 @@
       if (state.inFlight) {
         state.runBtn.disabled = true;
         state.runBtn.setAttribute('aria-disabled', 'true');
-        state.tooltipEl.style.display = 'none';
+        _hidePrerequisiteStatus();
         return;
       }
       var missing = _missingRequireds();
       if (missing.length === 0) {
         state.runBtn.disabled = false;
         state.runBtn.removeAttribute('aria-disabled');
-        state.runBtn.removeAttribute('title');
-        state.tooltipEl.style.display = 'none';
-        state.tooltipEl.textContent = '';
+        _hidePrerequisiteStatus();
       } else {
         state.runBtn.disabled = true;
         state.runBtn.setAttribute('aria-disabled', 'true');
-        var tooltip = _composeMissingTooltip(missing);
-        // The native `title` attribute keeps the spec's "hover-tooltip"
-        // requirement working when the visible custom tooltip is hidden
-        // by CSS or unsupported.
-        state.runBtn.setAttribute('title', tooltip);
-        state.tooltipEl.textContent = tooltip;
-        state.tooltipEl.style.display = '';
+        var status = _composeMissingTooltip(missing);
+        state.prereqEl.textContent = status;
+        state.prereqEl.hidden = false;
+        state.runBtn.setAttribute('aria-describedby', state.prereqEl.id);
+        state.runBtn.removeAttribute('title');
       }
+    }
+
+    function _hidePrerequisiteStatus() {
+      if (!state.prereqEl) return;
+      state.prereqEl.hidden = true;
+      state.prereqEl.textContent = '';
+      if (state.runBtn) state.runBtn.removeAttribute('aria-describedby');
+      if (state.runBtn) state.runBtn.removeAttribute('title');
     }
 
     function _composeMissingTooltip(missingSpecs) {
@@ -1176,7 +1179,7 @@
       }
       state.formEl = null;
       state.runBtn = null;
-      state.tooltipEl = null;
+      state.prereqEl = null;
       state.statusEl = null;
       state.errorEl = null;
       state.resultEl = null;
