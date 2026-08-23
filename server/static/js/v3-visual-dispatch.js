@@ -92,8 +92,8 @@
     const detail = message || 'The visual request could not be applied.';
     console.warn('[v3-visual-dispatch] ' + detail);
     const panel = window.OraPanels && window.OraPanels.visual;
-    if (panel && typeof panel._showErrorBar === 'function') {
-      panel._showErrorBar('Visual failed: ' + detail);
+    if (panel && typeof panel.showError === 'function') {
+      panel.showError('Visual failed: ' + detail);
     }
     persistOutcome(meta, {
       state: 'failed',

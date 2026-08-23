@@ -1596,7 +1596,8 @@ _VISUAL_NOT_APPLICABLE_REASONS = {
 }
 
 
-def _visual_exception_outcome(context_pkg: dict | None) -> dict | None:
+def _visual_exception_outcome(context_pkg: dict | None,
+                              *, allow_greeting: bool = False) -> dict | None:
     """Return a positively established no-visual outcome, if one exists.
 
     Only explicit visual exceptions belong here. Lookup, translation, and
@@ -1618,14 +1619,6 @@ def _visual_exception_outcome(context_pkg: dict | None) -> dict | None:
             reason += " " + str(error_detail).strip()[:300]
         return {"state": "not_applicable", "reason": reason}
 
-    fallback_origin = context_pkg.get("_visual_fallback_origin")
-    if fallback_origin == "failed_claim_extraction":
-        return {
-            "state": "not_applicable",
-            "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
-            "origin": fallback_origin,
-        }
-
     pre_routing = context_pkg.get("pre_routing") or {}
     kind = (
         context_pkg.get("visual_exception")
@@ -1645,12 +1638,42 @@ def _visual_exception_outcome(context_pkg: dict | None) -> dict | None:
                 detected = None
             if isinstance(detected, dict):
                 kind = detected.get("visual_exception")
+    # A greeting marker is a deferred exception. A short greeting can still be
+    # the preface to a substantive framework answer, and that answer may be
+    # recoverable or eligible for the deterministic concept-map fallback. Do
+    # not decide from the presence of an ora-visual fence: the fallback is
+    # intentionally reached only after the normal recovery/synthesis passes.
+    if kind == "greeting_or_acknowledgement" and not allow_greeting:
+        return None
     if kind not in {"explicit_opt_out", "greeting_or_acknowledgement"}:
         return None
     return {
         "state": "not_applicable",
         "reason": _VISUAL_NOT_APPLICABLE_REASONS[kind],
     }
+
+
+_STANDALONE_GREETING_RE = re.compile(
+    r"^(?:(?:hi|hello|hey)(?:\s+there)?|good\s+(?:morning|afternoon|evening)"
+    r"|thanks?(?:\s+you)?|thank\s+you|you're\s+welcome|welcome|okay|ok"
+    r"|got\s+it|understood|noted|sure|yes|no|bye|goodbye)"
+    r"[!.,?\s]*$",
+    re.IGNORECASE,
+)
+
+
+def _is_standalone_greeting_response(response: str) -> bool:
+    """Recognize a response that is only a greeting/acknowledgement.
+
+    The prompt's greeting marker is intentionally deferred because a greeting
+    can introduce a substantive answer. When the optional visual hook is not
+    installed, only an unmistakably standalone greeting may be finalized as
+    not applicable; substantive prose remains eligible for fallback handling.
+    """
+    if not isinstance(response, str):
+        return False
+    prose = re.sub(r"\s+", " ", response).strip()
+    return bool(prose and _STANDALONE_GREETING_RE.fullmatch(prose))
 
 
 def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
@@ -1681,7 +1704,19 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
             return _strip_visual_blocks_and_markers(response)
         except Exception:
             return response
-    if not VISUAL_HOOK_AVAILABLE or not response:
+    if not response:
+        return response
+    if not VISUAL_HOOK_AVAILABLE:
+        greeting_outcome = _visual_exception_outcome(
+            context_pkg, allow_greeting=True,
+        )
+        if (greeting_outcome is not None
+                and greeting_outcome.get("reason") ==
+                _VISUAL_NOT_APPLICABLE_REASONS["greeting_or_acknowledgement"]
+                and _is_standalone_greeting_response(response)
+                and isinstance(context_pkg, dict)):
+            context_pkg["visual_diagnostics"] = {"visuals": []}
+            context_pkg["_visual_outcome"] = greeting_outcome
         return response
     trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
     # Phase 0 — observe-only emission telemetry across ALL pipeline steps.
@@ -1913,6 +1948,17 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                 "state": "failed",
                 "stage": "visual_hook",
                 "reason": "The visual was rejected before it could be inserted.",
+            }
+        elif ((greeting_outcome := _visual_exception_outcome(
+                    context_pkg, allow_greeting=True)) is not None
+              and greeting_outcome.get("reason") ==
+              _VISUAL_NOT_APPLICABLE_REASONS["greeting_or_acknowledgement"]
+              and _is_standalone_greeting_response(response)):
+            context_pkg["_visual_outcome"] = {
+                "state": "not_applicable",
+                "reason": _VISUAL_NOT_APPLICABLE_REASONS[
+                    "greeting_or_acknowledgement"
+                ],
             }
         elif context_pkg.get("_visual_fallback_origin") == "failed_claim_extraction":
             context_pkg["_visual_outcome"] = {

@@ -115,7 +115,7 @@
       (spec.flows || []).forEach(function (entry) { edge(entry.from, entry.to, entry.label, 'flow'); });
       (spec.info_links || []).forEach(function (entry) { edge(entry.from, entry.to, 'information', 'info-link'); });
     } else if (type === 'causal_dag') {
-      var dag = text(spec.dsl, '');
+      var dag = typeof spec.dsl === 'string' ? spec.dsl : '';
       var dagRenderer = ns._renderers && ns._renderers.causalDag;
       var dagParser = dagRenderer && dagRenderer._parseDagitty;
       if (typeof dagParser !== 'function') {
@@ -231,14 +231,45 @@
         edge(entry.from_concept, entry.to_concept, phrases[entry.via_phrase] || entry.via_phrase, 'proposition');
       });
     } else if (type === 'c4') {
-      var c4 = text(spec.dsl, '');
-      var c4Nodes = /([A-Za-z_][\w-]*)\s*=\s*(person|softwareSystem|container|component)\s+"([^"]+)"/g;
-      while ((match = c4Nodes.exec(c4))) node(match[1], match[3], match[2]);
-      var c4Edges = /([A-Za-z_][\w-]*)\s*->\s*([A-Za-z_][\w-]*)\s+"([^"]*)"/g;
-      while ((match = c4Edges.exec(c4))) edge(match[1], match[2], match[3], 'uses');
+      // The SVG renderer and the editable scene must consume the same
+      // Structurizr AST. Regex extraction used to treat commented-out
+      // declarations as real nodes and could silently turn malformed DSL
+      // into the generic placeholder below.
+      var c4Vendor = (ns._vendor || {}).structurizrMini;
+      var c4Parser = c4Vendor && c4Vendor.parser;
+      if (!c4Parser || typeof c4Parser.parse !== 'function') {
+        throw new Error('The canonical Structurizr parser is unavailable');
+      }
+      var ast = c4Parser.parse(typeof spec.dsl === 'string' ? spec.dsl : '');
+      var declared = new Set();
+      (ast.model && ast.model.people || []).forEach(function (person) {
+        declared.add(person.id);
+        node(person.id, person.name, 'person');
+      });
+      (ast.model && ast.model.softwareSystems || []).forEach(function (system) {
+        declared.add(system.id);
+        node(system.id, system.name, 'softwareSystem', {
+          external: system.external === true,
+        });
+        (system.containers || []).forEach(function (container) {
+          declared.add(container.id);
+          node(container.id, container.name, 'container', {
+            technology: container.technology || '',
+          });
+        });
+      });
+      (ast.model && ast.model.relationships || []).forEach(function (rel) {
+        if (!declared.has(rel.fromId) || !declared.has(rel.toId)) return;
+        edge(rel.fromId, rel.toId, rel.description, 'uses');
+      });
     }
 
-    if (!nodes.length) node('visual', envelope && envelope.title || type || 'visual', 'visual');
+    // A malformed C4 source must fail at the canonical parser boundary. Do
+    // not replace it with a misleading placeholder visual. Other native
+    // types retain the established empty-graph placeholder behavior.
+    if (!nodes.length && type !== 'c4') {
+      node('visual', envelope && envelope.title || type || 'visual', 'visual');
+    }
     return { nodes: nodes, edges: edges };
   }
 
@@ -344,6 +375,9 @@
       y: Number(element.y) || 0,
       width: Number(element.width) || 0,
       height: Number(element.height) || 0,
+      scale: Array.isArray(element.scale) ? element.scale.slice() : null,
+      flipHorizontal: element.flipHorizontal === true,
+      flipVertical: element.flipVertical === true,
       angle: Number(element.angle) || 0,
       locked: element.locked === true,
       text: String(element.text || ''),
@@ -507,6 +541,33 @@
       elements.push(arrow);
       from.element.boundElements.push({ id: arrow.id, type: 'arrow' });
       to.element.boundElements.push({ id: arrow.id, type: 'arrow' });
+
+      // Relationship labels are semantic content, not arrow metadata only:
+      // emit an editable text object so the relationship survives the native
+      // Excalidraw projection visibly.
+      if (entry.label) {
+        var labelWidth = Math.max(80, Math.min(320, entry.label.length * 7 + 20));
+        var labelX = (start.x + end.x) / 2 - labelWidth / 2;
+        var labelY = (start.y + end.y) / 2 - 22;
+        var edgeLabel = baseElement(
+          'ora-' + hash(assistantVisualId + ':' + semantic + ':label'),
+          'text',
+          { x: labelX, y: labelY, width: labelWidth, height: 24 },
+          owned(entry.kind + '-label', semantic + ':label', Object.assign(
+            { relationshipLabel: entry.label }, semanticMetadata(entry)
+          ))
+        );
+        edgeLabel.text = entry.label;
+        edgeLabel.originalText = entry.label;
+        edgeLabel.fontSize = 14;
+        edgeLabel.fontFamily = 1;
+        edgeLabel.textAlign = 'center';
+        edgeLabel.verticalAlign = 'middle';
+        edgeLabel.autoResize = false;
+        edgeLabel.lineHeight = 1.25;
+        edgeLabel.groupIds = [groupId + '-' + safe(semantic + ':label')];
+        elements.push(edgeLabel);
+      }
     });
 
     elements.forEach(tagFingerprint);

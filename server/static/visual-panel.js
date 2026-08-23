@@ -1607,6 +1607,13 @@
     this._errorBar.hidden = false;
   };
 
+  // Public error surface for bridges that do not hold the panel instance.
+  // Keep the DOM/error-bar implementation private while exposing the
+  // supported user-facing operation through OraPanels.visual.
+  VisualPanel.prototype.showError = function (msg) {
+    this._showErrorBar(msg);
+  };
+
   // ── Internal: semantic interactions (hover/click) ─────────────────────────
 
   VisualPanel.prototype._wireSemanticInteractions = function () {
@@ -6603,6 +6610,7 @@
     destroy: function () { if (_active) _active.destroy(); },
     onBridgeUpdate: function (state) { if (_active) _active.onBridgeUpdate(state); },
     renderSpec: function (envelope) { return _active ? _active.renderSpec(envelope) : Promise.resolve(); },
+    showError: function (message) { if (_active) _active.showError(message); },
     clearArtifact: function () { if (_active) _active.clearArtifact(); },
     clearCanvas: function () { if (_active) _active.clearCanvas(); },
     resetCanvas: function () { if (_active) _active.resetCanvas(); },

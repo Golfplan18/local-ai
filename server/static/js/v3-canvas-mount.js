@@ -718,6 +718,9 @@
         y: Number(element && element.y) || 0,
         width: Number(element && element.width) || 0,
         height: Number(element && element.height) || 0,
+        scale: Array.isArray(element && element.scale) ? element.scale.slice() : null,
+        flipHorizontal: element && element.flipHorizontal === true,
+        flipVertical: element && element.flipVertical === true,
         angle: Number(element && element.angle) || 0,
         locked: element && element.locked === true,
         text: String(element && element.text || ''),
@@ -758,6 +761,47 @@
       const data = element && element.customData;
       return !!(data && data.originalGenerationFingerprint
         && data.originalGenerationFingerprint !== assistantGenerationFingerprint(element));
+    };
+
+    const scrubRemovedAnnotationReferences = (
+      elements, removedGroupIds, removedElementIds
+    ) => {
+      if (!Array.isArray(elements)) return elements;
+      elements.forEach((element) => {
+        if (!element) return;
+        const wasModified = assistantElementWasModified(element);
+        let referencesChanged = false;
+        if (Array.isArray(element.groupIds) && removedGroupIds.size) {
+          const groupIds = element.groupIds.filter(
+            (groupId) => !removedGroupIds.has(groupId)
+          );
+          referencesChanged = groupIds.length !== element.groupIds.length;
+          element.groupIds = groupIds;
+        }
+        if (Array.isArray(element.boundElements) && removedElementIds.size) {
+          const boundElements = element.boundElements.filter(
+            (binding) => !removedElementIds.has(binding && binding.id)
+          );
+          referencesChanged = referencesChanged
+            || boundElements.length !== element.boundElements.length;
+          element.boundElements = boundElements;
+        }
+        if (element.startBinding
+            && removedElementIds.has(element.startBinding.elementId)) {
+          element.startBinding = null;
+          referencesChanged = true;
+        }
+        if (element.endBinding
+            && removedElementIds.has(element.endBinding.elementId)) {
+          element.endBinding = null;
+          referencesChanged = true;
+        }
+        if (referencesChanged && !wasModified && element.customData
+            && element.customData.originalGenerationFingerprint) {
+          element.customData.originalGenerationFingerprint = assistantGenerationFingerprint(element);
+        }
+      });
+      return elements;
     };
 
     const nativeGenerationKey = (element) => {
@@ -863,7 +907,11 @@
         ))
         .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : []));
       const modifiedAnnotationGroupIds = new Set(owned
-        .filter((element) => assistantElementWasModified(element))
+        .filter((element) => (
+          element.customData
+          && element.customData.oraAssistantVisualKind === 'annotation'
+          && assistantElementWasModified(element)
+        ))
         .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : [])
         .filter((groupId) => annotationGroupIds.has(groupId)));
       const belongsToModifiedAnnotationGroup = (element) => (
@@ -886,6 +934,19 @@
         element.customData && element.customData.oraAssistantVisualKind === 'annotation'
         && belongsToModifiedAnnotationGroup(element)
       ));
+      const preservedAnnotationGroupIds = new Set(preservedAnnotationElements
+        .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : []));
+      const removedAnnotationGroupIds = new Set([...annotationGroupIds].filter(
+        (groupId) => !preservedAnnotationGroupIds.has(groupId)
+      ));
+      const removedAnnotationElementIds = new Set(owned
+        .filter((element) => (
+          element.customData
+          && element.customData.oraAssistantVisualKind === 'annotation'
+          && Array.isArray(element.groupIds)
+          && element.groupIds.some((groupId) => removedAnnotationGroupIds.has(groupId))
+        ))
+        .map((element) => element.id));
       const preservedOwnedElements = new Set(
         preservedNativeElements.concat(preservedAnnotationElements)
       );
@@ -953,6 +1014,9 @@
         }
       });
       const nextElements = retained.concat(generated);
+      scrubRemovedAnnotationReferences(
+        nextElements, removedAnnotationGroupIds, removedAnnotationElementIds
+      );
       updateExcalidraw({
         elements: nextElements,
         appState: current.appState,
@@ -1078,19 +1142,34 @@
           warnings.push(`No assistant-owned semantic element matched annotation target '${targetId || 'unknown'}'`);
           return;
         }
+        const annotationKey = `${envelope && envelope.id || assistantKey || 'visual'}:${index}`;
+        const alreadyApplied = stagedElements.some((element) => {
+          const data = element && element.customData;
+          if (!data || data.oraAssistantVisualKind !== 'annotation'
+              || data.annotationTargetSemanticId !== target.customData.semanticElementId
+              || data.annotationKind !== kind) return false;
+          return data.annotationKey === annotationKey
+            || String(data.semanticElementId || '').includes(
+              `:annotation:${annotationKey}:`
+            );
+        });
+        // Bridge replay (including reopening a Dialogue) can deliver the same
+        // annotation after the scene was restored. Treat that operation as an
+        // idempotent no-op, preserving any user edits on the existing group.
+        if (alreadyApplied) return;
         const message = String(annotation.text || annotation.label || annotation.note || '').trim();
         const targetData = target.customData || {};
         const assistantVisualId = targetData.assistantVisualId
           || (envelope && envelope.assistant_visual_id)
           || `assistant:${envelope && envelope.id || assistantKey || 'visual'}`;
         const revision = Number(targetData.generationRevision) || 1;
-        const annotationKey = `${envelope && envelope.id || assistantKey || 'visual'}:${index}`;
         const semantic = `${targetData.semanticElementId}:annotation:${annotationKey}`;
         const metadata = (role) => ({
           oraAssistantVisual: true,
           oraAssistantVisualKind: 'annotation',
           annotationSource: 'model',
           annotationKind: kind,
+          annotationKey,
           nativeAnnotationRole: role,
           annotationTargetSemanticId: targetData.semanticElementId,
           assistantVisualId,
@@ -1198,6 +1277,12 @@
         applied += 1;
       });
       if (!created.length) {
+        // Replaying an already materialized annotation is a successful
+        // idempotent no-op. Keep genuine unsupported/invalid annotations on
+        // the established warning path.
+        if (annotations.length > 0 && warnings.length === 0) {
+          return { action: 'annotate', applied, warnings };
+        }
         return {
           action: 'annotate', unsupported: true, warnings: warnings.concat(
             'No supported annotation could be applied; scene preserved.'
@@ -1472,16 +1557,76 @@
           : 'replace';
       if (action === 'clear') {
         const current = snapshotExcalidraw();
-        const removableAssistant = current.elements.filter((element) => (
-          isAssistantArtifact(element) && !assistantElementWasModified(element)
+        const owned = current.elements.filter(isAssistantArtifact);
+        const annotationGroupIds = new Set(owned
+          .filter((element) => (
+            element.customData
+            && element.customData.oraAssistantVisualKind === 'annotation'
+          ))
+          .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : []));
+        const modifiedAnnotationGroupIds = new Set(owned
+          .filter((element) => (
+            element.customData
+            && element.customData.oraAssistantVisualKind === 'annotation'
+            && assistantElementWasModified(element)
+          ))
+          .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : [])
+          .filter((groupId) => annotationGroupIds.has(groupId)));
+        const inModifiedAnnotationGroup = (element) => (
+          Array.isArray(element && element.groupIds)
+          && element.groupIds.some((groupId) => modifiedAnnotationGroupIds.has(groupId))
+        );
+        const attachedGenerations = new Set(owned
+          .filter((element) => nativeGenerationKey(element)
+            && inModifiedAnnotationGroup(element))
+          .map(nativeGenerationKey));
+        const preservedAssistant = new Set(owned.filter((element) => (
+          (element.customData
+            && element.customData.oraAssistantVisualKind === 'annotation'
+            && inModifiedAnnotationGroup(element))
+          || (nativeGenerationKey(element)
+            && attachedGenerations.has(nativeGenerationKey(element)))
+        )));
+        const preservedAnnotationGroupIds = new Set(owned
+          .filter((element) => (
+            element.customData
+            && element.customData.oraAssistantVisualKind === 'annotation'
+            && preservedAssistant.has(element)
+          ))
+          .flatMap((element) => Array.isArray(element.groupIds) ? element.groupIds : []));
+        const removedAnnotationGroupIds = new Set([...annotationGroupIds].filter(
+          (groupId) => !preservedAnnotationGroupIds.has(groupId)
         ));
+        const removedAnnotationElementIds = new Set(owned
+          .filter((element) => (
+            element.customData
+            && element.customData.oraAssistantVisualKind === 'annotation'
+            && Array.isArray(element.groupIds)
+            && element.groupIds.some((groupId) => removedAnnotationGroupIds.has(groupId))
+          ))
+          .map((element) => element.id));
+        // Clear removes untouched assistant output atomically. Every member
+        // of an edited annotation group and the complete native generation it
+        // annotates stay together, so no connector, label, or bound target is
+        // left dangling.
+        const removableAssistant = owned.filter((element) => (
+          !preservedAssistant.has(element) && !assistantElementWasModified(element)
+        ));
+        const removableIds = new Set(removableAssistant.map((element) => element.id));
         const assistantFileIds = new Set(removableAssistant
           .map((element) => element.fileId).filter(Boolean));
+        const retainedFileIds = new Set(current.elements
+          .filter((element) => !removableIds.has(element.id))
+          .map((element) => element.fileId).filter(Boolean));
         const userFiles = Object.fromEntries(Object.entries(current.files || {}).filter(
-          ([id]) => !assistantFileIds.has(id)
+          ([id]) => !assistantFileIds.has(id) || retainedFileIds.has(id)
         ));
+        const nextElements = current.elements.filter((element) => !removableIds.has(element.id));
+        scrubRemovedAnnotationReferences(
+          nextElements, removedAnnotationGroupIds, removedAnnotationElementIds
+        );
         updateExcalidraw({
-          elements: current.elements.filter((element) => !removableAssistant.includes(element)),
+          elements: nextElements,
           appState: current.appState,
           files: userFiles,
         });
