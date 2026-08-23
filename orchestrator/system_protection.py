@@ -56,6 +56,8 @@ SERVER_ACTION_SELECTOR_PREFIXES = {
     "credential_delete": ("credential:ora/",),
     "project_register": ("path:",),
     "project_unregister": ("path:",),
+    "project_tool_execute": ("project:",),
+    "project_slash_execute": ("project:",),
     "dialogue_delete": ("dialogue:",),
     "media_reference_delete": ("path:",),
     "style_profile_delete": ("path:",),
@@ -1438,6 +1440,108 @@ def authorize_server_action(
     )
 
 
+def _project_binding_states(binding: Mapping[str, Any]) -> list[dict[str, Any]]:
+    selectors = tuple(sorted({str(item) for item in binding.get("selectors", ()) if str(item)}))
+    states = []
+    for selector in selectors:
+        state = {"selector": selector, "kind": "logical"}
+        state["digest"] = _digest(state)
+        states.append(state)
+    return states
+
+
+def authorize_project_action(
+    action: str,
+    *,
+    binding: Mapping[str, Any],
+    surface: str = "slash_command",
+) -> ProtectionExecution:
+    """Authorize one exact Project tool or declared slash-command execution.
+
+    The binding is assembled from the live registered manifest and command by
+    ``project_registry``. Only its structural identities and input digest are
+    sent to the existing Paused queue; raw invocation arguments never enter
+    approval or audit state.
+    """
+    normalized = str(action or "").strip().lower()
+    expected_kind = {
+        "project_tool_execute": "tool",
+        "project_slash_execute": "slash",
+    }.get(normalized)
+    if expected_kind is None or binding.get("kind") != expected_kind:
+        raise ProtectionDenied("unknown Project execution adapter fails closed")
+    required = (
+        "nexus", "name", "interface", "manifest_sha256", "command_digest",
+        "executable_path", "executable_identity", "script_identity",
+        "args_digest", "selectors",
+    )
+    if any(not binding.get(key) for key in required):
+        raise ProtectionDenied("Project execution lacks an exact identity binding")
+    if binding["interface"] not in {"argv-stdout-json", "stdin-stdout-json"}:
+        raise ProtectionDenied("Project execution interface is not declared")
+    digest_fields = (
+        "manifest_sha256", "command_digest", "executable_identity",
+        "script_identity", "args_digest",
+    )
+    if any(
+        not isinstance(binding[field], str)
+        or not re.fullmatch(r"sha256:[0-9a-f]{64}", binding[field])
+        for field in digest_fields
+    ):
+        raise ProtectionDenied("Project execution identity digest is invalid")
+    if not isinstance(binding["executable_path"], str) or not os.path.isabs(
+        binding["executable_path"]
+    ):
+        raise ProtectionDenied("Project executable identity is not absolute")
+    if binding.get("script_path") and (
+        not isinstance(binding["script_path"], str)
+        or not os.path.isabs(binding["script_path"])
+    ):
+        raise ProtectionDenied("Project script identity is not absolute")
+    raw_selectors = binding.get("selectors")
+    if not isinstance(raw_selectors, (list, tuple)):
+        raise ProtectionDenied("Project execution selectors are not exact")
+    raw_selectors = tuple(str(item) for item in raw_selectors)
+    selectors = tuple(sorted(raw_selectors))
+    if len(raw_selectors) != 6 or len(set(raw_selectors)) != 6:
+        raise ProtectionDenied("Project execution selectors are not exact")
+    target = "tool" if expected_kind == "tool" else "slash"
+    expected_selectors = tuple(sorted((
+        f"project:{binding['nexus']}/{target}:{binding['name']}",
+        f"project:{binding['nexus']}/manifest:{binding['manifest_sha256']}",
+        f"project:{binding['nexus']}/command:{binding['command_digest']}",
+        f"project:{binding['nexus']}/interface:{binding['interface']}",
+        f"project:{binding['nexus']}/executable:{binding['executable_identity']}",
+        f"project:{binding['nexus']}/args:{binding['args_digest']}",
+    )))
+    if selectors != expected_selectors:
+        raise ProtectionDenied("Project execution selectors are not exact")
+    params = {
+        "nexus": str(binding["nexus"]),
+        "name": str(binding["name"]),
+        "interface": str(binding["interface"]),
+        "manifest_sha256": str(binding["manifest_sha256"]),
+        "command_digest": str(binding["command_digest"]),
+        "executable_path": str(binding["executable_path"]),
+        "executable_identity": str(binding["executable_identity"]),
+        "script_path": str(binding.get("script_path") or ""),
+        "script_identity": str(binding["script_identity"]),
+        "args_digest": str(binding["args_digest"]),
+    }
+    return authorize_server_action(
+        normalized,
+        selectors=selectors,
+        params=params,
+        pre_state=_project_binding_states(binding),
+        surface=surface,
+    )
+
+
+def project_binding_states(binding: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Return the authenticated logical states for a Project binding."""
+    return _project_binding_states(binding)
+
+
 def authorize_channel_action(
     action: str,
     *,
@@ -1479,6 +1583,8 @@ __all__ = [
     "ProtectionReviewRequired",
     "SystemProtectionError",
     "authorize_server_action",
+    "authorize_project_action",
+    "project_binding_states",
     "authorize_channel_action",
     "begin_execution",
     "capture_local_model_identity",

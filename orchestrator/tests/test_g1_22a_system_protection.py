@@ -198,7 +198,7 @@ class TestPolicyFloor(SystemProtectionBase):
         logical["digest"] = protection.params_digest(logical)
         with self.assertRaises(protection.ProtectionDenied):
             protection.authorize_server_action(
-                "project_tool_execute", selectors=[logical["selector"]],
+                "opaque_project_execute", selectors=[logical["selector"]],
                 params={"tool": "opaque"}, pre_state=[logical],
                 surface="slash_command",
             )

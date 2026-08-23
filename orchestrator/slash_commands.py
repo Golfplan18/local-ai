@@ -371,15 +371,12 @@ def _project_registry():
 # ---------- Project plugin command handlers (project-agnostic) ----------
 
 
-def _protected_slash_effect(action: str, selector: str, params: dict, callback):
-    """Run one opaque slash effect through G1.22 one-shot review + receipt."""
-    logical = {"selector": selector, "kind": "logical",
-               "params_digest": _sp.params_digest(params)}
-    logical["digest"] = _sp.params_digest(logical)
-    protection = _sp.authorize_server_action(
-        action, selectors=[selector], params=params, pre_state=[logical],
-        surface="slash_command",
+def _protected_project_effect(action: str, binding: dict, callback):
+    """Run one exact Project effect through the existing review + receipt path."""
+    protection = _sp.authorize_project_action(
+        action, binding=binding, surface="slash_command",
     )
+    binding_states = _sp.project_binding_states(binding)
     try:
         with _sp.protected_effect(protection):
             result = callback()
@@ -387,7 +384,7 @@ def _protected_slash_effect(action: str, selector: str, params: dict, callback):
         try:
             _sp.complete_execution(
                 protection, ok=False, result={"error": type(exc).__name__},
-                post_state=[logical],
+                post_state=binding_states,
             )
         except Exception as receipt_error:
             raise _sp.ProtectionAuditError(
@@ -397,7 +394,7 @@ def _protected_slash_effect(action: str, selector: str, params: dict, callback):
     _sp.complete_execution(
         protection, ok=True,
         result={"result_digest": _sp.params_digest({"result": result})},
-        post_state=[logical],
+        post_state=binding_states,
     )
     return result
 
@@ -417,7 +414,7 @@ def _cmd_project_tool(args: list[str]) -> str:
                 "Use /project-list to see registered projects and their tools.")
     nexus, tool_name, *rest = args
     try:
-        project = _pr.get_project(nexus)
+        project = _pr.get_project(nexus, pointer_dir=_pr.POINTER_DIR)
     except Exception as exc:
         return f"[/project-tool: error loading project {nexus!r}: {exc}]"
     if project is None:
@@ -427,27 +424,38 @@ def _cmd_project_tool(args: list[str]) -> str:
         return (f"[/project-tool: project {nexus!r} has no tool {tool_name!r}; "
                 f"available: {sorted(project.tools.keys())}]")
     try:
+        stdin_obj = None
         if tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT:
             stdin_obj = _json.loads(rest[0]) if rest else {}
-            result = _protected_slash_effect(
-                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
-                {"nexus": nexus, "tool": tool_name,
-                 "input_digest": _sp.params_digest({"stdin": stdin_obj})},
+        args_digest = _pr.project_args_digest(
+            tool, args=rest, stdin_json=stdin_obj,
+        )
+        binding = _pr.project_execution_binding(
+            project, tool, kind="tool", args_digest=args_digest,
+            pointer_dir=_pr.POINTER_DIR,
+        )
+        if tool.interface == _pr.TOOL_INTERFACE_STDIN_STDOUT:
+            result = _protected_project_effect(
+                "project_tool_execute", binding,
                 lambda: _pr.invoke_project_tool(
                     nexus, tool_name, stdin_json=stdin_obj,
+                    pointer_dir=_pr.POINTER_DIR, expected_binding=binding,
                 ),
             )
         else:
-            result = _protected_slash_effect(
-                "project_tool_execute", f"project:{nexus}/tool:{tool_name}",
-                {"nexus": nexus, "tool": tool_name,
-                 "args_digest": _sp.params_digest({"args": rest})},
-                lambda: _pr.invoke_project_tool(nexus, tool_name, args=rest),
+            result = _protected_project_effect(
+                "project_tool_execute", binding,
+                lambda: _pr.invoke_project_tool(
+                    nexus, tool_name, args=rest,
+                    pointer_dir=_pr.POINTER_DIR, expected_binding=binding,
+                ),
             )
     except _sp.ProtectionReviewRequired as exc:
         return str(exc)
     except _sp.SystemProtectionError as exc:
         return f"[SYSTEM PROTECTION — {exc}]"
+    except _pr.ProjectExecutionBindingError as exc:
+        return f"[/project-tool: project execution refused — {exc}]"
     except _pr.ToolInvocationError as exc:
         body = (f"```\n{exc.stderr}\n```" if getattr(exc, "stderr", "") else "")
         return f"[/project-tool: {exc}]\n{body}"
@@ -576,25 +584,37 @@ def _try_project_slash_command(cmd: str, args: list[str]) -> Optional[str]:
     name = cmd[1:]
     try:
         _pr = _project_registry()
-        project = _pr.find_project_for_slash_command(name)
+        project = _pr.find_project_for_slash_command(
+            name, pointer_dir=_pr.POINTER_DIR,
+        )
     except Exception as exc:
         return f"[/{name}: project-registry error: {exc}]"
     if project is None:
         return None
     try:
-        return _protected_slash_effect(
+        declaration = project.slash_commands[name]
+        binding = _pr.project_execution_binding(
+            project, declaration, kind="slash",
+            args_digest=_pr.project_args_digest(declaration, args=args),
+            pointer_dir=_pr.POINTER_DIR,
+        )
+        return _protected_project_effect(
             "project_slash_execute",
-            f"project:{project.nexus}/slash:{name}",
-            {"nexus": project.nexus, "command": name,
-             "args_digest": _sp.params_digest({"args": args})},
+            binding,
             lambda: _pr.invoke_project_slash_command(
                 project.nexus, name, args=args,
+                pointer_dir=_pr.POINTER_DIR, expected_binding=binding,
             ),
         )
     except _sp.ProtectionReviewRequired as exc:
         return str(exc)
     except _sp.SystemProtectionError as exc:
         return f"[SYSTEM PROTECTION — {exc}]"
+    except _pr.ProjectExecutionBindingError as exc:
+        return f"[/{name}: project execution refused — {exc}]"
+    except _pr.ToolInvocationError as exc:
+        body = f"\n```\n{exc.stderr}\n```" if getattr(exc, "stderr", "") else ""
+        return f"[/{name}: {exc}]{body}"
 
 
 # ---------- Path helpers ----------
