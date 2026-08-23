@@ -235,7 +235,8 @@ def _synthesize_one(prose: str, mode: str, vtype: str, call_fn, idx: int):
             errors, prior = errs, env
             continue
 
-        review = review_envelope(env, mode)
+        # Review the candidate against the exact prose it will accompany.
+        review = review_envelope(env, mode, prose=prose)
         if review.blocks:
             errs = [f"{b.rule}: {b.message}" for b in review.blocks]
             attempts.append({"round": round_i, "ok": False, "kind": vtype,

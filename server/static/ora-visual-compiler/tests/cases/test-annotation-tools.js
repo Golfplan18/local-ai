@@ -46,7 +46,7 @@
  *   23. Preservation — model-emitted annotation (WP-2.4 path) does NOT clear
  *       user annotations; the two are distinguishable via annotationSource.
  *   24. canvas_action='update' preserves user annotations.
- *   25. canvas_action='clear' removes user annotations.
+ *   25. canvas_action='clear' preserves user annotations.
  *   26. OraPanels.visual.getUserAnnotations routes to active instance.
  *   27. toJSON round-trips the attr convention (required for undo + WP-5.2
  *       consumers that serialize the annotation layer).
@@ -807,7 +807,7 @@ module.exports = {
       record('annotation-tools: update preservation', false, 'threw: ' + (err.stack || err.message || err));
     }
 
-    // ── 25. canvas_action='clear' removes user annotations ─────────────────
+    // ── 25. canvas_action='clear' preserves user annotations ───────────────
     try {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'at-25' });
@@ -816,8 +816,8 @@ module.exports = {
       const before = countUserAnnotations(panel);
       panel._doClear();
       const after = countUserAnnotations(panel);
-      record('annotation-tools: _doClear removes user annotations',
-        before === 1 && after === 0, 'before=' + before + ' after=' + after);
+      record('annotation-tools: _doClear preserves user annotations',
+        before === 1 && after === 1, 'before=' + before + ' after=' + after);
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {

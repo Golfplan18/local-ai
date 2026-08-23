@@ -244,7 +244,7 @@ The deliverable is a **paradigm suspension audit** — a prose analysis that sur
 **Per-section conventions:**
 
 - Use H2 headings for sections 1 through 5.
-- Format is **prose only — no diagram**. A diagram would freeze the paradigm's structure, contradicting the mode's commitment to holding interpretive frames provisional. If visualisation is essential to the user's downstream work, the deliverable surfaces a sideways-route note (`**If a bilateral map across two paradigms is wanted, frame-comparison is the appropriate alternative; if integrative synthesis is wanted, worldview-cartography is the upward route.**`) rather than producing one in-mode.
+- Format is prose first. A constrained concept map may accompany the prose when it keeps assumptions, alternatives, and their relationships explicitly provisional; it must not collapse competing paradigms into a single settled hierarchy.
 - Literal label prefixes appear verbatim: `**Assumption N (testable):**`, `[observational]` / `[interpretive]`, `**load-bearing:**` / `**peripheral:**`, `**Alternative N:**`. These are operative axis markers, not decoration.
 - Evidence tagging (section 2) is symmetric. If consensus evidence is tagged interpretive while alternative evidence is tagged observational without reasoning, the asymmetry is reshaped or flagged.
 - When the indeterminate verdict survived consolidation, section 5 carries it explicitly — "indeterminate on current evidence" is a first-class outcome, never collapsed into a forced verdict.

@@ -158,7 +158,7 @@ Breadth in Structured Output is the survey of format options considered before s
 2. Identify the requested format and its conventions (memo / report / one-pager / outline / comparison-table / etc.).
 3. Render source into the format faithfully — structure follows the requested format type, not a generic analytical-mode shape.
 4. Trace each substantive claim in the output to a specific passage in source — line-by-line auditability. The narrow exception is structural transitions ("First…", "In summary…"), which are renderer-added but carry no substantive content.
-5. Pass through visual envelopes byte-equivalent — no regeneration, no editing, no schema drift; `mode_context` preserved from source (NOT rewritten to `structured-output`); envelope count matches source.
+5. Pass through source visual envelopes byte-equivalent — no regeneration, no editing, no schema drift; `mode_context` preserved from source (NOT rewritten to `structured-output`). The source-envelope count must match. A new terminal-authority envelope, when the source contains grounded relationships not already represented, is additional output and is excluded from the passthrough count.
 6. Surface gaps explicitly where source did not fully satisfy the requested format — name what's missing and what the user could supply. Do not silently fill format-required content.
 7. Declare compression where source was condensed for the format — name what was dropped, so loss of qualifications and caveats is auditable.
 8. Adapt format and declare the adaptation where source genuinely doesn't fit the requested format cleanly — never force source into an ill-fitting structure silently.
@@ -172,7 +172,7 @@ Breadth in Structured Output is the survey of format options considered before s
 - **CQ2 — format conventions followed.** Has the requested format been followed faithfully, or has format mismatch occurred? Failure mode if unmet: `format-mismatch`.
 - **CQ3 — gaps surfaced, not silently filled.** Have gaps between source and format been flagged explicitly, or have they been silently filled? Failure mode if unmet: `gap-silently-filled`.
 - **CQ4 — no recommendation added.** Has the rendering avoided introducing recommendation or conclusion not in source? Failure mode if unmet: `embellishment`.
-- **CQ5 — envelope byte-equivalence (load-bearing).** If source contains visual envelopes, are they preserved byte-equivalent in the output (no schema drift, `mode_context` preserved, envelope count matches)? Failure mode if unmet: `schema-drift-on-passthrough`.
+- **CQ5 — envelope byte-equivalence (load-bearing).** If source contains visual envelopes, are those source envelopes preserved byte-equivalent in the output (no schema drift, `mode_context` preserved, source-envelope count matches)? A separately marked terminal-authority envelope does not count as a source envelope. Failure mode if unmet: `schema-drift-on-passthrough`.
 
 A passing output renders source into the requested format with every substantive claim traceable to source, surfaces gaps explicitly with what the user could supply, declares compression and format adaptations where applicable, passes visual envelopes through byte-equivalent with `mode_context` preserved, and emits no recommendation or conclusion that was not in source.
 
@@ -250,7 +250,7 @@ Place the consolidated-corpus atoms into the following sections (or their format
 - The deliverable (section 1) follows its native format. Analytical-mode templates (the 7-section analytical-mode shape) get reshaped at this layer — they belong to other modes, not SO.
 - The gap report (section 2) and format notes (section 3) appear *after* the deliverable, not interleaved. They support audit but do not interrupt the deliverable's natural reading.
 - Visual envelopes from source are passed through **byte-equivalent**. Schema drift is a hard failure; `mode_context` is preserved from source (the source mode's name stays, even though SO is doing the rendering).
-- Envelope count matches source. If source has N visual envelopes, the output has N visual envelopes.
+- Source-envelope count matches source. If source has N visual envelopes, those N envelopes appear byte-equivalent in the output; any separately marked terminal-authority envelope is not part of this passthrough count.
 - Substantive claims in section 1 trace to source. Where SO needed to add structural transitions, the transitions are *structural* (e.g., "First...", "Second...", "In summary...") rather than analytical ("This demonstrates...", "The implication is...").
 - Compression declarations appear in section 3 when source content was condensed; what was dropped is named.
 - When the user's request actually requires original analysis (not just rendering), the deliverable opens with a sideways-route note: `**Note: this task requires original analysis beyond rendering. Project Mode (T21) is the appropriate sideways-route; SO renders, does not advise. If you want SO to proceed with the rendering portion only and surface the analytical gap, say so explicitly.**`

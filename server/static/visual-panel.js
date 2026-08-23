@@ -84,24 +84,25 @@
  *
  * The four Protocol §canvas_action values map to layer mutations:
  *
- *   replace   clear(backgroundLayer ∪ annotationLayer ∪ userInputLayer ∪
- *                   selectionLayer) then render the new envelope. DEFAULT
- *                   for the first visual in a conversation thread.
- *   update    clear(backgroundLayer ∪ selectionLayer) then render the new
- *                   envelope. annotationLayer + userInputLayer are preserved.
+ *   replace   clear assistant-owned artifact and model annotations, then
+ *                   render the new envelope. User material is preserved.
+ *                   DEFAULT for the first visual in a conversation thread.
+ *   update    clear assistant-owned artifact and model annotations, then
+ *                   render the new envelope. User material is preserved.
  *                   DEFAULT for subsequent visuals.
  *   annotate  preserve backgroundLayer. Read envelope.annotations (or
  *                   envelope.spec.annotations) and draw callout/highlight
  *                   overlays on annotationLayer. If no annotations content
  *                   is present, emit W_ANNOTATE_NO_CONTENT and no-op.
- *   clear     clear all four layers, reset state, emit no render.
+ *   clear     clear assistant-owned material, reset assistant state, emit no
+ *                   render. User material, files, viewport and undo history
+ *                   remain intact.
  *
  * When canvas_action is omitted, the turn-position default applies:
  * first-visual → replace, subsequent → update.
  *
- * INVARIANT: userInputLayer is NEVER touched by update or annotate.
- * The user's drawings survive every Ora follow-up unless the envelope
- * explicitly says canvas_action:"clear" or canvas_action:"replace".
+ * INVARIANT: userInputLayer is NEVER touched by assistant actions. The
+ * user's drawings survive every Ora follow-up, including clear and replace.
  *
  * ── WP-5.1 user annotations ──────────────────────────────────────────────
  * The user can author five kinds of annotation on top of the rendered
@@ -121,11 +122,8 @@
  *   position:            {x, y}             (sticky free-position)
  *   points:              [x1,y1, x2,y2,...] (pen stroke)
  *
- * INVARIANT (preservation): canvas_action="update" and
- * canvas_action="annotate" preserve BOTH user annotations AND model
- * annotations on annotationLayer. canvas_action="clear" and
- * canvas_action="replace" clear everything. User annotations are thus
- * durable across Ora's follow-up rendering.
+ * INVARIANT (preservation): every assistant action preserves user
+ * annotations. Replace, update and clear remove only model annotations.
  */
 
 (function () {
@@ -281,6 +279,7 @@
     // or null when no image is attached. chat-panel reads `.blob` and `.name`.
     this._pendingImage        = null;
     this._backgroundImageNode = null;   // Konva.Image currently on backgroundLayer
+    this._assistantBackgroundImageNode = null;
     this._imageErrorTimeout   = null;
     this._imageIndicatorOpen  = false;  // whether the remove button is visible
 
@@ -550,6 +549,7 @@
     this.selectionLayer = null;
     this._pendingImage = null;
     this._backgroundImageNode = null;
+    this._assistantBackgroundImageNode = null;
   };
 
   // ── Bridge ────────────────────────────────────────────────────────────────
@@ -651,53 +651,45 @@
   };
 
   /**
-   * replace: empty all four layers (+ DOM overlay + selection + fallback).
-   * Used BEFORE renderSpec() so that renderSpec() lands the new artifact
-   * onto a fresh stage. userInputLayer + annotationLayer are wiped.
+   * replace: remove assistant-owned artifact and model annotations (+ DOM
+   * overlay + fallback). User shapes, user annotations and selection remain.
    */
   VisualPanel.prototype._doReplacePrep = function () {
-    if (this._svgHost) this._svgHost.innerHTML = '';
-    if (this.backgroundLayer) {
-      try {
-        this.backgroundLayer.destroyChildren();
-        if (typeof Konva !== 'undefined') {
-          this._bgSentinel = new Konva.Group({ name: 'svg-sentinel' });
-          this.backgroundLayer.add(this._bgSentinel);
-        }
-        this.backgroundLayer.draw();
-      } catch (e) { /* ignore */ }
-    }
-    if (this.annotationLayer) { this.annotationLayer.destroyChildren(); this.annotationLayer.draw(); }
-    if (this.userInputLayer)  { this.userInputLayer.destroyChildren();  this.userInputLayer.draw(); }
-    if (this.selectionLayer)  { this.selectionLayer.destroyChildren();  this.selectionLayer.draw(); }
-    this._selectedNodeId = null;
-    if (this._fallbackEl) { this._fallbackEl.hidden = true; this._fallbackEl.innerHTML = ''; }
-    if (this._errorBar) { this._errorBar.hidden = true; this._errorBar.innerHTML = ''; }
+    this._clearAssistantMaterial();
   };
 
   /**
-   * update: empty backgroundLayer + selectionLayer only. annotationLayer
-   * + userInputLayer are preserved. Used BEFORE renderSpec() so the new
-   * artifact replaces the old background without disturbing user drawings
-   * or prior Ora overlays.
+   * update: replace only assistant-owned material. User shapes, annotations,
+   * uploaded images, selection, viewport and history are left alone.
    */
   VisualPanel.prototype._doUpdatePrep = function () {
+    this._clearAssistantMaterial();
+  };
+
+  /** Remove assistant-owned canvas material without touching user state. */
+  VisualPanel.prototype._clearAssistantMaterial = function () {
     if (this._svgHost) this._svgHost.innerHTML = '';
-    if (this.backgroundLayer) {
-      try {
-        this.backgroundLayer.destroyChildren();
-        if (typeof Konva !== 'undefined') {
-          this._bgSentinel = new Konva.Group({ name: 'svg-sentinel' });
-          this.backgroundLayer.add(this._bgSentinel);
-        }
-        this.backgroundLayer.draw();
-      } catch (e) { /* ignore */ }
+    if (this._assistantBackgroundImageNode) {
+      try { this._assistantBackgroundImageNode.destroy(); } catch (e) { /* ignore */ }
+      this._assistantBackgroundImageNode = null;
+      try { if (this.backgroundLayer) this.backgroundLayer.draw(); } catch (e) { /* ignore */ }
     }
-    if (this.selectionLayer) { this.selectionLayer.destroyChildren(); this.selectionLayer.draw(); }
+    // backgroundLayer also carries user-uploaded images, so it is never
+    // cleared as part of an assistant action. The SVG artifact lives in the
+    // DOM overlay and the sentinel remains in place.
+    if (this.annotationLayer) {
+      var children = this.annotationLayer.getChildren();
+      for (var i = children.length - 1; i >= 0; i--) {
+        var child = children[i];
+        if (!child.getAttr || child.getAttr('annotationSource') !== 'user') {
+          child.destroy();
+        }
+      }
+      this.annotationLayer.draw();
+    }
     this._selectedNodeId = null;
     if (this._fallbackEl) { this._fallbackEl.hidden = true; this._fallbackEl.innerHTML = ''; }
     if (this._errorBar) { this._errorBar.hidden = true; this._errorBar.innerHTML = ''; }
-    // annotationLayer + userInputLayer explicitly untouched.
   };
 
   /**
@@ -814,7 +806,11 @@
     var color = a.color || '#FFCC00';
     var text = (a.text || '').toString();
     var kind = a.kind || 'callout';
-    var group = new Konva.Group({ name: 'vp-image-ann-' + idx });
+    var group = new Konva.Group({
+      name: 'vp-image-ann-' + idx,
+      annotationSource: 'model',
+      semanticElementId: a.target_id || null,
+    });
 
     if (kind === 'callout') {
       // Small dot + label-bubble offset to the upper-right.
@@ -899,29 +895,14 @@
   };
 
   /**
-   * clear: empty ALL four layers + reset state. Emits no render.
+   * clear: remove assistant-owned material + reset assistant state. User
+   * shapes, annotations, files, viewport and undo history stay intact.
    */
   VisualPanel.prototype._doClear = function () {
-    if (this._svgHost) this._svgHost.innerHTML = '';
-    if (this.backgroundLayer) {
-      try {
-        this.backgroundLayer.destroyChildren();
-        if (typeof Konva !== 'undefined') {
-          this._bgSentinel = new Konva.Group({ name: 'svg-sentinel' });
-          this.backgroundLayer.add(this._bgSentinel);
-        }
-        this.backgroundLayer.draw();
-      } catch (e) { /* ignore */ }
-    }
-    if (this.annotationLayer) { this.annotationLayer.destroyChildren(); this.annotationLayer.draw(); }
-    if (this.userInputLayer)  { this.userInputLayer.destroyChildren();  this.userInputLayer.draw(); }
-    if (this.selectionLayer)  { this.selectionLayer.destroyChildren();  this.selectionLayer.draw(); }
+    this._clearAssistantMaterial();
     this._currentEnvelope = null;
     this._ariaDescription = null;
-    this._selectedNodeId  = null;
     this._hasPriorVisual  = false;
-    if (this._fallbackEl) { this._fallbackEl.hidden = true; this._fallbackEl.innerHTML = ''; }
-    if (this._errorBar) { this._errorBar.hidden = true; this._errorBar.innerHTML = ''; }
   };
 
   /**
@@ -970,7 +951,11 @@
     var y = box.y - approxH - 4;
     if (y < 0) y = box.y + box.height + 4;
 
-    var group = new Konva.Group({ name: 'vp-callout-' + annotation.target_id });
+    var group = new Konva.Group({
+      name: 'vp-callout-' + annotation.target_id,
+      annotationSource: 'model',
+      semanticElementId: annotation.target_id || null,
+    });
     group.add(new Konva.Rect({
       x: x, y: y, width: approxW, height: approxH,
       fill: annotation.color || '#FFF4A3',
@@ -1012,6 +997,8 @@
       listening: false,
       opacity: 0.8,
       name: 'vp-highlight-' + annotation.target_id,
+      annotationSource: 'model',
+      semanticElementId: annotation.target_id || null,
     });
     this.annotationLayer.add(ring);
 
@@ -1088,13 +1075,10 @@
   // ── Public: clearArtifact ─────────────────────────────────────────────────
 
   VisualPanel.prototype.clearArtifact = function () {
+    this._clearAssistantMaterial();
     this._currentEnvelope = null;
     this._ariaDescription = null;
     this._selectedNodeId  = null;
-    if (this._svgHost) this._svgHost.innerHTML = '';
-    if (this.selectionLayer) { this.selectionLayer.destroyChildren(); this.selectionLayer.draw(); }
-    if (this._fallbackEl) { this._fallbackEl.hidden = true; this._fallbackEl.innerHTML = ''; }
-    if (this._errorBar) { this._errorBar.hidden = true; this._errorBar.innerHTML = ''; }
     // userInputLayer and annotationLayer are explicitly preserved.
   };
 
@@ -4679,6 +4663,36 @@
   };
 
   /**
+   * Install a generated/flattened assistant image without treating it as a
+   * user attachment. It has its own background node, ownership metadata and
+   * clear path, so editor switching cannot replace or delete a user's upload.
+   */
+  VisualPanel.prototype.attachAssistantImage = function (file) {
+    var self = this;
+    return new Promise(function (resolve) {
+      if (!file || typeof file !== 'object' || !IMAGE_MIME_RE.test(file.type || '')) {
+        resolve(null);
+        return;
+      }
+      if (typeof file.size === 'number' && file.size > MAX_IMAGE_BYTES) {
+        resolve(null);
+        return;
+      }
+      var reader;
+      try { reader = new FileReader(); } catch (e) { resolve(null); return; }
+      reader.onload = function () {
+        var dataUrl = reader.result;
+        if (typeof dataUrl !== 'string' || !dataUrl) { resolve(null); return; }
+        self._installBackgroundImage(dataUrl, file, function () {
+          resolve(self._assistantBackgroundImageNode || null);
+        }, { assistant: true });
+      };
+      reader.onerror = function () { resolve(null); };
+      try { reader.readAsDataURL(file); } catch (e) { resolve(null); }
+    });
+  };
+
+  /**
    * Mount a Konva.Image on backgroundLayer at a scale that fits the stage
    * while preserving aspect ratio. Clears any prior uploaded image (but
    * leaves the DOM-overlay SVG artifact untouched — artifacts ride above).
@@ -4688,14 +4702,17 @@
    * `_pendingImage` contract only requires the file blob, not a successful
    * bitmap decode).
    */
-  VisualPanel.prototype._installBackgroundImage = function (dataUrl, file, onReady) {
+  VisualPanel.prototype._installBackgroundImage = function (dataUrl, file, onReady, options) {
     var self = this;
-    // Remove prior uploaded image (if any). Do NOT touch the sentinel group
-    // used for transform tracking or the SVG overlay — those belong to the
-    // artifact pipeline.
-    if (this._backgroundImageNode) {
-      try { this._backgroundImageNode.destroy(); } catch (e) { /* ignore */ }
-      this._backgroundImageNode = null;
+    var assistant = !!(options && options.assistant);
+    var imageProperty = assistant
+      ? '_assistantBackgroundImageNode' : '_backgroundImageNode';
+    // Replace only the image owned by this caller. A generated raster must
+    // not evict a user upload, and a new user upload must not remove the
+    // assistant's flattened preview.
+    if (this[imageProperty]) {
+      try { this[imageProperty].destroy(); } catch (e) { /* ignore */ }
+      this[imageProperty] = null;
     }
 
     // In jsdom HTMLImageElement may not implement proper onload semantics;
@@ -4728,7 +4745,7 @@
       var y = (stageH - drawH) / 2;
 
       try {
-        self._backgroundImageNode = new Konva.Image({
+        var imageNode = new Konva.Image({
           image: img,
           x: x, y: y,
           width:  drawW,
@@ -4737,13 +4754,27 @@
           listening: false,
         });
         // Store natural dimensions + source URL for inspection / debug.
-        self._backgroundImageNode.setAttrs({
+        imageNode.setAttrs({
           naturalWidth:  naturalW,
           naturalHeight: naturalH,
           sourceName:    (file && file.name) || '',
           sourceType:    (file && file.type) || '',
         });
-        self.backgroundLayer.add(self._backgroundImageNode);
+        if (assistant) {
+          imageNode.name('vp-assistant-background-image');
+          imageNode.setAttrs({
+            assistantVisualId: 'konva-assistant-visual',
+            generationRevision: 1,
+            semanticElementId: 'konva-assistant-visual:image',
+            originalGenerationFingerprint: JSON.stringify({
+              x: x, y: y, width: drawW, height: drawH,
+            }),
+          });
+          self._assistantBackgroundImageNode = imageNode;
+        } else {
+          self._backgroundImageNode = imageNode;
+        }
+        self.backgroundLayer.add(imageNode);
         try { self.backgroundLayer.draw(); } catch (e) { /* ignore */ }
       } catch (e) {
         // Never throw — the pending image contract is what matters.
@@ -4760,7 +4791,7 @@
     // via a small RAF/setTimeout race. Safe in both environments.
     if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
       setTimeout(function () {
-        if (!self._backgroundImageNode && !self._destroyed) finalize();
+        if (!self[imageProperty] && !self._destroyed) finalize();
       }, 0);
     }
   };
@@ -6317,6 +6348,8 @@
     clearUserInput: function () { if (_active) _active.clearUserInput(); },
     // WP-4.1 surface
     attachImage:        function (file) { return _active ? _active.attachImage(file) : Promise.resolve(null); },
+    attachAssistantImage: function (file) { return _active && _active.attachAssistantImage
+      ? _active.attachAssistantImage(file) : Promise.resolve(null); },
     getPendingImage:    function () { return _active ? _active.getPendingImage() : null; },
     clearPendingImage:  function () { if (_active) _active.clearPendingImage(); },
     // WP-4.4 surface

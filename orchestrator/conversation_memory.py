@@ -849,6 +849,7 @@ def save_turn_spatial_state(
     project_ids: list[str] | None = None,
     trace_ref: str | None = None,
     visual_checkpoint_id: str | None = None,
+    visual_outcome: dict[str, Any] | None = None,
     sessions_root: Path | None = None,
 ) -> Path | None:
     """Append a user+assistant pair to conversation.json with optional
@@ -907,7 +908,8 @@ def save_turn_spatial_state(
                 return _do_write(path, conversation_id, user_input, ai_response,
                                  tag, timestamp, spatial_representation,
                                  annotations, vision_extraction_result,
-                                 project_ids, trace_ref, visual_checkpoint_id)
+                                 project_ids, trace_ref, visual_checkpoint_id,
+                                 visual_outcome)
         except (OSError, TimeoutError):
             return None
 
@@ -925,6 +927,7 @@ def _do_write(
     project_ids: list[str] | None = None,
     trace_ref: str | None = None,
     visual_checkpoint_id: str | None = None,
+    visual_outcome: dict[str, Any] | None = None,
 ) -> Path | None:
     """Inner read-modify-write helper. Runs inside the per-conversation
     lock; do not call directly."""
@@ -1037,6 +1040,7 @@ def _do_write(
         "vision_extraction_result": vision_extraction_result,
         "visual_checkpoint_id": visual_checkpoint_id,
     }
+    clean_visual_outcome = _normalize_visual_outcome(visual_outcome)
     assistant_turn = {
         "role": "assistant",
         "content": ai_response,
@@ -1045,12 +1049,96 @@ def _do_write(
         "annotations": None,
         "vision_extraction_result": None,
         "trace_ref": trace_ref,
+        "visual_outcome": clean_visual_outcome,
     }
 
-    existing["messages"].append(user_turn)
-    existing["messages"].append(assistant_turn)
+    messages = existing["messages"]
+    # The pipeline writes a durable assistant placeholder at turn start so a
+    # stalled run is visible and recoverable. Complete that same record rather
+    # than appending a second assistant message when the response arrives.
+    if (
+        len(messages) >= 2
+        and isinstance(messages[-2], dict)
+        and isinstance(messages[-1], dict)
+        and messages[-2].get("role") == "user"
+        and messages[-2].get("content") == user_input
+        and messages[-1].get("role") == "assistant"
+        and messages[-1].get("content") == ""
+        and (messages[-1].get("visual_outcome") or {}).get("state") == "building"
+    ):
+        messages[-2] = user_turn
+        messages[-1] = assistant_turn
+    else:
+        messages.append(user_turn)
+        messages.append(assistant_turn)
 
     return path if _atomic_write_envelope(path, existing) else None
+
+
+def _normalize_visual_outcome(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Keep the persisted visual lifecycle field small and truthful."""
+    if not isinstance(value, dict):
+        return None
+    state = value.get("state")
+    if state not in {"building", "ready", "failed", "not_applicable"}:
+        return None
+    clean: dict[str, Any] = {"state": state}
+    for key in ("stage", "reason", "origin", "trace_ref"):
+        item = value.get(key)
+        if isinstance(item, str) and item.strip():
+            clean[key] = item.strip()[:500]
+    return clean
+
+
+def begin_visual_outcome(
+    conversation_id: str,
+    user_input: str,
+    *,
+    tag: str = "",
+    project_ids: list[str] | None = None,
+    timestamp: str | None = None,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Persist the assistant placeholder used while a turn is building."""
+    return save_turn_spatial_state(
+        conversation_id,
+        user_input,
+        "",
+        timestamp=timestamp,
+        tag=tag,
+        project_ids=project_ids,
+        visual_outcome={"state": "building"},
+        sessions_root=sessions_root,
+    )
+
+
+def set_assistant_visual_outcome(
+    conversation_id: str,
+    visual_outcome: dict[str, Any],
+    *,
+    assistant_index: int | None = None,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Update one existing assistant message without adding a new record."""
+    clean = _normalize_visual_outcome(visual_outcome)
+    if clean is None:
+        return None
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+
+    def mutate(envelope: dict[str, Any]) -> None:
+        assistants = [
+            message for message in envelope.get("messages", [])
+            if isinstance(message, dict) and message.get("role") == "assistant"
+        ]
+        target = None
+        if isinstance(assistant_index, int) and 0 <= assistant_index < len(assistants):
+            target = assistants[assistant_index]
+        elif assistants:
+            target = assistants[-1]
+        if target is not None:
+            target["visual_outcome"] = copy.deepcopy(clean)
+
+    return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
 def set_visual_state(
@@ -2101,6 +2189,8 @@ __all__ = [
     "resolve_effective_conversation_history",
     "ensure_conversation_envelope",
     "save_turn_spatial_state",
+    "begin_visual_outcome",
+    "set_assistant_visual_outcome",
     "set_visual_state",
     "get_prior_spatial_state",
     "get_prior_annotations",

@@ -4,16 +4,18 @@
  * Exports { label, run(ctx, record) } per the run.js case-file convention.
  *
  * Coverage of the canvas_action state machine (visual-panel.js):
- *   1. First envelope with no canvas_action → replace applied (fresh stage).
+ *   1. First envelope with no canvas_action → replace applied without evicting
+ *      existing user material.
  *   2. Subsequent envelope with no canvas_action → update applied
  *      (backgroundLayer replaced; userInputLayer preserved).
- *   3. Explicit canvas_action:"replace" on subsequent → all four layers cleared.
+ *   3. Explicit canvas_action:"replace" on subsequent → assistant material
+ *      replaced while user material survives.
  *   4. Explicit canvas_action:"update" on first → still behaves like update
  *      (explicit always wins over turn-position default).
  *   5. Explicit canvas_action:"annotate" → backgroundLayer unchanged;
  *      annotationLayer populated.
- *   6. Explicit canvas_action:"clear" → all layers empty; state reset
- *      (_hasPriorVisual back to false).
+ *   6. Explicit canvas_action:"clear" → assistant layers empty; user layers
+ *      survive and state resets (_hasPriorVisual back to false).
  *   7. User-input layer preservation under update (inject a mock user shape
  *      first, then update, verify shape still present).
  *   8. User-input layer preservation under annotate.
@@ -86,10 +88,10 @@ module.exports = {
       record('canvas-action #1: first envelope with no canvas_action uses replace',
         panel._lastAction === 'replace',
         '_lastAction=' + panel._lastAction);
-      // replace clears userInputLayer — the seed is gone.
+      // Assistant replace must not clear userInputLayer.
       const userAfter = panel.userInputLayer.getChildren().length;
-      record('canvas-action #1b: replace clears userInputLayer',
-        userBefore > 0 && userAfter === 0,
+      record('canvas-action #1b: replace preserves userInputLayer',
+        userBefore > 0 && userAfter === userBefore,
         'before=' + userBefore + ' after=' + userAfter);
       panel.destroy();
       win.document.body.removeChild(div);
@@ -130,7 +132,7 @@ module.exports = {
       record('canvas-action #2', false, 'threw: ' + (e.stack || e.message || e));
     }
 
-    // ── 3. Explicit "replace" on subsequent → all layers cleared ───────────
+    // ── 3. Explicit "replace" preserves user material ─────────────────────
     try {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'ca-3' });
@@ -139,16 +141,16 @@ module.exports = {
       panel.onBridgeUpdate(bridgeFor(env1));
       await wait(20);
       panel.userInputLayer.add(new win.Konva.Rect({ x: 0, y: 0, width: 5, height: 5 }));
-      panel.annotationLayer.add(new win.Konva.Circle({ radius: 3 }));
+      panel.annotationLayer.add(new win.Konva.Circle({ radius: 3, annotationSource: 'user' }));
       const env2 = cloneWithId(loadBowTie(ctx), 'ca3-second');
       env2.canvas_action = 'replace';
       panel.onBridgeUpdate(bridgeFor(env2));
       await wait(20);
-      record('canvas-action #3: explicit replace on subsequent clears userInputLayer',
-        panel.userInputLayer.getChildren().length === 0,
+      record('canvas-action #3: explicit replace preserves userInputLayer',
+        panel.userInputLayer.getChildren().length === 1,
         'userInput children=' + panel.userInputLayer.getChildren().length);
-      record('canvas-action #3b: explicit replace on subsequent clears annotationLayer',
-        panel.annotationLayer.getChildren().length === 0,
+      record('canvas-action #3b: explicit replace preserves user annotations',
+        panel.annotationLayer.getChildren().length === 1,
         'annotation children=' + panel.annotationLayer.getChildren().length);
       panel.destroy();
       win.document.body.removeChild(div);
@@ -216,7 +218,7 @@ module.exports = {
       record('canvas-action #5', false, 'threw: ' + (e.stack || e.message || e));
     }
 
-    // ── 6. Explicit "clear" → all layers empty; state reset ────────────────
+    // ── 6. Explicit "clear" preserves user material ───────────────────────
     try {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'ca-6' });
@@ -225,7 +227,9 @@ module.exports = {
       panel.onBridgeUpdate(bridgeFor(env1));
       await wait(20);
       panel.userInputLayer.add(new win.Konva.Rect({ x: 1, y: 1, width: 2, height: 2 }));
-      panel.annotationLayer.add(new win.Konva.Rect({ x: 1, y: 1, width: 2, height: 2 }));
+      panel.annotationLayer.add(new win.Konva.Rect({
+        x: 1, y: 1, width: 2, height: 2, annotationSource: 'user',
+      }));
       const env2 = cloneWithId(loadBowTie(ctx), 'ca6-clear');
       env2.canvas_action = 'clear';
       panel.onBridgeUpdate(bridgeFor(env2));
@@ -233,11 +237,11 @@ module.exports = {
       record('canvas-action #6: clear empties backgroundLayer (DOM)',
         !panel._svgHost.querySelector('svg'),
         'svg present=' + !!panel._svgHost.querySelector('svg'));
-      record('canvas-action #6b: clear empties userInputLayer',
-        panel.userInputLayer.getChildren().length === 0,
+      record('canvas-action #6b: clear preserves userInputLayer',
+        panel.userInputLayer.getChildren().length === 1,
         'userInput=' + panel.userInputLayer.getChildren().length);
-      record('canvas-action #6c: clear empties annotationLayer',
-        panel.annotationLayer.getChildren().length === 0,
+      record('canvas-action #6c: clear preserves user annotations',
+        panel.annotationLayer.getChildren().length === 1,
         'annotation=' + panel.annotationLayer.getChildren().length);
       record('canvas-action #6d: clear resets _hasPriorVisual',
         panel._hasPriorVisual === false,

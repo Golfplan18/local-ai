@@ -3874,6 +3874,11 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
         # Fail-open: never block legitimate prose on a hook bug.
         print(f"[server visual-hook] skipped due to error: {_vh_exc}")
 
+    # The persistence seam receives the caller's extra-context dict, while
+    # the terminal authority works on the assembled package. Copy only the
+    # small durable outcome contract across that boundary.
+    _copy_visual_outcome_context(context_pkg, extra_context)
+
     response = _boot_context_api()._append_codex_canvas_image_notice(
         response, images,
     )
@@ -4065,6 +4070,10 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
     framework_selected = (framework_selected or "").strip()
+    # Keep a mutable per-turn carrier for the terminal visual outcome. The
+    # assembled context package copies this data for model work and copies
+    # only the outcome back before the existing save boundary.
+    extra_context = dict(extra_context or {})
     if manual_lens_selection and not _lens_available_for_mode(
         manual_mode_selection, manual_lens_selection,
     ):
@@ -4096,6 +4105,11 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     # creation-tag registry is the only way to suppress traces before save.
     conversation_tag = _effective_conversation_tag(panel_id, conversation_tag)
     _conv_tag = conversation_tag
+    # Persist the assistant placeholder before any model work. The same
+    # existing assistant record is completed at the save boundary, so a
+    # stalled or disconnected turn remains visible as ``building`` and can
+    # be resolved when the Dialogue is opened again.
+    _begin_visual_outcome(panel_id, user_input, _conv_tag)
     trace_dir = None
     trace_ref_val = None
     try:
@@ -4260,6 +4274,20 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     trace_dir, "step-debug-result",
                     {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
                 )
+            try:
+                from boot import _run_visual_hook as _debug_visual_hook
+                _debug_visual_context = {
+                    "cleaned_prompt": _debug_prompt,
+                    "mode_name": _trace_ctx.get("mode"),
+                    "execution_context": execution_context,
+                    "trace_dir": trace_dir,
+                    "conversation_id": panel_id,
+                    "framework_id": _trace_ctx.get("framework_id"),
+                }
+                result_text = _debug_visual_hook(result_text, _debug_visual_context)
+                _copy_visual_outcome_context(_debug_visual_context, extra_context)
+            except Exception as _debug_visual_exc:
+                print(f"[trace-debug visual-hook] skipped due to error: {_debug_visual_exc}")
             yield _sse("response", text=result_text)
             return
         except Exception as exc:
@@ -4349,6 +4377,20 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             turn_state["status"] = "error"
             yield _sse("error", text=f"Resolution discussion error: {exc}")
             return
+        try:
+            from boot import _run_visual_hook as _resolution_visual_hook
+            _resolution_visual_context = {
+                "cleaned_prompt": user_input,
+                "mode_name": None,
+                "execution_context": execution_context,
+                "trace_dir": trace_dir,
+                "conversation_id": panel_id,
+                "resolution_queue_id": resolution_ctx.queue_id,
+            }
+            text = _resolution_visual_hook(text, _resolution_visual_context)
+            _copy_visual_outcome_context(_resolution_visual_context, extra_context)
+        except Exception as _resolution_visual_exc:
+            print(f"[resolution continuation visual-hook] skipped due to error: {_resolution_visual_exc}")
         yield _sse("response", text=text)
         return
 
@@ -4377,6 +4419,27 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             turn_state["status"] = "error"
             yield _sse("error", text=f"Framework elicitation error: {exc}")
             return
+        # Interactive framework continuation also bypasses the ordinary gear
+        # tail. Run only a completed milestone response through the shared
+        # terminal visual authority; a response carrying the elicitation marker
+        # is still a question and must remain prose-only.
+        if not framework_elicitation.MARKER_PATTERN.search(text or ""):
+            try:
+                from boot import _run_visual_hook as _continuation_visual_hook
+                _continuation_visual_context = {
+                    "cleaned_prompt": user_input,
+                    "mode_name": continuation_ctx.mode,
+                    "execution_context": execution_context,
+                    "trace_dir": trace_dir,
+                    "conversation_id": panel_id,
+                    "framework_id": continuation_ctx.framework_id,
+                }
+                text = _continuation_visual_hook(text, _continuation_visual_context)
+                _copy_visual_outcome_context(
+                    _continuation_visual_context, extra_context,
+                )
+            except Exception as _continuation_visual_exc:
+                print(f"[framework continuation visual-hook] skipped due to error: {_continuation_visual_exc}")
         yield _sse("response", text=text)
         return
 
@@ -4506,6 +4569,25 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 except Exception:
                     pass
                 return
+            # Framework/milestone output bypasses ordinary gear dispatch, so
+            # hand its final prose to the shared terminal visual authority
+            # before streaming the response.
+            try:
+                from boot import _run_visual_hook as _framework_visual_hook
+                _framework_visual_context = {
+                    "cleaned_prompt": user_input,
+                    "mode_name": _trace_ctx.get("mode"),
+                    "execution_context": execution_context,
+                    "trace_dir": trace_dir,
+                    "conversation_id": panel_id,
+                    "framework_id": _trace_ctx.get("framework_id"),
+                }
+                result_text = _framework_visual_hook(
+                    result_text, _framework_visual_context,
+                )
+                _copy_visual_outcome_context(_framework_visual_context, extra_context)
+            except Exception as _fw_visual_exc:
+                print(f"[framework visual-hook] skipped due to error: {_fw_visual_exc}")
             yield _sse("response", text=result_text)
             # Finding 3: record route_observed on the framework terminal path.
             try:
@@ -4940,6 +5022,7 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
                 extra_context=direct_context,
                 turn_state=turn_state,
             )
+            _copy_visual_outcome_context(direct_context, extra_context)
     finally:
         boot_context.reset_optional_context_context(optional_token)
         boot_context.reset_dialogue_history_context(history_token)
@@ -5161,6 +5244,18 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             if (turn_state is not None
                     and turn_state.get("kind") != "direct"):
                 turn_state["status"] = "completed"
+            try:
+                from boot import _run_visual_hook as _direct_visual_hook
+                direct_context = dict(extra_context or {})
+                direct_context.update({
+                    "cleaned_prompt": user_input,
+                    "execution_context": "interactive",
+                    "trace_dir": _ds_trace_dir,
+                    "conversation_id": panel_id,
+                })
+                clean = _direct_visual_hook(clean, direct_context)
+            except Exception as _direct_visual_exc:
+                print(f"[direct visual-hook] skipped due to error: {_direct_visual_exc}")
             coverage = _boot_context_api().get_context_coverage()
             if coverage:
                 yield _sse(
@@ -5216,6 +5311,18 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     clean = _boot_context_api()._append_codex_canvas_image_notice(
         clean, images,
     )
+    try:
+        from boot import _run_visual_hook as _direct_overrun_visual_hook
+        overrun_context = dict(extra_context or {})
+        overrun_context.update({
+            "cleaned_prompt": user_input,
+            "execution_context": "interactive",
+            "trace_dir": _ds_trace_dir,
+            "conversation_id": panel_id,
+        })
+        clean = _direct_overrun_visual_hook(clean, overrun_context)
+    except Exception as _direct_overrun_visual_exc:
+        print(f"[direct overrun visual-hook] skipped due to error: {_direct_overrun_visual_exc}")
     endpoint_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
     print(
         f"[_direct_stream] agentic loop hit MAX_ITERATIONS={MAX_ITERATIONS} "
@@ -13204,6 +13311,39 @@ def conversations_fetch(conversation_id):
     return json.dumps(data)
 
 
+@app.route("/api/conversation/<conversation_id>/visual-outcome", methods=["POST"])
+def conversation_visual_outcome(conversation_id):
+    """Persist the client-confirmed outcome of the existing assistant turn."""
+    conversation_id = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    data = request.get_json(force=True) or {}
+    state = data.get("state")
+    if state not in {"building", "ready", "failed", "not_applicable"}:
+        return json.dumps({"error": "invalid visual outcome state"}), 400
+    outcome = {"state": state}
+    for key in ("stage", "reason", "origin", "trace_ref"):
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            outcome[key] = value.strip()[:500]
+    assistant_index = data.get("assistant_index")
+    if not isinstance(assistant_index, int):
+        assistant_index = None
+    try:
+        from conversation_memory import set_assistant_visual_outcome
+        with _conversation_lifecycle_lock(conversation_id):
+            path = set_assistant_visual_outcome(
+                conversation_id,
+                outcome,
+                assistant_index=assistant_index,
+            )
+    except Exception as exc:
+        return json.dumps({"error": str(exc)}), 500
+    if path is None:
+        return json.dumps({"error": "assistant message not found"}), 404
+    return json.dumps({"ok": True, "visual_outcome": outcome})
+
+
 # -- Trace Walk (Chunk 2): safe read-side projections + per-trace pinning ---
 
 @app.route("/api/trace/list/<conversation_id>", methods=["GET"])
@@ -14845,7 +14985,7 @@ _pipeline_state = {"stage": None, "stages": [], "active": False}
 
 def _persist_turn_spatial_state_unlocked(
         panel_id, user_input, ai_response, extra_context, tag="",
-        trace_ref=None):
+        trace_ref=None, visual_outcome=None):
     """WP-5.3 — append this turn to conversation.json so subsequent turns
     can retrieve the prior spatial state.
 
@@ -14871,6 +15011,13 @@ def _persist_turn_spatial_state_unlocked(
             annotations = extra_context.get("annotations")
             vision_extr = extra_context.get("vision_extraction_result")
             visual_checkpoint_id = extra_context.get("visual_checkpoint_id")
+            if visual_outcome is None:
+                visual_outcome = extra_context.get("_visual_outcome")
+        if visual_outcome is None:
+            visual_outcome = {
+                "state": "not_applicable",
+                "reason": "This turn did not produce a visual envelope.",
+            }
         try:
             from orchestrator.active_project import (
                 get_active_project,
@@ -14891,6 +15038,7 @@ def _persist_turn_spatial_state_unlocked(
             project_ids=_project_ids,
             trace_ref=trace_ref,
             visual_checkpoint_id=visual_checkpoint_id,
+            visual_outcome=visual_outcome,
         )
     except Exception as e:
         print(f"[WARNING] WP-5.3 conversation.json persist failed: {e}")
@@ -14922,7 +15070,8 @@ def _turn_envelope_acknowledged(
 
 
 def _persist_turn_spatial_state(panel_id, user_input, ai_response,
-                                extra_context, tag="", trace_ref=None):
+                                extra_context, tag="", trace_ref=None,
+                                visual_outcome=None):
     """Persist envelope state only while the conversation remains live."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
@@ -14931,7 +15080,39 @@ def _persist_turn_spatial_state(panel_id, user_input, ai_response,
         return _persist_turn_spatial_state_unlocked(
             panel_id, user_input, ai_response, extra_context, effective_tag,
             trace_ref=trace_ref,
+            visual_outcome=visual_outcome,
         )
+
+
+def _begin_visual_outcome(panel_id, user_input, tag=""):
+    """Create the existing assistant-message placeholder for this turn."""
+    try:
+        from orchestrator.conversation_memory import begin_visual_outcome
+        try:
+            from orchestrator.active_project import get_active_project, resolve_project_ids
+            project_ids = resolve_project_ids(get_active_project())
+        except Exception:
+            project_ids = None
+        return begin_visual_outcome(
+            panel_id,
+            user_input,
+            tag=tag,
+            project_ids=project_ids,
+            timestamp=datetime.now().isoformat(timespec="seconds"),
+        )
+    except Exception as exc:
+        print(f"[visual outcome] begin skipped: {exc}", flush=True)
+        return None
+
+
+def _copy_visual_outcome_context(source, target):
+    """Carry terminal visual state into the existing persistence context."""
+    if not isinstance(source, dict) or not isinstance(target, dict):
+        return
+    if source.get("_visual_outcome") is not None:
+        target["_visual_outcome"] = source["_visual_outcome"]
+    if source.get("_visual_fallback_origin"):
+        target["_visual_fallback_origin"] = source["_visual_fallback_origin"]
 
 
 # ── runtime pipeline helper ──────────────────────────────────────────────────

@@ -1610,12 +1610,28 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         print(f"[visual emission log] sweep skipped: {_emit_exc}")
     mode = (context_pkg or {}).get("mode_name") if isinstance(context_pkg, dict) else None
 
-    # Validate / suppress any ora-visual blocks the model emitted.
-    new_text = response
+    # Gear 4 branches are prose producers only. Their envelopes are not
+    # paired with the consolidated prose, so discard them before the sole
+    # terminal authority chooses a visual. Gear 3 may carry its final paired
+    # candidate beside the prose; reattach that candidate before review.
+    terminal_only = bool(
+        isinstance(context_pkg, dict)
+        and context_pkg.get("_visual_terminal_only")
+    )
+    new_text = (
+        _strip_visual_blocks_and_markers(response)
+        if terminal_only
+        else _terminal_candidate_text(response, context_pkg)
+    )
+    review_prose = _strip_visual_blocks_and_markers(new_text)
     diagnostics = {"visuals": []}
-    if "ora-visual" in response:
+    if "ora-visual" in new_text:
         try:
-            new_text, diagnostics = _visual_process_response(response, mode=mode)
+            new_text, diagnostics = _visual_process_response(
+                new_text,
+                mode=mode,
+                prose=review_prose,
+            )
         except Exception as exc:  # fail-open: never block legitimate prose on a hook bug
             print(f"[visual hook] skipped due to error: {exc}")
             if PIPELINE_TRACE_AVAILABLE and trace_dir:
@@ -1631,22 +1647,51 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
 
     visuals = (diagnostics or {}).get("visuals") or []
 
+    # Redundancy is a clarity warning, not a release gate. Give the terminal
+    # authority one improvement attempt; if it cannot produce a non-redundant
+    # candidate, keep the already-reviewed visual rather than looping or
+    # silently dropping it.
+    redundant_visual = any(
+        any((warning or {}).get("rule") == "clarity.redundant"
+            for warning in ((visual.get("adversarial") or {}).get("warns") or []))
+        for visual in visuals
+    )
+    if redundant_visual:
+        try:
+            improved_text, improved_diag = _maybe_synthesize_visual(
+                review_prose, context_pkg, mode,
+            )
+            if improved_text:
+                improved_text, improved_diagnostics = _visual_process_response(
+                    improved_text, mode=mode, prose=review_prose,
+                )
+                improved_visuals = (improved_diagnostics or {}).get("visuals") or []
+                improved_is_nonredundant = bool(improved_visuals) and not any(
+                    any((warning or {}).get("rule") == "clarity.redundant"
+                        for warning in ((visual.get("adversarial") or {}).get("warns") or []))
+                    for visual in improved_visuals
+                )
+                if improved_is_nonredundant and any(
+                    not visual.get("blocked") for visual in improved_visuals
+                ):
+                    new_text = improved_text
+                    diagnostics = improved_diagnostics
+                    visuals = improved_visuals
+                else:
+                    visuals = visuals
+            elif improved_diag:
+                # Keep the original visual and its warning; the failed attempt
+                # is recorded in the terminal trace below when tracing exists.
+                pass
+        except Exception as _redundancy_exc:
+            print(f"[visual redundancy improvement] skipped: {_redundancy_exc}")
+
     # Phase 1 — repair-on-miss synthesis. If the mode EXPECTED a visual and the
     # turn rendered zero valid envelopes (none emitted, or every one
     # suppressed), synthesize a valid envelope from the prose and splice it in
     # so the user gets a visual instead of a silent miss. Fully fail-open.
     rendered_ok = any(not v.get("blocked") for v in visuals)
-    # A visual deliberately marked relation_to_prose='redundant' is suppressed
-    # by the clarity.redundant rule — a "no visual needed" signal. Don't fight
-    # it with synthesis (Phase 2 reconciliation).
-    only_redundant = bool(visuals) and all(
-        v.get("blocked") and any(
-            (b or {}).get("rule") == "clarity.redundant"
-            for b in ((v.get("adversarial") or {}).get("blocks") or [])
-        )
-        for v in visuals
-    )
-    if not rendered_ok and not only_redundant:
+    if not rendered_ok:
         # Phase 1a — RECOVER the model's own diagram (faithful, deterministic,
         # zero model calls). Converts a model-emitted mermaid / DAGitty /
         # Structurizr block — or a malformed ``ora-visual`` envelope — into a
@@ -1666,7 +1711,7 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
         except Exception as _rec_exc:
             print(f"[visual recovery] skipped: {_rec_exc}")
 
-    if not rendered_ok and not only_redundant:
+    if not rendered_ok:
         # Phase 1b — synthesize from prose (fallback; one extra model call,
         # gated to interactive turns). Builds a fresh envelope when the model
         # drew no recoverable diagram of its own.
@@ -1676,8 +1721,82 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                 visuals = visuals + [synth_diag]
             if spliced is not None:
                 new_text = spliced
+                rendered_ok = True
         except Exception as _syn_exc:
             print(f"[visual synthesis] skipped: {_syn_exc}")
+
+    # Universal, no-model fallback. If the selected prose contains explicit
+    # source-derived relations but the requested shape could not be recovered
+    # or synthesized, a deterministic concept map is still useful and honest.
+    # It is built from connecting clauses only; otherwise this branch returns
+    # None and the text remains the canonical outcome.
+    if not rendered_ok:
+        try:
+            if _mode_target_types(
+                mode,
+                (context_pkg or {}).get("visual_kind")
+                if isinstance(context_pkg, dict) else None,
+            ):
+                spliced, fallback_diag = _maybe_build_concept_map(
+                    review_prose, context_pkg, mode,
+                )
+                if fallback_diag is not None:
+                    visuals = visuals + [fallback_diag]
+                if spliced is not None:
+                    new_text = spliced
+                    rendered_ok = True
+        except Exception as _fallback_exc:
+            print(f"[visual concept-map fallback] skipped: {_fallback_exc}")
+
+    # Non-interactive producers have no client to compile or insert the
+    # settled envelope. Materialize their one server-side result through the
+    # headless Node/jsdom compiler, persist it beside the turn trace, and
+    # remove the transport envelope from the prose they publish. This is
+    # deliberately after the terminal authority has selected the final prose
+    # and before the durable outcome is assigned.
+    noninteractive = bool(
+        isinstance(context_pkg, dict)
+        and context_pkg.get("execution_context") in ("agent", "autonomous")
+    )
+    noninteractive_render_error = None
+    if noninteractive and rendered_ok:
+        final_env, final_block = _extract_first_visual_envelope(new_text)
+        if final_env and final_block:
+            rendered_svg, render_error = _render_visual_svg_cli(final_env)
+            if rendered_svg:
+                trace_dir_value = (context_pkg or {}).get("trace_dir")
+                artifact_path = None
+                try:
+                    if not trace_dir_value:
+                        raise RuntimeError("noninteractive visual trace directory is missing")
+                    from pathlib import Path
+                    artifact_root = Path(trace_dir_value)
+                    artifact_root.mkdir(parents=True, exist_ok=True)
+                    artifact_path = artifact_root / "visual-artifact.svg"
+                    artifact_path.write_text(rendered_svg, encoding="utf-8")
+                    (artifact_root / "visual-artifact.json").write_text(
+                        json.dumps(final_env, indent=2, ensure_ascii=False)
+                        + "\n",
+                        encoding="utf-8",
+                    )
+                except Exception as artifact_exc:
+                    render_error = f"artifact persistence failed: {artifact_exc}"
+                if render_error is None:
+                    context_pkg["_visual_artifact"] = {
+                        "type": final_env.get("type"),
+                        "path": str(artifact_path) if artifact_path else None,
+                        "renderer": "node-jsdom-cli",
+                    }
+                    # The published text remains canonical; the visual is
+                    # durable in the trace and is not leaked into an article
+                    # or other non-interactive text sink.
+                    new_text = _strip_visual_blocks_and_markers(new_text)
+                else:
+                    noninteractive_render_error = render_error
+            else:
+                noninteractive_render_error = render_error or "headless visual render failed"
+        else:
+            noninteractive_render_error = "terminal visual envelope unavailable"
 
     # Client-facing diagnostics: if a visual was recovered, synthesized, or
     # schema-repaired in place, don't alarm the user about the superseded
@@ -1687,6 +1806,51 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     client_visuals = [v for v in visuals if not v.get("blocked")] if repaired_ok else visuals
     if context_pkg is not None:
         context_pkg["visual_diagnostics"] = {"visuals": client_visuals}
+        if noninteractive and rendered_ok and not noninteractive_render_error:
+            context_pkg["_visual_outcome"] = {
+                "state": "ready",
+                "stage": "cli_render",
+                "reason": "Rendered by the headless Node/jsdom compiler.",
+            }
+        elif noninteractive and rendered_ok and noninteractive_render_error:
+            context_pkg["_visual_outcome"] = {
+                "state": "failed",
+                "stage": "cli_render",
+                "reason": noninteractive_render_error,
+            }
+        elif rendered_ok:
+            # The browser (or the non-interactive renderer) owns the final
+            # ready transition. Until actual insertion, keep the durable
+            # assistant-message record in building state.
+            context_pkg["_visual_outcome"] = {"state": "building"}
+        elif any(v.get("blocked") for v in visuals):
+            context_pkg["_visual_outcome"] = {
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": "The visual was rejected before it could be inserted.",
+            }
+        elif context_pkg.get("_visual_fallback_origin") == "failed_claim_extraction":
+            context_pkg["_visual_outcome"] = {
+                "state": "not_applicable",
+                "reason": "This response contains no relationship-bearing propositions.",
+            }
+        elif _mode_target_types(mode, (context_pkg or {}).get("visual_kind")):
+            context_pkg["_visual_outcome"] = {
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": "No grounded visual could be produced from this response.",
+            }
+        else:
+            context_pkg["_visual_outcome"] = {
+                "state": "not_applicable",
+                "reason": "This response contains no relationship-bearing content.",
+            }
+        if context_pkg.get("_visual_fallback_origin"):
+            context_pkg["_visual_outcome"]["origin"] = context_pkg[
+                "_visual_fallback_origin"
+            ]
+            if trace_dir:
+                context_pkg["_visual_outcome"]["trace_ref"] = str(trace_dir)
 
     if PIPELINE_TRACE_AVAILABLE and trace_dir and visuals:
         suppressed = [v for v in visuals if v.get("blocked")]
@@ -1723,14 +1887,15 @@ _KNOWN_VISUAL_TYPES = frozenset({
     "causal_loop_diagram", "stock_and_flow", "causal_dag", "fishbone",
     "decision_tree", "influence_diagram", "ach_matrix", "quadrant_matrix", "bow_tie",
     "ibis", "pro_con", "concept_map", "sequence", "flowchart", "state", "c4",
+    "annotated_image",
 })
 
 
 def _mode_target_types(mode: str | None, preferred_kind: str | None = None) -> list[str]:
     """Visual types a mode expects (from ``mode-to-visual.json``), in
-    preference order. Returns an empty list for linguistically-native modes
-    (``no_visual``), unconfigured modes, or modes whose only types aren't
-    synthesizable from prose.
+    preference order. Returns an empty list only for explicit ``no_visual``
+    modes. Unconfigured and mode-less contexts use the universal
+    ``concept_map`` fallback.
 
     ``preferred_kind`` — when the caller knows the specific visual the turn
     should produce (the campaign threads the technique's target kind; a
@@ -1743,11 +1908,14 @@ def _mode_target_types(mode: str | None, preferred_kind: str | None = None) -> l
     if preferred_kind and preferred_kind in _KNOWN_VISUAL_TYPES:
         ordered.append(preferred_kind)
     if not mode:
-        return ordered
+        return ordered or ["concept_map"]
     try:
         from visual_adversarial import _load_mode_config
         cfg = _load_mode_config() or {}
-        m = (cfg.get("modes") or {}).get(mode) or {}
+        modes = cfg.get("modes") or {}
+        m = modes.get(mode) or modes.get(mode.replace("_", "-"))
+        if m is None:
+            return ordered or ["concept_map"]
         # A no_visual mode still honors an explicit preferred_kind (the caller
         # asked for that diagram by name) but contributes no defaults of its own.
         if m.get("relation_to_prose_default") != "no_visual":
@@ -1755,7 +1923,7 @@ def _mode_target_types(mode: str | None, preferred_kind: str | None = None) -> l
                 if isinstance(t, str) and t in _KNOWN_VISUAL_TYPES and t not in ordered:
                     ordered.append(t)
     except Exception:
-        pass
+        return ordered or ["concept_map"]
     return ordered
 
 
@@ -1784,6 +1952,67 @@ def _strip_suppressed_markers(text: str) -> str:
     if not text:
         return text or ""
     return re.sub(r"\[visual[^\]]*suppressed[^\]]*\]", "", text)
+
+
+def _capture_visual_candidates(text: str, context_pkg: dict | None,
+                               stage: str, *, replace: bool = False,
+                               store: bool = True) -> str:
+    """Keep producer envelopes beside, rather than inside, downstream prose.
+
+    Gear 3's final reviser is allowed to produce an envelope, but evaluators,
+    verifiers and the terminal prose selector must not reason over a diagram
+    that is being carried as ordinary text.  The candidate is therefore kept
+    in the turn package and the text returned here is the prose-only form.
+    Invalid JSON is deliberately not retained: the terminal authority will
+    synthesize from the selected prose instead of reviving an unreviewable
+    fragment.
+    """
+    if not isinstance(text, str) or "ora-visual" not in text:
+        if replace and store and isinstance(context_pkg, dict):
+            context_pkg["_visual_candidates"] = []
+        return text
+    if not isinstance(context_pkg, dict):
+        return _strip_visual_blocks_and_markers(text)
+    try:
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+        candidates = []
+        for match in ORA_VISUAL_FENCE_RE.finditer(text):
+            try:
+                envelope = json.loads(match.group(1))
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if isinstance(envelope, dict):
+                candidates.append({"stage": stage, "envelope": envelope})
+        if store:
+            if replace:
+                context_pkg["_visual_candidates"] = candidates
+            elif candidates:
+                context_pkg.setdefault("_visual_candidates", []).extend(candidates)
+    except Exception:
+        # Candidate capture is optional bookkeeping; stripping still protects
+        # the next model from treating a diagram as prose.
+        pass
+    return _strip_visual_blocks_and_markers(text)
+
+
+def _candidate_block(envelope: dict) -> str:
+    return "```ora-visual\n" + json.dumps(
+        envelope, indent=2, ensure_ascii=False,
+    ) + "\n```"
+
+
+def _terminal_candidate_text(response: str, context_pkg: dict | None) -> str:
+    """Append the final paired producer candidate when no block survived."""
+    if not isinstance(context_pkg, dict) or "ora-visual" in response:
+        return response
+    candidates = context_pkg.get("_visual_candidates") or []
+    if not candidates:
+        return response
+    envelope = candidates[-1].get("envelope") if isinstance(candidates[-1], dict) else None
+    if not isinstance(envelope, dict):
+        return response
+    block = _candidate_block(envelope)
+    return response.rstrip() + ("\n\n" if response.strip() else "") + block
 
 
 def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
@@ -1822,17 +2051,15 @@ def _resolve_synthesis_endpoint(config_name: str | None = None) -> dict | None:
 
 
 def _visual_recovery_texts(prose: str, context_pkg: dict | None) -> list[str]:
-    """Ordered candidate strings to mine for a model-drawn diagram: the final
-    response first, then the earlier Gear-4 step outputs (reviser → analyst →
-    consolidator) that ``run_gear4`` stashes on the context package. The
-    step-8 formatter routinely rewrites a model's mermaid/DSL diagram into
-    prose, so the surviving copy lives upstream."""
-    texts = [prose]
-    if isinstance(context_pkg, dict):
-        for t in (context_pkg.get("_pipeline_step_texts") or []):
-            if isinstance(t, str) and t.strip() and t != prose:
-                texts.append(t)
-    return texts
+    """Mine only the prose revision selected for the terminal decision.
+
+    Earlier Gear 4 branch output was once searched here, but those diagrams
+    were created against prose the consolidator could reject or rewrite. Gear
+    4 now enters the terminal authority prose-only; Gear 3 stores its final
+    paired candidate separately. Searching old pipeline text would reintroduce
+    the staleness bug this boundary is meant to remove.
+    """
+    return [prose] if isinstance(prose, str) else []
 
 
 def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None):
@@ -1884,7 +2111,10 @@ def _maybe_recover_visual(prose: str, context_pkg: dict | None, mode: str | None
     except Exception:
         return None, None
     texts = _visual_recovery_texts(prose, context_pkg)
-    result = recover_envelope(texts, target_kinds, mode)
+    result = recover_envelope(
+        texts, target_kinds, mode,
+        prose=_strip_visual_blocks_and_markers(prose),
+    )
     if not result:
         return None, None
     env = result["envelope"]
@@ -1932,6 +2162,18 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
     Fires only when the mode expects a visual and we're in an interactive
     context (synthesis adds a model call; gated off in autonomous/agent runs to
     keep unattended cost bounded, matching the image-gen stance)."""
+    # Unknown and mode-less bypasses already have the deterministic concept-map
+    # fallback. Do not spend an extra provider call synthesizing a second
+    # envelope for those paths; configured analytical modes still receive the
+    # bounded repair-on-miss model call.
+    try:
+        from visual_adversarial import _load_mode_config
+        mode_config = (_load_mode_config() or {}).get("modes") or {}
+        if not mode or (mode not in mode_config and mode.replace("_", "-") not in mode_config):
+            return None, None
+    except Exception:
+        if not mode:
+            return None, None
     preferred_kind = context_pkg.get("visual_kind") if isinstance(context_pkg, dict) else None
     native = _mode_target_types(mode, None)
     pk = preferred_kind if (preferred_kind in _KNOWN_VISUAL_TYPES) else None
@@ -2011,6 +2253,61 @@ def _maybe_synthesize_visual(prose: str, context_pkg: dict | None, mode: str | N
         "adversarial": {"blocks": []}, "synthesized": True,
     }
     return spliced, diag
+
+
+def _maybe_build_concept_map(prose: str, context_pkg: dict | None,
+                             mode: str | None):
+    """Build the universal fallback from source-derived relations only."""
+    try:
+        from visual_recovery import build_concept_map
+        from visual_validator import validate_envelope
+        from visual_adversarial import review_envelope
+    except Exception:
+        return None, None
+    inquiry = context_pkg.get("cleaned_prompt") if isinstance(context_pkg, dict) else None
+    env = build_concept_map(prose, mode=mode, inquiry=inquiry)
+    if env is None:
+        if isinstance(context_pkg, dict):
+            context_pkg["_visual_fallback_origin"] = "failed_claim_extraction"
+        if PIPELINE_TRACE_AVAILABLE and isinstance(context_pkg, dict):
+            try:
+                pipeline_trace.append_emission_record({
+                    "conversation_id": context_pkg.get("conversation_id"),
+                    "source": "concept_map_fallback",
+                    "fallback_origin": "failed_claim_extraction",
+                    "mode": mode,
+                    "type": "concept_map",
+                    "succeeded": False,
+                })
+            except Exception:
+                pass
+        return None, None
+    validation = validate_envelope(env)
+    review = review_envelope(env, mode, prose=prose)
+    if not validation.valid or review.blocks:
+        if isinstance(context_pkg, dict):
+            context_pkg["_visual_fallback_origin"] = "failed_claim_extraction"
+        return None, {
+            "id": env.get("id"), "type": "concept_map", "blocked": True,
+            "validator": validation.as_dict(),
+            "adversarial": review.as_dict(),
+            "fallback": True,
+            "fallback_reason": "deterministic concept-map grounding failed",
+            "fallback_origin": "failed_claim_extraction",
+        }
+    block = _candidate_block(env)
+    clean = _strip_visual_blocks_and_markers(prose)
+    return (
+        clean.rstrip() + ("\n\n" if clean.strip() else "") + block,
+        {
+            "id": env.get("id"), "type": "concept_map", "blocked": False,
+            "validator": validation.as_dict(),
+            "adversarial": review.as_dict(),
+            "fallback": True,
+            "fallback_reason": "deterministic concept-map grounding",
+            "fallback_origin": "normal_fallback",
+        },
+    )
 
 
 def _extract_first_visual_envelope(text: str):
@@ -2200,15 +2497,10 @@ def _render_visual_svg_cli(env: dict) -> tuple[str | None, str | None]:
 
 
 def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
-    svg, err = _render_visual_svg_browser(env)
-    if svg:
-        return svg, None
-    fallback_svg, fallback_err = _render_visual_svg_cli(env)
-    if fallback_svg:
-        return fallback_svg, None
-    if fallback_err:
-        return None, f"browser render failed: {err}; cli fallback failed: {fallback_err}"
-    return None, f"browser render failed: {err}"
+    # The visual path is also used by non-interactive producers. Keep the
+    # normal turn renderer explicitly headless; browser rendering belongs to
+    # the client and to unrelated web-fetch/MCP paths.
+    return _render_visual_svg_cli(env)
 
 
 def _rasterize_svg_light(svg: str) -> tuple[bytes | None, str | None]:
@@ -10646,6 +10938,50 @@ def _compose_output_style(context_package: dict) -> str:
         return ""
 
 
+def _visual_emission_contract(context_package: dict) -> str:
+    """Return the compact runtime contract shared by eligible producers."""
+    mode = context_package.get("mode_name") if isinstance(context_package, dict) else None
+    preferred = context_package.get("visual_kind") if isinstance(context_package, dict) else None
+    try:
+        accepted = _mode_target_types(mode, preferred)
+    except Exception:
+        accepted = [preferred] if preferred else ["concept_map"]
+    accepted = accepted or ["concept_map"]
+    native = {
+        "causal_loop_diagram", "stock_and_flow", "causal_dag", "fishbone",
+        "decision_tree", "influence_diagram", "bow_tie", "ibis", "pro_con",
+        "concept_map", "c4",
+    }
+    compiler = {
+        "comparison", "time_series", "distribution", "scatter", "heatmap",
+        "tornado", "ach_matrix", "quadrant_matrix",
+    }
+    kinds = ", ".join(accepted)
+    native_kinds = ", ".join(item for item in accepted if item in native) or "none"
+    compiler_kinds = ", ".join(item for item in accepted if item in compiler) or "none"
+    preference = context_package.get("visual_preference") if isinstance(context_package, dict) else None
+    preference_line = (
+        f"Honor the explicit visual preference: {preference}.\n"
+        if isinstance(preference, str) and preference.strip() else ""
+    )
+    return (
+        "## RUNTIME VISUAL EMISSION CONTRACT\n"
+        "You are an eligible visual producer. Write the analytical prose first; "
+        "place at most one complete ```ora-visual JSON envelope``` after the prose. "
+        "The envelope is evidence for the terminal visual authority, not a substitute "
+        "for the answer. Use only the accepted types below, and ground every label, "
+        "edge, numeric value, and relationship in the response or supplied source. "
+        "Never invent precision, edges, categories, or an unrequested generic fallback.\n"
+        f"Accepted types for this turn: {kinds}.\n"
+        f"Native editable types: {native_kinds}. Compiler-rendered types: {compiler_kinds}.\n"
+        f"{preference_line}"
+        "For native types, encode semantic nodes and edges so the editor can keep "
+        "them editable; for compiler-rendered types, preserve the value-bearing "
+        "data fields and do not imply that dragging changes the underlying values. "
+        "If the response contains no relationship-bearing material, send prose only."
+    )
+
+
 def build_system_prompt_for_gear(
     context_package: dict,
     slot: str = "breadth",
@@ -11146,7 +11482,10 @@ def _single_pass_system_prompt(context_package: dict, gear: int) -> str:
         )
         style = _compose_output_style(context_package)
         return prompt + ("\n\n" + style if style else "")
-    return build_system_prompt_for_gear(context_package, "breadth")
+    prompt = build_system_prompt_for_gear(context_package, "breadth")
+    if gear == 2:
+        prompt += "\n" + _visual_emission_contract(context_package)
+    return prompt
 
 
 def format_for_vault(response: str, context_pkg: dict = None) -> str:
@@ -11741,6 +12080,14 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                     trace_dir, "step-debug-result",
                     {"status": turn_state["status"], "child_trace_refs": turn_state["child_refs"]},
                 )
+            result_text = _run_visual_hook(result_text, {
+                "cleaned_prompt": _debug_prompt,
+                "mode_name": _trace_ctx.get("mode"),
+                "execution_context": execution_context,
+                "trace_dir": trace_dir,
+                "conversation_id": conversation_id,
+                "framework_id": _trace_ctx.get("framework_id"),
+            })
             return result_text
         except Exception as exc:
             turn_state["status"] = "error"
@@ -11769,13 +12116,23 @@ def _run_pipeline_impl(user_input: str, history: list = None,
     continuation_ctx = framework_elicitation.is_continuation(history or [])
     if continuation_ctx is not None:
         turn_state["kind"] = "framework_elicitation"
-        return framework_elicitation.continue_elicitation(
+        result_text = framework_elicitation.continue_elicitation(
             continuation_ctx, history or [], config,
             latest_user_text=user_input,
             conversation_id=conversation_id,
             current_project_nexus=_framework_project_nexus(),
             style_context=framework_style_context,
         )
+        if not framework_elicitation.MARKER_PATTERN.search(result_text or ""):
+            result_text = _run_visual_hook(result_text, {
+                "cleaned_prompt": user_input,
+                "mode_name": continuation_ctx.mode,
+                "execution_context": execution_context,
+                "trace_dir": trace_dir,
+                "conversation_id": conversation_id,
+                "framework_id": continuation_ctx.framework_id,
+            })
+        return result_text
 
     # --- Framework slash-command short-circuit ---
     # Detect explicit /framework invocations. With a query → one-shot;
@@ -11833,6 +12190,16 @@ def _run_pipeline_impl(user_input: str, history: list = None,
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
                 turn_state["child_refs"] = list(_trace_ctx.get("child_trace_refs") or [])
+                # Framework execution bypasses the ordinary gear tail, so it
+                # must still pass through the same terminal visual authority.
+                _fw_out = _run_visual_hook(_fw_out, {
+                    "cleaned_prompt": user_input,
+                    "mode_name": _trace_ctx.get("mode"),
+                    "execution_context": execution_context,
+                    "trace_dir": trace_dir,
+                    "conversation_id": conversation_id,
+                    "framework_id": _trace_ctx.get("framework_id"),
+                })
                 return _fw_out
             finally:
                 try:
@@ -12561,6 +12928,11 @@ def _assemble_step_prompt(context_pkg: dict, slot: str, step: str,
         context_pkg, slot=slot, step=step,
         endpoint_vision_capable=endpoint_vision_capable,
     )
+    # Production activation is deliberately limited to Gear 2 and Gear 3.
+    # Gear 4 branches remain prose producers whose candidates are held outside
+    # the deliverable until the terminal authority has the final prose.
+    if context_pkg.get("gear") == 3 and step in ("analyst", "reviser"):
+        step_prompt = step_prompt + "\n" + _visual_emission_contract(context_pkg)
     if framework_name:
         framework_text = _strip_framework_documentation(
             load_framework(framework_name)
@@ -14275,6 +14647,11 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         f"**Health:** {'ok' if depth_ok else 'DEGRADED'} — {depth_reason}\n\n"
         f"{depth_analysis}\n"
     ))
+    # Producer envelopes are evidence for the terminal authority, not input
+    # for the evaluator. Keep the trace raw, but pass only prose downstream.
+    depth_analysis = _capture_visual_candidates(
+        depth_analysis, context_pkg, "gear3-depth-analyst", store=False,
+    )
 
     # --- Step 4: Breadth Evaluator (universal 7-section contract) ---
     eval_system = _assemble_step_prompt(
@@ -14309,6 +14686,9 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
     if not eval_ok:
         breadth_evaluation = "[no evaluator feedback this cycle — eval stream degraded]"
         contingencies_fired.append("step4-evaluator-degraded-no-feedback")
+    breadth_evaluation = _capture_visual_candidates(
+        breadth_evaluation, context_pkg, "gear3-evaluator", store=False,
+    )
     _trace_step_g3("step4-eval", {
         "system_prompt": eval_system,
         "user_message": eval_user,
@@ -14409,6 +14789,9 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             depth_analysis, stream_label="reviser",
         )
         contingencies_fired.append("step5-reviser-degraded-using-analyst-output")
+    revised_analysis = _capture_visual_candidates(
+        revised_analysis, context_pkg, "gear3-reviser", replace=True,
+    )
     _trace_step_g3("step5-revised", {
         "system_prompt": revise_system,
         "user_message": revise_user,
@@ -14531,6 +14914,9 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
         except Exception as e:
             verified = f"VERIFIER_EXCEPTION: {e}"
             verify_retry_ok, verify_retry_reason = False, str(e)
+        verified = _capture_visual_candidates(
+            verified, context_pkg, f"gear3-verifier-{cycle + 1}", store=False,
+        )
         # Three-way verdict classification (see _verifier_broken docstring
         # for the BROKEN-vs-FAIL distinction that addresses silent
         # failure #9).
@@ -14639,6 +15025,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             images=_images_for_endpoint(images, depth_endpoint),
             context_pkg=context_pkg,
             slot="depth", gear=3, config_name=config_name,
+        )
+        revised_analysis = _capture_visual_candidates(
+            revised_analysis, context_pkg,
+            f"gear3-reviser-rerevision-{cycle + 1}", replace=True,
         )
         _trace_step_g3(f"step6-cycle-{cycle + 1}-re-revision", {
             "cycle": cycle + 1,
@@ -14793,6 +15183,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             context_pkg=context_pkg,
             slot="depth", gear=3, config_name=config_name,
         )
+        revised_analysis = _capture_visual_candidates(
+            revised_analysis, context_pkg, "gear3-reviser-quality-redo",
+            replace=True,
+        )
         _trace_step_g3("step6_5-quality-gate-redo", {
             "system_prompt": revise_system,
             "user_message": gate_redo_messages[1]["content"],
@@ -14907,6 +15301,10 @@ def _run_gear3_impl(context_pkg: dict, config: dict, history: list = None,
             contingencies_fired=contingencies_fired,
         )
 
+    # The final reviser response was already captured before draft extraction.
+    # Strip any residual fence from the selected prose without replacing the
+    # paired candidate with an empty list after the final prose selection.
+    deliverable = _strip_visual_blocks_and_markers(deliverable)
     return deliverable
 
 
@@ -15156,6 +15554,15 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     if breadth_recovery == "fallback":
         contingencies_fired.append("step3-breadth-analyst-recovered-on-fallback-model")
 
+    # Branch diagrams are candidates for observability only; later Gear 4
+    # models receive prose, never a diagram embedded in an analyst response.
+    depth_analysis = _capture_visual_candidates(
+        depth_analysis, context_pkg, "gear4-depth-analyst",
+    )
+    breadth_analysis = _capture_visual_candidates(
+        breadth_analysis, context_pkg, "gear4-breadth-analyst",
+    )
+
     # Never proceed on one model: if EITHER stream is unrecoverable after its
     # primary + same-model retry + fallback (+ retry), fall back to Gear 3 — a
     # complete single-model answer — rather than cross-evaluating an error
@@ -15296,6 +15703,12 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     if not eval_b_ok:
         depth_eval_of_breadth = "[no evaluator feedback this cycle — eval stream degraded]"
         contingencies_fired.append("step4-eval-of-breadth-degraded-no-feedback")
+    breadth_eval_of_depth = _capture_visual_candidates(
+        breadth_eval_of_depth, context_pkg, "gear4-depth-evaluator",
+    )
+    depth_eval_of_breadth = _capture_visual_candidates(
+        depth_eval_of_breadth, context_pkg, "gear4-breadth-evaluator",
+    )
     mode_name_for_visual = context_pkg.get("mode_name") if isinstance(context_pkg, dict) else None
     breadth_eval_of_depth = _append_visual_type_preflight(
         breadth_eval_of_depth, context_pkg, mode_name_for_visual, "f-evaluate-depth")
@@ -15438,6 +15851,13 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             breadth_analysis, stream_label="breadth",
         )
         contingencies_fired.append("step5-breadth-reviser-degraded-using-analyst-output")
+
+    revised_depth = _capture_visual_candidates(
+        revised_depth, context_pkg, "gear4-depth-reviser",
+    )
+    revised_breadth = _capture_visual_candidates(
+        revised_breadth, context_pkg, "gear4-breadth-reviser",
+    )
 
     # --- Step 4 + Step 5 traces ---
     _trace_step("step4-eval-of-depth", {
@@ -15829,6 +16249,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 except Exception as e:
                     revised_depth = f"[Re-revision error: {e}]"
                     _depth_rerev_ok, _depth_rerev_reason = False, str(e)
+                revised_depth = _capture_visual_candidates(
+                    revised_depth, context_pkg,
+                    f"gear4-depth-reviser-rerevision-{cycle + 1}",
+                )
                 _trace_step(f"step6-cycle-{cycle + 1}-re-revision-depth", {
                     "cycle": cycle + 1,
                     "stream": "depth",
@@ -15851,6 +16275,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 except Exception as e:
                     revised_breadth = f"[Re-revision error: {e}]"
                     _breadth_rerev_ok, _breadth_rerev_reason = False, str(e)
+                revised_breadth = _capture_visual_candidates(
+                    revised_breadth, context_pkg,
+                    f"gear4-breadth-reviser-rerevision-{cycle + 1}",
+                )
                 _trace_step(f"step6-cycle-{cycle + 1}-re-revision-breadth", {
                     "cycle": cycle + 1,
                     "stream": "breadth",
@@ -15887,15 +16315,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 trace_dir, step_health, gear=4,
                 contingencies_fired=contingencies_fired,
             )
-        try:
-            if isinstance(context_pkg, dict):
-                context_pkg["_pipeline_step_texts"] = [
-                    t for t in (revised_depth, revised_breadth,
-                                depth_analysis, breadth_analysis)
-                    if isinstance(t, str) and t.strip()
-                ]
-        except Exception:
-            pass
+        # The external caller still owns consolidation; no branch visual is
+        # paired with the final prose here. Force the shared terminal hook to
+        # treat this return as prose-only as well.
+        context_pkg["_visual_terminal_only"] = True
         try:
             degraded = [k for k, (ok, _) in step_health.items() if not ok]
             if degraded:
@@ -15990,26 +16413,13 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
     # preamble ("Good—", "Let me integrate this", "Here is the analysis…"),
     # we discard everything before the first markdown heading.
     consolidated = _strip_consolidator_preamble(consolidated)
-    if "ora-visual" not in consolidated:
-        try:
-            _vis_spliced, _vis_diag = _maybe_synthesize_visual(
-                consolidated, context_pkg, mode_name_for_visual)
-            if _vis_spliced:
-                consolidated = _vis_spliced
-                if isinstance(context_pkg, dict) and _vis_diag:
-                    context_pkg.setdefault("visual_diagnostics", {}).setdefault("visuals", []).append(_vis_diag)
-        except Exception as exc:
-            if PIPELINE_TRACE_AVAILABLE and trace_dir:
-                try:
-                    pipeline_trace.append_jsonl(trace_dir, "visual-render-review.jsonl", {
-                        "stage": "f-consolidate",
-                        "status": "synthesis_exception",
-                        "reason": str(exc),
-                    })
-                except Exception:
-                    pass
-    consolidated = _maybe_review_and_refine_visual(
-        consolidated, context_pkg, config, config_name, "f-consolidate")
+    # Gear 4 branch output is prose-only. Any envelope the consolidator emits
+    # is retained as an audit candidate but never passed to the formatter or
+    # allowed to become the surviving visual; the terminal authority works
+    # from the final accepted prose.
+    consolidated = _capture_visual_candidates(
+        consolidated, context_pkg, "gear4-consolidator",
+    )
 
     # --- Step 8: Format. Place the step-7 consolidated corpus into the
     # mode's prescribed deliverable form per the mode's
@@ -16148,8 +16558,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                 + consolidated
             )
             contingencies_fired.append("step8_5-scrub-fellback-to-consolidated-corpus")
-    formatted = _maybe_review_and_refine_visual(
-        formatted, context_pkg, config, config_name, "f-format")
+    formatted = _capture_visual_candidates(
+        formatted, context_pkg, "gear4-formatter")
 
     _trace_step("step8-formatted", {
         "system_prompt": format_system,
@@ -16306,8 +16716,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                     _qg_sc, _qg_scr, _qg_sce = _scrub_pipeline_leaks(formatted)
                     if _qg_scr:
                         formatted = _qg_sc
-                formatted = _maybe_review_and_refine_visual(
-                    formatted, context_pkg, config, config_name, "f-format")
+                formatted = _capture_visual_candidates(
+                    formatted, context_pkg, "gear4-quality-format-redo")
             continue
 
         if problem != "FORMATTING" and not _qg_analysis_redo_used:
@@ -16351,9 +16761,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             contingencies_fired.append("step8_6-quality-gate-FAIL-analysis-redo")
             if _qg_rc_ok and _qg_re_consol.strip():
                 consolidated = _strip_consolidator_preamble(_qg_re_consol)
-                consolidated = _maybe_review_and_refine_visual(
-                    consolidated, context_pkg, config, config_name,
-                    "f-consolidate")
+                consolidated = _capture_visual_candidates(
+                    consolidated, context_pkg, "gear4-quality-consolidator-redo")
                 # Re-format the corrected corpus into the deliverable.
                 _qg_refmt_msgs = [
                     {"role": "system", "content": format_system},
@@ -16392,8 +16801,8 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
                             formatted)
                         if _qg_scr2:
                             formatted = _qg_sc2
-                    formatted = _maybe_review_and_refine_visual(
-                        formatted, context_pkg, config, config_name, "f-format")
+                    formatted = _capture_visual_candidates(
+                        formatted, context_pkg, "gear4-quality-format-redo")
             continue
 
         # The problem-type redo for this verdict is already spent — withhold.
@@ -16432,20 +16841,10 @@ def _run_gear4_impl(context_pkg: dict, config: dict, history: list = None,
             "record remain available for the governed continuation route."
         )
 
-    # Stash the pre-formatter analyst/reviser outputs so the visual hook's
-    # diagram-recovery pass can find a model-drawn mermaid/DSL diagram that the
-    # step-8 formatter rewrote into prose. Reviser output first (most refined),
-    # then the raw analysts. Best-effort; the hook degrades to final-response-
-    # only recovery when this is absent (e.g. Gear 3).
-    try:
-        if isinstance(context_pkg, dict):
-            context_pkg["_pipeline_step_texts"] = [
-                t for t in (revised_depth, revised_breadth,
-                            depth_analysis, breadth_analysis)
-                if isinstance(t, str) and t.strip()
-            ]
-    except Exception:
-        pass
+    # Gear 4 branches never own the visual. This marker makes the terminal
+    # hook discard any accidental branch/formatter envelope and synthesize or
+    # recover from this final accepted prose only.
+    context_pkg["_visual_terminal_only"] = True
 
     # Emit step-health summary to stdout for observability. The chat handler
     # surfaces it as a developer log; oversight wires it into the event bus

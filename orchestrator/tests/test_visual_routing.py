@@ -1048,10 +1048,11 @@ class VisualTypePreflightAcceptSetTests(unittest.TestCase):
         out = self._preflight("causal-loop-diagram", "root-cause-analysis")
         self.assertNotIn("visual preflight", out)
 
-    def test_unconfigured_mode_flags_nothing(self):
-        """No declared types means no expectation to violate."""
-        out = self._preflight("fishbone", "stakeholder-mapping")
-        self.assertNotIn("visual preflight", out)
+    def test_unknown_mode_uses_safe_concept_map_fallback(self):
+        """Unknown modes use the deterministic concept-map target."""
+        out = self._preflight("fishbone", "unknown-mode")
+        self.assertIn("visual preflight", out)
+        self.assertIn("concept_map", out)
 
     def test_draft_without_an_envelope_is_untouched(self):
         text = "Just prose, no envelope."

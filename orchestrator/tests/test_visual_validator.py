@@ -442,6 +442,12 @@ class TestConceptMap(unittest.TestCase):
         errs = _check_concept_map(spec)
         self.assertTrue(any(e.code == CODES["E_UNRESOLVED_REF"] for e in errs))
 
+    def test_orphan_concept_is_rejected(self):
+        spec = copy.deepcopy(_load_example("concept_map.valid.json")["spec"])
+        spec["concepts"].append({"id": "ORPHAN", "label": "Unused", "hierarchy_level": 0})
+        errs = _check_concept_map(spec)
+        self.assertTrue(any("ORPHAN" in e.message for e in errs))
+
 
 # ---------------------------------------------------------------------------
 # Tornado

@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -175,6 +176,10 @@ def _template_trap_hits(envelope: dict) -> list[tuple[str, str]]:
 
 QUANT_TYPES = {"comparison", "time_series", "distribution", "scatter", "heatmap", "tornado"}
 
+_PROSE_NUMBER_RE = re.compile(
+    r"(?<![A-Za-z0-9_])[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:\s*%)?"
+)
+
 
 def _t1_lie_factor(envelope: dict, vtype: str) -> list[Finding]:
     """T1: Tufte's lie factor within [0.95, 1.05].
@@ -296,6 +301,107 @@ def _t2_zero_baseline(envelope: dict, vtype: str) -> list[Finding]:
             suggestion="Set scale.zero=true, or populate integrity_declarations.non_zero_baseline_justified with the quantity type.",
         ))
     return findings
+
+
+def _numeric_grounding(envelope: dict, vtype: str,
+                       prose: str | None) -> list[Finding]:
+    """Require envelope numbers to be traceable to the accepted prose.
+
+    The envelope is not an independent source of facts: when the terminal
+    review has the final prose, every numeric value in a quantitative mark or
+    parsed/structural relationship must occur there (with a small
+    percent/decimal equivalence for ordinary reporting). Direct callers that
+    do not provide prose retain the historical structural-only review.
+    """
+    if not prose or not vtype or vtype == "annotated_image":
+        return []
+    values: list[float] = []
+    structural_keys = {
+        "id", "node_id", "edge_id", "source", "target", "from", "to",
+        "source_id", "target_id", "parent_id", "semantic_element_id",
+        "assistant_visual_id", "generation_revision", "hierarchy_level",
+    }
+
+    def collect(value: Any, key: str | None = None) -> None:
+        if isinstance(value, bool) or value is None:
+            return
+        # hierarchy_level is a derived layout field, not a source claim. The
+        # concept-map builder computes it from graph depth, so requiring every
+        # level integer in the prose would reject grounded native maps.
+        if key and key.lower().replace("-", "_") in structural_keys:
+            return
+        if isinstance(value, (int, float)):
+            if math.isfinite(float(value)):
+                values.append(float(value))
+            return
+        if isinstance(value, str):
+            # Structural references such as ``node-1`` and ``edge:2`` are
+            # identifiers, not numeric claims. Their digits must not make a
+            # valid parsed DAG/C4/Mermaid relationship fail grounding.
+            if re.fullmatch(r"[A-Za-z_]+[-_:][A-Za-z0-9_.:-]+", value.strip()):
+                return
+            for token in re.findall(
+                r"(?<![A-Za-z0-9_])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?%?",
+                value,
+            ):
+                try:
+                    values.append(float(token.rstrip("%")))
+                except ValueError:
+                    pass
+            return
+        if isinstance(value, dict):
+            for child_key, child in value.items():
+                collect(child, str(child_key))
+            return
+        if isinstance(value, (list, tuple)):
+            for child in value:
+                collect(child)
+
+    spec = envelope.get("spec") or {}
+    if vtype in QUANT_TYPES:
+        # Do not treat caption.n or explicit canvas dimensions as plotted
+        # facts. Ground the values carried by the data rows, plus the numeric
+        # scenario values in a tornado spec.
+        if vtype == "tornado":
+            collect({
+                "base_case_value": spec.get("base_case_value"),
+                "parameters": spec.get("parameters") or [],
+            })
+        else:
+            collect((spec.get("data") or {}).get("values") or [])
+        values.extend(_numeric_series(spec))
+    else:
+        collect(spec)
+    if not values:
+        return []
+
+    def norm(value: float) -> str:
+        return f"{value:.12g}"
+
+    prose_numbers = set()
+    for match in _PROSE_NUMBER_RE.findall(prose):
+        token = match.replace(" ", "").rstrip("%")
+        try:
+            number = float(token)
+            prose_numbers.add(norm(number))
+            if match.rstrip().endswith("%"):
+                prose_numbers.add(norm(number / 100.0))
+            elif 0 < abs(number) < 1:
+                prose_numbers.add(norm(number * 100.0))
+        except ValueError:
+            continue
+
+    missing = [value for value in sorted(set(values)) if norm(value) not in prose_numbers]
+    if not missing:
+        return []
+    return [Finding(
+        rule="grounding.numeric",
+        severity="Critical",
+        message=("quantitative values " + ", ".join(norm(v) for v in missing)
+                 + " are not present in the accepted prose"),
+        path="spec.data.values",
+        suggestion="Ground every plotted value in the final prose or omit the unsupported mark.",
+    )]
 
 
 def _t3_dimensional_conformance(envelope: dict, vtype: str) -> list[Finding]:
@@ -755,16 +861,18 @@ def _clarity_semantic_quality(envelope: dict, vtype: str) -> list[Finding]:
 
 
 def _clarity_redundant(envelope: dict, vtype: str) -> list[Finding]:
-    """relation_to_prose='redundant' means the visual only restates prose;
-    Mayer's redundancy principle makes that actively harmful, so the protocol
-    prefers no_visual. Suppress it (Critical). ``boot._run_visual_hook``
-    recognizes this rule and does NOT re-synthesize — a deliberate no-visual."""
+    """Name a redundant visual as a non-blocking improvement candidate.
+
+    The terminal authority gets one chance to improve it. If that attempt is
+    unavailable or still redundant, the already-reviewed visual is accepted;
+    strict mode must not turn this clarity preference into a release block.
+    """
     if envelope.get("relation_to_prose") == "redundant":
         return [Finding(
-            rule="clarity.redundant", severity="Critical",
-            message="relation_to_prose='redundant' — visual restates prose; prefer no_visual (Mayer redundancy)",
+            rule="clarity.redundant", severity="Major",
+            message="relation_to_prose='redundant' — one improvement attempt is permitted before accepting the visual",
             path="relation_to_prose",
-            suggestion="Emit no visual, or make it carry pattern/structure prose doesn't (relation=integrated).",
+            suggestion="If possible, make the visual carry structure the prose does not; otherwise accept it after one attempt.",
         )]
     return []
 
@@ -913,10 +1021,14 @@ def _pearson(xs, ys) -> float | None:
 # Public entry
 # ---------------------------------------------------------------------------
 
-def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
+def review_envelope(envelope: dict, mode: str | None = None,
+                    prose: str | None = None) -> ReviewResult:
     """Adversarial review of an envelope. ``mode`` is the Ora mode
     (e.g. 'systems-dynamics'); if omitted, defaults to
-    ``envelope['mode_context']`` or 'standard'.
+    ``envelope['mode_context']`` or 'standard'. ``prose`` is the final
+    accepted prose that accompanies the envelope. It is carried through the
+    review boundary so grounding checks can compare the envelope with the
+    actual deliverable rather than with an intermediate pipeline response.
     """
     if not isinstance(envelope, dict):
         return ReviewResult(blocks=[Finding(rule="envelope", severity="Critical", message="envelope not an object")])
@@ -931,6 +1043,7 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
 
     findings: list[Finding] = []
     findings.extend(_t1_lie_factor(envelope, vtype))
+    findings.extend(_numeric_grounding(envelope, vtype, prose))
     findings.extend(_t2_zero_baseline(envelope, vtype))
     findings.extend(_t3_dimensional_conformance(envelope, vtype))
     findings.extend(_t5_chartjunk(envelope, vtype))
@@ -963,14 +1076,22 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
     # Apply per-mode strictness escalation, then bucket.
     result = ReviewResult()
     for f in findings:
+        # Redundancy is a named, non-blocking exemption. Do not re-escalate it
+        # when a strict mode upgrades other Major findings.
+        severity = (
+            f.severity if f.rule == "clarity.redundant"
+            else _apply_strictness(f.severity, effective_mode)
+        )
         f = Finding(
             rule=f.rule,
-            severity=_apply_strictness(f.severity, effective_mode),
+            severity=severity,
             message=f.message,
             path=f.path,
             suggestion=f.suggestion,
         )
-        if f.severity == "Critical":
+        if f.rule == "clarity.redundant":
+            result.warns.append(f)
+        elif f.severity == "Critical":
             result.blocks.append(f)
         elif f.severity == "Major":
             result.warns.append(f)
@@ -983,7 +1104,8 @@ def review_envelope(envelope: dict, mode: str | None = None) -> ReviewResult:
 # Composition helpers for boot.py
 # ---------------------------------------------------------------------------
 
-def _try_repair_envelope(envelope: dict, mode: str | None) -> dict | None:
+def _try_repair_envelope(envelope: dict, mode: str | None,
+                         prose: str | None = None) -> dict | None:
     """Deterministically repair a schema-invalid model envelope: fill the
     mechanical fields, drop schema-forbidden extras, and apply per-type fixes
     (quadrant axes/bounds, QUANT caption, …). Returns the repaired envelope
@@ -1003,7 +1125,8 @@ def _try_repair_envelope(envelope: dict, mode: str | None) -> dict | None:
         return None
 
 
-def process_response(response: str, mode: str | None = None) -> tuple[str, dict]:
+def process_response(response: str, mode: str | None = None,
+                     prose: str | None = None) -> tuple[str, dict]:
     """Pipeline integration helper.
 
     Finds ``ora-visual`` fenced JSON blocks in ``response``, runs validator
@@ -1057,10 +1180,12 @@ def process_response(response: str, mode: str | None = None) -> tuple[str, dict]
             # repaired envelope passes BOTH schema and adversarial review, emit
             # it instead of suppressing. Only fires on schema failures (never
             # overrides an honesty/adversarial block); fully fail-open.
-            repaired = _try_repair_envelope(envelope, mode)
+            repaired = _try_repair_envelope(envelope, mode, prose=prose)
             if repaired is not None:
                 rres = validate_envelope(repaired)
-                rreview = review_envelope(repaired, mode or repaired.get("mode_context"))
+                rreview = review_envelope(
+                    repaired, mode or repaired.get("mode_context"), prose=prose,
+                )
                 if rres.valid and not rreview.blocks:
                     diagnostics["visuals"].append({
                         "id": repaired.get("id"),
@@ -1080,7 +1205,11 @@ def process_response(response: str, mode: str | None = None) -> tuple[str, dict]
             })
             return f"[visual {envelope.get('id','?')} suppressed: schema/structural errors]"
 
-        review = review_envelope(envelope, mode or envelope.get("mode_context"))
+        review = review_envelope(
+            envelope,
+            mode or envelope.get("mode_context"),
+            prose=prose,
+        )
         if review.blocks:
             diagnostics["visuals"].append({
                 "id": envelope.get("id"),

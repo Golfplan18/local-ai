@@ -76,18 +76,19 @@ class TestTufteCompletion(unittest.TestCase):
 
 
 class TestClarityGates(unittest.TestCase):
-    def test_redundant_is_critical(self):
+    def test_redundant_is_named_nonblocking_finding(self):
         env = {"type": "concept_map", "relation_to_prose": "redundant"}
         f = va._clarity_redundant(env, "concept_map")
         self.assertEqual(len(f), 1)
-        self.assertEqual(f[0].severity, "Critical")
+        self.assertEqual(f[0].severity, "Major")
         self.assertEqual(f[0].rule, "clarity.redundant")
 
-    def test_redundant_blocks_in_review(self):
+    def test_redundant_does_not_block_in_strict_review(self):
         env = {"type": "concept_map", "relation_to_prose": "redundant",
                "mode_context": "synthesis", "spec": {}}
         review = va.review_envelope(env, "synthesis")
-        self.assertTrue(any(b.rule == "clarity.redundant" for b in review.blocks))
+        self.assertFalse(any(b.rule == "clarity.redundant" for b in review.blocks))
+        self.assertTrue(any(w.rule == "clarity.redundant" for w in review.warns))
 
     def test_empty_short_alt_major(self):
         env = {"type": "comparison",
