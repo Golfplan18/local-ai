@@ -70,16 +70,45 @@
     });
   }
 
-  function surfaceDispatchFailure(message) {
-    const detail = message || 'The visual request could not be applied.';
-    console.warn('[v3-visual-dispatch] ' + detail);
-    if (typeof window.alert === 'function') window.alert(detail);
+  function persistOutcome(meta, outcome) {
+    if (!meta || !meta.conversationId || typeof window.fetch !== 'function') return;
+    const body = Object.assign({}, outcome, {
+      assistant_index: Number.isInteger(meta.assistantIndex)
+        ? meta.assistantIndex : undefined,
+    });
+    Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
+    try {
+      window.fetch(`/api/conversation/${encodeURIComponent(meta.conversationId)}/visual-outcome`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch((error) => console.warn('[v3-visual-dispatch] outcome save failed:', error));
+    } catch (error) {
+      console.warn('[v3-visual-dispatch] outcome save failed:', error);
+    }
   }
 
-  function surfaceDispatchResult(result) {
+  function surfaceDispatchFailure(message, meta) {
+    const detail = message || 'The visual request could not be applied.';
+    console.warn('[v3-visual-dispatch] ' + detail);
+    const panel = window.OraPanels && window.OraPanels.visual;
+    if (panel && typeof panel._showErrorBar === 'function') {
+      panel._showErrorBar('Visual failed: ' + detail);
+    }
+    persistOutcome(meta, {
+      state: 'failed',
+      stage: 'dispatch',
+      reason: detail,
+    });
+  }
+
+  function surfaceDispatchResult(result, meta) {
     const results = Array.isArray(result) ? result : [result];
     const unsupported = results.filter((item) => item && item.unsupported === true);
-    if (unsupported.length === 0) return;
+    if (unsupported.length === 0) {
+      persistOutcome(meta, { state: 'ready' });
+      return;
+    }
     const warnings = [];
     unsupported.forEach((item) => {
       (Array.isArray(item.warnings) ? item.warnings : []).forEach((warning) => {
@@ -90,17 +119,21 @@
     });
     surfaceDispatchFailure(
       warnings.join('\n') || 'This visual action is not supported by the active editor.'
+      , meta
     );
   }
 
   /** Extract + hand off to the visual panel. Returns the number of blocks
    *  found (0 = nothing to do). Same key twice in a row is a no-op. */
-  function dispatch(text, key) {
+  function dispatch(text, key, meta) {
     const blocks = extractBlocks(text);
     if (blocks.length === 0) return 0;
     if (key != null && key === _lastKey) return blocks.length;
     const panel = window.OraPanels && window.OraPanels.visual;
-    if (!panel || typeof panel.onBridgeUpdate !== 'function') return blocks.length;
+    if (!panel || typeof panel.onBridgeUpdate !== 'function') {
+      surfaceDispatchFailure('The Exhibits pane is unavailable.', meta);
+      return blocks.length;
+    }
     _lastKey = key != null ? key : null;
     try {
       const result = panel.onBridgeUpdate({
@@ -108,17 +141,19 @@
         ora_visual_dispatch_key: key != null ? String(key) : null,
       });
       if (result && typeof result.then === 'function') {
-        Promise.resolve(result).then(surfaceDispatchResult).catch((error) => {
+        Promise.resolve(result).then((value) => surfaceDispatchResult(value, meta)).catch((error) => {
           surfaceDispatchFailure(
-            'The visual request could not be applied: ' + (error && error.message || error)
+            'The visual request could not be applied: ' + (error && error.message || error),
+            meta,
           );
         });
       } else {
-        surfaceDispatchResult(result);
+        surfaceDispatchResult(result, meta);
       }
     } catch (e) {
       surfaceDispatchFailure(
-        'The visual request could not be applied: ' + (e && e.message || e)
+        'The visual request could not be applied: ' + (e && e.message || e),
+        meta,
       );
     }
     return blocks.length;
@@ -131,6 +166,7 @@
     extractBlocks: extractBlocks,
     stripBlocks: stripBlocks,
     dispatch: dispatch,
+    persistOutcome: persistOutcome,
     resetDedupe: resetDedupe,
     PLACEHOLDER: PLACEHOLDER,
   };

@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -616,6 +618,247 @@ class TestCampaignAudit(unittest.TestCase):
                     summary, output_dir=target, allow_accepted_overwrite=True)
                 self.assertTrue(json_path.exists())
                 self.assertTrue(md_path.exists())
+
+
+class TestCaptureSidecar(unittest.TestCase):
+    """The capture layer must be able to name its own cell.
+
+    A capture directory that cannot say which cell it belongs to cannot be
+    checked against one — which is how four duplicate-id cells overwrote four
+    others and still audited clean.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.corpus_path = self.root / "mini-corpus.md"
+        self.corpus_path.write_text(MINI_CORPUS)
+        self._orig = (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH,
+                      campaign.CAPTURES_DIR)
+        campaign.CAMPAIGN_DIR = self.root / "campaign"
+        campaign.MANIFEST_PATH = campaign.CAMPAIGN_DIR / "campaign-manifest.jsonl"
+        campaign.CAPTURES_DIR = campaign.CAMPAIGN_DIR / "captures"
+        campaign.CAMPAIGN_DIR.mkdir()
+        self.addCleanup(self._restore)
+        self.techs = campaign.parse_corpus(self.corpus_path)
+
+    def _restore(self):
+        (campaign.CAMPAIGN_DIR, campaign.MANIFEST_PATH,
+         campaign.CAPTURES_DIR) = self._orig
+
+    def _tech(self, key):
+        return next(t for t in self.techs if t.key == key)
+
+    def _capture(self, key, pipe):
+        tech = self._tech(key)
+        root = campaign.capture_output_dir(tech, pipe)
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "answer.md").write_text("Captured answer.\n")
+        (root / "cost.json").write_text(json.dumps({"total_cost_usd": 0}))
+        campaign.append_manifest({
+            "technique": tech.id, "technique_key": tech.key,
+            "kind": tech.kind, "pipeline": pipe, "status": "ok",
+        })
+        return tech, root
+
+    def _verify(self, tech, pipe):
+        return campaign.verify_capture_integrity(
+            tech, pipe, campaign.load_manifest()[(tech.key, pipe)])
+
+    def test_capture_without_sidecar_is_legacy_but_still_accepted(self):
+        """Every pre-sidecar capture is legacy. Failing them would mark the
+        whole campaign for rerun over a bookkeeping change."""
+        tech, _ = self._capture("mode:argument-audit", "premium")
+        result = self._verify(tech, "premium")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["evidence"], "unverified_legacy")
+
+    def test_sidecar_from_a_live_call_is_verified(self):
+        tech, root = self._capture("mode:argument-audit", "premium")
+        campaign.write_capture_sidecar(tech, "premium", root)
+        result = self._verify(tech, "premium")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["evidence"], "verified")
+
+    def test_recovered_sidecar_is_attested_not_verified(self):
+        """A capture rebuilt from a transcript is provably the right cell and
+        prompt, but no trace survives to hash the request against."""
+        tech, root = self._capture("mode:argument-audit", "premium")
+        campaign.write_capture_sidecar(
+            tech, "premium", root,
+            evidence=campaign.EVIDENCE_RECOVERED,
+            source={"session": "campaign-argument-audit-premium"})
+        result = self._verify(tech, "premium")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["evidence"], "attested")
+
+    def test_sidecar_for_another_prompt_fails_the_cell(self):
+        tech, root = self._capture("mode:argument-audit", "premium")
+        campaign.write_capture_sidecar(tech, "premium", root)
+        payload = json.loads((root / campaign.CAPTURE_SIDECAR).read_text())
+        payload["prompt_sha256"] = campaign.prompt_fingerprint("a different prompt")
+        (root / campaign.CAPTURE_SIDECAR).write_text(json.dumps(payload))
+        result = self._verify(tech, "premium")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["evidence"], "sidecar_mismatch")
+        self.assertIn("capture_sidecar_prompt_mismatch",
+                      {v["kind"] for v in result["violations"]})
+
+    def test_sidecar_naming_another_cell_fails_the_cell(self):
+        tech, root = self._capture("mode:argument-audit", "premium")
+        other = self._tech("mode:cui-bono")
+        campaign.write_capture_sidecar(other, "premium", root)
+        result = self._verify(tech, "premium")
+        self.assertFalse(result["ok"])
+        self.assertIn("capture_sidecar_key_mismatch",
+                      {v["kind"] for v in result["violations"]})
+
+    def test_writer_refuses_a_directory_another_cell_owns(self):
+        """The guarantee is enforced when the bytes are written, not months
+        later at audit time."""
+        tech, root = self._capture("visual:shared-name", "premium")
+        campaign.write_capture_sidecar(tech, "premium", root)
+        intruder = self._tech("lens:shared-name")
+        with self.assertRaises(RuntimeError) as ctx:
+            campaign.claim_capture_dir(intruder, "premium", root)
+        self.assertIn("owned by visual:shared-name", str(ctx.exception))
+
+    def test_writer_may_overwrite_its_own_capture(self):
+        tech, root = self._capture("mode:argument-audit", "premium")
+        campaign.write_capture_sidecar(tech, "premium", root)
+        campaign.claim_capture_dir(tech, "premium", root)  # must not raise
+
+    def test_prompt_fingerprint_ignores_whitespace_but_not_words(self):
+        self.assertEqual(campaign.prompt_fingerprint("a  b\nc"),
+                         campaign.prompt_fingerprint("a b c"))
+        self.assertNotEqual(campaign.prompt_fingerprint("a b c"),
+                            campaign.prompt_fingerprint("a b d"))
+
+    def test_audit_reports_evidence_state_counts(self):
+        legacy, _ = self._capture("mode:argument-audit", "premium")
+        signed, root = self._capture("mode:cui-bono", "premium")
+        campaign.write_capture_sidecar(signed, "premium", root)
+        summary = campaign.audit_campaign(self.corpus_path,
+                                          pipelines=["premium"])
+        counts = summary["capture_integrity"]["evidence_counts"]
+        self.assertEqual(counts.get("verified"), 1)
+        self.assertEqual(counts.get("unverified_legacy"), 1)
+        self.assertIn("attested",
+                      summary["capture_integrity"]["evidence_states"])
+
+
+class TestConflatedCaptureRecovery(unittest.TestCase):
+    """The one-shot repair for captures lost to a shared capture directory."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location(
+            "campaign_recover_conflated",
+            REPO_ROOT / "scripts" / "campaign_recover_conflated.py")
+        cls.recover = importlib.util.module_from_spec(spec)
+        sys.modules["campaign_recover_conflated"] = cls.recover
+        spec.loader.exec_module(cls.recover)
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.corpus_path = self.root / "mini-corpus.md"
+        self.corpus_path.write_text(MINI_CORPUS)
+        self.sessions = self.root / "sessions"
+        self.techs = campaign.parse_corpus(self.corpus_path)
+        self.pair = [t for t in self.techs if t.id == "shared-name"]
+        self.assertEqual(len(self.pair), 2)
+
+    def _write_session(self, lane, turns):
+        d = self.sessions / f"campaign-shared-name-{lane}"
+        d.mkdir(parents=True)
+        msgs = []
+        for prompt, answer, stamp in turns:
+            msgs.append({"role": "user", "content": prompt, "timestamp": stamp})
+            msgs.append({"role": "assistant", "content": answer,
+                         "timestamp": stamp})
+        (d / "conversation.json").write_text(json.dumps({"messages": msgs}))
+
+    def _legacy(self, lane, answer, mtime=None):
+        d = campaign.CAPTURES_DIR / "shared-name" / lane
+        d.mkdir(parents=True, exist_ok=True)
+        path = d / "answer.md"
+        path.write_text(answer)
+        (d / "cost.json").write_text(json.dumps({"total_cost_usd": 0}))
+        if mtime is not None:
+            ts = mtime.timestamp()
+            os.utime(path, (ts, ts))
+        return d
+
+    def test_owner_is_decided_by_the_transcript_timestamp(self):
+        """The runner wrote the capture at the moment the last assistant turn
+        landed, so matching those timestamps names the owner outright."""
+        campaign.CAPTURES_DIR = self.root / "captures"
+        first, second = self.pair
+        stamp_a = datetime(2026, 6, 13, 4, 0, 0)
+        stamp_b = datetime(2026, 6, 13, 9, 0, 0)
+        self._write_session("premium", [
+            (first.prompt, "first answer", stamp_a.isoformat()),
+            (second.prompt, "second answer", stamp_b.isoformat()),
+        ])
+        legacy = self._legacy("premium", "second answer", mtime=stamp_b)
+        verdict = self.recover.resolve_owner(
+            self.pair, "premium", legacy, self.sessions)
+        self.assertEqual(verdict["owner"].key, second.key)
+        self.assertEqual(verdict["method"], "transcript_mtime_match")
+
+    def test_owner_falls_back_to_prompt_vocabulary_without_a_transcript(self):
+        """Subscription lanes keep no transcript, so attribution comes from
+        which prompt's distinctive words the answer actually speaks."""
+        campaign.CAPTURES_DIR = self.root / "captures"
+        first, second = self.pair
+        terms = self.recover.distinctive_terms(second.prompt, first.prompt)
+        self.assertTrue(terms, "corpus fixture must give the pair distinct words")
+        legacy = self._legacy("single-pass", " ".join(sorted(terms)))
+        verdict = self.recover.resolve_owner(
+            self.pair, "single-pass", legacy, self.sessions)
+        self.assertEqual(verdict["owner"].key, second.key)
+        self.assertEqual(verdict["method"], "prompt_vocabulary_score")
+
+    def test_recovery_writes_an_attested_capture_with_its_proof(self):
+        campaign.CAPTURES_DIR = self.root / "captures"
+        first, second = self.pair
+        stamp = datetime(2026, 6, 13, 4, 0, 0).isoformat()
+        self._write_session("premium", [
+            (first.prompt, "the lost answer", stamp),
+            (second.prompt, "the surviving answer", stamp),
+        ])
+        dest = campaign.capture_output_dir(first, "premium")
+        result = self.recover.recover_from_transcript(
+            first, "premium", self.sessions,
+            {"cost_usd": 0.25, "prompt_tokens": 10, "completion_tokens": 20},
+            dest, dry_run=False)
+        self.assertIsNotNone(result)
+        self.assertEqual((dest / "answer.md").read_text(), "the lost answer")
+        cost = json.loads((dest / "cost.json").read_text())
+        self.assertEqual(cost["status"], "reconstructed_from_manifest")
+        self.assertEqual(cost["total_cost_usd"], 0.25)
+        sidecar = campaign.read_capture_sidecar(dest)
+        self.assertEqual(sidecar["evidence"], campaign.EVIDENCE_RECOVERED)
+        self.assertEqual(sidecar["technique_key"], first.key)
+        self.assertEqual(sidecar["source"]["message_index"], 1)
+
+    def test_recovery_refuses_to_guess_when_the_prompt_repeats(self):
+        """An ambiguous transcript must stop the migration, not pick one."""
+        campaign.CAPTURES_DIR = self.root / "captures"
+        first = self.pair[0]
+        stamp = datetime(2026, 6, 13, 4, 0, 0).isoformat()
+        self._write_session("premium", [
+            (first.prompt, "answer one", stamp),
+            (first.prompt, "answer two", stamp),
+        ])
+        with self.assertRaises(RuntimeError) as ctx:
+            self.recover.recover_from_transcript(
+                first, "premium", self.sessions, {},
+                campaign.capture_output_dir(first, "premium"), dry_run=False)
+        self.assertIn("refusing to guess", str(ctx.exception))
 
 
 class TestVisualExtraction(unittest.TestCase):

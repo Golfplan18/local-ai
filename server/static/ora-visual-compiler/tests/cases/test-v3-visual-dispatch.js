@@ -106,9 +106,12 @@ module.exports = {
     // 9. The controller's asynchronous unsupported result reaches an existing
     // visible UI surface instead of disappearing into the console.
     const alerts = [];
+    const errorBar = [];
     const priorAlert = win.alert;
     win.alert = function (message) { alerts.push(String(message)); };
-    win.OraPanels = { visual: { onBridgeUpdate: function () {
+    win.OraPanels = { visual: {
+      _showErrorBar: function (message) { errorBar.push(String(message)); },
+      onBridgeUpdate: function () {
       return Promise.resolve([{
         action: 'annotate',
         unsupported: true,
@@ -117,16 +120,17 @@ module.exports = {
           + 'The scene was preserved; switch to Konva to apply this annotation.'
         ],
       }]);
-    } } };
+      },
+    } };
     D.resetDedupe();
     const nUnsupported = D.dispatch(text, 'conv-annotate#0');
     await new Promise((resolve) => setTimeout(resolve, 0));
-    record('dispatch: unsupported result is visible and truthful',
-           nUnsupported === 1 && alerts.length === 1
-           && alerts[0].indexOf('Excalidraw cannot apply') !== -1
-           && alerts[0].indexOf('scene was preserved') !== -1
-           && alerts[0].indexOf('switch to Konva') !== -1,
-           'alerts=' + JSON.stringify(alerts));
+    record('dispatch: unsupported result is visible without a blocking modal',
+           nUnsupported === 1 && alerts.length === 0 && errorBar.length === 1
+           && errorBar[0].indexOf('Excalidraw cannot apply') !== -1
+           && errorBar[0].indexOf('scene was preserved') !== -1
+           && errorBar[0].indexOf('switch to Konva') !== -1,
+           'alerts=' + JSON.stringify(alerts) + ' errorBar=' + JSON.stringify(errorBar));
 
     // 10. No registry → still counts, no throw
     win.OraPanels = undefined;

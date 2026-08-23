@@ -751,7 +751,7 @@ def _check_ibis(spec: dict) -> list[Error]:
     return out
 
 
-def _check_concept_map(spec: dict) -> list[Error]:
+def _check_concept_map(spec: dict, *, allow_orphans: bool = False) -> list[Error]:
     """Every proposition triple resolves; soft warning if no cross-links."""
     out: list[Error] = []
     concepts = {c.get("id") for c in (spec.get("concepts") or []) if c.get("id")}
@@ -770,6 +770,21 @@ def _check_concept_map(spec: dict) -> list[Error]:
             out.append(_err(CODES["E_UNRESOLVED_REF"], f"proposition.to_concept '{to}' unresolved", f"spec.propositions[{i}].to_concept"))
         if p.get("is_cross_link"):
             saw_cross = True
+    referenced = {
+        endpoint
+        for proposition in props
+        for endpoint in (
+            proposition.get("from_concept"), proposition.get("to_concept")
+        )
+        if endpoint in concepts
+    }
+    if not allow_orphans:
+        for concept_id in sorted(concepts - referenced):
+            out.append(_err(
+                CODES["E_UNRESOLVED_REF"],
+                f"concept '{concept_id}' is orphaned; every concept must participate in a proposition",
+                "spec.concepts",
+            ))
     if props and not saw_cross:
         out.append(_warn(
             CODES["W_NO_CROSS_LINKS"],
@@ -970,7 +985,10 @@ def validate_envelope(envelope: dict) -> ValidationResult:
             "type",
         ))
     else:
-        findings = checker(spec)
+        if vtype == "concept_map" and envelope.get("canvas_action") == "annotate":
+            findings = _check_concept_map(spec, allow_orphans=True)
+        else:
+            findings = checker(spec)
         for f in findings:
             if f.severity == "error":
                 errors.append(f)

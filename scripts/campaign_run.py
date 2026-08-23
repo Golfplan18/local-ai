@@ -418,6 +418,121 @@ def capture_read_dir(tech: Technique, pipe: str,
 
 _CAPTURE_REQUIRED_FILES = ("answer.md", "cost.json")
 
+# The capture sidecar. A capture directory that cannot name its own cell
+# cannot be checked against one, and a collision in this layer is invisible
+# by construction — which is exactly how four duplicate-id cells overwrote
+# four others and still audited clean. Every capture now records the cell it
+# belongs to and the prompt it answers.
+CAPTURE_SIDECAR = "capture.json"
+CAPTURE_SIDECAR_SCHEMA = 1
+
+# How the bytes in a capture directory came to be there.
+#   direct    — written by this runner from a live model call.
+#   recovered — reconstructed from a preserved session transcript after the
+#               original capture was lost. Provably the right prompt and the
+#               right cell, but no trace survives to hash the request against,
+#               so it can never reach ``verified``.
+EVIDENCE_DIRECT = "direct"
+EVIDENCE_RECOVERED = "recovered"
+
+
+def prompt_fingerprint(prompt: str) -> str:
+    """Stable hash of a corpus prompt, whitespace-normalized.
+
+    Normalizing means a capture does not lose its identity to a reflowed
+    corpus line, while any change to the words themselves still breaks the
+    match — which is the signal we want.
+    """
+    normalized = " ".join((prompt or "").split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def read_capture_sidecar(root: Path) -> dict | None:
+    """Return the sidecar for a capture directory, or None if unreadable."""
+    path = Path(root) / CAPTURE_SIDECAR
+    if path.is_symlink() or not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def claim_capture_dir(tech: Technique, pipe: str, out_dir: Path) -> None:
+    """Refuse to write into a directory another cell already owns.
+
+    This is the guarantee behind "every declared cell maps to one independent
+    capture root", enforced when the bytes are written rather than discovered
+    at audit time. Without it, two cells sharing a directory silently produce
+    one surviving answer and two ``ok`` manifest rows.
+    """
+    existing = read_capture_sidecar(out_dir)
+    if not existing:
+        return
+    owner = existing.get("technique_key")
+    expected = tech.key or f"{tech.kind}:{tech.id}"
+    if owner and owner != expected:
+        raise RuntimeError(
+            f"capture directory {out_dir} is owned by {owner}; "
+            f"{expected} must not overwrite it")
+
+
+def write_capture_sidecar(tech: Technique, pipe: str, out_dir: Path,
+                          evidence: str = EVIDENCE_DIRECT,
+                          source: dict | None = None) -> Path:
+    """Record which cell owns this capture and which prompt it answers."""
+    payload = {
+        "schema_version": CAPTURE_SIDECAR_SCHEMA,
+        "technique_key": tech.key or f"{tech.kind}:{tech.id}",
+        "technique": tech.id,
+        "kind": tech.kind,
+        "pipeline": pipe,
+        "capture_slug": tech.capture_slug or tech.id,
+        "prompt": tech.prompt,
+        "prompt_sha256": prompt_fingerprint(tech.prompt),
+        "evidence": evidence,
+        "written_at": _now_iso(),
+    }
+    if source:
+        payload["source"] = source
+    path = Path(out_dir) / CAPTURE_SIDECAR
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+    return path
+
+
+def _sidecar_violations(tech: Technique, pipe: str,
+                        sidecar: dict) -> list[dict]:
+    """Return disagreements between a sidecar and the cell it sits in."""
+    violations: list[dict] = []
+    expected_key = tech.key or f"{tech.kind}:{tech.id}"
+    actual_key = sidecar.get("technique_key")
+    if actual_key != expected_key:
+        violations.append({
+            "kind": "capture_sidecar_key_mismatch",
+            "expected": expected_key,
+            "actual": actual_key,
+            "detail": "capture sidecar names a different cell",
+        })
+    if sidecar.get("pipeline") != pipe:
+        violations.append({
+            "kind": "capture_sidecar_key_mismatch",
+            "expected": pipe,
+            "actual": sidecar.get("pipeline"),
+            "detail": "capture sidecar names a different pipeline",
+        })
+    expected_hash = prompt_fingerprint(tech.prompt)
+    actual_hash = sidecar.get("prompt_sha256")
+    if actual_hash != expected_hash:
+        violations.append({
+            "kind": "capture_sidecar_prompt_mismatch",
+            "expected": expected_hash,
+            "actual": actual_hash,
+            "detail": "capture answers a different prompt than the corpus "
+                      "declares for this cell",
+        })
+    return violations
+
 
 def _manifest_identity_violations(tech: Technique, pipe: str,
                                   rec: dict) -> list[dict]:
@@ -538,6 +653,38 @@ def verify_capture_integrity(tech: Technique, pipe: str,
                     "detail": f"invalid cost.json: {exc}",
                 })
 
+    # What the surviving bytes can actually prove about this cell.
+    #
+    #   verified          — a sidecar written by the runner from a live call,
+    #                       naming this cell and hashing to this prompt.
+    #   attested          — a sidecar for a capture recovered from a preserved
+    #                       transcript. Right cell, right prompt, but no trace
+    #                       survives to hash the request against.
+    #   unverified_legacy — the capture predates the sidecar. It exists and the
+    #                       manifest accepts it, but nothing ties these bytes to
+    #                       this cell. Honest, and not a new defect.
+    #   missing           — nothing to certify.
+    #
+    # A legacy capture stays ``ok``. Every capture written before the sidecar
+    # landed is legacy, so failing them would mark the whole campaign for
+    # rerun over a bookkeeping change rather than an evidence problem.
+    sidecar = read_capture_sidecar(root) if root.is_dir() else None
+    if sidecar:
+        sidecar_problems = _sidecar_violations(tech, pipe, sidecar)
+        violations.extend(sidecar_problems)
+        if sidecar_problems:
+            evidence = "sidecar_mismatch"
+        elif sidecar.get("evidence") == EVIDENCE_RECOVERED:
+            evidence = "attested"
+        else:
+            evidence = "verified"
+    elif any(v["kind"] in {"capture_root_missing", "capture_file_missing",
+                           "capture_root_not_directory",
+                           "capture_root_symlink"} for v in violations):
+        evidence = "missing"
+    else:
+        evidence = "unverified_legacy"
+
     return {
         "technique_key": tech.key or f"{tech.kind}:{tech.id}",
         "technique": tech.id,
@@ -545,6 +692,7 @@ def verify_capture_integrity(tech: Technique, pipe: str,
         "pipeline": pipe,
         "root": str(root),
         "legacy_root": str(legacy),
+        "evidence": evidence,
         "ok": not violations,
         "violations": violations,
     }
@@ -565,12 +713,17 @@ def verify_campaign_captures(techniques: list[Technique],
             if not result["ok"]:
                 affected.append(result)
                 affected_by_pipeline.setdefault(pipe, []).append(tech.key)
+    evidence_counts: dict[str, int] = {}
+    for result in cells.values():
+        state = result.get("evidence", "unknown")
+        evidence_counts[state] = evidence_counts.get(state, 0) + 1
     return {
         "cells": cells,
         "affected_cells": affected,
         "affected_by_pipeline": affected_by_pipeline,
         "checked_cells": len(cells),
         "valid_cells": len(cells) - len(affected),
+        "evidence_counts": evidence_counts,
     }
 
 
@@ -2007,6 +2160,9 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
     writes locked; per-capture output dir is exclusive to this pair)."""
     out_dir = capture_output_dir(tech, pipe)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Refuse the write before spending a model call on it: a directory another
+    # cell already owns must not be overwritten.
+    claim_capture_dir(tech, pipe, out_dir)
     tag = f"[{pipe}] {tech.key or tech.id}"
     print(f"{tag} …", flush=True)
     started = time.time()
@@ -2125,6 +2281,12 @@ def _execute_capture(tech: Technique, pipe: str, args, ctx: dict) -> bool:
                            prompt_tokens=cost["prompt_tokens"],
                            completion_tokens=cost["completion_tokens"],
                            visuals=len(envelopes), visuals_png=n_png)
+            # Written only on the accepted path, so a failed attempt never
+            # leaves a sidecar claiming a capture that does not exist.
+            write_capture_sidecar(
+                tech, pipe, out_dir,
+                source={"trace_dir": rec.get("trace_dir")}
+                if rec.get("trace_dir") else None)
             rec["wall_seconds"] = round(time.time() - started, 1)
             append_manifest(rec)
             cost_str = (f"${rec.get('cost_usd'):.4f}" if rec.get("cost_usd")
@@ -2486,6 +2648,19 @@ def audit_campaign(corpus_path: Path,
             "valid_cells": verification["valid_cells"],
             "affected_cells": verification["affected_cells"],
             "affected_by_pipeline": verification["affected_by_pipeline"],
+            "evidence_counts": verification["evidence_counts"],
+            "evidence_states": {
+                "verified": "sidecar written from a live call; prompt hash "
+                            "matches the corpus entry for this cell",
+                "attested": "recovered from a preserved transcript; right cell "
+                            "and prompt, but no surviving trace to hash the "
+                            "request against",
+                "unverified_legacy": "capture predates the sidecar; the bytes "
+                                     "are not tied to this cell by anything",
+                "missing": "no capture to certify",
+                "sidecar_mismatch": "the sidecar names a different cell or "
+                                    "prompt than this capture root declares",
+            },
         },
         "accepted_trace_health": {
             "accepted_trace_count": accepted_trace_count,
@@ -2607,6 +2782,17 @@ def write_campaign_audit(summary: dict,
         f"- Declared cells checked by the physical verifier: {integrity['checked_cells']}",
         f"- Cells accepted by both manifest and capture verifier: {integrity['valid_cells']}",
         f"- Verifier-reported affected cells: {len(integrity['affected_cells'])}",
+        "",
+        "Evidence state counts. Only `verified` and `attested` tie a capture's "
+        "bytes to the cell that claims them; `unverified_legacy` is an honest "
+        "record of captures written before the sidecar existed.",
+        "",
+        "| evidence | cells |",
+        "|---|---|",
+    ]
+    for state, count in sorted(integrity.get("evidence_counts", {}).items()):
+        lines.append(f"| {state} | {count} |")
+    lines += [
         "",
         "### Verifier-Reported Resume Selectors",
         "",
@@ -2867,6 +3053,7 @@ def cmd_audit(args) -> int:
         f"capture_valid={integrity['valid_cells']} "
         f"capture_affected={len(integrity['affected_cells'])}"
     )
+    print(f"[audit] capture_evidence={integrity.get('evidence_counts', {})}")
     print(f"[audit] severity_counts={health['severity_counts']}")
     print(
         f"[audit] manifest={summary['source']['manifest_path']} "

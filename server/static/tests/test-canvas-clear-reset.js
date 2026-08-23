@@ -119,6 +119,11 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
   });
   await panel.attachImage(image);
   await tick();
+  const assistantImage = new w.File([new Uint8Array([137, 80, 78, 71])], 'assistant.png', {
+    type: 'image/png',
+  });
+  await panel.attachAssistantImage(assistantImage);
+  await tick();
   panel._transform = { x: 37, y: -12, scale: 1.4 };
   panel._applyTransform();
   panel._selectedShapeIds = [shape.getAttr('userShapeId')];
@@ -145,7 +150,9 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
   assert(panel.getHistoryLength() === historyBefore + 1, 'Clear did not add exactly one frame');
   assert(panel._currentEnvelope === null && panel._svgHost.innerHTML === '', 'artifact survived Clear');
   assert(shapeCount(panel) === 0 && userAnnotationCount(panel) === 0, 'drawing or annotation survived Clear');
-  assert(panel.getPendingImage() === null && panel._backgroundImageNode === null, 'uploaded image survived Clear');
+  assert(panel.getPendingImage() === null && panel._backgroundImageNode === null
+    && panel._assistantBackgroundImageNode === null,
+  'uploaded or assistant-owned image survived Clear');
   assert(panel._drawContext === null && panel._selectionDrag === null && panel._penContext === null
     && panel._textInputEl === null && panel._annotInputEl === null,
   'Clear did not cancel every in-progress interaction');
@@ -162,6 +169,8 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
     'drawing or annotation was not restored');
   assert(panel.getPendingImage() && panel.getPendingImage().name === 'upload.png'
     && panel._backgroundImageNode, 'uploaded image and pending-image state were not restored');
+  assert(panel._assistantBackgroundImageNode,
+    'assistant-owned background image was not restored');
   assert(panel._bgSentinel && panel._bgSentinel.getAttr('name') === 'svg-sentinel',
     'background sentinel state was not restored');
   assert(panel._selectedShapeIds.length === 1 && panel._selectedAnnotIds.length === 1

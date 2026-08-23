@@ -406,8 +406,39 @@
       if (window.OraV3VisualDispatch
           && state.visualReadyTurnIndex === state.currentTurnIndex) {
         const key = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
-        window.OraV3VisualDispatch.dispatch(content, key);
+        const assistantIndex = state.turns
+          .slice(0, state.currentTurnIndex + 1)
+          .filter((turn) => turn && turn.assistant).length - 1;
+        const blockCount = window.OraV3VisualDispatch.dispatch(content, key, {
+          conversationId: state.activeConversationId,
+          assistantIndex,
+        });
+        const persistedOutcome = t.assistant.visual_outcome;
+        if (blockCount === 0
+            && persistedOutcome
+            && persistedOutcome.state === 'building'
+            && typeof window.OraV3VisualDispatch.persistOutcome === 'function') {
+          // Re-opening a stalled turn is the recovery action. If its durable
+          // text has no envelope to insert, resolve the ambiguity visibly
+          // instead of leaving an eternal spinner in history.
+          window.OraV3VisualDispatch.persistOutcome(
+            { conversationId: state.activeConversationId, assistantIndex },
+            {
+              state: 'failed',
+              stage: 'open',
+              reason: 'No visual envelope was available when this turn was reopened.',
+            },
+          );
+        }
         content = window.OraV3VisualDispatch.stripBlocks(content);
+      }
+      const outcome = t.assistant.visual_outcome;
+      if (outcome && outcome.state === 'failed'
+          && window.OraPanels && window.OraPanels.visual
+          && typeof window.OraPanels.visual._showErrorBar === 'function') {
+        window.OraPanels.visual._showErrorBar(
+          'Visual failed: ' + (outcome.reason || 'The visual could not be inserted.'),
+        );
       }
       const block = document.createElement('div');
       block.className = 'output-turn output-turn-assistant';
