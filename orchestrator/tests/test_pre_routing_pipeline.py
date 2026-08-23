@@ -20,6 +20,7 @@ class TestStage1PreAnalysisFilter(unittest.TestCase):
     def test_greeting_is_bypassed(self):
         r = boot.stage1_pre_analysis_filter("Hi there!")
         self.assertTrue(r["bypass_to_direct_response"])
+        self.assertEqual(r["visual_exception"], "greeting_or_acknowledgement")
 
     def test_thanks_is_bypassed(self):
         r = boot.stage1_pre_analysis_filter("Thanks, that was helpful.")
@@ -28,14 +29,24 @@ class TestStage1PreAnalysisFilter(unittest.TestCase):
     def test_factual_lookup_is_bypassed(self):
         r = boot.stage1_pre_analysis_filter("What time is it in Tokyo?")
         self.assertTrue(r["bypass_to_direct_response"])
+        self.assertNotIn("visual_exception", r)
 
     def test_translation_is_bypassed(self):
         r = boot.stage1_pre_analysis_filter("Translate this paragraph into French.")
         self.assertTrue(r["bypass_to_direct_response"])
+        self.assertNotIn("visual_exception", r)
+
+    def test_explicit_opt_out_wins_over_translation_bypass(self):
+        r = boot.stage1_pre_analysis_filter(
+            "Translate this paragraph into French. No analysis."
+        )
+        self.assertTrue(r["bypass_to_direct_response"])
+        self.assertEqual(r["visual_exception"], "explicit_opt_out")
 
     def test_negation_bypasses_analytical_signal(self):
         r = boot.stage1_pre_analysis_filter("Don't analyze this; just summarize.")
         self.assertTrue(r["bypass_to_direct_response"])
+        self.assertEqual(r["visual_exception"], "explicit_opt_out")
 
     def test_strong_signal_passes_filter(self):
         r = boot.stage1_pre_analysis_filter("Run an ACH on these explanations.")
@@ -137,6 +148,7 @@ class TestRunPreRoutingPipeline(unittest.TestCase):
         r = boot.run_pre_routing_pipeline("Hi there!")
         self.assertTrue(r["bypass_to_direct_response"])
         self.assertIsNone(r["dispatched_mode_id"])
+        self.assertEqual(r["visual_exception"], "greeting_or_acknowledgement")
 
     def test_strong_dispatch_no_clarification(self):
         r = boot.run_pre_routing_pipeline(

@@ -885,7 +885,7 @@ const exportThroughMenu = async (format) => {
     ora_visual_blocks: [{ envelope: nativeEnvelope }],
     ora_visual_dispatch_key: 'native#1',
   });
-  const nativeElements = api.elements.filter((element) => element.customData
+  let nativeElements = api.elements.filter((element) => element.customData
     && element.customData.oraAssistantVisualKind === 'native');
   if (!api.elements.some((element) => element.id === 'native-user')
       || nativeElements.length < 5
@@ -901,32 +901,89 @@ const exportThroughMenu = async (format) => {
       ))) {
     throw new Error('native structural visual did not install editable owned objects with bound initial arrows');
   }
+
+  const fingerprint = w.OraVisualCompiler.nativeExcalidraw.generationFingerprint;
+  const shapeProbe = nativeElements.find((element) => element.type === 'rectangle');
+  const textProbe = nativeElements.find((element) => element.type === 'text');
+  const fingerprintCases = [
+    ['opacity', shapeProbe, (element) => { element.opacity = 72; }],
+    ['stroke width', shapeProbe, (element) => { element.strokeWidth = 4; }],
+    ['stroke style', shapeProbe, (element) => { element.strokeStyle = 'dashed'; }],
+    ['roughness', shapeProbe, (element) => { element.roughness = 2; }],
+    ['roundness', shapeProbe, (element) => { element.roundness = { type: 2, value: 12 }; }],
+    ['link', shapeProbe, (element) => { element.link = 'https://example.test/detail'; }],
+    ['font size', textProbe, (element) => { element.fontSize = 24; }],
+    ['font family', textProbe, (element) => { element.fontFamily = 3; }],
+    ['text alignment', textProbe, (element) => { element.textAlign = 'left'; }],
+    ['vertical alignment', textProbe, (element) => { element.verticalAlign = 'top'; }],
+    ['line height', textProbe, (element) => { element.lineHeight = 1.5; }],
+    ['text resize mode', textProbe, (element) => { element.autoResize = true; }],
+  ];
+  fingerprintCases.forEach(([label, original, mutate]) => {
+    const changed = JSON.parse(JSON.stringify(original));
+    mutate(changed);
+    if (fingerprint(changed) === fingerprint(original)) {
+      throw new Error(`assistant ownership fingerprint ignored ${label}`);
+    }
+  });
+
+  const untouchedCount = nativeElements.length;
+  await w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
+    ora_visual_dispatch_key: 'native#untouched',
+  });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+  if (nativeElements.length !== untouchedCount
+      || nativeElements.some((element) => (
+        element.customData.originalGenerationFingerprint !== fingerprint(element)
+      ))) {
+    throw new Error('freshly generated untouched native objects were falsely classified as modified');
+  }
+
   const modifiedNative = nativeElements.find((element) => element.type === 'rectangle');
-  const modifiedNativeX = modifiedNative.x + 180;
-  modifiedNative.x = modifiedNativeX;
-  const modifiedNativeLabel = nativeElements.find((element) => element.type === 'text');
-  modifiedNativeLabel.text = 'User-edited label';
+  const modifiedNativeBounds = {
+    x: modifiedNative.x,
+    y: modifiedNative.y,
+    width: modifiedNative.width,
+    height: modifiedNative.height,
+  };
+  modifiedNative.opacity = 72;
+  modifiedNative.strokeWidth = 4;
+  modifiedNative.strokeStyle = 'dashed';
+  modifiedNative.roughness = 2;
+  modifiedNative.roundness = { type: 2, value: 12 };
   await w.OraPanels.visual.onBridgeUpdate({
     ora_visual_blocks: [{ envelope: Object.assign({}, nativeEnvelope, { canvas_action: 'update' }) }],
     ora_visual_dispatch_key: 'native#2',
   });
   const sameSemanticNative = api.elements.filter((element) => element.customData
     && element.customData.semanticElementId === modifiedNative.customData.semanticElementId);
+  const regeneratedNative = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && element.customData.generationRevision > modifiedNative.customData.generationRevision);
+  const regeneratedMinX = regeneratedNative.reduce(
+    (value, element) => Math.min(value, Number(element.x) || 0), Infinity
+  );
   if (sameSemanticNative.length !== 2
       || !sameSemanticNative.some((element) => element.id === modifiedNative.id
-        && element.x === modifiedNativeX)
+        && element.x === modifiedNativeBounds.x
+        && element.y === modifiedNativeBounds.y
+        && element.width === modifiedNativeBounds.width
+        && element.height === modifiedNativeBounds.height
+        && element.opacity === 72
+        && element.strokeWidth === 4
+        && element.strokeStyle === 'dashed'
+        && element.roughness === 2
+        && element.roundness.type === 2
+        && element.roundness.value === 12)
       || sameSemanticNative.some((element) => element.id !== modifiedNative.id
-        && element.x === modifiedNativeX)) {
-    throw new Error('modified native assistant object was not preserved beside its regenerated replacement');
-  }
-  const sameSemanticLabel = api.elements.filter((element) => element.customData
-    && element.customData.semanticElementId === modifiedNativeLabel.customData.semanticElementId);
-  if (sameSemanticLabel.length !== 2
-      || !sameSemanticLabel.some((element) => element.id === modifiedNativeLabel.id
-        && element.text === 'User-edited label')
-      || sameSemanticLabel.some((element) => element.id !== modifiedNativeLabel.id
-        && element.text === 'User-edited label')) {
-    throw new Error('edited native label was not preserved beside its regenerated replacement');
+        && element.x === modifiedNativeBounds.x
+        && element.y === modifiedNativeBounds.y
+        && element.width === modifiedNativeBounds.width
+        && element.height === modifiedNativeBounds.height)
+      || regeneratedMinX <= modifiedNativeBounds.x + modifiedNativeBounds.width) {
+    throw new Error('style-only native edit was not preserved beside a distinctly placed regenerated scene');
   }
 
   const draftCountBeforeCapability = calls.filter(

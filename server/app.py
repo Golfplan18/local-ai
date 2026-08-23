@@ -3727,6 +3727,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             config, gear, config_name=config_name)
         if ep is None:
             terminal_value = "No active endpoint configured."
+            _set_visual_error_outcome(extra_context, terminal_value)
             if turn_state is not None:
                 turn_state["status"] = "error"
             if trace_dir:
@@ -3753,6 +3754,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
             execution_context=execution_context,
         )
         if image_input_error:
+            _set_visual_error_outcome(extra_context, image_input_error)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=image_input_error)
@@ -3771,6 +3773,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 context_pkg=context_pkg,
             )
         except TerminalInputAbort as exc:
+            _set_visual_error_outcome(extra_context, exc.safe_message)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=exc.safe_message)
@@ -3795,6 +3798,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 config_name=config_name,
             )
         except TerminalInputAbort as exc:
+            _set_visual_error_outcome(extra_context, exc.safe_message)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=exc.safe_message)
@@ -3813,6 +3817,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 config_name=config_name,
             )
         except TerminalInputAbort as exc:
+            _set_visual_error_outcome(extra_context, exc.safe_message)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=exc.safe_message)
@@ -3830,6 +3835,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
                 endpoint, images=images
             )
         except TerminalInputAbort as exc:
+            _set_visual_error_outcome(extra_context, exc.safe_message)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=exc.safe_message)
@@ -3837,6 +3843,7 @@ def _run_pipeline_from_step2(step1, config, history, user_input,
 
     terminal_input_error = context_pkg.get("_terminal_input_error")
     if terminal_input_error:
+        _set_visual_error_outcome(extra_context, terminal_input_error)
         if turn_state is not None:
             turn_state["status"] = "error"
         yield _sse("error", text=terminal_input_error)
@@ -4970,6 +4977,20 @@ def _tool_status_label(tool_name, params):
         return f"[{tool_name}…]"
 
 
+def _set_visual_error_outcome(context, reason):
+    """Build the turn-error outcome and copy it to request context."""
+    outcome = {
+        "state": "not_applicable",
+        "reason": (
+            "Visual output was not applicable because the turn ended in an "
+            f"error. {str(reason).strip()[:300]}"
+        ),
+    }
+    if isinstance(context, dict):
+        context["_visual_outcome"] = outcome
+    return outcome
+
+
 def _direct_stream(user_input, history, images=None, panel_id="main",
                    conversation_tag="", risk_override=None, extra_context=None,
                    turn_state=None):
@@ -5090,6 +5111,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         terminal_value = (
             "No AI endpoints configured. Add a connection or install a local model."
         )
+        _set_visual_error_outcome(extra_context, terminal_value)
         if turn_state is not None:
             turn_state["status"] = "error"
         if _ds_trace_dir:
@@ -5191,6 +5213,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         [endpoint], images, user_input,
     )
     if image_input_error:
+        _set_visual_error_outcome(extra_context, image_input_error)
         if turn_state is not None:
             turn_state["status"] = "error"
         yield _sse("error", text=image_input_error)
@@ -5215,6 +5238,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                 messages, endpoint, images=call_images,
             )
         except TerminalInputAbort as exc:
+            _set_visual_error_outcome(extra_context, exc.safe_message)
             if turn_state is not None:
                 turn_state["status"] = "error"
             yield _sse("error", text=exc.safe_message)
@@ -5254,6 +5278,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                     "conversation_id": panel_id,
                 })
                 clean = _direct_visual_hook(clean, direct_context)
+                _copy_visual_outcome_context(direct_context, extra_context)
             except Exception as _direct_visual_exc:
                 print(f"[direct visual-hook] skipped due to error: {_direct_visual_exc}")
             coverage = _boot_context_api().get_context_coverage()
@@ -5321,6 +5346,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             "conversation_id": panel_id,
         })
         clean = _direct_overrun_visual_hook(clean, overrun_context)
+        _copy_visual_outcome_context(overrun_context, extra_context)
     except Exception as _direct_overrun_visual_exc:
         print(f"[direct overrun visual-hook] skipped due to error: {_direct_overrun_visual_exc}")
     endpoint_name = endpoint.get("name") if isinstance(endpoint, dict) else str(endpoint)
@@ -9204,6 +9230,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
         summary = f"pipeline produced no response (last stage: {last_stage}; mode: {active_mode or '?'})"
     else:
         summary = "pipeline produced no response (no stages observed; check endpoint config)"
+    error_visual_outcome = _set_visual_error_outcome(extra_context, summary)
     try:
         from conversation_memory import mark_conversation_errored
         mark_conversation_errored(
@@ -9215,6 +9242,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
             interrupted_submission_id=(
                 submission_id if chunk_id and not envelope_persisted else None
             ),
+            visual_outcome=error_visual_outcome,
         )
     except Exception as e:
         print(f"[WARNING] mark_conversation_errored failed: {e}")

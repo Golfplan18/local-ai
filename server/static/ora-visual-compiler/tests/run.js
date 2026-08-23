@@ -368,6 +368,92 @@ function runStandaloneSuite(label, relativePath) {
       && scene.layout && scene.layout.nodes === result.layout.nodes);
     record('native scene has editable owned objects and bound arrows', scene.elements.length > 4
       && arrows.length > 0 && owned && bindings);
+
+    const dagEnvelope = {
+      id: 'native-dag-operators',
+      type: 'causal_dag',
+      spec: {
+        dsl: [
+          'dag {',
+          '  Exposure [exposure]',
+          '  Outcome [outcome]',
+          '  BareNode',
+          '  ReverseNode',
+          '  BothNode',
+          '  UndirectedNode',
+          '  Exposure -> Outcome',
+          '  ReverseNode <- Exposure',
+          '  Exposure <-> BothNode',
+          '  BothNode -- UndirectedNode',
+          '}',
+        ].join('\n'),
+        focal_exposure: 'Exposure',
+        focal_outcome: 'Outcome',
+      },
+    };
+    const dagGraph = builder._graph(dagEnvelope);
+    const dagScene = builder.buildScene(dagEnvelope, {
+      assistantVisualId: 'harness-native-dag',
+      generationRevision: 1,
+    });
+    const dagArrows = dagScene.elements.filter((element) => element.type === 'arrow');
+    const arrowByOperator = (operator) => dagArrows.find((element) => (
+      element.customData && element.customData.dagOperator === operator
+    ));
+    const exposure = dagGraph.nodes.find((node) => node.id === 'Exposure');
+    record('native DAG uses roles as metadata and retains bare-node labels',
+      dagGraph.nodes.some((node) => node.id === 'BareNode' && node.label === 'BareNode')
+      && exposure && exposure.label === 'Exposure'
+      && Array.isArray(exposure.dagRoles) && exposure.dagRoles.includes('exposure')
+      && !dagGraph.nodes.some((node) => node.label === 'exposure' || node.label === 'outcome'));
+    record('native DAG parser retains forward, reverse, bidirectional, and undirected edges',
+      dagGraph.edges.some((edge) => edge.from === 'Exposure' && edge.to === 'Outcome'
+        && edge.operator === '->')
+      && dagGraph.edges.some((edge) => edge.from === 'Exposure' && edge.to === 'ReverseNode'
+        && edge.operator === '->')
+      && dagGraph.edges.some((edge) => edge.operator === '<->')
+      && dagGraph.edges.some((edge) => edge.operator === '--'));
+    record('native DAG arrowheads match parsed edge operators',
+      arrowByOperator('->') && arrowByOperator('->').startArrowhead === null
+      && arrowByOperator('->').endArrowhead === 'arrow'
+      && arrowByOperator('<->') && arrowByOperator('<->').startArrowhead === 'arrow'
+      && arrowByOperator('<->').endArrowhead === 'arrow'
+      && arrowByOperator('--') && arrowByOperator('--').startArrowhead === null
+      && arrowByOperator('--').endArrowhead === null
+      && dagArrows.every((arrow) => arrow.width > 0 && arrow.height > 0));
+
+    const weightedEnvelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'pro_con.valid.json'), 'utf8'
+    ));
+    const weightedGraph = builder._graph(weightedEnvelope);
+    const weightedScene = builder.buildScene(weightedEnvelope, {
+      assistantVisualId: 'harness-native-pro-con', generationRevision: 1,
+    });
+    record('native pro/con nodes visibly retain declared weight',
+      weightedGraph.nodes.some((node) => node.argumentWeight === 4
+        && node.label.includes('[weight 4/5]'))
+      && weightedScene.elements.some((element) => element.type === 'text'
+        && element.text.includes('[weight 4/5]')
+        && element.customData.argumentWeight === 4));
+
+    const hierarchyEnvelope = {
+      id: 'native-concept-hierarchy', type: 'concept_map',
+      spec: {
+        focus_question: 'Does declared hierarchy control layout?',
+        concepts: [
+          { id: 'Deep', label: 'Declared deep', hierarchy_level: 3 },
+          { id: 'Root', label: 'Declared root', hierarchy_level: 0 },
+        ],
+        linking_phrases: [{ id: 'p', text: 'points back to' }],
+        propositions: [{ from_concept: 'Deep', via_phrase: 'p', to_concept: 'Root' }],
+      },
+    };
+    const hierarchyGraph = builder._graph(hierarchyEnvelope);
+    const hierarchyLayout = builder.buildLayout(hierarchyEnvelope);
+    record('native concept-map layout retains declared hierarchy levels',
+      hierarchyGraph.nodes.find((node) => node.id === 'Deep').hierarchyLevel === 3
+      && hierarchyGraph.nodes.find((node) => node.id === 'Root').hierarchyLevel === 0
+      && hierarchyLayout.nodes.Deep.x > hierarchyLayout.nodes.Root.x);
   }, ctx);
 
   const caseFiles = [

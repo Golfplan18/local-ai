@@ -689,19 +689,45 @@
       );
     };
 
-    const assistantGenerationFingerprint = (element) => JSON.stringify({
-      x: Number(element && element.x) || 0,
-      y: Number(element && element.y) || 0,
-      width: Number(element && element.width) || 0,
-      height: Number(element && element.height) || 0,
-      angle: Number(element && element.angle) || 0,
-      locked: element && element.locked === true,
-      text: String(element && element.text || ''),
-      points: Array.isArray(element && element.points) ? element.points : null,
-      strokeColor: element && element.strokeColor || '',
-      backgroundColor: element && element.backgroundColor || '',
-      fillStyle: element && element.fillStyle || '',
-    });
+    const assistantGenerationFingerprint = (element) => {
+      const shared = window.OraVisualCompiler
+        && window.OraVisualCompiler.nativeExcalidraw
+        && window.OraVisualCompiler.nativeExcalidraw.generationFingerprint;
+      if (typeof shared === 'function') return shared(element || {});
+      const roundness = element && element.roundness;
+      return JSON.stringify({
+        x: Number(element && element.x) || 0,
+        y: Number(element && element.y) || 0,
+        width: Number(element && element.width) || 0,
+        height: Number(element && element.height) || 0,
+        angle: Number(element && element.angle) || 0,
+        locked: element && element.locked === true,
+        text: String(element && element.text || ''),
+        points: Array.isArray(element && element.points) ? element.points : null,
+        strokeColor: element && element.strokeColor || '',
+        backgroundColor: element && element.backgroundColor || '',
+        fillStyle: element && element.fillStyle || '',
+        opacity: Number(element && element.opacity) || 0,
+        strokeWidth: Number(element && element.strokeWidth) || 0,
+        strokeStyle: element && element.strokeStyle || '',
+        roughness: Number(element && element.roughness) || 0,
+        roundness: roundness && typeof roundness === 'object'
+          ? { type: roundness.type == null ? null : roundness.type,
+            value: roundness.value == null ? null : roundness.value }
+          : (roundness || null),
+        originalText: String(element && element.originalText || ''),
+        fontSize: Number(element && element.fontSize) || 0,
+        fontFamily: Number(element && element.fontFamily) || 0,
+        textAlign: element && element.textAlign || '',
+        verticalAlign: element && element.verticalAlign || '',
+        lineHeight: Number(element && element.lineHeight) || 0,
+        autoResize: element && element.autoResize === true,
+        containerId: element && element.containerId || null,
+        link: element && element.link || null,
+        startArrowhead: element && element.startArrowhead || null,
+        endArrowhead: element && element.endArrowhead || null,
+      });
+    };
 
     const assistantElementWasModified = (element) => {
       const data = element && element.customData;
@@ -797,6 +823,7 @@
       // because the preservation rule below retains them.
       const owned = allElements.filter((element) => isAssistantArtifact(element));
       const reusable = owned.filter((element) => !assistantElementWasModified(element));
+      const priorGenerationWasModified = reusable.length !== owned.length;
       const retained = (action === 'replace' || action === 'update')
         ? allElements.filter((element) => !owned.includes(element)
           || assistantElementWasModified(element))
@@ -808,7 +835,8 @@
       const maxX = retained.reduce(
         (value, element) => Math.max(value, (Number(element.x) || 0) + (Number(element.width) || 0)), 0
       );
-      const offsetX = reusable.length || !retained.length ? 0 : maxX + PADDING * 2;
+      const offsetX = retained.length && (priorGenerationWasModified || !reusable.length)
+        ? maxX + PADDING * 2 : 0;
       const generated = (scene && Array.isArray(scene.elements) ? scene.elements : [])
         .filter((element) => element && !element.isDeleted)
         .map((element) => clone(element));
@@ -818,7 +846,7 @@
         const prior = reusableBySemantic.get(semantic);
         const oldId = element.id;
         if (prior) {
-          element.x = prior.x;
+          element.x = (Number(prior.x) || 0) + offsetX;
           element.y = prior.y;
           element.width = prior.width;
           element.height = prior.height;

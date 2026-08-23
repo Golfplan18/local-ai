@@ -3,14 +3,13 @@ import json
 import os
 import sys
 import unittest
-from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import visual_synthesis as vs  # noqa: E402
 
-EXAMPLES = Path(os.path.expanduser("~/ora/config/visual-schemas/examples"))
+EXAMPLES = vs.SCHEMAS_ROOT / "examples"
 
 
 def _example(vtype: str) -> dict:
@@ -30,6 +29,21 @@ class _MockModel:
 
 
 class TestSynthesize(unittest.TestCase):
+    def test_visual_modules_use_runtime_configuration_root(self):
+        import runtime_paths
+        import visual_adversarial
+        import visual_recovery
+        import visual_validator
+
+        expected = runtime_paths.CONFIG_DIR
+        self.assertEqual(vs.SCHEMAS_ROOT, expected / "visual-schemas")
+        self.assertEqual(visual_validator.SCHEMAS_ROOT, expected / "visual-schemas")
+        self.assertEqual(visual_recovery.SCHEMAS_ROOT, expected / "visual-schemas")
+        self.assertEqual(
+            visual_adversarial.MODE_CONFIG_PATH,
+            expected / "mode-to-visual.json",
+        )
+
     def test_one_shot_valid(self):
         env_in = _example("concept_map")
         model = _MockModel([json.dumps(env_in)])

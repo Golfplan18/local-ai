@@ -38,13 +38,16 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from visual_validator import CODES as V_CODES  # reuse shared code names
+
+try:
+    import runtime_paths as _rp
+except ImportError:  # package import
+    from orchestrator import runtime_paths as _rp
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +87,7 @@ class ReviewResult:
 # Mode strictness lookup
 # ---------------------------------------------------------------------------
 
-MODE_CONFIG_PATH = Path(os.path.expanduser("~/ora/config/mode-to-visual.json"))
+MODE_CONFIG_PATH = _rp.CONFIG_DIR / "mode-to-visual.json"
 _MODE_CONFIG: dict | None = None
 
 
