@@ -4312,7 +4312,9 @@
    */
   VisualPanel.prototype._pushHistory = function (frame) {
     if (this._suppressHistory) return;
-    if (this._mutationGuardCancelled || !this._allowUserMutation(frame && frame.label)) {
+    var bypassUserMutationGuard = !!(frame && frame.bypassUserMutationGuard);
+    if (this._mutationGuardCancelled
+        || (!bypassUserMutationGuard && !this._allowUserMutation(frame && frame.label))) {
       // Callers construct the frame immediately after applying the candidate
       // mutation. Replaying its undo synchronously means Cancel leaves the
       // canvas unchanged and no history entry is committed. A same-stack flag
@@ -4343,9 +4345,10 @@
 
   VisualPanel.prototype.undo = function () {
     if (this._historyCursor <= 0) return false;
-    if (!this._allowUserMutation('undo')) return false;
+    var frame = this._history[this._historyCursor - 1];
+    if (!(frame && frame.bypassUserMutationGuard)
+        && !this._allowUserMutation('undo')) return false;
     this._historyCursor -= 1;
-    var frame = this._history[this._historyCursor];
     this._suppressHistory = true;
     try { frame.undoFn(); } finally { this._suppressHistory = false; }
     return true;
@@ -4353,8 +4356,9 @@
 
   VisualPanel.prototype.redo = function () {
     if (this._historyCursor >= this._history.length) return false;
-    if (!this._allowUserMutation('redo')) return false;
     var frame = this._history[this._historyCursor];
+    if (!(frame && frame.bypassUserMutationGuard)
+        && !this._allowUserMutation('redo')) return false;
     this._historyCursor += 1;
     this._suppressHistory = true;
     try { frame.redoFn(); } finally { this._suppressHistory = false; }
@@ -4495,7 +4499,6 @@
       (snapshot.errorBar && snapshot.errorBar.html)
     );
     if (!hasContent) return false;
-    if (!this._allowUserMutation('clear-canvas')) return false;
 
     var restoreSurface = function (el, state) {
       if (!el || !state) return;
@@ -4581,6 +4584,9 @@
     clear();
     return this._pushHistory({
       label: 'clear-canvas',
+      // Clear and its native Undo/Redo are one explicitly reversible user
+      // action. They must not consume the separate flattened-copy warning.
+      bypassUserMutationGuard: true,
       undoFn: restore,
       redoFn: clear,
     });

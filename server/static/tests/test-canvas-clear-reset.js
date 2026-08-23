@@ -103,7 +103,7 @@ function userAnnotationCount(panel) {
   ).length;
 }
 
-test('Konva user Clear is one frame and one Undo restores all canvas content', async () => {
+test('Konva Clear bypasses the pending edit warning and one Undo restores all content', async () => {
   await tick();
   const panel = w.OraCanvas.panel;
   const envelope = { id: 'artifact-envelope', type: 'concept_map', spec: {} };
@@ -144,9 +144,34 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
   panel._annotInputEl = w.document.createElement('input');
   panel._viewportEl.appendChild(panel._textInputEl);
   panel._viewportEl.appendChild(panel._annotInputEl);
+
+  // Restore the exact controller state produced by switching an editable
+  // Excalidraw scene into Konva, without needing any server fixture. GETs miss;
+  // the later acknowledgement POST succeeds so this test leaves no pending
+  // controller operation behind.
+  const originalFetch = w.fetch;
+  const originalConfirm = w.confirm;
+  w.fetch = async function (_url, options) {
+    const isPost = options && options.method === 'POST';
+    return { ok: !!isPost, json: async function () { return {}; } };
+  };
+  await w.OraCanvas.loadCheckpoint('warning-dialogue', null, null, {
+    active_editor: 'konva',
+    resume_excalidraw_checkpoint_id: 'editable-source',
+    konva_baseline_checkpoint_id: 'flattened-baseline',
+    konva_edit_warning_acknowledged: false,
+  }, { currentDialogue: true });
+  assert(w.OraCanvas.getActiveEditor() === 'konva', 'pending-warning fixture is not in Konva');
+
+  let confirmAnswer = false;
+  let confirmCalls = 0;
+  w.confirm = function () { confirmCalls += 1; return confirmAnswer; };
+  assert(panel._allowUserMutation('draw-rect') === false && confirmCalls === 1,
+    'production first-edit guard was not pending before Clear');
   const historyBefore = panel.getHistoryLength();
 
   w.OraCanvas.clearForUser();
+  assert(confirmCalls === 1, 'Clear invoked or depended on the pending confirmation');
   assert(panel.getHistoryLength() === historyBefore + 1, 'Clear did not add exactly one frame');
   assert(panel._currentEnvelope === null && panel._svgHost.innerHTML === '', 'artifact survived Clear');
   assert(shapeCount(panel) === 0 && userAnnotationCount(panel) === 0, 'drawing or annotation survived Clear');
@@ -162,6 +187,7 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
     'Clear changed the viewport');
 
   assert(panel.undo() === true, 'one Undo did not consume the Clear frame');
+  assert(confirmCalls === 1, 'Undo of Clear invoked or depended on the pending confirmation');
   assert(panel._currentEnvelope === envelope && panel._ariaDescription.root_id === 'artifact-node',
     'artifact envelope or ARIA description was not restored');
   assert(panel._svgHost.querySelector('#artifact-node'), 'SVG host contents were not restored');
@@ -175,6 +201,15 @@ test('Konva user Clear is one frame and one Undo restores all canvas content', a
     'background sentinel state was not restored');
   assert(panel._selectedShapeIds.length === 1 && panel._selectedAnnotIds.length === 1
     && panel._selectedNodeId === 'artifact-node', 'selection state was not restored');
+
+  assert(panel._allowUserMutation('draw-ellipse') === false && confirmCalls === 2,
+    'ordinary first Konva edits no longer retain the pending warning');
+  confirmAnswer = true;
+  assert(panel._allowUserMutation('test-cleanup') === true,
+    'test could not acknowledge the still-pending production warning');
+  await w.OraCanvas.flushDraft();
+  w.fetch = originalFetch;
+  w.confirm = originalConfirm;
 });
 
 test('lifecycle reset empties Konva history so Undo restores nothing', async () => {
