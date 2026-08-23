@@ -753,22 +753,24 @@ def step_preflight(state: dict, dry_run: bool) -> bool:
     except OSError as exc:
         log(f"  ⚠ Disk space check failed: {exc}")
 
-    # OpenRouter reachable.
-    #
-    # A bad answer here is a warning rather than a failure, and the warning
-    # states the policy step 5 actually implements — both come from
+    # OpenRouter reachable. A dry-run is a local preview, so it must not
+    # contact the provider. A live install keeps this warning-only check; the
+    # warning states the policy step 5 actually implements — both come from
     # CATALOG_OUTAGE_POLICY, so the prediction and the behavior are one thing.
-    try:
-        req = urllib.request.Request("https://openrouter.ai/api/v1/models", headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            if resp.status == 200:
-                log("  ✓ OpenRouter API reachable (no auth needed for catalog)")
-            else:
-                log(f"  ⚠ OpenRouter returned status {resp.status}; the step 5 catalog refresh may not complete")
-                _log_catalog_outage_policy()
-    except (urllib.error.URLError, OSError) as exc:
-        log(f"  ⚠ Cannot reach OpenRouter ({exc})")
-        _log_catalog_outage_policy()
+    if dry_run:
+        log("  [dry-run] OpenRouter reachability check skipped (no outbound request)")
+    else:
+        try:
+            req = urllib.request.Request("https://openrouter.ai/api/v1/models", headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status == 200:
+                    log("  ✓ OpenRouter API reachable (no auth needed for catalog)")
+                else:
+                    log(f"  ⚠ OpenRouter returned status {resp.status}; the step 5 catalog refresh may not complete")
+                    _log_catalog_outage_policy()
+        except (urllib.error.URLError, OSError) as exc:
+            log(f"  ⚠ Cannot reach OpenRouter ({exc})")
+            _log_catalog_outage_policy()
 
     # Write perms
     try:

@@ -113,6 +113,29 @@ class TestPreflightStep(unittest.TestCase):
         ok = install.step_preflight(state, dry_run=True)
         self.assertTrue(ok)
 
+    def test_dry_run_preflight_skips_openrouter_reachability_probe(self):
+        state = {"steps_completed": []}
+        lines: list[str] = []
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "ORA_DOCUMENTS": self.tmp.name,
+                    "ORA_VAULT": str(Path(self.tmp.name) / "vault"),
+                },
+                clear=False,
+            ),
+            mock.patch.object(install, "log", side_effect=lines.append),
+            mock.patch.object(install.urllib.request, "urlopen") as urlopen,
+        ):
+            self.assertTrue(install.step_preflight(state, dry_run=True))
+
+        urlopen.assert_not_called()
+        self.assertIn(
+            "[dry-run] OpenRouter reachability check skipped (no outbound request)",
+            "\n".join(lines),
+        )
+
     def test_path_preflight_accepts_explicit_documents_and_vault(self):
         docs = Path(self.tmp.name)
         with mock.patch.dict(
