@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -38,6 +39,13 @@ SPEC = importlib.util.spec_from_file_location(
 )
 install = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(install)
+
+SERVER_SMOKE_SPEC = importlib.util.spec_from_file_location(
+    "install_server_smoke", REPO_ROOT / "scripts" / "install_server_smoke.py",
+)
+server_smoke = importlib.util.module_from_spec(SERVER_SMOKE_SPEC)
+assert SERVER_SMOKE_SPEC.loader is not None
+SERVER_SMOKE_SPEC.loader.exec_module(server_smoke)
 
 
 class TestDeploymentProfiles(unittest.TestCase):
@@ -557,6 +565,261 @@ class TestSmokeHelpers(unittest.TestCase):
             request.call_args.args[0],
             "https://openrouter.ai/api/v1/chat/completions",
         )
+
+
+class TestServerInstallerInventory(unittest.TestCase):
+    def setUp(self):
+        self.template = REPO_ROOT / "config" / "models.json.template"
+        self.template_data = json.loads(self.template.read_text(encoding="utf-8"))
+
+    def test_absent_inventory_is_created_as_truthful_api_only_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "config" / "models.json"
+            models_directory = root / "models"
+
+            created = server_smoke.ensure_api_only_inventory(
+                target, self.template, models_directory,
+            )
+
+            self.assertTrue(created)
+            result = json.loads(target.read_text(encoding="utf-8"))
+            self.assertEqual(result["local_models"], [])
+            self.assertEqual(
+                result["commercial_models"],
+                self.template_data["commercial_models"],
+            )
+            self.assertEqual(
+                result["local_model_directory"],
+                str(models_directory.resolve()) + os.sep,
+            )
+            self.assertFalse(
+                any("YOUR_WORKSPACE" in str(value) for value in result.values()),
+            )
+
+    def test_existing_inventory_is_preserved_byte_for_byte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "models.json"
+            original = b'{"local_models":[{"id":"machine-owned"}]}\n'
+            target.write_bytes(original)
+
+            created = server_smoke.ensure_api_only_inventory(
+                target, self.template, Path(tmp) / "models",
+            )
+
+            self.assertFalse(created)
+            self.assertEqual(target.read_bytes(), original)
+
+    def test_repeated_inventory_initialization_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "config" / "models.json"
+
+            self.assertTrue(
+                server_smoke.ensure_api_only_inventory(
+                    target, self.template, root / "models",
+                )
+            )
+            first_bytes = target.read_bytes()
+
+            self.assertFalse(
+                server_smoke.ensure_api_only_inventory(
+                    target, self.template, root / "models",
+                )
+            )
+            self.assertEqual(target.read_bytes(), first_bytes)
+
+    def test_inventory_is_not_visible_until_the_complete_payload_is_published(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "config" / "models.json"
+            fsync_entered = threading.Event()
+            release_fsync = threading.Event()
+            original_fsync = server_smoke.os.fsync
+
+            def delayed_fsync(descriptor):
+                fsync_entered.set()
+                self.assertTrue(release_fsync.wait(timeout=5))
+                return original_fsync(descriptor)
+
+            result: list[bool] = []
+            with mock.patch.object(
+                server_smoke.os, "fsync", side_effect=delayed_fsync,
+            ):
+                creator = threading.Thread(
+                    target=lambda: result.append(
+                        server_smoke.ensure_api_only_inventory(
+                            target, self.template, root / "models",
+                        )
+                    ),
+                )
+                creator.start()
+                self.assertTrue(fsync_entered.wait(timeout=5))
+                self.assertFalse(target.exists())
+                release_fsync.set()
+                creator.join(timeout=5)
+
+            self.assertFalse(creator.is_alive())
+            self.assertEqual(result, [True])
+            self.assertEqual(json.loads(target.read_text())["local_models"], [])
+
+    def test_installer_runs_inventory_initialization_before_normal_smoke(self):
+        installer = (REPO_ROOT / "scripts" / "install-server.sh").read_text(
+            encoding="utf-8"
+        )
+        initialize = installer.index(
+            "python3 scripts/install_server_smoke.py "
+            "--ensure-api-only-inventory"
+        )
+        smoke_run = installer.index("python3 scripts/install_server_smoke.py\n")
+        self.assertLess(initialize, smoke_run)
+        self.assertIn(
+            "DRY: would create config/models.json only when it is absent",
+            installer,
+        )
+        self.assertIn(
+            "DRY: would configure ${ENV_FILE} without writing it",
+            installer,
+        )
+        self.assertIn(
+            'WORKSPACE="${ORA_HOME:-${SCRIPT_DIR}/..}"',
+            installer,
+        )
+        self.assertIn('export ORA_HOME="$WORKSPACE"', installer)
+        self.assertIn('cd "$WORKSPACE"', installer)
+
+    def test_installer_dry_run_does_not_write_key_file_or_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inventory = REPO_ROOT / "config" / "models.json"
+            inventory_before = (
+                inventory.read_bytes() if inventory.exists() else None
+            )
+            bash_env = root / "bash-env"
+            bash_env.write_text("uname() { printf 'Linux\\n'; }\n")
+            environment = os.environ.copy()
+            environment.update({
+                "BASH_ENV": str(bash_env),
+                "HOME": str(root),
+            })
+
+            result = subprocess.run(
+                ["bash", "scripts/install-server.sh", "--dry-run"],
+                cwd=REPO_ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(
+                "DRY: would create config/models.json only when it is absent",
+                result.stderr,
+            )
+            self.assertFalse((root / ".config" / "ora-server.env").exists())
+            if inventory_before is None:
+                self.assertFalse(inventory.exists())
+            else:
+                self.assertEqual(inventory.read_bytes(), inventory_before)
+
+    def test_smoke_defaults_to_its_clone_and_honors_explicit_runtime_home(self):
+        probe = (
+            "import json, os; "
+            "from scripts import install_server_smoke as smoke; "
+            "print(json.dumps({'home': str(smoke.WORKSPACE), "
+            "'env': os.environ.get('ORA_HOME'), "
+            "'inventory': str(smoke.MODELS_JSON)}))"
+        )
+
+        environment = os.environ.copy()
+        environment.pop("ORA_HOME", None)
+        environment.pop("ORA_MODELS_JSON_PATH", None)
+        default_result = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=REPO_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(default_result.returncode, 0, default_result.stderr)
+        default_paths = json.loads(default_result.stdout)
+        self.assertEqual(default_paths["home"], str(REPO_ROOT))
+        self.assertEqual(default_paths["env"], str(REPO_ROOT))
+        self.assertTrue(
+            Path(default_paths["inventory"]).is_relative_to(REPO_ROOT),
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            explicit_home = Path(tmp) / "runtime home"
+            explicit_home.mkdir()
+            (explicit_home / "orchestrator").symlink_to(
+                REPO_ROOT / "orchestrator", target_is_directory=True,
+            )
+            environment["ORA_HOME"] = str(explicit_home)
+            explicit_result = subprocess.run(
+                [sys.executable, "-c", probe],
+                cwd=REPO_ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(explicit_result.returncode, 0, explicit_result.stderr)
+            explicit_paths = json.loads(explicit_result.stdout)
+            self.assertEqual(explicit_paths["home"], str(explicit_home))
+            self.assertEqual(explicit_paths["env"], str(explicit_home))
+            self.assertEqual(
+                Path(explicit_paths["inventory"]),
+                explicit_home / "config" / "models.json",
+            )
+
+    def _run_smoke_profile_check(self, models_path: Path):
+        environment = os.environ.copy()
+        environment.update({
+            "ORA_HOME": str(REPO_ROOT),
+            "ORA_MODELS_JSON_PATH": str(models_path),
+        })
+        return subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "from scripts.install_server_smoke import "
+                    "check_active_model_profile_resolves; "
+                    "check_active_model_profile_resolves()"
+                ),
+            ],
+            cwd=REPO_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_real_active_profile_resolution_succeeds_with_created_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "models.json"
+            server_smoke.ensure_api_only_inventory(
+                target,
+                REPO_ROOT / "config" / "models.json.template",
+                Path(tmp) / "models",
+            )
+
+            result = self._run_smoke_profile_check(target)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_missing_inventory_still_fails_outside_installer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "models.json"
+
+            result = self._run_smoke_profile_check(missing)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("local model inventory is unavailable", result.stderr)
+            self.assertFalse(missing.exists())
 
 
 class TestExternalApiWalkthrough(unittest.TestCase):
