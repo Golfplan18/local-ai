@@ -2,7 +2,7 @@
 
 This system was designed to be forked. Not as a courtesy — as the point.
 
-The premise of this project is that natural language is source code. The specification that describes the system is written in natural language, and the natural-language installer layer set is retained as an architecture/specification target. The current public install, however, is a source install driven by `scripts/install.py`. If you fork this repository, customize the system, and run the reconciliation framework, your fork should keep both the executable installer and the natural-language specifications aligned.
+The premise of this project is that natural language is part of the system's specification. The current public install is a source install driven by `scripts/install.py`; the repository also contains documentation and configuration that describe how the system is intended to work. A fork may need to keep those descriptions aligned with its code, but no automatic reconciliation service is promised here.
 
 There is no one-size-fits-all version of this system. There is a base version, and there are as many forks as there are people with ideas about how it should work.
 
@@ -10,7 +10,7 @@ There is no one-size-fits-all version of this system. There is a base version, a
 
 - A GitHub account
 - Two repositories: one **public** (your fork of this system), one **private** (your personal data)
-- The system installed and running (see [[Installer — Ora]] or the repo's `docs/install-guide.md`)
+- The system installed from the repository's current instructions (`scripts/install.py` and `docs/install-guide.md`)
 
 ## Repository Architecture
 
@@ -20,34 +20,34 @@ Everything the system needs to run on any machine:
 
 | Directory | Contents |
 |---|---|
-| `installer/macos/` | The launchd plist template and app-launcher shim `scripts/ora-launchd.sh` installs |
+| `installer/macos/` | macOS launch support used by the current installer |
 | `orchestrator/` | Pipeline engine and tool implementations |
 | `server/` | V3 interface (Flask, browser UI, component styles/scripts, and theme packages) |
 | `frameworks/` | Framework library (thinking tools for AI) |
-| `modes/` | Analysis modes (18 ways to approach a problem) |
+| `modes/` | Resident analysis mode specifications; the set can change over time |
 | `thinking-tools.md` | Runtime mirror of the canonical Thinking Tools Library |
 | `config/` | Runtime configuration templates |
 | `boot/` | System prompt |
 
-These files are tracked in git. When you customize them, your fork diverges from the original. That's the point.
+These files are tracked in git. When you customize them, your fork diverges from the original. That is the point of a fork; the repository does not promise that every fork has the same resident files or capabilities.
 
-### Your Private Repository (your data)
+### Data to keep private in your own fork
 
 Everything specific to you that should never be public:
 
 | Item | What It Is |
 |---|---|
 | `mind.md` | Your system's personality and behavioral rules |
-| `config/routing-config.json` | Your endpoint registry, slot assignments, and provider preferences (the v1 `config/endpoints.json` was retired in install Chunk 12, 2026-05-19) |
+| `config/routing-config.json` | Tracked in this public repository; it contains endpoint, slot, and provider configuration, not a private-vault copy |
 | `~/.config/ora-server.env` (server) or env vars (Mac) | Your API keys |
 | `chromadb/` | Your knowledge base |
-| `knowledge/` | Your mental models and indexed documents |
+| `knowledge/` | Your mental models and indexed documents; this checkout does not ignore this path, so inspect it before committing |
 | `frameworks/personal/` | Frameworks you created for yourself |
 | `agents/*.md` | Agent identities you programmed |
 | `models/` | Downloaded model files |
 | `reconciliation/` | Your reconciliation sweep reports |
 
-The `.gitignore` already excludes all of these from the public repo. To back them up, create a separate private repository pointed at your data directories, or use your own backup method.
+Ordinary forkers do not have access to the author's private vault or to data outside the repository. This list identifies material a fork owner may want to keep private; it is not a promise that the upstream repository supplies a private vault or that `.gitignore` hides every item. To back up personal data, create a separate private repository or use another backup method.
 
 ## The Fork-Customize-Share Workflow
 
@@ -64,7 +64,7 @@ Follow `docs/install-guide.md` for the source-install path. `scripts/install.py`
 
 ### 2. Use It
 
-Use the system. Talk to it. Push it. The base system works out of the box.
+Use the system and evaluate it in your own environment. The repository's instructions and checks are the evidence for a particular checkout; a fork should not be assumed complete or installable merely because it exists.
 
 ### 3. Customize It
 
@@ -78,20 +78,13 @@ This is where your fork becomes yours. Ideas that make the system better for you
 - **Pipeline changes** — modify `orchestrator/boot.py` to change how queries are processed
 - **New thinking tools** — extend `Projects/Ora/Reference — Thinking Tools Library.md` in the vault, then propagate its body to `thinking-tools.md`
 
-Every change you make can create drift between the executable installer, the natural-language specifications, and the filesystem that contains your system. That drift is expected. It's the raw material for the next step.
+Every change you make can create differences between code, documentation, configuration, and your local data. Review those differences as part of maintaining your fork.
 
 The V3 workspace layout is intentionally defined in the interface code. Do not recreate the retired `config/interface.json`, `config/layouts/` presets, layout APIs, or natural-language layout generator when customizing a fork. A changed layout is a cohesive V3 shell/style/script change; a changed visual theme belongs in the V3 Theme Library rather than the retired `config/themes/` directory.
 
-### 4. Reconcile
+### 4. Reconcile what you changed
 
-Run the Documentation-Code Parity (DCP) Framework (canonical: `~/Documents/vault/Projects/Ora/Framework — Documentation-Code Parity.md`). DCP supersedes both the original Spec-Code Reconciliation and System File Drift Correction frameworks (archived 2026-05-10). It:
-
-1. Inventories every code module against its paired vault specification
-2. Surfaces drift in four classes (auto-fix-candidate / escalate / missing-feature / deprecation-candidate)
-3. Auto-applies low-risk fixes; escalates substantive drift to a queue for your review
-4. Via the DCP-Specify mode, drafts specifications for code that lacks them — including the installer-layer re-derivation work the old framework focused on
-
-After a DCP-Sweep run, your fork's documentation matches your fork's code. The Sweep produces a Drift Report documenting what changed. DCP-Specify can re-derive an installer specification if you need to share your fork as a buildable system.
+There is no public one-command reconciliation service for ordinary forkers. Compare the files you changed with the current code path, run the repository's setup/build/test checks, and update the relevant documentation manually. Ora's internal Documentation-Code Parity material can inform a deeper review when you have access to that project context, but it is not a guarantee that a pass leaves code and documentation aligned.
 
 ### 5. Share
 
@@ -101,7 +94,7 @@ git commit -m "My customizations + reconciled installer"
 git push origin main
 ```
 
-Your fork is now a complete, installable system. Anyone who clones it and runs the installer gets your version. The specification tells them what they're getting before they install.
+Pushing a fork publishes your changes. It does not by itself prove that the fork is complete or installable. State the checks you ran and any setup limits in your fork's own documentation.
 
 ## Finding Other Forks
 
@@ -124,7 +117,7 @@ git fetch upstream
 git merge upstream/main
 ```
 
-If the merge has conflicts, resolve them — your customizations take priority. Then run reconciliation again to update the installer and specification to reflect the merged state.
+If the merge has conflicts, resolve them according to your fork's goals. Re-run the relevant setup, build, and test checks, then update documentation for the resulting state.
 
 ## What Not to Share
 
@@ -135,8 +128,8 @@ Your public fork should never contain:
 - Downloaded model files (too large for git; each user downloads their own)
 - Your ChromaDB data (personal knowledge)
 
-The `.gitignore` handles all of this automatically. Don't override it.
+Review the repository's actual `.gitignore` rules and `git status` before committing. In this checkout, `config/routing-config.json` is tracked and `knowledge/` is not ignored, so never rely on `.gitignore` alone to protect personal data or credentials.
 
 ## The Thesis
 
-Every fork that runs reconciliation proves the thesis: natural language specifications can describe a running system completely enough that the system can be rebuilt from the description alone. Every fork that diverges and reconciles is another proof. The more forks, the stronger the evidence.
+Forking tests the thesis that public code, documentation, and user judgment can support independent adaptation. A successful fork is evidence from that fork's own checks; it is not proof that every fork is complete, installable, or fully aligned.
