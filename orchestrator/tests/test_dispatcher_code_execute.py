@@ -53,8 +53,6 @@ class CodeExecuteDispatchBase(unittest.TestCase):
         self._orig_queue = oversight_queue.HUMAN_QUEUE_PATH
         self._orig_permission_mode = dispatcher._permission_mode
         self._orig_approved_categories = set(dispatcher._approved_categories)
-        self._orig_consecutive = (dispatcher._consecutive_tool,
-                                  dispatcher._consecutive_count)
         self._orig_queued_hashes = set(tool_events._queued_hashes)
         self._orig_telemetry_health = tool_events.get_telemetry_health()
         self._orig_te_env = os.environ.pop("ORA_TOOL_EVENTS", None)
@@ -104,8 +102,6 @@ class CodeExecuteDispatchBase(unittest.TestCase):
             dispatcher._approved_categories.clear()
             dispatcher._approved_categories.update(
                 self._orig_approved_categories)
-            (dispatcher._consecutive_tool,
-             dispatcher._consecutive_count) = self._orig_consecutive
         finally:
             self.tmp.cleanup()
 
