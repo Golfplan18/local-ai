@@ -6,15 +6,133 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from orchestrator import conversation_memory as memory
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import boot  # noqa: E402
+import capability_registry  # noqa: E402
 
 
 class VisualOutcomePersistenceTests(unittest.TestCase):
+    def test_explicit_image_preference_pins_provider_and_persists_for_replay(self):
+        image = b"\x89PNG\r\n\x1a\nprovider-image"
+        context = {
+            "visual_kind": "image",
+            "image_provider_override": "pinned-provider",
+            "conversation_id": "image-preference-turn",
+            "cleaned_prompt": "Draw the service dependency.",
+            "mode_name": "synthesis",
+        }
+        with tempfile.TemporaryDirectory() as temp, mock.patch.object(
+            boot._runtime_paths, "ORA_HOME", Path(temp),
+        ), mock.patch.object(
+            capability_registry,
+            "invoke_image_generation",
+            return_value=(
+                SimpleNamespace(provider_id="pinned-provider"),
+                image,
+                "image/png",
+                "png",
+            ),
+        ) as invoke:
+            result = boot._run_visual_hook("The service depends on the database.", context)
+            artifact = Path(context["_visual_artifact"]["path"])
+            artifact_bytes = artifact.read_bytes()
+            metadata = json.loads(
+                result.split("```ora-image\n", 1)[1].split("\n```", 1)[0]
+            )
+            import conversation_memory as server_memory
+            from server import app as server_app
+            sessions_root = Path(temp) / "sessions"
+            server_memory.save_turn_spatial_state(
+                "image-preference-turn",
+                "Draw the service dependency.",
+                result,
+                visual_outcome=context["_visual_outcome"],
+                sessions_root=sessions_root,
+            )
+            with mock.patch.object(
+                server_memory, "_DEFAULT_SESSIONS_ROOT", sessions_root,
+            ), mock.patch.object(server_app.rp, "ORA_HOME", Path(temp)):
+                replay = server_app.app.test_client().get(metadata["url"])
+
+        self.assertIn("```ora-image", result)
+        self.assertIn("/visual-artifacts/", result)
+        self.assertEqual(artifact_bytes, image)
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(replay.data, image)
+        self.assertEqual(context["_visual_outcome"]["state"], "building")
+        self.assertEqual(context["_visual_outcome"]["stage"], "image_generation")
+        self.assertEqual(invoke.call_args.kwargs["provider_id"], "pinned-provider")
+
+    def test_image_provider_failure_discloses_and_builds_grounded_fallback(self):
+        visual = "```ora-visual\n{\"type\":\"concept_map\"}\n```"
+        context = {
+            "visual_kind": "image",
+            "conversation_id": "image-fallback-turn",
+            "cleaned_prompt": "Illustrate the dependency.",
+            "mode_name": "synthesis",
+        }
+        failure = capability_registry.CapabilityError(
+            "model_unavailable", "Pinned provider is unavailable",
+            slot="image_generates",
+        )
+        with mock.patch.object(
+            capability_registry, "invoke_image_generation", side_effect=failure,
+        ), mock.patch.object(
+            boot, "_maybe_build_concept_map",
+            return_value=(
+                "The service depends on the database.\n\n" + visual,
+                {"type": "concept_map", "blocked": False, "fallback": True},
+            ),
+        ) as fallback:
+            result = boot._run_visual_hook(
+                "The service depends on the database.", context,
+            )
+
+        fallback.assert_called_once_with(
+            "The service depends on the database.", context, "synthesis",
+        )
+        self.assertIn("Image generation failed (model_unavailable)", result)
+        self.assertIn("ora-visual", result)
+        self.assertEqual(context["_visual_outcome"]["state"], "building")
+        self.assertEqual(context["_visual_outcome"]["stage"], "image_generation")
+        self.assertEqual(context["_visual_outcome"]["origin"], "provider_failure")
+
+    def test_noninteractive_image_persists_without_a_client(self):
+        image = b"\x89PNG\r\n\x1a\nheadless-provider-image"
+        with tempfile.TemporaryDirectory() as temp:
+            context = {
+                "visual_kind": "image",
+                "execution_context": "autonomous",
+                "trace_dir": temp,
+                "cleaned_prompt": "Illustrate the published analysis.",
+                "mode_name": "synthesis",
+            }
+            with mock.patch.object(
+                capability_registry,
+                "invoke_image_generation",
+                return_value=(
+                    SimpleNamespace(provider_id="saved-chain-provider"),
+                    image,
+                    "image/png",
+                    "png",
+                ),
+            ) as invoke:
+                result = boot._run_visual_hook("Published analysis.", context)
+            artifact = Path(temp) / "visual-artifact.png"
+            metadata = Path(temp) / "visual-artifact.json"
+            self.assertEqual(artifact.read_bytes(), image)
+            self.assertTrue(metadata.exists())
+
+        self.assertEqual(result, "Published analysis.")
+        self.assertEqual(context["_visual_outcome"]["state"], "ready")
+        self.assertEqual(context["_visual_outcome"]["stage"], "image_generation")
+        self.assertIsNone(invoke.call_args.kwargs["provider_id"])
+
     def test_positive_exceptions_skip_visual_recovery_and_synthesis(self):
         explicit = {
             "cleaned_prompt": "Don't analyze this; just answer.",

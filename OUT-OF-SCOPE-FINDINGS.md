@@ -17,7 +17,3 @@ The source-grounded fallback and native emitter validate structure and provenanc
 ## Native conversion of deferred DSL types
 
 Flowchart, sequence, and state remain compiler-rendered deferred DSL types. Converting them into native Excalidraw primitives would require parsers, semantic preservation rules, and a separate regression surface, so this campaign keeps their existing SVG/artifact path.
-
-## Automatic image-provider invocation from analytical turns
-
-The analytical contract can carry an explicit image preference and the existing `image_generates` capability honors its configured provider chain, but this campaign does not make every analytical turn call an image provider. Provider failure is surfaced by the real capability route and the analytical visual authority falls back to a source-grounded concept map where an analytical visual is still required.

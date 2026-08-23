@@ -409,11 +409,12 @@
         const assistantIndex = state.turns
           .slice(0, state.currentTurnIndex + 1)
           .filter((turn) => turn && turn.assistant).length - 1;
+        const persistedOutcome = t.assistant.visual_outcome;
         const blockCount = window.OraV3VisualDispatch.dispatch(content, key, {
           conversationId: state.activeConversationId,
           assistantIndex,
+          visualOutcome: persistedOutcome,
         });
-        const persistedOutcome = t.assistant.visual_outcome;
         if (blockCount === 0
             && persistedOutcome
             && persistedOutcome.state === 'building'

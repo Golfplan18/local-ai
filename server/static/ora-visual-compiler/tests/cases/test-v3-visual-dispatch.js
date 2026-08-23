@@ -139,7 +139,68 @@ module.exports = {
     try { n3 = D.dispatch(text, 'conv2#0'); } catch (e) { threw = true; }
     record('dispatch: registry absent is safe', !threw && n3 === 1, 'threw=' + threw + ' n=' + n3);
 
+    // A durable generated-image descriptor fetches the stored artifact and
+    // never re-enters the image provider route, including on replay/dedupe.
+    const priorFetch = win.fetch;
+    const priorCanvas = win.OraCanvas;
+    const fetched = [];
+    const inserted = [];
+    const savedOutcomes = [];
+    win.fetch = function (url, options) {
+      fetched.push(String(url));
+      if (String(url).indexOf('/visual-outcome') !== -1) {
+        savedOutcomes.push(JSON.parse(options.body));
+        return Promise.resolve({ ok: true, status: 200 });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        blob: function () {
+          return Promise.resolve(new win.Blob(['stored-image'], { type: 'image/png' }));
+        },
+      });
+    };
+    win.OraCanvas = {
+      insertAssistantImage: function (file, artifact) {
+        inserted.push({ file, artifact });
+        return Promise.resolve({ id: 'assistant-image' });
+      },
+    };
+    const imageArtifact = {
+      schema_version: 'ora.image-artifact/1.0',
+      url: '/api/conversation/image-turn/visual-artifacts/generated-0123456789abcdef01234567.png',
+      mime_type: 'image/png',
+      filename: 'generated-0123456789abcdef01234567.png',
+      assistant_visual_id: 'assistant-image-test',
+    };
+    const imageText = 'Prose.\n```ora-image\n'
+      + JSON.stringify(imageArtifact) + '\n```';
+    D.resetDedupe();
+    const imageCount = D.dispatch(imageText, 'image-turn#0', {
+      conversationId: 'image-turn',
+      assistantIndex: 0,
+      visualOutcome: {
+        state: 'building',
+        stage: 'image_generation',
+        reason: 'Generated; awaiting insertion.',
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    D.dispatch(imageText, 'image-turn#0', { conversationId: 'image-turn' });
+    const artifactFetches = fetched.filter((url) => url.indexOf('/visual-artifacts/') !== -1);
+    record('dispatch: stored generated image inserts once without provider replay',
+           imageCount === 1 && inserted.length === 1 && artifactFetches.length === 1
+           && fetched.every((url) => url.indexOf('/api/capability/image_generates') === -1)
+           && savedOutcomes.length === 1
+           && savedOutcomes[0].state === 'ready'
+           && savedOutcomes[0].stage === 'image_generation'
+           && D.stripBlocks(imageText).indexOf('ora-image') === -1,
+           'fetched=' + JSON.stringify(fetched) + ' inserted=' + inserted.length);
+
     win.OraPanels = priorRegistry;
     win.alert = priorAlert;
+    win.fetch = priorFetch;
+    win.OraCanvas = priorCanvas;
   },
 };

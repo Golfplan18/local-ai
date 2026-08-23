@@ -1739,6 +1739,39 @@
       return placed;
     });
 
+    const insertAssistantImage = (file, metadata = {}) => enqueue(async () => {
+      const assistantVisualId = metadata.assistant_visual_id
+        || metadata.assistantVisualId
+        || 'assistant-generated-image';
+      if (editor === 'konva' || !excalidrawApi) {
+        if (!panel || typeof panel.attachAssistantImage !== 'function') return null;
+        return panel.attachAssistantImage(file, {
+          assistantVisualId,
+          semanticElementId: `${assistantVisualId}:image`,
+        });
+      }
+      const png = await normalizeImageToPng(file);
+      const currentElements = snapshotExcalidraw().elements || [];
+      const generationRevision = currentElements.reduce((value, element) => {
+        const data = element && element.customData;
+        return data && data.assistantVisualId === assistantVisualId
+          ? Math.max(value, Number(data.generationRevision) || 0) : value;
+      }, 0) + 1;
+      const placed = await placeExcalidrawPng(png, {
+        action: 'replace',
+        locked: false,
+        customData: {
+          oraAssistantVisual: true,
+          oraAssistantVisualKind: 'artifact',
+          assistantVisualId,
+          generationRevision,
+          semanticElementId: `${assistantVisualId}:image`,
+        },
+      });
+      await persistExcalidrawMutation(viewIsCurrent);
+      return placed;
+    });
+
     const attachImage = (file) => enqueue(async () => {
       if (editor === 'konva' || !excalidrawApi) {
         return panel && typeof panel.attachImage === 'function'
@@ -1888,6 +1921,7 @@
         () => loadCheckpoint(id, checkpointId, legacyTurn, state, options)
       ),
       insertImageObject: insertCapabilityImage,
+      insertAssistantImage,
       attachImage,
       switchEditor,
       _canonicalizeKonva: canonicalizeKonva,

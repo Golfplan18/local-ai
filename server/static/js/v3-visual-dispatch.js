@@ -32,6 +32,7 @@
   // prose in between with the handoff placeholder. Mirrors
   // `visual_recovery.ORA_VISUAL_FENCE_RE` on the server side.
   const FENCE_RE = /```ora-visual[ \t]*\n((?:(?![ \t]*```)[^\n]*\n)*?)[ \t]*```+[ \t]*(?=\n|$)/g;
+  const IMAGE_FENCE_RE = /```ora-image[ \t]*\n((?:(?![ \t]*```)[^\n]*\n)*?)[ \t]*```+[ \t]*(?=\n|$)/g;
 
   const PLACEHOLDER = '*\u{1F4CA} Visual request sent to the Exhibits pane.*';
 
@@ -56,11 +57,32 @@
     return blocks;
   }
 
+  function extractImageBlocks(text) {
+    if (typeof text !== 'string' || text.indexOf('ora-image') === -1) return [];
+    const blocks = [];
+    let m;
+    IMAGE_FENCE_RE.lastIndex = 0;
+    while ((m = IMAGE_FENCE_RE.exec(text)) !== null) {
+      try {
+        const artifact = JSON.parse(m[1]);
+        if (artifact
+            && artifact.schema_version === 'ora.image-artifact/1.0'
+            && typeof artifact.url === 'string'
+            && artifact.url.startsWith('/api/conversation/')
+            && typeof artifact.mime_type === 'string'
+            && artifact.mime_type.startsWith('image/')) {
+          blocks.push({ artifact, raw_json: m[1] });
+        }
+      } catch (e) { /* leave malformed fence visible */ }
+    }
+    return blocks;
+  }
+
   /** Replace each PARSEABLE ora-visual fence with the placeholder line.
    *  Malformed fences are left untouched. */
   function stripBlocks(text) {
-    if (typeof text !== 'string' || text.indexOf('ora-visual') === -1) return text;
-    return text.replace(FENCE_RE, (full, payload) => {
+    if (typeof text !== 'string') return text;
+    let stripped = text.replace(FENCE_RE, (full, payload) => {
       try {
         JSON.parse(payload);
         return PLACEHOLDER;
@@ -68,6 +90,16 @@
         return full;
       }
     });
+    stripped = stripped.replace(IMAGE_FENCE_RE, (full, payload) => {
+      try {
+        const artifact = JSON.parse(payload);
+        return artifact && artifact.schema_version === 'ora.image-artifact/1.0'
+          ? PLACEHOLDER : full;
+      } catch (e) {
+        return full;
+      }
+    });
+    return stripped;
   }
 
   function persistOutcome(meta, outcome) {
@@ -106,7 +138,12 @@
     const results = Array.isArray(result) ? result : [result];
     const unsupported = results.filter((item) => item && item.unsupported === true);
     if (unsupported.length === 0) {
-      persistOutcome(meta, { state: 'ready' });
+      const ready = { state: 'ready' };
+      const prior = meta && meta.visualOutcome;
+      ['stage', 'reason', 'origin', 'trace_ref'].forEach((key) => {
+        if (prior && typeof prior[key] === 'string' && prior[key]) ready[key] = prior[key];
+      });
+      persistOutcome(meta, ready);
       return;
     }
     const warnings = [];
@@ -123,18 +160,71 @@
     );
   }
 
+  async function insertImageArtifacts(blocks) {
+    if (!window.OraCanvas
+        || typeof window.OraCanvas.insertAssistantImage !== 'function') {
+      throw new Error('The Exhibits image inserter is unavailable.');
+    }
+    const inserted = [];
+    for (const block of blocks) {
+      const artifact = block.artifact;
+      const response = await window.fetch(artifact.url, {
+        method: 'GET', credentials: 'same-origin',
+      });
+      if (!response.ok) {
+        throw new Error(`Stored image could not be loaded (HTTP ${response.status}).`);
+      }
+      const blob = await response.blob();
+      if (!blob || !String(blob.type || artifact.mime_type).startsWith('image/')) {
+        throw new Error('Stored image response was not an image.');
+      }
+      const file = new File(
+        [blob], artifact.filename || 'generated-image',
+        { type: blob.type || artifact.mime_type },
+      );
+      const placed = await window.OraCanvas.insertAssistantImage(file, artifact);
+      if (!placed) throw new Error('The Exhibits pane rejected the generated image.');
+      inserted.push(placed);
+    }
+    return inserted;
+  }
+
   /** Extract + hand off to the visual panel. Returns the number of blocks
    *  found (0 = nothing to do). Same key twice in a row is a no-op. */
   function dispatch(text, key, meta) {
     const blocks = extractBlocks(text);
-    if (blocks.length === 0) return 0;
-    if (key != null && key === _lastKey) return blocks.length;
+    const imageBlocks = extractImageBlocks(text);
+    const blockCount = blocks.length + imageBlocks.length;
+    if (blockCount === 0) return 0;
+    if (key != null && key === _lastKey) return blockCount;
     const panel = window.OraPanels && window.OraPanels.visual;
-    if (!panel || typeof panel.onBridgeUpdate !== 'function') {
+    if (blocks.length && (!panel || typeof panel.onBridgeUpdate !== 'function')) {
       surfaceDispatchFailure('The Exhibits pane is unavailable.', meta);
-      return blocks.length;
+      return blockCount;
     }
     _lastKey = key != null ? key : null;
+    if (imageBlocks.length) {
+      const operations = [insertImageArtifacts(imageBlocks)];
+      if (blocks.length) {
+        try {
+          operations.push(Promise.resolve(panel.onBridgeUpdate({
+            ora_visual_blocks: blocks,
+            ora_visual_dispatch_key: key != null ? String(key) : null,
+          })));
+        } catch (error) {
+          operations.push(Promise.reject(error));
+        }
+      }
+      Promise.all(operations).then((values) => {
+        surfaceDispatchResult(values.flat(), meta);
+      }).catch((error) => {
+        surfaceDispatchFailure(
+          'The visual request could not be applied: ' + (error && error.message || error),
+          meta,
+        );
+      });
+      return blockCount;
+    }
     try {
       const result = panel.onBridgeUpdate({
         ora_visual_blocks: blocks,
@@ -156,7 +246,7 @@
         meta,
       );
     }
-    return blocks.length;
+    return blockCount;
   }
 
   /** Test hook: forget the dedupe key. */
@@ -164,6 +254,7 @@
 
   window.OraV3VisualDispatch = {
     extractBlocks: extractBlocks,
+    extractImageBlocks: extractImageBlocks,
     stripBlocks: stripBlocks,
     dispatch: dispatch,
     persistOutcome: persistOutcome,

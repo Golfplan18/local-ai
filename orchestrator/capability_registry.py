@@ -56,6 +56,7 @@ the registry-level codes documented on the exception class.
 from __future__ import annotations
 
 import json
+import io
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -898,3 +899,118 @@ def load_registry(
         pass
 
     return registry
+
+
+def _register_image_generation_providers(registry: CapabilityRegistry) -> None:
+    """Register every production provider for the image-generation slot.
+
+    ``load_registry`` already installs the optional local provider.  The API
+    providers are kept lazy so importing the registry never requires their
+    SDKs or credentials.  Registration itself performs no provider call.
+    """
+    for module_name in ("openai_images", "gemini_images", "openrouter_images"):
+        try:
+            module = __import__(module_name)
+            module.register(registry)
+        except Exception:
+            # A missing optional SDK removes only that provider from the
+            # configured chain. ``invoke`` fails loudly when none remain.
+            continue
+
+
+def _generated_image_format(data: bytes) -> tuple[str, str]:
+    """Verify provider output is a real raster image and return MIME/suffix."""
+    signatures = (
+        (data.startswith(b"\x89PNG\r\n\x1a\n"), "image/png", "png"),
+        (data.startswith(b"\xff\xd8\xff"), "image/jpeg", "jpg"),
+        (data.startswith((b"GIF87a", b"GIF89a")), "image/gif", "gif"),
+        (len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP",
+         "image/webp", "webp"),
+        (len(data) >= 12 and data[4:8] == b"ftyp"
+         and data[8:12] in (b"avif", b"avis"), "image/avif", "avif"),
+    )
+    detected = next(((mime, suffix) for matches, mime, suffix in signatures if matches), None)
+    if detected is None:
+        raise CapabilityError(
+            "handler_failed",
+            "The image provider returned bytes that are not a supported image.",
+            slot="image_generates",
+        )
+    try:
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as image:
+            image.verify()
+    except ImportError:
+        # Signature validation remains available in minimal installations.
+        pass
+    except Exception as exc:
+        raise CapabilityError(
+            "handler_failed",
+            f"The image provider returned an unreadable image: {exc}",
+            slot="image_generates",
+        ) from exc
+    return detected
+
+
+def invoke_image_generation(
+    inputs: dict,
+    *,
+    provider_id: str | None = None,
+) -> tuple[InvocationResult, bytes, str, str]:
+    """Invoke the production image slot with its canonical routing semantics.
+
+    An explicit ``provider_id`` is passed straight to ``CapabilityRegistry``
+    and therefore disables fallback.  Omitting it uses the saved preferred
+    and fallback chain.  Mock or placeholder providers/results are rejected
+    even if they contain valid image bytes.
+    """
+    registry = load_registry()
+    _register_image_generation_providers(registry)
+    result = registry.invoke("image_generates", inputs, provider_id=provider_id)
+    output = result.output
+    provider = str(result.provider_id or "")
+    provider_marker = provider.strip().lower()
+    if (provider_marker in {"mock", "placeholder"}
+            or provider_marker.startswith(
+                ("mock-", "mock:", "placeholder-", "placeholder:")
+            )
+            or (isinstance(output, dict)
+                and any(
+                    output.get(key) is True
+                    for key in ("mock", "mocked", "placeholder")
+                ))):
+        raise CapabilityError(
+            "handler_failed",
+            "Mock or placeholder image output cannot satisfy image generation.",
+            slot="image_generates",
+            attempts=result.attempts,
+        )
+    if not isinstance(output, (bytes, bytearray)):
+        raise CapabilityError(
+            "handler_failed",
+            "The image provider did not return image bytes.",
+            slot="image_generates",
+            attempts=result.attempts,
+        )
+    image_bytes = bytes(output)
+    mime_type, suffix = _generated_image_format(image_bytes)
+    return result, image_bytes, mime_type, suffix
+
+
+def resolve_image_provider_override(
+    requested: str | None,
+    model_profile_locks: dict | None,
+) -> str | None:
+    """Apply the active project's image lock without silent substitution."""
+    override = str(requested or "").strip() or None
+    locked = (model_profile_locks or {}).get("image_model")
+    locked = str(locked).strip() if isinstance(locked, str) else ""
+    if locked:
+        if override is not None and override != locked:
+            raise CapabilityError(
+                "model_profile_image_lock_conflict",
+                f"The active project's Model Profile locks image generation to {locked!r}.",
+                slot="image_generates",
+            )
+        return locked
+    return override

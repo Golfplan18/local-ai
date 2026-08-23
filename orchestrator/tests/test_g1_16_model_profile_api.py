@@ -323,6 +323,27 @@ class ModelProfileApiTests(unittest.TestCase):
             'model_profile_image_lock_conflict',
         )
 
+    def test_direct_image_capability_keeps_shared_provider_result_contract(self):
+        import capability_registry
+
+        invocation = mock.Mock(provider_id='saved-provider', attempts=[])
+        with mock.patch.object(
+            server, '_active_project_model_locks', return_value=None,
+        ), mock.patch.object(
+            capability_registry, 'invoke_image_generation',
+            return_value=(invocation, b'provider-image', 'image/webp', 'webp'),
+        ) as invoke:
+            response = self.client.post('/api/capability/image_generates', json={
+                'slot': 'image_generates',
+                'inputs': {'prompt': 'A test image'},
+            })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['provider'], 'saved-provider')
+        self.assertEqual(payload['image']['mime_type'], 'image/webp')
+        self.assertEqual(invoke.call_args.kwargs['provider_id'], None)
+
     def test_runtime_project_token_is_not_a_public_one_run_override(self):
         with self.assertRaisesRegex(mp.ModelProfileError, 'not public'):
             server._validate_public_model_profile_override(

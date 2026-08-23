@@ -4938,7 +4938,7 @@
    * user attachment. It has its own background node, ownership metadata and
    * clear path, so editor switching cannot replace or delete a user's upload.
    */
-  VisualPanel.prototype.attachAssistantImage = function (file) {
+  VisualPanel.prototype.attachAssistantImage = function (file, metadata) {
     var self = this;
     return new Promise(function (resolve) {
       if (!file || typeof file !== 'object' || !IMAGE_MIME_RE.test(file.type || '')) {
@@ -4956,7 +4956,7 @@
         if (typeof dataUrl !== 'string' || !dataUrl) { resolve(null); return; }
         self._installBackgroundImage(dataUrl, file, function () {
           resolve(self._assistantBackgroundImageNode || null);
-        }, { assistant: true });
+        }, { assistant: true, metadata: metadata || {} });
       };
       reader.onerror = function () { resolve(null); };
       try { reader.readAsDataURL(file); } catch (e) { resolve(null); }
@@ -4976,8 +4976,11 @@
   VisualPanel.prototype._installBackgroundImage = function (dataUrl, file, onReady, options) {
     var self = this;
     var assistant = !!(options && options.assistant);
+    var assistantMetadata = assistant && options && options.metadata || {};
     var imageProperty = assistant
       ? '_assistantBackgroundImageNode' : '_backgroundImageNode';
+    var assistantPriorRevision = assistant && this[imageProperty]
+      ? Number(this[imageProperty].getAttr('generationRevision')) || 0 : 0;
     // Replace only the image owned by this caller. A generated raster must
     // not evict a user upload, and a new user upload must not remove the
     // assistant's flattened preview.
@@ -5032,11 +5035,14 @@
           sourceType:    (file && file.type) || '',
         });
         if (assistant) {
+          var assistantVisualId = assistantMetadata.assistantVisualId
+            || 'konva-assistant-visual';
           imageNode.name('vp-assistant-background-image');
           imageNode.setAttrs({
-            assistantVisualId: 'konva-assistant-visual',
-            generationRevision: 1,
-            semanticElementId: 'konva-assistant-visual:image',
+            assistantVisualId: assistantVisualId,
+            generationRevision: assistantPriorRevision + 1,
+            semanticElementId: assistantMetadata.semanticElementId
+              || assistantVisualId + ':image',
             originalGenerationFingerprint: JSON.stringify({
               x: x, y: y, width: drawW, height: drawH,
             }),
@@ -6622,8 +6628,8 @@
     clearUserInput: function () { if (_active) _active.clearUserInput(); },
     // WP-4.1 surface
     attachImage:        function (file) { return _active ? _active.attachImage(file) : Promise.resolve(null); },
-    attachAssistantImage: function (file) { return _active && _active.attachAssistantImage
-      ? _active.attachAssistantImage(file) : Promise.resolve(null); },
+    attachAssistantImage: function (file, metadata) { return _active && _active.attachAssistantImage
+      ? _active.attachAssistantImage(file, metadata) : Promise.resolve(null); },
     getPendingImage:    function () { return _active ? _active.getPendingImage() : null; },
     clearPendingImage:  function () { if (_active) _active.clearPendingImage(); },
     // WP-4.4 surface
