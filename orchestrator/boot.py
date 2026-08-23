@@ -4041,26 +4041,23 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
     when the framework is not in the curated user-pickable registry or when
     either display section is absent.
 
-    Returns::
-
-        {
-            "id": str,                    # filename stem (no .md)
-            "display_name": str,          # 60-char-limit picker title
-            "display_description": str,   # 500-char-limit picker body
-            "category": str,              # "standard" | "user-created" | "one-off"
-            "kind": str,                  # "framework"
-        }
-
-    Shipped rows use the ``standard`` category. User-created and one-off
-    categories land when those provenance sources exist. The curated
-    invocability registry—not file presence—is the exposure boundary.
+    Returns the public row shape used by both the picker and its selection
+    bridge: ``id``, ``display_name``, and ``display_description``. The
+    curated invocability registry—not file presence—is the exposure boundary.
     """
-    from framework_invocability import is_user_pickable_framework
+    from framework_invocability import (
+        is_user_pickable_framework,
+        resolve_user_invocable_framework,
+    )
 
     if not is_user_pickable_framework(framework_id):
         return None
 
-    path = os.path.join(FRAMEWORKS_DIR, framework_id + ".md")
+    try:
+        filename = resolve_user_invocable_framework(framework_id)
+    except Exception:
+        return None
+    path = os.path.join(FRAMEWORKS_DIR, filename)
     try:
         with open(path, "r") as f:
             text = f.read()
@@ -4077,8 +4074,6 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
         "id": framework_id,
         "display_name": display_name,
         "display_description": display_description,
-        "category": "standard",
-        "kind": "framework",
     }
     return metadata
 
@@ -4106,7 +4101,7 @@ def list_pickable_frameworks() -> list[dict]:
     The curated framework-invocability registry is the source of truth for
     which framework IDs may be shown. Framework files that merely exist in
     frameworks/book/ are not picker-eligible unless registered. Sort order is
-    alphabetical by ``display_name`` within each category.
+    alphabetical by ``display_name``.
     """
     if not os.path.isdir(FRAMEWORKS_DIR):
         return []
@@ -4119,7 +4114,7 @@ def list_pickable_frameworks() -> list[dict]:
         if meta is not None:
             rows.append(meta)
 
-    rows.sort(key=lambda r: (r["category"], r["display_name"].lower()))
+    rows.sort(key=lambda r: r["display_name"].lower())
     return rows
 
 
@@ -8834,9 +8829,6 @@ def compare_intent_with_mode(
     prose-level invocation) against the mode the classifier picked.
 
     Resolution rules per Working — Framework — Ora v3 Input Handling Q4:
-    - When a framework is selected, the prefilter is suppressed entirely
-      (framework owns routing). Returns ``matches=True`` with
-      ``expressed_source="framework"`` so callers can short-circuit.
     - When ``manual_mode_selection`` is set, it wins as expressed intent.
       ``detected_invocation`` is recorded but not used for the match check.
     - Otherwise ``detected_invocation`` (if non-empty / non-NONE) is the
@@ -8849,7 +8841,7 @@ def compare_intent_with_mode(
         {
             "expressed_intent": str | None,   # the mode the user expressed
             "expressed_source": str | None,   # "manual" / "detected" /
-                                              # "framework" / None
+                                              # None
             "picked_mode": str,
             "matches": bool,                  # False → prefilter triggers
             "detected_invocation": str,       # always echoed for telemetry
@@ -8860,17 +8852,6 @@ def compare_intent_with_mode(
         detected = ""
 
     manual = (manual_mode_selection or "").strip()
-    framework = (framework_selected or "").strip()
-
-    if framework:
-        return {
-            "expressed_intent": None,
-            "expressed_source": "framework",
-            "picked_mode": picked_mode,
-            "matches": True,
-            "detected_invocation": detected,
-        }
-
     if manual:
         return {
             "expressed_intent": manual,

@@ -2047,43 +2047,6 @@
       _pendingHighlight = null;
     }
 
-    // ── Add new provider ───────────────────────────────────────────────
-    // The user already has Framework — API Key Setup for end-to-end
-    // provider setup (key elicitation, keychain storage, endpoint
-    // registration). Rather than duplicate that flow inline, surface a
-    // button that drops the slash-command into the input pane, closes the
-    // settings modal, and lets the framework run as a normal interaction.
-    var addWrap = document.createElement('div');
-    addWrap.className = 'ora-settings-add-provider';
-    var addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'ora-settings-btn ora-settings-btn--ghost';
-    addBtn.textContent = '+ Add new provider';
-    addBtn.title = 'Run Framework — API Key Setup to register a new provider';
-    addBtn.addEventListener('click', function () {
-      var input = document.querySelector('.input-pane textarea');
-      if (!input) {
-        _setStatus('Could not find the Inquiry pane', 'error');
-        return;
-      }
-      input.value = '/framework api-key-setup';
-      // Trigger an input event so any draft-tracking listeners pick up the
-      // new value. The user reviews and presses Enter (or edits the prompt
-      // first, e.g. to specify a particular provider as an argument).
-      try {
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      } catch (_) { /* old browser fallback — ignore */ }
-      close();
-      try { input.focus(); } catch (_) { /* ignore */ }
-    });
-    addWrap.appendChild(addBtn);
-    var addHint = document.createElement('span');
-    addHint.className = 'ora-settings-note';
-    addHint.style.marginLeft = '10px';
-    addHint.textContent =
-      'Drops /framework api-key-setup into the input. Review and press Enter to start.';
-    addWrap.appendChild(addHint);
-    _tabContentEl.appendChild(addWrap);
   }
 
   function _stopChatGPTPolling() {

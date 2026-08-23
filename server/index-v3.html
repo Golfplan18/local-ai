@@ -3122,7 +3122,11 @@
       try { canvasHasContent = window.OraCanvas.hasContent(); }
       catch (e) { canvasHasContent = false; }
     }
-    if (!leftContent && !canvasHasContent) return;
+    const selectedFramework = window.OraInputState
+      && typeof window.OraInputState.getFramework === 'function'
+      ? window.OraInputState.getFramework() : null;
+    const hasSelectedFramework = !!(selectedFramework && selectedFramework.id);
+    if (!leftContent && !canvasHasContent && !hasSelectedFramework) return;
 
     if (leftContent
         && window.OraSlashCommands

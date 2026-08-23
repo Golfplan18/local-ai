@@ -11,10 +11,13 @@ Covers:
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
+import tempfile
 import types
 import unittest
+from pathlib import Path
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -107,6 +110,29 @@ class TestMarkerPlacement(unittest.TestCase):
                 )
             )
         )
+
+    def test_image_payloads_are_absent_and_marker_context_is_bounded(self):
+        large_base64 = "A" * (10 * 1024 * 1024)
+        marker = framework_elicitation.elicitation_marker(
+            "corpus-formalization",
+            "C-Design",
+            execution_context={
+                "style_context": {"privacy": {"mode": "private"}},
+                "input_context": {
+                    "image_path": "/outside/owned/session.png",
+                    "nested": {"base64": large_base64},
+                },
+                "images": [{"name": "large.png", "base64": large_base64}],
+            },
+        )
+
+        self.assertNotIn(large_base64, marker)
+        self.assertNotIn("base64", marker)
+        self.assertNotIn("image_path", marker)
+        self.assertLess(len(marker), 20_000)
+        ctx = is_continuation([{"role": "assistant", "content": marker}])
+        self.assertIsNotNone(ctx)
+        self.assertNotIn("images", ctx.execution_context or {})
 
 
 # ---------- Summarizer response parsing ----------
@@ -511,6 +537,176 @@ class TestContinueElicitation(unittest.TestCase):
             self.assertIs(
                 execute.call_args.kwargs["style_context"], style_context,
             )
+
+    def test_produce_deliverable_rehydrates_existing_submission_attachment(self):
+        first_style = {"style_id": "academic", "conversation_tag": "private"}
+        conversation_id = "first-conversation"
+        submission_id = "20260823T130000000000Z-abcd1234"
+        first_input = {"privacy": {"mode": "private"}}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            raw_root = temp_root / "raw"
+            processed_root = raw_root / "processed"
+            processed_root.mkdir(parents=True)
+            session_root = temp_root / "sessions" / conversation_id
+            upload_root = session_root / "uploads"
+            canvas_root = session_root / "canvas"
+            upload_root.mkdir(parents=True)
+            canvas_root.mkdir(parents=True)
+            upload_path = upload_root / "upload.png"
+            canvas_path = canvas_root / "checkpoint.preview.png"
+            upload_path.write_bytes(b"first-upload")
+            canvas_path.write_bytes(b"first-canvas")
+            (processed_root / f"{submission_id}.json").write_text(
+                json.dumps({
+                    "submission_id": submission_id,
+                    "conversation_id": conversation_id,
+                    "image_path": str(upload_path),
+                    "image_mime": "image/png",
+                    "canvas_preview_path": str(canvas_path),
+                    "visual_checkpoint_id": "checkpoint-first",
+                    "spatial_raw": json.dumps({"objects": [{"id": "first"}]}),
+                    "annotations_raw": json.dumps([{"kind": "sticky"}]),
+                }),
+                encoding="utf-8",
+            )
+            marker = framework_elicitation.elicitation_marker(
+                "corpus-formalization", "C-Design", "first-project", "profile-a",
+                execution_context={
+                    "style_context": first_style,
+                    "input_context": {
+                        **first_input,
+                        "_framework_submission_id": submission_id,
+                        "conversation_id": conversation_id,
+                        "image_path": "/untrusted/path.png",
+                    },
+                    "images": [{"name": "large.png", "base64": "A" * 1000000}],
+                    "attachment_state": {
+                        "submission_id": submission_id,
+                        "conversation_id": conversation_id,
+                    },
+                    "conversation_tag": "private",
+                },
+            )
+            self.assertNotIn("A" * 1000000, marker)
+            self.assertLess(len(marker), 20_000)
+            ctx = is_continuation([
+                {"role": "assistant", "content": "Q1?\n\n" + marker},
+            ])
+            self.assertIsNotNone(ctx)
+
+            fake_summary = _SummaryState(
+                elicited_bullets=["Workflow: board memos"],
+                pending_bullets=[],
+                action="PRODUCE_DELIVERABLE",
+                next_question="",
+            )
+            from milestone_executor import FrameworkExecutionResult
+            fake_result = FrameworkExecutionResult(
+                framework_name="corpus-formalization",
+                execution_id="exec-context",
+                user_input="elicited",
+                milestones=[],
+                final_output="context-preserved deliverable",
+                success=True,
+                mode="C-Design",
+                mode_reasoning="elicitation",
+            )
+            with (
+                mock.patch.object(
+                    framework_elicitation, "_raw_submission_root",
+                    return_value=raw_root,
+                ),
+                mock.patch.object(
+                    framework_elicitation, "_session_root_for_conversation",
+                    return_value=session_root,
+                ),
+                mock.patch.object(
+                    framework_elicitation, "_ask_summarizer", return_value=fake_summary,
+                ),
+                mock.patch(
+                    "milestone_executor.execute_framework", return_value=fake_result,
+                ) as execute,
+            ):
+                text = framework_elicitation.continue_elicitation(
+                    ctx, [], config={}, latest_user_text="finish",
+                    conversation_id=conversation_id,
+                    current_project_nexus="first-project",
+                    style_context={"style_id": "current"},
+                    input_context={"visual_checkpoint_id": "current"},
+                    images=[{"name": "current.png", "base64": "Y3VycmVudA=="}],
+                    conversation_tag="",
+                )
+
+        self.assertIn("context-preserved deliverable", text)
+        kwargs = execute.call_args.kwargs
+        self.assertEqual(kwargs["style_context"], first_style)
+        self.assertEqual(kwargs["input_context"]["privacy"], first_input["privacy"])
+        self.assertEqual(kwargs["input_context"]["visual_checkpoint_id"], "checkpoint-first")
+        self.assertEqual(
+            kwargs["input_context"]["spatial_representation"],
+            {"objects": [{"id": "first"}]},
+        )
+        self.assertEqual(kwargs["input_context"]["annotations"], {"annotations": [{"kind": "sticky"}]})
+        self.assertEqual(
+            [image["base64"] for image in kwargs["images"]],
+            ["Zmlyc3QtdXBsb2Fk", "Zmlyc3QtY2FudmFz"],
+        )
+
+    def test_unavailable_submission_reference_keeps_non_image_context(self):
+        submission_id = "20260823T130000000000Z-deadbeef"
+        marker = framework_elicitation.elicitation_marker(
+            "corpus-formalization", "C-Design",
+            execution_context={
+                "style_context": {"style_id": "academic"},
+                "input_context": {
+                    "privacy": {"mode": "private"},
+                    "_framework_submission_id": submission_id,
+                },
+                "attachment_state": {"submission_id": submission_id},
+            },
+        )
+        ctx = is_continuation([{"role": "assistant", "content": marker}])
+        self.assertIsNotNone(ctx)
+        fake_summary = _SummaryState(
+            elicited_bullets=["Workflow: board memos"],
+            pending_bullets=[],
+            action="PRODUCE_DELIVERABLE",
+            next_question="",
+        )
+        from milestone_executor import FrameworkExecutionResult
+        fake_result = FrameworkExecutionResult(
+            framework_name="corpus-formalization",
+            execution_id="exec-missing-attachment",
+            user_input="elicited",
+            milestones=[],
+            final_output="non-image context survived",
+            success=True,
+            mode="C-Design",
+            mode_reasoning="elicitation",
+        )
+        with (
+            mock.patch.object(
+                framework_elicitation, "_raw_submission_root",
+                return_value=Path(tempfile.gettempdir()) / "missing-item10-submissions",
+            ),
+            mock.patch.object(
+                framework_elicitation, "_ask_summarizer", return_value=fake_summary,
+            ),
+            mock.patch(
+                "milestone_executor.execute_framework", return_value=fake_result,
+            ) as execute,
+        ):
+            text = framework_elicitation.continue_elicitation(
+                ctx, [], config={}, latest_user_text="finish",
+                current_project_nexus=None,
+            )
+        self.assertIn("non-image context survived", text)
+        self.assertEqual(
+            execute.call_args.kwargs["input_context"]["privacy"],
+            {"mode": "private"},
+        )
 
     def test_summarizer_failure_falls_back_gracefully_with_marker(self):
         ctx = ContinuationContext(

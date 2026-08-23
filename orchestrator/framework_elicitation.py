@@ -34,6 +34,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 _ORCH_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -58,6 +59,35 @@ MARKER_PATTERN = re.compile(
 )
 MARKER_TEMPLATE = "<!-- ora-framework: {framework_id}/{mode}/{state} -->"
 ELICITING_STATE = "eliciting"
+MARKER_CONTEXT_MAX_BYTES = 8 * 1024
+
+# Attachment bytes and paths are deliberately not marker state.  The marker
+# points at the existing submission record instead; continuation rehydrates
+# the bytes from that record or from the owned session files it names.
+_SAFE_REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_MARKER_DROP_KEYS = frozenset({
+    "annotations",
+    "attachments",
+    "base64",
+    "canvas_preview_path",
+    "data",
+    "data_url",
+    "exhibits_submission",
+    "image",
+    "image_b64",
+    "image_bytes",
+    "image_data_url",
+    "image_path",
+    "images",
+    "prior_annotations",
+    "prior_spatial_representation",
+    "spatial_representation",
+    "visual_checkpoint_id",
+    "visual_native_path",
+})
+_MARKER_INTERNAL_KEYS = frozenset({
+    "_framework_submission_id",
+})
 
 # Execution Review Phase 2: a hold reply carries this marker; such a turn is
 # risk-gate scaffolding, not elicited content, so the summarizer skips it.
@@ -71,19 +101,37 @@ class ContinuationContext:
     state: str          # currently always "eliciting"
     project_nexus: str | None = None
     one_run_profile: str | None = None
+    execution_context: dict | None = None
     context_error: str | None = None
 
 
 def _decode_execution_context(token: str | None) -> dict:
     if not token:
-        return {"project_nexus": None, "one_run_profile": None}
+        return {
+            "project_nexus": None,
+            "one_run_profile": None,
+            "execution_context": None,
+        }
     try:
         padding = "=" * (-len(token) % 4)
         value = json.loads(base64.urlsafe_b64decode(token + padding).decode("utf-8"))
     except Exception as exc:
         raise ValueError("framework execution context marker is malformed") from exc
-    if not isinstance(value, dict) or set(value) != {"project_nexus", "one_run_profile"}:
+    if not isinstance(value, dict):
         raise ValueError("framework execution context marker schema is invalid")
+    if set(value) not in (
+        {"project_nexus", "one_run_profile"},
+        {"project_nexus", "one_run_profile", "execution_context"},
+    ):
+        raise ValueError("framework execution context marker schema is invalid")
+    execution_context = value.get("execution_context")
+    if execution_context is not None and not isinstance(execution_context, dict):
+        raise ValueError("framework execution context marker values are invalid")
+    if execution_context is not None:
+        # This also scrubs markers written by an older build that carried
+        # image payloads.  Those bytes are not trusted state and cannot be
+        # used as a continuation attachment source.
+        execution_context = _sanitize_marker_value(execution_context)
     project_nexus = value.get("project_nexus")
     one_run_profile = value.get("one_run_profile")
     try:
@@ -98,6 +146,7 @@ def _decode_execution_context(token: str | None) -> dict:
     return {
         "project_nexus": project_nexus,
         "one_run_profile": one_run_profile,
+        "execution_context": execution_context,
     }
 
 
@@ -123,7 +172,11 @@ def is_continuation(history: list) -> Optional[ContinuationContext]:
             execution_context = _decode_execution_context(m.group(4))
             context_error = None
         except ValueError as exc:
-            execution_context = {"project_nexus": None, "one_run_profile": None}
+            execution_context = {
+                "project_nexus": None,
+                "one_run_profile": None,
+                "execution_context": None,
+            }
             context_error = str(exc)
         return ContinuationContext(
             framework_id=m.group(1), mode=m.group(2), state=m.group(3),
@@ -140,6 +193,11 @@ def start_elicitation(
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
     style_context: dict | None = None,
+    input_context: dict | None = None,
+    images: list | None = None,
+    trace_dir: str | None = None,
+    conversation_tag: str = "",
+    trace_context: dict | None = None,
 ) -> str:
     """Begin a fresh interactive framework execution.
 
@@ -177,6 +235,11 @@ def start_elicitation(
         project_nexus=project_nexus,
         one_run_profile=one_run_profile,
         style_context=style_context,
+        input_context=input_context,
+        images=images,
+        trace_dir=trace_dir,
+        conversation_tag=conversation_tag,
+        trace_context=trace_context,
     )
 
 
@@ -188,6 +251,11 @@ def continue_elicitation(
     conversation_id: str | None = None,
     current_project_nexus: str | None = None,
     style_context: dict | None = None,
+    input_context: dict | None = None,
+    images: list | None = None,
+    trace_dir: str | None = None,
+    conversation_tag: str = "",
+    trace_context: dict | None = None,
 ) -> str:
     """Advance an in-progress framework execution by one turn.
 
@@ -205,6 +273,44 @@ def continue_elicitation(
             "[Framework continuation rejected: the active project changed after "
             "elicitation began. Restart the framework in the intended project.]"
         )
+
+    # The marker is the conversation's existing state carrier. Prefer the
+    # first-turn context stored there over the current request so a guided
+    # continuation cannot silently drop style, attachments, canvas, privacy,
+    # or trace inputs when the browser sends only the new answer.
+    stored_context = ctx.execution_context or {}
+    if "style_context" in stored_context:
+        style_context = stored_context["style_context"]
+    if "input_context" in stored_context:
+        input_context = stored_context["input_context"]
+    if "trace_dir" in stored_context:
+        trace_dir = stored_context["trace_dir"]
+    if "conversation_tag" in stored_context:
+        conversation_tag = stored_context["conversation_tag"]
+    if "trace_context" in stored_context:
+        trace_context = stored_context["trace_context"]
+
+    # Attachment bytes never come from the marker.  Rehydrate only from the
+    # existing submission record, and only after validating any file paths in
+    # that record against this conversation's owned session directories.
+    try:
+        rehydrated = _rehydrate_submission_context(
+            stored_context.get("attachment_state"), conversation_id,
+        )
+    except Exception as exc:
+        # A malformed or stale reference must not turn a continuation into a
+        # storage/model crash.  The already-sanitized non-image context above
+        # remains usable, and the current turn's image input remains intact.
+        print(f"[framework-elicitation] attachment rehydration skipped: {exc}")
+        rehydrated = None
+    if rehydrated:
+        if rehydrated.get("images"):
+            images = rehydrated["images"]
+        hydrated_input = rehydrated.get("input_context") or {}
+        if hydrated_input:
+            merged_input = dict(input_context or {})
+            merged_input.update(hydrated_input)
+            input_context = merged_input
 
     fw_filename = (
         ctx.framework_id if ctx.framework_id.endswith(".md") else ctx.framework_id + ".md"
@@ -230,6 +336,11 @@ def continue_elicitation(
         project_nexus=ctx.project_nexus,
         one_run_profile=ctx.one_run_profile,
         style_context=style_context,
+        input_context=input_context,
+        images=images,
+        trace_dir=trace_dir,
+        conversation_tag=conversation_tag,
+        trace_context=trace_context,
     )
 
 
@@ -246,6 +357,11 @@ def _run_elicitation_turn(
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
     style_context: dict | None = None,
+    input_context: dict | None = None,
+    images: list | None = None,
+    trace_dir: str | None = None,
+    conversation_tag: str = "",
+    trace_context: dict | None = None,
 ) -> str:
     """One elicitation turn: summarize state, decide next step, emit response."""
     summary = _ask_summarizer(fw, mode, milestone, history, latest_user_text, config)
@@ -261,6 +377,10 @@ def _run_elicitation_turn(
         )
         return _wrap_with_marker(
             question, fw.name, mode, project_nexus, one_run_profile,
+            execution_context=_build_execution_context(
+                style_context, input_context, images, trace_dir,
+                conversation_tag, trace_context,
+            ),
         )
 
     if summary.action == "PRODUCE_DELIVERABLE":
@@ -269,7 +389,12 @@ def _run_elicitation_turn(
                                     conversation_id=conversation_id,
                                     project_nexus=project_nexus,
                                     one_run_profile=one_run_profile,
-                                    style_context=style_context)
+                                    style_context=style_context,
+                                    input_context=input_context,
+                                    images=images,
+                                    trace_dir=trace_dir,
+                                    conversation_tag=conversation_tag,
+                                    trace_context=trace_context)
 
     # ASK_NEXT path
     question = summary.next_question or (
@@ -285,6 +410,10 @@ def _run_elicitation_turn(
         )
     return _wrap_with_marker(
         body, fw.name, mode, project_nexus, one_run_profile,
+        execution_context=_build_execution_context(
+            style_context, input_context, images, trace_dir,
+            conversation_tag, trace_context,
+        ),
     )
 
 
@@ -300,6 +429,11 @@ def _produce_deliverable(
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
     style_context: dict | None = None,
+    input_context: dict | None = None,
+    images: list | None = None,
+    trace_dir: str | None = None,
+    conversation_tag: str = "",
+    trace_context: dict | None = None,
 ) -> str:
     """Hand control to the existing milestone executor with the elicited facts
     as the user input. The result is rendered with format_execution_result.
@@ -365,6 +499,10 @@ def _produce_deliverable(
                 "fw": fw.name, "mode": mode or "",
                 "project_nexus": project_nexus,
                 "one_run_profile": one_run_profile,
+                "execution_context": _build_execution_context(
+                    style_context, input_context, images, trace_dir,
+                    conversation_tag, trace_context,
+                ),
             })
         if _hold is not None:
             return _hold
@@ -394,7 +532,9 @@ def _produce_deliverable(
         result = execute_framework(
             fw_filename, deliverable_input, config=config,
             project_nexus=project_nexus, config_name=one_run_profile,
-            style_context=style_context,
+            style_context=style_context, input_context=input_context,
+            images=images, trace_dir=trace_dir,
+            conversation_tag=conversation_tag, trace_context=trace_context,
         )
     except Exception as exc:
         return f"[Final deliverable production failed: {exc}]"
@@ -698,12 +838,305 @@ def _wrap_with_marker(
     mode: str,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    execution_context: dict | None = None,
 ) -> str:
     """Append the eliciting marker on its own line at the end of the message."""
-    return (
-        f"{body.rstrip()}\n\n"
-        f"{elicitation_marker(framework_id, mode, project_nexus, one_run_profile)}"
+    marker = elicitation_marker(
+        framework_id, mode, project_nexus, one_run_profile,
+        execution_context=execution_context,
     )
+    return f"{body.rstrip()}\n\n{marker}"
+
+
+def _build_execution_context(
+    style_context: dict | None,
+    input_context: dict | None,
+    images: list | None,
+    trace_dir: str | None,
+    conversation_tag: str,
+    trace_context: dict | None,
+) -> dict | None:
+    """Return bounded, non-payload state carried by the existing marker."""
+    context = {}
+    safe_style = _sanitize_marker_value(style_context)
+    safe_input = _sanitize_marker_value(input_context)
+    if safe_style:
+        context["style_context"] = safe_style
+    if safe_input:
+        context["input_context"] = safe_input
+
+    submission_id = _submission_id_from_context(style_context, input_context)
+    conversation_id = _conversation_id_from_context(style_context, input_context)
+    if submission_id:
+        attachment_state = {"submission_id": submission_id}
+        if conversation_id:
+            attachment_state["conversation_id"] = conversation_id
+        context["attachment_state"] = attachment_state
+
+    safe_trace_dir = _validated_trace_dir(trace_dir)
+    if safe_trace_dir is not None:
+        context["trace_dir"] = safe_trace_dir
+    if conversation_tag:
+        context["conversation_tag"] = str(conversation_tag)[:128]
+    safe_trace_context = _sanitize_marker_value(trace_context)
+    if safe_trace_context:
+        context["trace_context"] = safe_trace_context
+    return context or None
+
+
+def _sanitize_marker_value(value, *, depth: int = 0):
+    """Copy JSON-like context while dropping attachment payloads/references."""
+    if depth > 6:
+        return None
+    if isinstance(value, dict):
+        result = {}
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            key_lower = key.casefold()
+            if key_lower in _MARKER_DROP_KEYS or key_lower in _MARKER_INTERNAL_KEYS:
+                continue
+            child = _sanitize_marker_value(raw_value, depth=depth + 1)
+            if child is not None:
+                result[key[:128]] = child
+        return result
+    if isinstance(value, (list, tuple)):
+        result = []
+        for item in list(value)[:32]:
+            child = _sanitize_marker_value(item, depth=depth + 1)
+            if child is not None:
+                result.append(child)
+        return result
+    if isinstance(value, str):
+        return value[:2048]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:2048]
+
+
+def _safe_reference(value: object) -> str | None:
+    candidate = str(value or "")
+    if not _SAFE_REFERENCE_RE.fullmatch(candidate):
+        return None
+    return candidate
+
+
+def _submission_id_from_context(*contexts: dict | None) -> str | None:
+    for context in contexts:
+        if not isinstance(context, dict):
+            continue
+        candidate = context.get("_framework_submission_id")
+        if candidate is None:
+            candidate = context.get("submission_id")
+        if candidate is None and isinstance(context.get("exhibits_submission"), dict):
+            candidate = context["exhibits_submission"].get("submission_id")
+        safe = _safe_reference(candidate)
+        if safe:
+            return safe
+    return None
+
+
+def _conversation_id_from_context(*contexts: dict | None) -> str | None:
+    for context in contexts:
+        if not isinstance(context, dict):
+            continue
+        candidate = _safe_reference(context.get("conversation_id"))
+        if candidate:
+            return candidate
+    return None
+
+
+def _validated_trace_dir(trace_dir: str | None) -> str | None:
+    """Keep trace continuity only for an existing owned trace directory."""
+    if not trace_dir:
+        return None
+    try:
+        try:
+            from pipeline_trace import _validated_existing_trace_dir
+        except ImportError:
+            from orchestrator.pipeline_trace import _validated_existing_trace_dir
+        return str(_validated_existing_trace_dir(trace_dir))
+    except Exception:
+        # Trace continuity is optional; an untrusted/stale path is dropped.
+        return None
+
+
+def _raw_submission_root() -> Path:
+    try:
+        import runtime_paths as rp
+    except ImportError:
+        from orchestrator import runtime_paths as rp
+    return Path(rp.CONVERSATIONS_STR) / "raw"
+
+
+def _session_root_for_conversation(conversation_id: str) -> Path:
+    try:
+        import runtime_paths as rp
+    except ImportError:
+        from orchestrator import runtime_paths as rp
+    return Path(rp.ORA_HOME) / "sessions" / conversation_id
+
+
+def _load_submission_record(
+    submission_id: object, conversation_id: str | None,
+) -> dict | None:
+    """Load one existing pending/processed record without trusting its path."""
+    safe_id = _safe_reference(submission_id)
+    if not safe_id:
+        return None
+    expected_conversation = _safe_reference(conversation_id)
+    root = _raw_submission_root()
+    for state in ("pending", "processed"):
+        directory = root / state
+        candidate = directory / f"{safe_id}.json"
+        try:
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            if not _within_base(candidate, root):
+                continue
+            with candidate.open("r", encoding="utf-8") as stream:
+                payload = json.load(stream)
+            if not isinstance(payload, dict) or payload.get("submission_id") != safe_id:
+                continue
+            record_conversation = _safe_reference(payload.get("conversation_id"))
+            if expected_conversation and record_conversation != expected_conversation:
+                continue
+            return payload
+        except Exception as exc:
+            print(f"[framework-elicitation] submission record skipped: {exc}")
+    return None
+
+
+def _within_base(path: Path, base: Path) -> bool:
+    try:
+        try:
+            import runtime_paths as rp
+        except ImportError:
+            from orchestrator import runtime_paths as rp
+        return rp.within_base(path, base)
+    except Exception:
+        return False
+
+
+def _owned_file(raw_path: object, root: Path) -> Path | None:
+    if not isinstance(raw_path, str) or not raw_path or not os.path.isabs(raw_path):
+        return None
+    candidate = Path(raw_path)
+    try:
+        if candidate.is_symlink() or not candidate.is_file():
+            return None
+        resolved_root = root.resolve(strict=False)
+        resolved_candidate = candidate.resolve(strict=True)
+        if not _within_base(resolved_candidate, resolved_root):
+            return None
+        return resolved_candidate
+    except Exception:
+        return None
+
+
+def _images_from_attachment_record(record: dict) -> list[dict]:
+    images = []
+    for attachment in record.get("attachments") or []:
+        if not isinstance(attachment, dict):
+            continue
+        mime = str(attachment.get("type") or "")
+        data_url = attachment.get("data")
+        if not mime.startswith("image/") or not isinstance(data_url, str) or not data_url:
+            continue
+        raw_b64 = data_url.split(",", 1)[-1] if "," in data_url else data_url
+        if raw_b64:
+            images.append({
+                "name": str(attachment.get("name") or "file")[:256],
+                "mime": mime[:128],
+                "base64": raw_b64,
+                "source": "submission",
+            })
+    return images
+
+
+def _image_from_owned_file(path: Path, *, name: str, mime: str, source: str) -> dict | None:
+    try:
+        return {
+            "name": name[:256],
+            "mime": mime[:128],
+            "base64": base64.b64encode(path.read_bytes()).decode("ascii"),
+            "source": source,
+        }
+    except Exception as exc:
+        print(f"[framework-elicitation] owned image read skipped: {exc}")
+        return None
+
+
+def _rehydrate_submission_context(
+    attachment_state: object, conversation_id: str | None,
+) -> dict | None:
+    if not isinstance(attachment_state, dict):
+        return None
+    submission_id = _safe_reference(attachment_state.get("submission_id"))
+    if not submission_id:
+        return None
+    record_conversation = _safe_reference(attachment_state.get("conversation_id"))
+    if conversation_id and record_conversation and record_conversation != _safe_reference(conversation_id):
+        return None
+    record = _load_submission_record(submission_id, conversation_id or record_conversation)
+    if not record:
+        return None
+    record_conversation = _safe_reference(record.get("conversation_id"))
+    if not record_conversation:
+        return None
+    session_root = _session_root_for_conversation(record_conversation)
+    upload_root = session_root / "uploads"
+    canvas_root = session_root / "canvas"
+    images = _images_from_attachment_record(record)
+    input_context = {}
+
+    image_path = _owned_file(record.get("image_path"), upload_root)
+    if image_path:
+        image = _image_from_owned_file(
+            image_path, name=image_path.name,
+            mime=str(record.get("image_mime") or "image/png"), source="upload",
+        )
+        if image:
+            images.append(image)
+            input_context["image_path"] = str(image_path)
+
+    canvas_path = _owned_file(record.get("canvas_preview_path"), canvas_root)
+    if canvas_path:
+        image = _image_from_owned_file(
+            canvas_path, name=canvas_path.name, mime="image/png",
+            source=("v3_canvas_preview" if record.get("visual_checkpoint_id")
+                    else "legacy_canvas_preview"),
+        )
+        if image:
+            images.append(image)
+            if "image_path" not in input_context:
+                input_context["image_path"] = str(canvas_path)
+                input_context["image_source"] = "canvas_preview"
+
+    if record.get("visual_checkpoint_id"):
+        checkpoint_id = _safe_reference(record.get("visual_checkpoint_id"))
+        if checkpoint_id:
+            input_context["visual_checkpoint_id"] = checkpoint_id
+
+    try:
+        spatial_raw = record.get("spatial_raw")
+        if isinstance(spatial_raw, str) and spatial_raw:
+            spatial = json.loads(spatial_raw)
+            if isinstance(spatial, dict):
+                input_context["spatial_representation"] = spatial
+    except Exception:
+        pass
+    try:
+        annotations_raw = record.get("annotations_raw")
+        if isinstance(annotations_raw, str) and annotations_raw:
+            annotations = json.loads(annotations_raw)
+            input_context["annotations"] = (
+                {"annotations": annotations}
+                if isinstance(annotations, list) else annotations
+            )
+    except Exception:
+        pass
+
+    return {"images": images, "input_context": input_context}
 
 
 def elicitation_marker(
@@ -711,6 +1144,7 @@ def elicitation_marker(
     mode: str,
     project_nexus: str | None = None,
     one_run_profile: str | None = None,
+    execution_context: dict | None = None,
 ) -> str:
     """The eliciting-state marker for a framework/mode. Public so the Phase 2
     task gate can re-attach it to an approval reply and keep the elicitation
@@ -718,11 +1152,54 @@ def elicitation_marker(
     fw_id = framework_id[:-3] if framework_id.endswith(".md") else framework_id
     marker = MARKER_TEMPLATE.format(
         framework_id=fw_id, mode=mode or "", state=ELICITING_STATE)
-    if project_nexus is None and one_run_profile is None:
+    if (
+        project_nexus is None
+        and one_run_profile is None
+        and not execution_context
+    ):
         return marker
+    safe_execution_context = _sanitize_marker_value(execution_context)
+    context_payload = {
+        "project_nexus": project_nexus,
+        "one_run_profile": one_run_profile,
+    }
+    if safe_execution_context:
+        context_payload["execution_context"] = safe_execution_context
     context = json.dumps(
-        {"project_nexus": project_nexus, "one_run_profile": one_run_profile},
+        context_payload,
         sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8")
+    if len(context) > MARKER_CONTEXT_MAX_BYTES:
+        # Preserve the reference and the smallest useful context first.  The
+        # marker is a transport envelope, not a second attachment store.
+        bounded = {}
+        if isinstance(safe_execution_context, dict):
+            attachment_state = safe_execution_context.get("attachment_state")
+            if attachment_state:
+                bounded["attachment_state"] = attachment_state
+            for key in ("style_context", "input_context", "trace_context"):
+                value = safe_execution_context.get(key)
+                if value is None:
+                    continue
+                candidate = dict(context_payload)
+                candidate["execution_context"] = dict(bounded, **{key: value})
+                encoded = json.dumps(
+                    candidate, sort_keys=True, separators=(",", ":"),
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                if len(encoded) <= MARKER_CONTEXT_MAX_BYTES:
+                    bounded[key] = value
+            bounded["context_truncated"] = True
+        context_payload["execution_context"] = bounded
+        context = json.dumps(
+            context_payload,
+            sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode("utf-8")
+        if len(context) > MARKER_CONTEXT_MAX_BYTES:
+            context_payload.pop("execution_context", None)
+            context = json.dumps(
+                context_payload,
+                sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            ).encode("utf-8")
     token = base64.urlsafe_b64encode(context).decode("ascii").rstrip("=")
     return marker[:-4] + f"/{token} -->"

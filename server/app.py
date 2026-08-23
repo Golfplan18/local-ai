@@ -4074,13 +4074,22 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         # the branch assignments below never need a guard.
         turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
                       "mode": None, "gear": None, "parent_ref": None}
+    execution_context = (extra_context or {}).get("execution_context", "interactive")
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
     framework_selected = (framework_selected or "").strip()
-    # Keep a mutable per-turn carrier for the terminal visual outcome. The
-    # assembled context package copies this data for model work and copies
-    # only the outcome back before the existing save boundary.
-    extra_context = dict(extra_context or {})
+    if framework_selected:
+        try:
+            framework_selected = _resolve_selected_framework(framework_selected)
+        except ValueError as exc:
+            turn_state["kind"] = "framework_validation_error"
+            turn_state["status"] = "error"
+            yield _sse("error", text=str(exc))
+            return
+    # Keep the caller's mutable context as the carrier for terminal outcomes.
+    # The existing plain-HTTP save boundary receives this same dictionary;
+    # cloning it here would strand picker results in a local copy.
+    extra_context = extra_context if isinstance(extra_context, dict) else {}
     if manual_lens_selection and not _lens_available_for_mode(
         manual_mode_selection, manual_lens_selection,
     ):
@@ -4092,7 +4101,6 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         )
         manual_lens_selection = ""
     if manual_lens_selection:
-        extra_context = dict(extra_context or {})
         extra_context["selected_lens_id"] = manual_lens_selection
 
     # --- Stealth context + forensic trace setup (TURN HEAD) ---
@@ -4414,6 +4422,10 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation",
                    label=f"Continuing {continuation_ctx.framework_id} / {continuation_ctx.mode}…")
+        _continuation_trace_ctx = {"conversation_tag": _conv_tag}
+        _continuation_context = dict(extra_context or {})
+        _continuation_context.setdefault("conversation_id", panel_id)
+        _continuation_context.setdefault("conversation_tag", _conv_tag)
         try:
             text = framework_elicitation.continue_elicitation(
                 continuation_ctx, history or [], config,
@@ -4421,6 +4433,11 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 conversation_id=panel_id,
                 current_project_nexus=_framework_project_nexus(extra_context),
                 style_context=extra_context,
+                input_context=_continuation_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_continuation_trace_ctx,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4506,6 +4523,152 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                           f"{_cs_exc}", flush=True)
         return
 
+    # --- Framework picker selection short-circuit ---
+    # A picker selection is an explicit framework invocation, even though the
+    # browser sends the user's prompt and framework id as separate fields.
+    # Rebuild the same slash command consumed by the typed /framework path so
+    # there is one executor and one elicitation implementation. This branch
+    # returns before Step 1, so the selected framework cannot be re-routed as
+    # an ordinary analysis mode or executed a second time.
+    if framework_selected:
+        turn_state["kind"] = "framework_picker"
+        _framework_context = dict(extra_context or {})
+        _framework_context.setdefault("conversation_id", panel_id)
+        _framework_context.setdefault("conversation_tag", _conv_tag)
+        _framework_context.setdefault(
+            "execution_context", _framework_context.get("execution_context", "interactive")
+        )
+        _picker_trace_ctx = {"conversation_tag": _conv_tag}
+        _picker_command = f"/framework {framework_selected}"
+        if user_input.strip():
+            _picker_command += f" {user_input.strip()}"
+        try:
+            import framework_elicitation
+            if user_input.strip():
+                # Match the typed framework route's irreversible-task hold
+                # before entering the shared executor.
+                _picker_tier_srv, _picker_ts_srv = None, None
+                try:
+                    import risk_gate as _rgate_picker
+                    _picker_ts_srv = _rgate_picker.now_ts()
+                    _picker_tier = _rgate_picker.assign_tier(
+                        _picker_command, panel_id, surface="framework",
+                    )["risk_tier"]
+                    _picker_tier_srv = _picker_tier
+                    _picker_hold, _ = _rgate_picker.evaluate_hold(
+                        _picker_tier_srv, conversation_id=panel_id,
+                        prompt=_picker_command, surface="framework",
+                        stealth=(_conv_tag == "stealth"),
+                        description=_picker_command,
+                    )
+                    if _picker_hold is not None:
+                        turn_state["kind"] = "risk_hold"
+                        yield _sse("response", text=_picker_hold)
+                        return
+                except Exception as _picker_risk_exc:
+                    print(f"[risk-gate] picker framework hold skipped: {_picker_risk_exc}")
+
+                # Keep the shared one-shot executor's tool events correlated
+                # with this picker turn and enforce the same tier as typed
+                # /framework execution.
+                try:
+                    import tool_events as _te_picker
+                    _te_picker.set_turn_context(
+                        conversation_id=panel_id, surface="chat",
+                        stealth=(_conv_tag == "stealth"),
+                        risk_tier=_picker_tier_srv,
+                    )
+                except Exception:
+                    pass
+
+                yield _sse("pipeline_stage", stage="framework_execution",
+                           label="Running selected framework…")
+                from milestone_executor import run_framework_command
+                try:
+                    result_text = run_framework_command(
+                        _picker_command, config, trace_dir=trace_dir,
+                        conversation_tag=_conv_tag,
+                        trace_context=_picker_trace_ctx,
+                        project_nexus=_framework_project_nexus(_framework_context),
+                        one_run_profile=config_name,
+                        style_context=_framework_context,
+                        input_context=_framework_context,
+                        images=images,
+                    )
+                except Exception:
+                    try:
+                        _rgate_picker.record_route_observed(
+                            (panel_id, _picker_ts_srv or ""),
+                            risk_tier=_picker_tier_srv,
+                        )
+                    except Exception:
+                        pass
+                    raise
+                turn_state["status"] = _picker_trace_ctx.get("status") or "completed"
+                turn_state["framework_id"] = _picker_trace_ctx.get("framework_id")
+                turn_state["mode"] = _picker_trace_ctx.get("mode") or turn_state["mode"]
+                turn_state["child_refs"] = list(
+                    _picker_trace_ctx.get("child_trace_refs") or []
+                )
+                # Picker output bypasses the ordinary gear tail just like the
+                # typed /framework path. Give it the same terminal visual
+                # authority and copy its durable outcome into the existing
+                # turn-save context before emitting the response.
+                try:
+                    from boot import _run_visual_hook as _picker_visual_hook
+                    _picker_visual_context = {
+                        "cleaned_prompt": _picker_command,
+                        "mode_name": _picker_trace_ctx.get("mode"),
+                        "execution_context": execution_context,
+                        "trace_dir": trace_dir,
+                        "conversation_id": panel_id,
+                        "framework_id": _picker_trace_ctx.get("framework_id"),
+                    }
+                    result_text = _picker_visual_hook(
+                        result_text, _picker_visual_context,
+                    )
+                    _copy_visual_outcome_context(
+                        _picker_visual_context, extra_context,
+                    )
+                except Exception as _picker_visual_exc:
+                    print(f"[picker visual-hook] skipped due to error: {_picker_visual_exc}")
+                yield _sse("response", text=result_text)
+                try:
+                    _rgate_picker.record_route_observed(
+                        (panel_id, _picker_ts_srv or ""),
+                        risk_tier=_picker_tier_srv,
+                        output_text=result_text,
+                    )
+                except Exception:
+                    pass
+                return
+
+            turn_state["kind"] = "framework_elicitation"
+            yield _sse(
+                "pipeline_stage", stage="framework_elicitation_start",
+                label=f"Starting interactive {framework_selected} session…",
+            )
+            text = framework_elicitation.start_elicitation(
+                framework_selected, history or [], config,
+                project_nexus=_framework_project_nexus(_framework_context),
+                one_run_profile=config_name,
+                style_context=_framework_context,
+                input_context=_framework_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_picker_trace_ctx,
+            )
+            turn_state["status"] = _picker_trace_ctx.get("status") or "completed"
+            turn_state["framework_id"] = _picker_trace_ctx.get("framework_id")
+            turn_state["mode"] = _picker_trace_ctx.get("mode") or turn_state["mode"]
+            yield _sse("response", text=text)
+            return
+        except Exception as exc:
+            turn_state["status"] = "error"
+            yield _sse("error", text=f"Framework picker execution error: {exc}")
+            return
+
     # --- Framework slash-command short-circuit ---
     # Detect /framework <name> [<query>] and route to either the one-shot
     # milestone executor (when a query is supplied) or the interactive
@@ -4561,7 +4724,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     trace_context=_trace_ctx,
                     project_nexus=_framework_project_nexus(extra_context),
                     one_run_profile=config_name,
-                    style_context=extra_context)
+                    style_context=extra_context,
+                    input_context=extra_context,
+                    images=images)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -4614,12 +4779,18 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation_start",
                    label=f"Starting interactive {framework_name} session…")
+        _trace_ctx = {"conversation_tag": _conv_tag}
         try:
             text = framework_elicitation.start_elicitation(
                 framework_name, history or [], config,
                 project_nexus=_framework_project_nexus(extra_context),
                 one_run_profile=config_name,
                 style_context=extra_context,
+                input_context=extra_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_trace_ctx,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4760,7 +4931,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     # V3 Input Handling Phase 1 / analysis picker — compare the user's
     # explicit toolbar selection or detected invocation against the final
     # mode. Manual analysis picks may already have overridden Step 1 above;
-    # frameworks still suppress the comparison because they own routing.
+    # framework selection is handled by its explicit branch and does not
+    # pretend to own this comparison.
     # Storing on ``step1`` keeps the data available on clarification resume.
     intent_comparison = compare_intent_with_mode(
         picked_mode=step1["mode"],
@@ -5929,13 +6101,12 @@ def list_pickable_analysis_modes() -> list[dict]:
 def frameworks_picker():
     """V3 Phase 2 — list of pickable frameworks for the input-box framework picker.
 
-    Returns ``{ frameworks: [ {id, display_name, display_description,
-    category, kind, ...}, ... ] }`` with one row per framework that declares both ``## Display Name`` and
-    ``## Display Description`` sections. Pipeline-internal frameworks (F-* and
-    Phase A) are silently excluded — they do not declare these fields.
+    Returns ``{ frameworks: [ {id, display_name, display_description}, ... ] }``
+    with one row per framework in the shared public invocability registry.
+    Pipeline-internal and dedicated-only frameworks are excluded.
 
-    The picker UI consumes this directly; rows are pre-sorted by category then
-    alphabetical Display Name. This endpoint is read-only and side-effect-free
+    The picker UI consumes this directly; rows are pre-sorted by alphabetical
+    Display Name. This endpoint is read-only and side-effect-free
     so it can be called freely on every picker open.
     """
     try:
@@ -7273,6 +7444,10 @@ def framework_analyze_inputs():
     framework_id = (data.get("framework_id") or "").strip()
     if not framework_id:
         return json.dumps({"error": "framework_id is required"}), 400
+    try:
+        framework_id = _resolve_selected_framework(framework_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
 
     prompt          = data.get("prompt") or ""
     attachments     = data.get("attachments") or []
@@ -8637,6 +8812,24 @@ def _framework_project_nexus(extra_context):
     return nexus
 
 
+def _resolve_selected_framework(framework_id):
+    """Validate a picker framework before any model-facing work begins.
+
+    The picker posts a framework stem, while the typed command parser accepts
+    stems, filenames, and aliases. Resolve through that same invocability
+    boundary and return the canonical stem used by the execution bridge.
+    """
+    value = str(framework_id or "").strip()
+    if not value:
+        return ""
+    try:
+        from framework_invocability import resolve_user_invocable_framework
+        filename = resolve_user_invocable_framework(value)
+    except Exception as exc:
+        raise ValueError(f"invalid framework selection: {exc}") from exc
+    return Path(filename).stem
+
+
 def _validate_public_model_profile_override(config_name):
     """Reject internal tokens and unavailable names at HTTP entry surfaces."""
     if config_name is None:
@@ -8840,7 +9033,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     ``manual_lens_selection`` and ``framework_selected`` carry the user's
     input-box-toolbar choices.
     """
-    if not user_input and not (
+    if not user_input and not framework_selected and not (
         extra_context and extra_context.get("visual_checkpoint_id")
     ):
         return json.dumps({"error": "empty message"}), 400
@@ -8858,6 +9051,12 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # default OUTPUT style. An explicit /style one-off above still wins.
     extra_context = _apply_style_audience(extra_context, style_audience)
     extra_context = _apply_project_model_locks(extra_context)
+    # Framework markers carry this bounded identity only.  The continuation
+    # handler resolves the existing pending/processed record; image bytes
+    # never enter the marker or this reference itself.
+    if submission_id:
+        extra_context = dict(extra_context or {})
+        extra_context["_framework_submission_id"] = submission_id
 
     # Sidebar window integration: use rolling window for sidebar panels.
     # Every ordinary Dialogue request instead reconstructs immutable/current
@@ -9310,6 +9509,10 @@ def chat():
     manual_mode_selection = str(data.get("manual_mode_selection") or "").strip()
     manual_lens_selection = str(data.get("manual_lens_selection") or "").strip()
     framework_selected = str(data.get("framework_selected") or "").strip()
+    try:
+        framework_selected = _resolve_selected_framework(framework_selected)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     style_audience = str(data.get("style_audience") or "").strip()
     manual_visual_type = str(data.get("manual_visual_type") or "").strip()
     output_destination = str(data.get("output_destination") or "").strip()
@@ -9323,7 +9526,7 @@ def chat():
     trace_debug_payload = (
         data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
     )
-    if not user_input and not trace_debug_payload:
+    if not user_input and not trace_debug_payload and not framework_selected:
         return _json_response({"error": "empty message"}, 400)
     if not _valid_live_conversation_id(panel_id):
         return _json_response({"error": "invalid conversation_id"}, 400)
@@ -9483,6 +9686,10 @@ def chat_multipart():
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
+    try:
+        framework_selected = _resolve_selected_framework(framework_selected)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     retry_visual_checkpoint_id = (
         form.get("retry_visual_checkpoint_id") or ""
@@ -9525,7 +9732,7 @@ def chat_multipart():
         }, 400)
     if visual_native_file is not None and visual_editor not in {"excalidraw", "konva"}:
         return _json_response({"error": "invalid visual_editor"}, 400)
-    if not user_input and visual_native_file is None:
+    if not user_input and not framework_selected and visual_native_file is None:
         return json.dumps({"error": "empty message"}), 400
     if not conversation_id:
         return json.dumps({"error": "missing conversation_id"}), 400
@@ -9796,6 +10003,7 @@ def chat_multipart():
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
+            "image_mime":            image_mime,
             "exhibits_submission_intent": exhibits_submission_intent,
             "visual_checkpoint_id": visual_checkpoint_id,
             "visual_editor": visual_editor or None,
