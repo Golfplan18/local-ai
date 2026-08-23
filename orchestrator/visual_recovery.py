@@ -336,7 +336,9 @@ def c4_envelope(dsl: str, mode: str | None, level: str | None = None) -> dict:
 
 _RELATION_RE = re.compile(
     r"\b(because|causes?|caused by|leads? to|results? in|increases?|"
-    r"reduces?|supports?|depends? on|requires?|enables?|blocks?|drives?|"
+    r"reduces?|supports?|depends? on|"
+    r"(?:is|are|was|were|be|being|been)\s+contingent on|contingent on|"
+    r"requires?|enables?|blocks?|drives?|"
     r"produces?|creates?|slows?|constrains?|amplifies?|dampens?|"
     r"reinforces?|limits?|shapes?|informs?|follows?)\b",
     re.IGNORECASE,

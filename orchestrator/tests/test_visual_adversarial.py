@@ -455,14 +455,18 @@ class TestContract(unittest.TestCase):
 
     def test_concept_map_fallback_uses_source_relations_and_is_schema_valid(self):
         env = build_concept_map(
-            "Hiring increases workload. Workload causes fatigue. Fatigue reduces focus.",
+            "Hiring increases workload. Workload causes fatigue. Fatigue reduces focus. "
+            "The release is contingent on the database migration.",
             mode="root-cause-analysis",
             inquiry="Why does delivery slow down?",
         )
         self.assertIsNotNone(env)
         self.assertEqual(env["spec"]["focus_question"], "Why does delivery slow down?")
         self.assertEqual([p["text"] for p in env["spec"]["linking_phrases"]],
-                         ["increases", "causes", "reduces"])
+                         ["increases", "causes", "reduces", "is contingent on"])
+        self.assertIn("release", [c["label"] for c in env["spec"]["concepts"]])
+        self.assertIn("database migration",
+                      [c["label"] for c in env["spec"]["concepts"]])
         self.assertTrue(any(p["is_cross_link"] is False for p in env["spec"]["propositions"]))
         self.assertNotIn("Key considerations", " ".join(c["label"] for c in env["spec"]["concepts"]))
 

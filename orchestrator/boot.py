@@ -1676,6 +1676,33 @@ def _is_standalone_greeting_response(response: str) -> bool:
     return bool(prose and _STANDALONE_GREETING_RE.fullmatch(prose))
 
 
+_VISUAL_RELATIONSHIP_FREE_ATOM_RE = re.compile(
+    r"""^(?:
+        [A-Za-z]+(?:['’][A-Za-z]+)*
+        |
+        [+-]?(?:[$£€¥]\s*)?
+        (?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)
+        (?:\s?(?:%|[A-Za-z]{1,12}))?
+    )\.?$""",
+    re.VERBOSE,
+)
+
+
+def _is_positively_relationship_free_response(response: str) -> bool:
+    """Recognize only a scalar or one-token answer as relationship-free.
+
+    Failed extraction cannot prove that a clause has no relationship: an
+    unlisted verb can still connect two concepts.  This positive grammar
+    therefore accepts only forms that cannot contain two relationship
+    endpoints.  Every multiword natural-language statement remains ambiguous
+    and must produce a visual or a conspicuous failure.
+    """
+    if not isinstance(response, str):
+        return False
+    prose = response.strip()
+    return bool(prose and _VISUAL_RELATIONSHIP_FREE_ATOM_RE.fullmatch(prose))
+
+
 def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     """Run the WP-1.6 visual validator + adversarial pass over the response.
 
@@ -1960,21 +1987,19 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                     "greeting_or_acknowledgement"
                 ],
             }
-        elif context_pkg.get("_visual_fallback_origin") == "failed_claim_extraction":
+        elif _is_positively_relationship_free_response(review_prose):
             context_pkg["_visual_outcome"] = {
                 "state": "not_applicable",
                 "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
-            }
-        elif _mode_target_types(mode, (context_pkg or {}).get("visual_kind")):
-            context_pkg["_visual_outcome"] = {
-                "state": "failed",
-                "stage": "visual_hook",
-                "reason": "No grounded visual could be produced from this response.",
             }
         else:
             context_pkg["_visual_outcome"] = {
-                "state": "not_applicable",
-                "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": (
+                    "No grounded visual could be produced, and the response "
+                    "was not positively established as relationship-free."
+                ),
             }
         if context_pkg.get("_visual_fallback_origin"):
             context_pkg["_visual_outcome"]["origin"] = context_pkg[

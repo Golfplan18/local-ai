@@ -6,6 +6,8 @@
  * Public surface:
  *   window.OraVisualCompiler._vendor.structurizrMini.renderer.render(ast, options)
  *       → { svg: string }
+ *   window.OraVisualCompiler._vendor.structurizrMini.renderer.selectLayout(ast, options)
+ *       → { elements, edges, view, level, boundaryLabel? }
  *
  *   options: {
  *     level: 'context' | 'container',  // required — matches envelope.spec.level
@@ -173,23 +175,32 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
-  function render(ast, options) {
+  function selectLayout(ast, options) {
     options = options || {};
     const level = options.level === 'container' ? 'container' : 'context';
 
     let view = findView(ast, level);
     if (!view) view = synthesizeView(ast, level);
     if (!view) {
-      // Model is empty enough that we can't even synthesize a view.
-      const svgEmpty = emptySvg(options);
-      return { svg: svgEmpty };
+      return { elements: [], edges: [], view: null, level: level };
     }
 
     const pipeline = level === 'context'
       ? layoutContext(ast, view)
       : layoutContainer(ast, view);
+    pipeline.level = level;
+    return pipeline;
+  }
 
-    const svg = toSvg(pipeline, level, options);
+  function render(ast, options) {
+    options = options || {};
+    const pipeline = selectLayout(ast, options);
+    if (!pipeline.view) {
+      // Model is empty enough that we can't even synthesize a view.
+      return { svg: emptySvg(options) };
+    }
+
+    const svg = toSvg(pipeline, pipeline.level, options);
     return { svg: svg };
   }
 
@@ -609,6 +620,7 @@ window.OraVisualCompiler._vendor.structurizrMini.renderer = (function () {
 
   return {
     render: render,
+    selectLayout: selectLayout,
   };
 
 }());

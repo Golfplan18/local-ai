@@ -127,7 +127,7 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
                 boot._run_visual_hook("Relationship-bearing response.", context)
         self.assertEqual(synthesize.call_count, 2)
 
-    def test_error_and_no_relationship_reasons_are_distinct(self):
+    def test_only_positive_atom_is_a_no_relationship_exception(self):
         error_context = {
             "cleaned_prompt": "Explain this.",
             "mode_name": "simple",
@@ -138,14 +138,59 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
             "mode_name": "simple",
             "execution_context": "agent",
         }
-        boot._run_visual_hook("Endpoint failed.", error_context)
-        boot._run_visual_hook("One isolated fact.", no_relation_context)
+        ambiguous_contexts = []
+        with mock.patch.object(
+            boot, "_maybe_recover_visual", return_value=(None, None),
+        ), mock.patch.object(
+            boot, "_maybe_synthesize_visual", return_value=(None, None),
+        ):
+            boot._run_visual_hook("Endpoint failed.", error_context)
+            boot._run_visual_hook("42.", no_relation_context)
+            for probe in ("Cats chase mice.", "Demand outstrips supply."):
+                context = {
+                    "cleaned_prompt": "Explain the statement.",
+                    "mode_name": "simple",
+                    "execution_context": "agent",
+                }
+                boot._run_visual_hook(probe, context)
+                ambiguous_contexts.append(context)
         self.assertEqual(error_context["_visual_outcome"]["state"],
                          "not_applicable")
         self.assertEqual(no_relation_context["_visual_outcome"]["state"],
                          "not_applicable")
+        for context in ambiguous_contexts:
+            with self.subTest(context=context):
+                self.assertEqual(context["_visual_outcome"]["state"],
+                                 "failed")
+                self.assertEqual(context["_visual_outcome"]["stage"],
+                                 "visual_hook")
+        self.assertEqual(
+            no_relation_context["_visual_outcome"]["reason"],
+            boot._VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
+        )
         self.assertNotEqual(error_context["_visual_outcome"]["reason"],
                             no_relation_context["_visual_outcome"]["reason"])
+
+    def test_missing_terminal_authority_outcome_persists_as_failure(self):
+        from server import app as server_app
+
+        durable_path = Path("/tmp/visual-outcome-test.json")
+        with mock.patch.object(
+            memory, "save_turn_spatial_state", return_value=durable_path,
+        ) as save, mock.patch(
+            "orchestrator.active_project.get_active_project", return_value=None,
+        ), mock.patch(
+            "orchestrator.active_project.resolve_project_ids", return_value=[],
+        ):
+            result = server_app._persist_turn_spatial_state_unlocked(
+                "visual-missing-authority", "Question", "Answer", {},
+            )
+
+        self.assertEqual(result, durable_path)
+        outcome = save.call_args.kwargs["visual_outcome"]
+        self.assertEqual(outcome["state"], "failed")
+        self.assertEqual(outcome["stage"], "visual_hook")
+        self.assertIn("Terminal visual authority", outcome["reason"])
 
     def test_direct_error_reason_reaches_persistence_context(self):
         from server import app as server_app

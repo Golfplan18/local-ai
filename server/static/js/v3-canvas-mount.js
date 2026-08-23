@@ -1007,6 +1007,9 @@
             elementId: idMap.get(element.endBinding.elementId),
           });
         }
+        if (element.containerId && idMap.has(element.containerId)) {
+          element.containerId = idMap.get(element.containerId);
+        }
         if (Array.isArray(element.boundElements)) {
           element.boundElements = element.boundElements.map((binding) => (
             idMap.has(binding.id) ? Object.assign({}, binding, { id: idMap.get(binding.id) }) : binding
@@ -1580,12 +1583,20 @@
           .filter((element) => nativeGenerationKey(element)
             && inModifiedAnnotationGroup(element))
           .map(nativeGenerationKey));
+        const modifiedNativeGenerations = new Set(owned
+          .filter((element) => nativeGenerationKey(element)
+            && assistantElementWasModified(element))
+          .map(nativeGenerationKey));
+        const preservedNativeGenerations = new Set([
+          ...attachedGenerations,
+          ...modifiedNativeGenerations,
+        ]);
         const preservedAssistant = new Set(owned.filter((element) => (
           (element.customData
             && element.customData.oraAssistantVisualKind === 'annotation'
             && inModifiedAnnotationGroup(element))
           || (nativeGenerationKey(element)
-            && attachedGenerations.has(nativeGenerationKey(element)))
+            && preservedNativeGenerations.has(nativeGenerationKey(element)))
         )));
         const preservedAnnotationGroupIds = new Set(owned
           .filter((element) => (
@@ -1605,10 +1616,11 @@
             && element.groupIds.some((groupId) => removedAnnotationGroupIds.has(groupId))
           ))
           .map((element) => element.id));
-        // Clear removes untouched assistant output atomically. Every member
-        // of an edited annotation group and the complete native generation it
-        // annotates stay together, so no connector, label, or bound target is
-        // left dangling.
+        // Clear removes untouched assistant output atomically. A direct edit
+        // to any native member preserves that member's complete generation;
+        // every edited annotation group and its attached native generation
+        // also stay together, so no connector, label, or bound target is left
+        // dangling.
         const removableAssistant = owned.filter((element) => (
           !preservedAssistant.has(element) && !assistantElementWasModified(element)
         ));

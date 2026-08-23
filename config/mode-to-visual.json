@@ -149,10 +149,10 @@
       "notes": "A constrained concept map keeps assumptions and alternatives provisional instead of collapsing them into a hierarchy."
     },
     "project-mode": {
-      "visual_types": [],
+      "visual_types": ["concept_map"],
       "relation_to_prose_default": "integrated",
       "adversarial_strictness": "standard",
-      "notes": "Project Mode inherits visual configuration from the analytical mode it serves. Visual types and strictness are resolved at dispatch time based on the underlying mode."
+      "notes": "Project Mode uses the universal source-grounded concept-map fallback; an explicitly requested visual type still takes precedence."
     },
     "structured-output": {
       "visual_types": ["concept_map"],

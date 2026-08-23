@@ -428,10 +428,16 @@ function runStandaloneSuite(label, relativePath) {
 
     const commentedDag = Object.assign({}, dagEnvelope, {
       id: 'native-dag-comment-boundary',
-      spec: { dsl: 'dag { A // section note; B -> C }' },
+      spec: { dsl: [
+        'dag {',
+        '  A',
+        '  // section note',
+        '  B -> C',
+        '}',
+      ].join('\n') },
     });
     const commentedDagGraph = builder._graph(commentedDag);
-    record('native DAG shares canonical comment boundaries',
+    record('native DAG preserves physical line-comment boundaries',
       commentedDagGraph.nodes.some((node) => node.id === 'A')
       && commentedDagGraph.edges.some((edge) => edge.from === 'B'
         && edge.to === 'C' && edge.operator === '->')
@@ -465,15 +471,192 @@ function runStandaloneSuite(label, relativePath) {
       }));
     } catch (_) { malformedC4Rejected = true; }
     record('native C4 uses canonical parser and ignores comments',
-      c4Graph.nodes.some((node) => node.id === 'user' && node.label === 'User')
-      && c4Graph.nodes.some((node) => node.id === 'app' && node.label === 'App')
+      c4Graph.nodes.some((node) => node.id === 'user'
+        && node.label.includes('User') && node.c4Kind === 'person')
+      && c4Graph.nodes.some((node) => node.id === 'app'
+        && node.label.includes('App') && node.c4Kind === 'system')
       && !c4Graph.nodes.some((node) => node.id === 'ghost')
       && c4Graph.edges.some((edge) => edge.label === 'uses'));
-    record('native C4 relationship label is visibly emitted',
-      c4Scene.elements.some((element) => element.type === 'text'
-        && element.customData && element.customData.relationshipLabel === 'uses'
-        && element.text === 'uses'));
+    const relationshipLabel = c4Scene.elements.find((element) => element.type === 'text'
+      && element.customData && element.customData.relationshipLabel === 'uses');
+    const relationshipArrow = relationshipLabel && c4Scene.elements.find((element) => (
+      element.type === 'arrow' && element.id === relationshipLabel.containerId
+    ));
+    record('native C4 relationship label is attached arrow text',
+      relationshipLabel && relationshipLabel.text === 'uses'
+      && relationshipArrow && Array.isArray(relationshipArrow.boundElements)
+      && relationshipArrow.boundElements.some((binding) => (
+        binding.id === relationshipLabel.id && binding.type === 'text'
+      ))
+      && JSON.stringify(relationshipLabel.groupIds)
+        === JSON.stringify(relationshipArrow.groupIds));
+
+    const scopedC4Envelope = {
+      id: 'native-c4-scoped-container', type: 'c4',
+      spec: {
+        level: 'container',
+        dsl: [
+          'workspace {',
+          '  model {',
+          '    user = person "User"',
+          '    target = softwareSystem "Target" {',
+          '      web = container "Web" "UI" "JavaScript"',
+          '      worker = container "Worker" "Jobs" "Go"',
+          '      hidden = container "Hidden" "Not selected" "Rust"',
+          '      web -> worker "queues"',
+          '    }',
+          '    unrelated = softwareSystem "Unrelated" {',
+          '      unrelatedApi = container "Unrelated API" "Out of scope" "Python"',
+          '    }',
+          '    payments = softwareSystem "Payments" { tags "External" }',
+          '    user -> web "uses"',
+          '    worker -> payments "charges"',
+          '  }',
+          '  views {',
+          '    systemContext unrelated "Other context" {',
+          '      include *',
+          '    }',
+          '    container target "Selected containers" {',
+          '      include web worker',
+          '      autolayout lr',
+          '    }',
+          '  }',
+          '}',
+        ].join('\n'),
+      },
+    };
+    const scopedC4Graph = builder._graph(scopedC4Envelope);
+    const scopedC4Scene = builder.buildScene(scopedC4Envelope, {
+      assistantVisualId: 'harness-native-c4-scoped', generationRevision: 1,
+    });
+    const scopedC4NodeIds = scopedC4Graph.nodes.map((node) => node.id).sort();
+    const systemBoundary = scopedC4Scene.elements.find((element) => (
+      element.type === 'rectangle' && element.customData
+      && element.customData.c4BoundaryLabel === 'Target'
+    ));
+    record('native C4 retains the selected view, system boundary, and container technology',
+      JSON.stringify(scopedC4NodeIds)
+        === JSON.stringify(['payments', 'user', 'web', 'worker'])
+      && scopedC4Graph.edges.length === 3
+      && scopedC4Graph.nodes.some((node) => node.id === 'web'
+        && node.technology === 'JavaScript'
+        && node.label.includes('[Container: JavaScript]'))
+      && scopedC4Graph.nodes.some((node) => node.id === 'worker'
+        && node.technology === 'Go'
+        && node.label.includes('[Container: Go]'))
+      && systemBoundary && systemBoundary.strokeStyle === 'dashed'
+      && JSON.stringify(systemBoundary.customData.c4BoundaryMembers)
+        === JSON.stringify(['web', 'worker'])
+      && scopedC4Scene.elements.some((element) => element.type === 'text'
+        && element.text === 'Target [System]')
+      && !scopedC4Graph.nodes.some((node) => (
+        ['target', 'hidden', 'unrelated', 'unrelatedApi'].includes(node.id)
+      )));
     record('native C4 malformed DSL is rejected, not placeholdered', malformedC4Rejected);
+
+    const decisionEnvelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'decision_tree.valid.json'), 'utf8'
+    ));
+    decisionEnvelope.spec.root.children[0].payoff = 125;
+    const decisionGraph = builder._graph(decisionEnvelope);
+    const decisionScene = builder.buildScene(decisionEnvelope, {
+      assistantVisualId: 'harness-native-decision', generationRevision: 1,
+    });
+    const influenceEnvelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'influence_diagram.valid.json'), 'utf8'
+    ));
+    influenceEnvelope.spec.nodes.push({
+      id: 'R1', label: 'Revenue', kind: 'deterministic',
+    });
+    influenceEnvelope.spec.arcs.push({
+      from: 'R1', to: 'V1', type: 'functional',
+    });
+    const influenceScene = builder.buildScene(influenceEnvelope, {
+      assistantVisualId: 'harness-native-influence', generationRevision: 1,
+    });
+    const nativeNode = (scene, type, id) => {
+      const semantic = type + ':node:' + id;
+      return {
+        shape: scene.elements.find((element) => element.customData
+          && element.customData.semanticElementId === semantic),
+        label: scene.elements.find((element) => element.customData
+          && element.customData.semanticElementId === semantic + ':label'),
+      };
+    };
+    const treeDecision = nativeNode(decisionScene, 'decision_tree', 'r');
+    const treeChance = nativeNode(decisionScene, 'decision_tree', 'r-0');
+    const treeTerminal = nativeNode(decisionScene, 'decision_tree', 'r-0-0');
+    const influenceDecision = nativeNode(influenceScene, 'influence_diagram', 'D1');
+    const influenceChance = nativeNode(influenceScene, 'influence_diagram', 'C1');
+    const influenceValue = nativeNode(influenceScene, 'influence_diagram', 'V1');
+    const influenceDeterministic = nativeNode(influenceScene, 'influence_diagram', 'R1');
+    record('native decision and influence diagrams retain kind fidelity and decision quantities',
+      decisionGraph.edges.some((edge) => edge.label.includes('Yes')
+        && edge.label.includes('Payoff: 125 USD') && edge.decisionPayoff === 125)
+      && decisionGraph.edges.some((edge) => edge.label.includes('p=0.6')
+        && edge.decisionProbability === 0.6)
+      && decisionGraph.nodes.some((node) => node.decisionPayoff === 1000
+        && node.label.includes('Payoff: 1000 USD'))
+      && decisionGraph.nodes.some((node) => node.id === 'r'
+        && node.rollbackEv === 400 && node.label.includes('EV: 400 USD'))
+      && decisionScene.elements.some((element) => element.type === 'text'
+        && element.text.includes('p=0.6'))
+      && treeDecision.shape && treeDecision.shape.type === 'diamond'
+      && treeDecision.label && treeDecision.label.text.startsWith('[Decision] ')
+      && treeChance.shape && treeChance.shape.type === 'ellipse'
+      && treeChance.label && treeChance.label.text.startsWith('[Chance] ')
+      && treeTerminal.shape && treeTerminal.shape.type === 'rectangle'
+      && treeTerminal.label && treeTerminal.label.text.startsWith('[Terminal] ')
+      && influenceDecision.shape && influenceDecision.shape.type === 'rectangle'
+      && influenceDecision.label
+      && influenceDecision.label.text.startsWith('[Decision] ')
+      && influenceChance.shape && influenceChance.shape.type === 'ellipse'
+      && influenceChance.label && influenceChance.label.text.startsWith('[Chance] ')
+      && influenceValue.shape && influenceValue.shape.type === 'diamond'
+      && influenceValue.label && influenceValue.label.text.startsWith('[Value] ')
+      && influenceDeterministic.shape
+      && influenceDeterministic.shape.type === 'rectangle'
+      && influenceDeterministic.shape.strokeWidth === 4
+      && influenceDeterministic.label
+      && influenceDeterministic.label.text.startsWith('[Deterministic] '));
+
+    const bowTieEnvelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'bow_tie.valid.json'), 'utf8'
+    ));
+    bowTieEnvelope.spec.escalation_factors = [{
+      from_control_id: 'PC1',
+      label: 'Alert fatigue',
+      escalation_control: { id: 'EC1', label: 'Alert rotation' },
+    }];
+    const bowTieGraph = builder._graph(bowTieEnvelope);
+    const bowTieScene = builder.buildScene(bowTieEnvelope, {
+      assistantVisualId: 'harness-native-bow-tie', generationRevision: 1,
+    });
+    record('native bow-tie keeps controls on pathways and connects escalation controls',
+      bowTieGraph.edges.some((edge) => edge.from === 'T1' && edge.to === 'PC1')
+      && bowTieGraph.edges.some((edge) => edge.from === 'PC1' && edge.to === 'hazard')
+      && bowTieGraph.edges.some((edge) => edge.from === 'hazard' && edge.to === 'MC1')
+      && bowTieGraph.edges.some((edge) => edge.from === 'MC1' && edge.to === 'C1')
+      && bowTieGraph.edges.some((edge) => edge.from === 'escalation-factor-0'
+        && edge.to === 'PC1')
+      && bowTieGraph.edges.some((edge) => edge.from === 'EC1'
+        && edge.to === 'escalation-factor-0')
+      && bowTieScene.elements.some((element) => element.type === 'text'
+        && element.text.includes('[Escalation control] Alert rotation')));
+
+    const fishboneEnvelope = JSON.parse(fs.readFileSync(
+      path.join(EXAMPLES_DIR, 'fishbone.valid.json'), 'utf8'
+    ));
+    const fishboneGraph = builder._graph(fishboneEnvelope);
+    record('native fishbone arrows preserve cause to category to effect direction',
+      fishboneGraph.edges.some((edge) => edge.from === 'cause-0-0'
+        && edge.to === 'category-0')
+      && fishboneGraph.edges.some((edge) => edge.from === 'category-0'
+        && edge.to === 'effect')
+      && fishboneGraph.edges.some((edge) => edge.from === 'cause-1-0-0'
+        && edge.to === 'cause-1-0')
+      && !fishboneGraph.edges.some((edge) => edge.from === 'effect'
+        || (edge.from === 'category-0' && edge.to === 'cause-0-0')));
 
     const weightedEnvelope = JSON.parse(fs.readFileSync(
       path.join(EXAMPLES_DIR, 'pro_con.valid.json'), 'utf8'

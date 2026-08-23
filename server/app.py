@@ -15043,8 +15043,9 @@ def _persist_turn_spatial_state_unlocked(
                 visual_outcome = extra_context.get("_visual_outcome")
         if visual_outcome is None:
             visual_outcome = {
-                "state": "not_applicable",
-                "reason": "This turn did not produce a visual envelope.",
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": "Terminal visual authority did not provide an outcome.",
             }
         try:
             from orchestrator.active_project import (

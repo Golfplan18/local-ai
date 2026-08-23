@@ -940,6 +940,54 @@ const exportThroughMenu = async (format) => {
   }
   const fingerprint = w.OraVisualCompiler.nativeExcalidraw.generationFingerprint;
 
+  // Destructive regression: editing one member of this six-element native
+  // concept-map generation must make Clear preserve the whole generation,
+  // while unrelated untouched assistant material is still removed.
+  const directlyEditedGenerationIds = nativeElements.map((element) => element.id);
+  const directlyEditedMember = nativeElements.find((element) => element.type === 'rectangle');
+  const directlyEditedX = directlyEditedMember.x + 37;
+  directlyEditedMember.x = directlyEditedX;
+  const unrelatedAssistant = {
+    id: 'native-clear-unrelated-assistant', type: 'rectangle',
+    x: 900, y: 20, width: 40, height: 40,
+    customData: {
+      oraAssistantVisual: true,
+      oraAssistantVisualKind: 'artifact',
+      assistantVisualId: 'assistant:unrelated-clear',
+      generationRevision: 1,
+      semanticElementId: 'unrelated:image',
+    },
+  };
+  unrelatedAssistant.customData.originalGenerationFingerprint = fingerprint(unrelatedAssistant);
+  api.elements.push(unrelatedAssistant);
+  await w.OraPanels.visual.onBridgeUpdate({
+    envelope: {
+      id: 'native-clear-with-direct-edit', type: 'concept_map', canvas_action: 'clear',
+    },
+    ora_visual_dispatch_key: 'native#clear-with-direct-edit',
+  });
+  nativeElements = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'native');
+  if (directlyEditedGenerationIds.length !== 6
+      || nativeElements.length !== directlyEditedGenerationIds.length
+      || !directlyEditedGenerationIds.every((id) => (
+        api.elements.some((element) => element.id === id)
+      ))
+      || !api.elements.some((element) => (
+        element.id === directlyEditedMember.id && element.x === directlyEditedX
+      ))
+      || api.elements.some((element) => element.id === unrelatedAssistant.id)
+      || !api.elements.some((element) => element.id === 'native-user')) {
+    throw new Error('clear split a directly edited six-member native generation');
+  }
+  const retainedDirectlyEditedMember = api.elements.find(
+    (element) => element.id === directlyEditedMember.id
+  );
+  retainedDirectlyEditedMember.x -= 37;
+  retainedDirectlyEditedMember.customData.originalGenerationFingerprint = fingerprint(
+    retainedDirectlyEditedMember
+  );
+
   const nativeAnnotationResult = await w.OraPanels.visual.onBridgeUpdate({
     envelope: {
       id: 'native-annotations',

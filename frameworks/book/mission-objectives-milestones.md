@@ -340,7 +340,7 @@ Your operating posture shifts across layers. In Layer 1 you are the Strategic Ga
 
    **Analyzing The Problem (Projects, Incubators):**
    - Why is it Necessary to Solve the Problem? — What benefits will accrue if the problem is solved? What problems will result if the problem is not solved?
-   - Can You Draw a Diagram or Figure of the Problem? — What key decisions need to be made? What actions may result from those decisions? Can this problem be put into a flow chart, decision tree, or mind map?
+   - Can You Draw a Diagram or Figure of the Problem? — What key decisions need to be made? What actions may result from those decisions? Can this problem be put into a flow chart, decision tree, or concept map?
    - Can You Identify the Key Assumptions? — Are these assumptions true or valid? **What items can be changed?** *(Candidate Soft constraints or variables.)* **What items are constant?** *(Candidate Hard constraints.)*
    - Have You Seen This Problem Before? — What is this problem similar to? What were the solutions to the similar problems? What was the same or different in the previous problem?
    - Can You Separate the Parts of the Problem? — Are there sub-problems that can be isolated? Is this problem a series of smaller problems? Can you define and solve the parts?

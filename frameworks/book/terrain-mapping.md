@@ -69,7 +69,7 @@ Paste this entire file into any AI session — commercial (Claude, ChatGPT, Gemi
 - Layer 7: Error Correction and Output Formatting
 - Named Failure Modes
 - When Not to Invoke This Framework
-- Appendix A: Define + Analyze Question Bank (drawn from PEF Appendix A and the Problem-Solving Process Mind Map)
+- Appendix A: Define + Analyze Question Bank (drawn from PEF Appendix A and the Problem-Solving Process Concept Map)
 - Appendix B: Analytical Mode Eligibility by Wicked-Problems Verdict
 - Appendix C: Terrain Map Artifact Template
 - Appendix D: Research Prompt Specificity Rubric
@@ -254,7 +254,7 @@ Your operating posture shifts across layers. In Layer 1 (Gap Identification), yo
    - IF a Prior Terrain Map Artifact is provided and residual gaps are named, THEN operate as TM-Continue and load the prior artifact as context before walking questions.
    - IF no mode is stated, THEN classify from context: new invocation with no prior artifact → TM-Initiate; continuation with prior artifact → TM-Continue.
 
-2. **Walk PEF Appendix A Define and Analyze questions against the current problem space.** Use Appendix A of this framework (which reproduces the Define + Analyze question set from the PEF Appendix A Question Bank and the Problem-Solving Process Mind Map). For each question, assess whether the current problem space contains an answerable response:
+2. **Walk PEF Appendix A Define and Analyze questions against the current problem space.** Use Appendix A of this framework (which reproduces the Define + Analyze question set from the PEF Appendix A Question Bank and the Problem-Solving Process Concept Map). For each question, assess whether the current problem space contains an answerable response:
    - IF the question is clearly answered by the current problem space or the prior artifact, THEN mark it closed and record the answer in the inventory's Closed Answers list.
    - IF the question is partially answered, THEN extract the partial answer and record the residual unanswered portion as a gap.
    - IF the question is not answered, THEN add it to the gap inventory as a new gap, phrased as an answerable question.
@@ -863,7 +863,7 @@ This framework adds value when a problem has been named but the terrain around i
 
 ## APPENDIX A: DEFINE + ANALYZE QUESTION BANK
 
-*Drawn from the Problem Evolution Framework Appendix A Question Bank and the Problem-Solving Process Mind Map. Organized by the two phases this framework operates on: DEFINE and ANALYZE. Generate and later phases are downstream of this framework's purpose and are not included here.*
+*Drawn from the Problem Evolution Framework Appendix A Question Bank and the Problem-Solving Process Concept Map. Organized by the two phases this framework operates on: DEFINE and ANALYZE. Generate and later phases are downstream of this framework's purpose and are not included here.*
 
 ### Phase 1: DEFINE
 
@@ -896,7 +896,7 @@ This framework adds value when a problem has been named but the terrain around i
 - What actions may result from those decisions?
 - Can this problem be put into a flow chart?
 - Can this problem be drawn as a decision tree?
-- Can this problem be mind mapped?
+- Can this problem be mapped as a concept map?
 - Is there some other form that seems more appropriate?
 
 **Can the key assumptions be identified?**

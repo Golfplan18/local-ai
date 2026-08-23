@@ -960,7 +960,7 @@ The framework is a consultant. You call the consultant when you need them.
 - What actions may result from those decisions?
 - Can this problem be put into a flow chart?
 - Can this problem be drawn as a decision tree?
-- Can this problem be mind mapped?
+- Can this problem be mapped as a concept map?
 - Is there some other form that seems more appropriate?
 
 **Can you identify the key assumptions?**
@@ -1133,7 +1133,7 @@ The framework is a consultant. You call the consultant when you need them.
 | Gap | Recommended Action | Reasoning |
 |-----|-------------------|-----------|
 | Don't know why the problem matters | AGO — Aims, Goals, Objectives | Without knowing why, you cannot prioritize or evaluate solutions. AGO clarifies direction. |
-| Cannot see the structure of the problem | Mind mapping, decision trees, or flowcharting | Visual representation reveals structure that linear description hides. |
+| Cannot see the structure of the problem | Concept mapping, decision trees, or flowcharting | Visual representation reveals structure that linear description hides. |
 | Assumptions are unexamined | Assumption audit — list, test, and classify as confirmed/unconfirmed | The most dangerous assumptions are the ones you don't know you are making. |
 | Haven't encountered similar problems | Research — analogous problems in other domains | Solutions rarely need invention. They usually need discovery and adaptation. |
 | Cannot separate the parts | PIF P-Decompose mode | The Process Inference Framework in decompose mode breaks complex endpoints into solvable subproblems. |
