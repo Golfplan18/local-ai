@@ -1,12 +1,14 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import {
+  CaptureUpdateAction,
   Excalidraw,
   MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
   exportToSvg,
   loadFromBlob,
+  newElementWith,
   serializeAsJSON,
 } from "@excalidraw/excalidraw";
 
@@ -179,6 +181,15 @@ async function insertPng(api, pngBlob, locked = true, customData = null) {
   return placed;
 }
 
+function clearForUser(api) {
+  api.updateScene({
+    elements: api.getSceneElements().map((element) => (
+      newElementWith(element, { isDeleted: true })
+    )),
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  });
+}
+
 function mount(host, options = {}) {
   if (!host) throw new Error("Excalidraw host is required");
   let api = null;
@@ -250,5 +261,6 @@ window.OraExcalidrawIsland = {
   exportSvg: exportSvgBlob,
   imageBackedScene,
   insertPng,
+  clearForUser,
   constants: { background: WHITE, maxSide: MAX_SIDE, padding: PADDING },
 };

@@ -1148,13 +1148,7 @@
 
     const clearForUser = () => {
       if (editor === 'excalidraw' && excalidrawApi) {
-        const elements = excalidrawApi.getSceneElements().map((element) => (
-          Object.assign({}, element, { isDeleted: true })
-        ));
-        excalidrawApi.updateScene({
-          elements,
-          captureUpdate: 'IMMEDIATELY',
-        });
+        window.OraExcalidrawIsland.clearForUser(excalidrawApi);
         return;
       }
       if (panel && typeof panel.clearCanvas === 'function') panel.clearCanvas();
