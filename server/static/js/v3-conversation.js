@@ -435,8 +435,8 @@
       const outcome = t.assistant.visual_outcome;
       if (outcome && outcome.state === 'failed'
           && window.OraPanels && window.OraPanels.visual
-          && typeof window.OraPanels.visual._showErrorBar === 'function') {
-        window.OraPanels.visual._showErrorBar(
+          && typeof window.OraPanels.visual.showError === 'function') {
+        window.OraPanels.visual.showError(
           'Visual failed: ' + (outcome.reason || 'The visual could not be inserted.'),
         );
       }

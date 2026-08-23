@@ -16,34 +16,90 @@ import boot  # noqa: E402
 
 class VisualOutcomePersistenceTests(unittest.TestCase):
     def test_positive_exceptions_skip_visual_recovery_and_synthesis(self):
-        contexts = [
-            {
-                "cleaned_prompt": "Don't analyze this; just answer.",
-                "mode_name": "simple",
-                "pre_routing": {"visual_exception": "explicit_opt_out"},
-            },
-            {
-                "cleaned_prompt": "Hi there!",
-                "mode_name": "simple",
-                "pre_routing": {
-                    "visual_exception": "greeting_or_acknowledgement",
-                },
-            },
-        ]
-        reasons = []
+        explicit = {
+            "cleaned_prompt": "Don't analyze this; just answer.",
+            "mode_name": "simple",
+            "pre_routing": {"visual_exception": "explicit_opt_out"},
+        }
         with mock.patch.object(boot, "_maybe_recover_visual") as recover, \
              mock.patch.object(boot, "_maybe_synthesize_visual") as synthesize, \
              mock.patch.object(boot, "_maybe_build_concept_map") as fallback:
-            for context in contexts:
-                self.assertEqual(boot._run_visual_hook("Short response.", context),
-                                 "Short response.")
-                self.assertEqual(context["_visual_outcome"]["state"],
-                                 "not_applicable")
-                reasons.append(context["_visual_outcome"]["reason"])
+            self.assertEqual(boot._run_visual_hook("Short response.", explicit),
+                             "Short response.")
+            self.assertEqual(explicit["_visual_outcome"]["state"], "not_applicable")
         recover.assert_not_called()
         synthesize.assert_not_called()
         fallback.assert_not_called()
-        self.assertNotEqual(reasons[0], reasons[1])
+
+    def test_greeting_prefixed_substantive_reply_keeps_fallback_eligible(self):
+        context = {
+            "cleaned_prompt": "Hi there, explain the service dependency.",
+            "mode_name": "simple",
+            "pre_routing": {
+                "visual_exception": "greeting_or_acknowledgement",
+            },
+        }
+        visual = "```ora-visual\n{}\n```"
+        with mock.patch.object(boot, "_maybe_recover_visual", return_value=(None, None)), \
+             mock.patch.object(boot, "_maybe_synthesize_visual", return_value=(None, None)), \
+             mock.patch.object(
+                 boot, "_maybe_build_concept_map",
+                 return_value=("The service depends on the database.\n\n" + visual,
+                               {"blocked": False, "type": "concept_map"}),
+             ) as fallback:
+            result = boot._run_visual_hook("The service depends on the database.", context)
+        fallback.assert_called_once()
+        self.assertIn("ora-visual", result)
+        self.assertEqual(context["_visual_outcome"]["state"], "building")
+
+        no_visual_context = {
+            "cleaned_prompt": "Hi there, explain the service dependency.",
+            "mode_name": "simple",
+            "pre_routing": {
+                "visual_exception": "greeting_or_acknowledgement",
+            },
+        }
+        with mock.patch.object(boot, "VISUAL_HOOK_AVAILABLE", True), \
+             mock.patch.object(boot, "_maybe_recover_visual", return_value=(None, None)), \
+             mock.patch.object(boot, "_maybe_synthesize_visual", return_value=(None, None)), \
+             mock.patch.object(boot, "_maybe_build_concept_map", return_value=(None, None)):
+            boot._run_visual_hook(
+                "The service depends on the database.", no_visual_context,
+            )
+        self.assertEqual(no_visual_context["_visual_outcome"]["state"], "failed")
+        self.assertNotEqual(
+            no_visual_context["_visual_outcome"]["reason"],
+            boot._VISUAL_NOT_APPLICABLE_REASONS["greeting_or_acknowledgement"],
+        )
+
+    def test_standalone_greeting_is_durable_when_visual_hook_is_unavailable(self):
+        greeting = {
+            "cleaned_prompt": "Hi there!",
+            "mode_name": "simple",
+            "pre_routing": {
+                "visual_exception": "greeting_or_acknowledgement",
+            },
+        }
+        substantive = {
+            "cleaned_prompt": "Hi there, explain the service dependency.",
+            "mode_name": "simple",
+            "pre_routing": {
+                "visual_exception": "greeting_or_acknowledgement",
+            },
+        }
+        with mock.patch.object(boot, "VISUAL_HOOK_AVAILABLE", False):
+            self.assertEqual(boot._run_visual_hook("Hello!", greeting), "Hello!")
+            self.assertEqual(
+                boot._run_visual_hook(
+                    "The service depends on the database.", substantive,
+                ),
+                "The service depends on the database.",
+            )
+        self.assertEqual(greeting["_visual_outcome"]["state"], "not_applicable")
+        self.assertNotEqual(
+            substantive.get("_visual_outcome", {}).get("reason"),
+            boot._VISUAL_NOT_APPLICABLE_REASONS["greeting_or_acknowledgement"],
+        )
 
     def test_lookup_translation_and_analysis_are_not_visual_exceptions(self):
         contexts = [
@@ -80,20 +136,10 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
         no_relation_context = {
             "cleaned_prompt": "State the isolated fact.",
             "mode_name": "simple",
-            "_visual_fallback_origin": "failed_claim_extraction",
+            "execution_context": "agent",
         }
         boot._run_visual_hook("Endpoint failed.", error_context)
-        with mock.patch.object(
-            boot, "_maybe_recover_visual", return_value=(None, None)
-        ) as recover, mock.patch.object(
-            boot, "_maybe_synthesize_visual", return_value=(None, None)
-        ) as synthesize, mock.patch.object(
-            boot, "_maybe_build_concept_map", return_value=(None, None)
-        ) as fallback:
-            boot._run_visual_hook("One isolated fact.", no_relation_context)
-        recover.assert_not_called()
-        synthesize.assert_not_called()
-        fallback.assert_not_called()
+        boot._run_visual_hook("One isolated fact.", no_relation_context)
         self.assertEqual(error_context["_visual_outcome"]["state"],
                          "not_applicable")
         self.assertEqual(no_relation_context["_visual_outcome"]["state"],

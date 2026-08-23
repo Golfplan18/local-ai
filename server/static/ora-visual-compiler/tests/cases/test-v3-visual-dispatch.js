@@ -110,7 +110,7 @@ module.exports = {
     const priorAlert = win.alert;
     win.alert = function (message) { alerts.push(String(message)); };
     win.OraPanels = { visual: {
-      _showErrorBar: function (message) { errorBar.push(String(message)); },
+      showError: function (message) { errorBar.push(String(message)); },
       onBridgeUpdate: function () {
       return Promise.resolve([{
         action: 'annotate',

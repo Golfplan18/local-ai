@@ -426,6 +426,55 @@ function runStandaloneSuite(label, relativePath) {
       && arrowByOperator('--').endArrowhead === null
       && dagArrows.every((arrow) => arrow.width > 0 && arrow.height > 0));
 
+    const commentedDag = Object.assign({}, dagEnvelope, {
+      id: 'native-dag-comment-boundary',
+      spec: { dsl: 'dag { A // section note; B -> C }' },
+    });
+    const commentedDagGraph = builder._graph(commentedDag);
+    record('native DAG shares canonical comment boundaries',
+      commentedDagGraph.nodes.some((node) => node.id === 'A')
+      && commentedDagGraph.edges.some((edge) => edge.from === 'B'
+        && edge.to === 'C' && edge.operator === '->')
+      && !commentedDagGraph.nodes.some((node) => node.id === 'section'));
+
+    const c4NativeEnvelope = {
+      id: 'native-c4-parser', type: 'c4',
+      spec: {
+        level: 'context',
+        dsl: [
+          'workspace {',
+          '  model {',
+          '    // ghost = person "Commented out"',
+          '    user = person "User"',
+          '    app = softwareSystem "App"',
+          '    user -> app "uses"',
+          '  }',
+          '  views { systemContext app { include * } }',
+          '}',
+        ].join('\n'),
+      },
+    };
+    const c4Graph = builder._graph(c4NativeEnvelope);
+    const c4Scene = builder.buildScene(c4NativeEnvelope, {
+      assistantVisualId: 'harness-native-c4', generationRevision: 1,
+    });
+    let malformedC4Rejected = false;
+    try {
+      builder._graph(Object.assign({}, c4NativeEnvelope, {
+        spec: Object.assign({}, c4NativeEnvelope.spec, { dsl: 'workspace {' }),
+      }));
+    } catch (_) { malformedC4Rejected = true; }
+    record('native C4 uses canonical parser and ignores comments',
+      c4Graph.nodes.some((node) => node.id === 'user' && node.label === 'User')
+      && c4Graph.nodes.some((node) => node.id === 'app' && node.label === 'App')
+      && !c4Graph.nodes.some((node) => node.id === 'ghost')
+      && c4Graph.edges.some((edge) => edge.label === 'uses'));
+    record('native C4 relationship label is visibly emitted',
+      c4Scene.elements.some((element) => element.type === 'text'
+        && element.customData && element.customData.relationshipLabel === 'uses'
+        && element.text === 'uses'));
+    record('native C4 malformed DSL is rejected, not placeholdered', malformedC4Rejected);
+
     const weightedEnvelope = JSON.parse(fs.readFileSync(
       path.join(EXAMPLES_DIR, 'pro_con.valid.json'), 'utf8'
     ));

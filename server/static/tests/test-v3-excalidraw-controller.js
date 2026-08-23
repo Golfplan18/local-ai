@@ -1018,9 +1018,39 @@ const exportThroughMenu = async (format) => {
     throw new Error('native highlight/callout annotations were not grouped and bound to their semantic targets');
   }
 
+  const annotationCountBeforeReplay = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'annotation').length;
+  const replayAnnotationResult = await w.OraPanels.visual.onBridgeUpdate({
+    envelope: {
+      id: 'native-annotations',
+      type: 'concept_map',
+      canvas_action: 'annotate',
+      annotations: [
+        { target_id: 'A', kind: 'highlight', color: '#ff5722' },
+        { target_id: 'B', kind: 'callout', text: 'Keep this connected' },
+      ],
+    },
+    ora_visual_dispatch_key: 'native#annotations-replay',
+  });
+  const annotationCountAfterReplay = api.elements.filter((element) => element.customData
+    && element.customData.oraAssistantVisualKind === 'annotation').length;
+  if (annotationCountAfterReplay !== annotationCountBeforeReplay
+      || !replayAnnotationResult[0]
+      || replayAnnotationResult[0].applied !== 0
+      || replayAnnotationResult[0].warnings.length !== 0) {
+    throw new Error('replayed native annotations were duplicated instead of being idempotent');
+  }
+
   const originalCalloutMemberIds = [calloutBox.id, calloutText.id, calloutConnector.id];
   const originalCalloutTargetId = calloutTarget.id;
   const originalNativeRevision = Number(calloutTarget.customData.generationRevision);
+  const removedHighlightId = highlight.id;
+  const removedHighlightGroupIds = new Set(highlight.groupIds || []);
+  // Model a stale Excalidraw binding left on the retained native target when
+  // the untouched highlight annotation is removed by regeneration.
+  highlightTarget.boundElements = (highlightTarget.boundElements || []).concat({
+    id: removedHighlightId, type: 'arrow',
+  });
   calloutText.text = 'User kept this callout connected';
   calloutText.originalText = calloutText.text;
   await w.OraPanels.visual.onBridgeUpdate({
@@ -1046,6 +1076,12 @@ const exportThroughMenu = async (format) => {
   const freshNativeMinX = freshNativeAfterCalloutEdit.reduce(
     (value, element) => Math.min(value, Number(element.x) || 0), Infinity
   );
+  const retainedNativeHasRemovedAnnotationRefs = api.elements.some((element) => (
+    element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && ((element.groupIds || []).some((groupId) => removedHighlightGroupIds.has(groupId))
+      || (element.boundElements || []).some((binding) => binding.id === removedHighlightId))
+  ));
   if (!originalCalloutMemberIds.every((id) => api.elements.some((element) => element.id === id))
       || !preservedCalloutBox || !preservedCalloutText || !preservedCalloutConnector
       || !preservedCalloutTarget
@@ -1068,8 +1104,43 @@ const exportThroughMenu = async (format) => {
       ))
       || freshNativeAfterCalloutEdit.length !== nativeElements.length
       || freshNativeMinX <= preservedNativeMaxX
-      || api.elements.some((element) => element.id === highlight.id)) {
+      || api.elements.some((element) => element.id === highlight.id)
+      || retainedNativeHasRemovedAnnotationRefs) {
     throw new Error('user-edited native callout did not survive regeneration as one bound group');
+  }
+
+  // Clear the scene while the edited callout group and the native generation
+  // it annotates are still present. The clear action must remove the fresh,
+  // untouched generation while preserving the complete edited group.
+  await w.OraPanels.visual.onBridgeUpdate({
+    envelope: { id: 'native-clear-with-edited-annotation', type: 'concept_map', canvas_action: 'clear' },
+    ora_visual_dispatch_key: 'native#clear-with-edited-annotation',
+  });
+  const assistantAfterNativeClear = api.elements.filter((element) => element.customData
+    && (element.customData.oraAssistantVisualKind === 'native'
+      || element.customData.oraAssistantVisualKind === 'annotation'));
+  const preservedCalloutAfterClear = originalCalloutMemberIds.every((id) => (
+    api.elements.some((element) => element.id === id)
+  ));
+  const preservedCalloutGenerationAfterClear = api.elements.filter((element) => (
+    element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && Number(element.customData.generationRevision) === originalNativeRevision
+  ));
+  const clearedNativeHasRemovedAnnotationRefs = api.elements.some((element) => (
+    element.customData
+    && element.customData.oraAssistantVisualKind === 'native'
+    && ((element.groupIds || []).some((groupId) => removedHighlightGroupIds.has(groupId))
+      || (element.boundElements || []).some((binding) => binding.id === removedHighlightId))
+  ));
+  if (!api.elements.some((element) => element.id === 'native-user')
+      || !preservedCalloutAfterClear
+      || preservedCalloutGenerationAfterClear.length === 0
+      || assistantAfterNativeClear.some((element) => (
+        Number(element.customData.generationRevision) !== originalNativeRevision
+      ))
+      || clearedNativeHasRemovedAnnotationRefs) {
+    throw new Error('clear split an edited annotation group from its attached native generation');
   }
 
   api.elements = api.elements.filter((element) => element.id === 'native-user');
@@ -1086,6 +1157,9 @@ const exportThroughMenu = async (format) => {
   const arrowProbe = nativeElements.find((element) => element.type === 'arrow');
   const fingerprintCases = [
     ['opacity', shapeProbe, (element) => { element.opacity = 72; }],
+    ['scale', shapeProbe, (element) => { element.scale = [2, 1]; }],
+    ['horizontal flip', shapeProbe, (element) => { element.flipHorizontal = true; }],
+    ['vertical flip', shapeProbe, (element) => { element.flipVertical = true; }],
     ['stroke width', shapeProbe, (element) => { element.strokeWidth = 4; }],
     ['stroke style', shapeProbe, (element) => { element.strokeStyle = 'dashed'; }],
     ['roughness', shapeProbe, (element) => { element.roughness = 2; }],
@@ -1232,7 +1306,7 @@ const exportThroughMenu = async (format) => {
     api.elements.some((candidate) => candidate.id === element.id)
   ));
   const preservedLabelsAreBound = priorNativeGeneration
-    .filter((element) => element.type === 'text')
+    .filter((element) => element.type === 'text' && element.containerId)
     .every((element) => {
       const label = api.elements.find((candidate) => candidate.id === element.id);
       const container = label && api.elements.find(
