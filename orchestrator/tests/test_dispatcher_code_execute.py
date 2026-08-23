@@ -126,6 +126,49 @@ class TestCodeExecute(CodeExecuteDispatchBase):
         self.assertEqual(len(ev), 1)
         self.assertEqual(ev[0]["enforcement_model"], "orchestrated")
 
+    def test_code_execute_normal_output_is_unchanged(self):
+        import code_execute as ce
+        if not ce.sandbox_available():
+            self.skipTest("platform code-execute sandbox unavailable")
+        self.assertEqual(ce.code_execute("print('normal-result')"),
+                         "normal-result")
+
+    def test_code_execute_denies_process_fork(self):
+        import code_execute as ce
+        if not ce.sandbox_available():
+            self.skipTest("platform code-execute sandbox unavailable")
+        result = ce.code_execute(
+            "import os\n"
+            "try:\n"
+            "    os.fork()\n"
+            "    print('FORK-ALLOWED')\n"
+            "except OSError as exc:\n"
+            "    print('fork denied', type(exc).__name__)\n"
+        )
+        self.assertNotIn("FORK-ALLOWED", result)
+        self.assertIn("fork denied", result)
+
+    def test_code_execute_large_output_is_bounded_and_terminates(self):
+        import code_execute as ce
+        if not ce.sandbox_available():
+            self.skipTest("platform code-execute sandbox unavailable")
+        result = ce.code_execute(
+            f"import sys\n"
+            f"sys.stdout.write('x' * {ce.MAX_RESULT_BYTES * 2})\n"
+            "sys.stdout.flush()\n"
+            "while True: pass\n"
+        )
+        self.assertIn("Output truncated", result)
+        self.assertIn("process terminated", result)
+        self.assertLessEqual(len(result.encode()), ce.MAX_RESULT_BYTES + 128)
+
+    def test_code_execute_timeout_terminates_and_reaps(self):
+        import code_execute as ce
+        if not ce.sandbox_available():
+            self.skipTest("platform code-execute sandbox unavailable")
+        self.assertEqual(ce.code_execute("while True: pass", timeout=0.1),
+                         "[code_execute] Timeout after 0.1s")
+
     def test_code_execute_network_denied(self):
         import code_execute as ce
         if not ce.sandbox_available():
