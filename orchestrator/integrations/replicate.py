@@ -564,6 +564,7 @@ def _normalize_image_ref(ref: Any) -> str | None:
     (object id, layer, bbox). For the WP-7.3.2c slice we accept:
 
     * ``str`` — a URL or data URI: passed through.
+    * ``bytes`` / ``bytearray`` / ``memoryview`` — wrapped as a PNG data URI.
     * ``dict`` with ``url`` key — passed through.
     * ``dict`` with ``data`` key (base64) — wrapped as a data URI.
     * ``dict`` with ``path`` key — read from disk and base64-encoded.
@@ -573,12 +574,20 @@ def _normalize_image_ref(ref: Any) -> str | None:
         return None
     if isinstance(ref, str):
         return ref
+    if isinstance(ref, (bytes, bytearray, memoryview)):
+        import base64
+        encoded = base64.b64encode(bytes(ref)).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
     if isinstance(ref, dict):
         if "url" in ref:
             return ref["url"]
         if "data" in ref:
-            mime = ref.get("mime", "image/png")
-            return f"data:{mime};base64,{ref['data']}"
+            mime = ref.get("mime") or ref.get("mime_type") or "image/png"
+            data = ref["data"]
+            if isinstance(data, (bytes, bytearray, memoryview)):
+                import base64
+                data = base64.b64encode(bytes(data)).decode("ascii")
+            return f"data:{mime};base64,{data}"
         if "path" in ref:
             try:
                 import base64
@@ -618,6 +627,62 @@ def _build_inputs(slot_cfg: dict, **overrides: Any) -> dict:
         if v is not None:
             inputs[k] = v
     return inputs
+
+
+# --- §3.2 image_edits --------------------------------------------------
+
+def dispatch_image_edits(inputs: dict) -> dict:
+    """Edit the masked region of ``image`` through Replicate.
+
+    Replicate models commonly expose the edit strength as
+    ``prompt_strength``.  The slot contract calls that value ``strength``;
+    the slot's input template remains the source of the provider defaults.
+    """
+    client, cfg = _client_for_model("image_edits")
+    payload = _build_inputs(
+        cfg,
+        image=_normalize_image_ref(inputs.get("image")),
+        mask=_normalize_image_ref(inputs.get("mask")),
+        prompt=inputs.get("prompt"),
+        prompt_strength=inputs.get("strength", 0.75),
+    )
+    pred = client.run(cfg["model"], payload, version=cfg.get("version"))
+    return _extract_first_image(pred)
+
+
+# --- §3.3 image_outpaints ----------------------------------------------
+
+def dispatch_image_outpaints(inputs: dict) -> dict:
+    """Extend ``image`` in the requested directions through Replicate.
+
+    The selected Replicate model owns the exact outpaint input vocabulary;
+    the generic slot fields are passed through alongside the configured
+    template so model overrides can provide a native outpaint endpoint.
+    """
+    client, cfg = _client_for_model("image_outpaints")
+    payload = _build_inputs(
+        cfg,
+        image=_normalize_image_ref(inputs.get("image")),
+        directions=inputs.get("directions"),
+        prompt=inputs.get("prompt"),
+        aspect_ratio=inputs.get("aspect_ratio"),
+    )
+    pred = client.run(cfg["model"], payload, version=cfg.get("version"))
+    return _extract_first_image(pred)
+
+
+# --- §3.4 image_upscales -----------------------------------------------
+
+def dispatch_image_upscales(inputs: dict) -> dict:
+    """Upscale ``image`` through the configured Replicate model."""
+    client, cfg = _client_for_model("image_upscales")
+    payload = _build_inputs(
+        cfg,
+        image=_normalize_image_ref(inputs.get("image")),
+        scale=inputs.get("scale_factor", 2.0),
+    )
+    pred = client.run(cfg["model"], payload, version=cfg.get("version"))
+    return _extract_first_image(pred)
 
 
 # --- §3.5 image_styles -------------------------------------------------
@@ -1088,6 +1153,9 @@ def _materialize_async_result(
 # Map slot name → dispatcher. Order matters only for documentation —
 # registration is independent per slot.
 _SLOT_HANDLERS: dict[str, Callable[[dict], Any]] = {
+    "image_edits":     dispatch_image_edits,
+    "image_outpaints": dispatch_image_outpaints,
+    "image_upscales":  dispatch_image_upscales,
     "image_styles":     dispatch_image_styles,
     "image_varies":     dispatch_image_varies,
     "image_to_prompt":  dispatch_image_to_prompt,

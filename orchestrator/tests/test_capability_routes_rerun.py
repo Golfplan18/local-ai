@@ -17,11 +17,11 @@ Routes covered:
 
 Run::
 
-    /opt/homebrew/bin/python3 -m unittest \
-        orchestrator.tests.test_capability_routes_rerun -v
+    /opt/homebrew/bin/python3 -m pytest \
+        orchestrator/tests/test_capability_routes_rerun.py -q
 
-Mock paths are explicit (``mock=true``) so the tests run cleanly even
-when a Replicate token is configured locally.
+Provider calls are patched with deterministic test fixtures; production
+routes are never asked to fulfill a request through a mock switch.
 """
 from __future__ import annotations
 
@@ -43,8 +43,8 @@ sys.path.insert(0, str(WORKSPACE / "server"))
 def _tiny_png_data_url() -> str:
     """Return a minimal 4×4 PNG as a data URL.
 
-    Used by the mock paths to verify image_bytes flow through. We build
-    via PIL so the mock paths can decode and tint it without erroring.
+    Used by patched provider fixtures to verify image bytes flow through.
+    We build it via PIL so the route can decode it without erroring.
     """
     from PIL import Image
     img = Image.new("RGBA", (4, 4), (128, 128, 128, 255))
@@ -52,6 +52,131 @@ def _tiny_png_data_url() -> str:
     img.save(buf, format="PNG")
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
     return f"data:image/png;base64,{b64}"
+
+
+def _tiny_png_bytes() -> bytes:
+    return base64.b64decode(_tiny_png_data_url().split(",", 1)[1])
+
+
+def _fake_registry(slot: str, provider_id: str, output):
+    """Return a deterministic registry double and its captured calls."""
+    from capability_registry import InvocationResult
+
+    calls = []
+    registry = mock.Mock()
+
+    def invoke(invoked_slot, inputs, provider_id=None, **kwargs):
+        calls.append({
+            "slot": invoked_slot,
+            "inputs": dict(inputs),
+            "provider_id": provider_id,
+            "kwargs": kwargs,
+        })
+        result_output = output(dict(inputs)) if callable(output) else output
+        return InvocationResult(
+            slot=invoked_slot,
+            provider_id=provider_id or provider_id_for_result,
+            output=result_output,
+            execution_pattern="async" if slot == "video_generates" else "sync",
+            inputs_used=dict(inputs),
+            attempts=[{
+                "provider_id": provider_id or provider_id_for_result,
+                "succeeded": True,
+                "error_code": None,
+                "error_message": None,
+            }],
+        )
+
+    provider_id_for_result = provider_id
+    registry.invoke.side_effect = invoke
+    return registry, calls
+
+
+class CapabilityMockBoundaryTests(unittest.TestCase):
+    """Production routes reject the old deterministic fixture switch."""
+
+    def setUp(self) -> None:
+        from server import app as server  # noqa: WPS433
+        self.server = server
+        self.client = server.app.test_client()
+
+    def test_mock_flag_is_rejected_by_every_affected_route(self) -> None:
+        cases = [
+            (
+                "/api/capability/image_edits",
+                {
+                    "prompt": "make it blue",
+                    "image_data_url": _tiny_png_data_url(),
+                    "mask_data_url": _tiny_png_data_url(),
+                    "mock": True,
+                },
+            ),
+            (
+                "/api/capability/image_outpaints",
+                {
+                    "prompt": "extend to the right",
+                    "image_data_url": _tiny_png_data_url(),
+                    "directions": ["right"],
+                    "mock": True,
+                },
+            ),
+            (
+                "/api/capability/image_upscales",
+                {
+                    "image_data_url": _tiny_png_data_url(),
+                    "scale_factor": 2,
+                    "mock": True,
+                },
+            ),
+            (
+                "/api/capability/image_styles",
+                {
+                    "source_image_data_url": _tiny_png_data_url(),
+                    "style_reference_data_url": _tiny_png_data_url(),
+                    "mock": True,
+                },
+            ),
+            (
+                "/api/capability/image_critique",
+                {
+                    "image_data_url": _tiny_png_data_url(),
+                    "rubric": "composition",
+                    "mock": True,
+                },
+            ),
+            (
+                "/api/capability/image_varies",
+                {
+                    "slot": "image_varies",
+                    "inputs": {"source_image": "obj_42", "mock": True},
+                },
+            ),
+            (
+                "/api/capability/image_to_prompt",
+                {
+                    "slot": "image_to_prompt",
+                    "inputs": {"image": "obj_99", "mock": True},
+                },
+            ),
+        ]
+
+        for route, body in cases:
+            with self.subTest(route=route):
+                with mock.patch.object(
+                    self.server,
+                    "_load_image_capability_registry",
+                    side_effect=AssertionError("mock request reached provider setup"),
+                ) as load_registry:
+                    resp = self.client.post(
+                        route,
+                        data=json.dumps(body),
+                        content_type="application/json",
+                    )
+                self.assertFalse(200 <= resp.status_code < 300)
+                payload = json.loads(resp.data)
+                self.assertEqual(payload["error"]["code"], "mock_not_allowed")
+                self.assertIsInstance(payload["error"]["attempts"], list)
+                load_registry.assert_not_called()
 
 
 class CapabilityImageVariesRouteTests(unittest.TestCase):
@@ -62,8 +187,8 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         self.server = server
         self.client = server.app.test_client()
 
-    def test_happy_mock_returns_image_list(self) -> None:
-        """Mock path returns a list of base64 images keyed under `images`."""
+    def test_patched_provider_returns_image_list(self) -> None:
+        """A patched provider returns the route's real image-list shape."""
         body = {
             "slot": "image_varies",
             "inputs": {
@@ -72,17 +197,27 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
                 "variation_strength": 0.5,
                 "source_image_data_url": _tiny_png_data_url(),
             },
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_varies",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, _calls = _fake_registry(
+            "image_varies",
+            "local-diffusers",
+            lambda inputs: [
+                {"image_data_uri": _tiny_png_data_url()}
+                for _ in range(inputs["count"])
+            ],
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_varies",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
-        self.assertTrue(payload.get("mocked"))
-        self.assertEqual(payload.get("provider"), "mock-image-varies")
+        self.assertNotIn("mocked", payload)
+        self.assertEqual(payload.get("provider"), "local-diffusers")
         self.assertIsInstance(payload.get("images"), list)
         self.assertEqual(len(payload["images"]), 4)
         for entry in payload["images"]:
@@ -102,16 +237,27 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
                 "count": 99,
                 "source_image_data_url": _tiny_png_data_url(),
             },
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_varies",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, calls = _fake_registry(
+            "image_varies",
+            "alternate-image-provider",
+            lambda inputs: [
+                {"image_data_uri": _tiny_png_data_url()}
+                for _ in range(inputs["count"])
+            ],
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_varies",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
         self.assertLessEqual(len(payload["images"]), 8)
+        self.assertEqual(calls[0]["inputs"]["count"], 8)
 
     def test_missing_source_image_returns_400(self) -> None:
         """Bad input: empty source_image surfaces source_ambiguous."""
@@ -126,20 +272,103 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         self.assertEqual(payload["error"]["code"], "source_ambiguous")
 
     def test_no_source_bytes_falls_back_to_placeholder(self) -> None:
-        """When no source_image_data_url is supplied, mock still emits images."""
+        """When no source_image_data_url is supplied, patched provider emits images."""
         body = {
             "slot": "image_varies",
             "inputs": {"source_image": "obj_42", "count": 2},
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_varies",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, _calls = _fake_registry(
+            "image_varies",
+            "local-diffusers",
+            lambda inputs: [
+                {"image_data_uri": _tiny_png_data_url()}
+                for _ in range(2)
+            ],
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_varies",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
         self.assertEqual(len(payload["images"]), 2)
+
+    def test_no_provider_error_includes_attempts(self) -> None:
+        """Fallback exhaustion stays visible in the typed error response."""
+        from capability_registry import CapabilityError
+
+        attempts = [
+            {
+                "provider_id": "preferred-image-provider",
+                "succeeded": False,
+                "error_code": "model_unavailable",
+                "error_message": "preferred unavailable",
+            },
+            {
+                "provider_id": "alternate-image-provider",
+                "succeeded": False,
+                "error_code": "model_unavailable",
+                "error_message": "alternate unavailable",
+            },
+        ]
+        registry = mock.Mock()
+        registry.invoke.side_effect = CapabilityError(
+            "model_unavailable",
+            "No provider returned usable variations.",
+            attempts=attempts,
+        )
+        body = {
+            "slot": "image_varies",
+            "inputs": {"source_image": "obj_42"},
+        }
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_varies",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 502)
+        payload = json.loads(resp.data)
+        self.assertEqual(payload["error"]["code"], "model_unavailable")
+        self.assertEqual(payload["error"]["attempts"], attempts)
+
+    def test_registry_error_status_mapping(self) -> None:
+        """Contract/input errors are 400; provider errors remain 502."""
+        from capability_registry import CapabilityError
+
+        input_codes = {
+            "prompt_rejected", "no_mask_drawn", "no_image_selected",
+            "mask_invalid", "no_specific_guidance", "missing_required_input",
+            "references_incompatible", "direction_invalid", "image_too_small",
+            "image_too_large", "source_ambiguous", "image_unreadable",
+        }
+        provider_codes = {"model_unavailable", "quota_exceeded", "provider_failed"}
+        registry = mock.Mock()
+
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            for code in input_codes | provider_codes:
+                with self.subTest(code=code):
+                    registry.invoke.side_effect = CapabilityError(code, code)
+                    resp = self.client.post(
+                        "/api/capability/image_varies",
+                        data=json.dumps({
+                            "slot": "image_varies",
+                            "inputs": {"source_image": "obj_42"},
+                        }),
+                        content_type="application/json",
+                    )
+                    expected = 400 if code in input_codes else 502
+                    self.assertEqual(resp.status_code, expected)
+                    payload = json.loads(resp.data)
+                    self.assertEqual(payload["error"]["code"], code)
 
 
 class CapabilityImageToPromptRouteTests(unittest.TestCase):
@@ -150,21 +379,29 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
         self.server = server
         self.client = server.app.test_client()
 
-    def test_happy_mock_dalle_returns_plain_caption(self) -> None:
-        """Default target_style 'dalle' emits a plain caption with no suffix flags."""
+    def test_patched_provider_returns_plain_caption(self) -> None:
+        """Default target_style 'dalle' returns a provider-shaped caption."""
         body = {
             "slot": "image_to_prompt",
             "inputs": {"image": "obj_99"},
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_to_prompt",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, _calls = _fake_registry(
+            "image_to_prompt",
+            "alternate-caption-provider",
+            "a photograph of a landscape with rolling hills under a clear sky",
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_to_prompt",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
-        self.assertTrue(payload.get("mocked"))
+        self.assertNotIn("mocked", payload)
+        self.assertEqual(payload.get("provider"), "alternate-caption-provider")
         self.assertEqual(payload.get("target_style"), "dalle")
         self.assertIsInstance(payload.get("prompt"), str)
         self.assertGreater(len(payload["prompt"]), 10)
@@ -176,13 +413,20 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
         body = {
             "slot": "image_to_prompt",
             "inputs": {"image": "obj_99", "target_style": "mj"},
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_to_prompt",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, _calls = _fake_registry(
+            "image_to_prompt",
+            "alternate-caption-provider",
+            lambda inputs: "a portrait --ar 16:9 --v 6 --style raw",
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_to_prompt",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
         self.assertEqual(payload["target_style"], "mj")
@@ -194,13 +438,20 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
         body = {
             "slot": "image_to_prompt",
             "inputs": {"image": "obj_99", "target_style": "sd"},
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_to_prompt",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, _calls = _fake_registry(
+            "image_to_prompt",
+            "alternate-caption-provider",
+            lambda inputs: "masterpiece, highly detailed, 8k, hyperrealistic",
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_to_prompt",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
         self.assertIn("masterpiece", payload["prompt"])
@@ -211,16 +462,57 @@ class CapabilityImageToPromptRouteTests(unittest.TestCase):
         body = {
             "slot": "image_to_prompt",
             "inputs": {"image": "obj_99", "target_style": "klingon"},
-            "mock": True,
         }
-        resp = self.client.post(
-            "/api/capability/image_to_prompt",
-            data=json.dumps(body),
-            content_type="application/json",
+        registry, calls = _fake_registry(
+            "image_to_prompt",
+            "alternate-caption-provider",
+            "a still life arrangement of objects on a wooden surface",
         )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_to_prompt",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
         self.assertEqual(resp.status_code, 200)
         payload = json.loads(resp.data)
         self.assertEqual(payload["target_style"], "dalle")
+        self.assertEqual(calls[0]["inputs"]["target_style"], "dalle")
+
+    def test_no_provider_error_includes_attempts(self) -> None:
+        """Caption-provider exhaustion is returned with its attempt history."""
+        from capability_registry import CapabilityError
+
+        attempts = [{
+            "provider_id": "replicate",
+            "succeeded": False,
+            "error_code": "model_unavailable",
+            "error_message": "no token",
+        }]
+        registry = mock.Mock()
+        registry.invoke.side_effect = CapabilityError(
+            "model_unavailable",
+            "No caption provider is available.",
+            attempts=attempts,
+        )
+        body = {
+            "slot": "image_to_prompt",
+            "inputs": {"image": "obj_99"},
+        }
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_to_prompt",
+                data=json.dumps(body),
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 502)
+        payload = json.loads(resp.data)
+        self.assertEqual(payload["error"]["code"], "model_unavailable")
+        self.assertEqual(payload["error"]["attempts"], attempts)
 
     def test_missing_image_returns_400(self) -> None:
         """Bad input: empty image surfaces image_unreadable."""
@@ -375,7 +667,6 @@ class CapabilityImageEditsRouteTests(unittest.TestCase):
             "slot": "image_edits",
             "image_data_url": _tiny_png_data_url(),
             "mask_data_url": _tiny_png_data_url(),
-            "mock": True,
         })
         self.assertEqual(resp.status_code, 400, resp.data)
         payload = json.loads(resp.data)
@@ -389,28 +680,41 @@ class CapabilityImageEditsRouteTests(unittest.TestCase):
             "prompt": "   \n\t ",
             "image_data_url": _tiny_png_data_url(),
             "mask_data_url": _tiny_png_data_url(),
-            "mock": True,
         })
         self.assertEqual(resp.status_code, 400, resp.data)
         payload = json.loads(resp.data)
         self.assertEqual(payload["error"]["code"], "missing_required_input")
 
     def test_wellformed_request_unaffected(self) -> None:
-        """A real prompt still round-trips through the mock path."""
-        resp = self._post({
-            "slot": "image_edits",
-            "prompt": "make it blue",
-            "image_data_url": _tiny_png_data_url(),
-            "mask_data_url": _tiny_png_data_url(),
-            "mock": True,
-        })
+        """A provider image URL becomes the existing image_b64 response."""
+        provider_url = "https://replicate.delivery/example.png"
+        provider_bytes = _tiny_png_bytes()
+        registry, _calls = _fake_registry(
+            "image_edits",
+            "replicate",
+            {"image_url": provider_url},
+        )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ), mock.patch.object(
+            self.server, "_fetch_provider_asset", return_value=provider_bytes
+        ) as fetch_asset:
+            resp = self._post({
+                "slot": "image_edits",
+                "prompt": "make it blue",
+                "image_data_url": _tiny_png_data_url(),
+                "mask_data_url": _tiny_png_data_url(),
+            })
         self.assertEqual(resp.status_code, 200, resp.data)
         payload = json.loads(resp.data)
-        self.assertTrue(payload.get("mocked"))
+        self.assertNotIn("mocked", payload)
         self.assertEqual(payload.get("mode"), "inpaint")
         self.assertIsInstance(payload.get("image_b64"), str)
-        self.assertTrue(len(payload["image_b64"]) > 50, "expected non-empty base64")
-        base64.b64decode(payload["image_b64"])
+        self.assertEqual(
+            payload["image_b64"], base64.b64encode(provider_bytes).decode("ascii")
+        )
+        self.assertEqual(payload["attempts"][0]["provider_id"], "replicate")
+        fetch_asset.assert_called_once_with(provider_url, timeout=30)
 
     def test_prompt_reaches_the_provider_verbatim(self) -> None:
         """The real path hands the caller's own words to the registry."""

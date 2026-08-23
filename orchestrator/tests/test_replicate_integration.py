@@ -323,6 +323,58 @@ class DispatcherTests(unittest.TestCase):
         self.assertEqual(len(res), 3)
         self.assertEqual(res[0], {"image_url": "https://r/v.png"})
 
+    def test_image_edits_normalizes_byte_inputs(self):
+        self._seed_sync_run("stability-ai/sdxl", ["https://r/edited.png"])
+        with mock.patch.object(rep_mod, "time") as t:
+            t.time.return_value = 0
+            t.sleep.side_effect = lambda s: None
+            result = rep_mod.dispatch_image_edits({
+                "image": b"source-png",
+                "mask": bytearray(b"mask-png"),
+                "prompt": "add a blue hat",
+                "strength": 0.6,
+            })
+        self.assertEqual(result, {"image_url": "https://r/edited.png"})
+        payload = self.fake.posts[0][2]["input"]
+        self.assertEqual(payload["image"],
+                         "data:image/png;base64,c291cmNlLXBuZw==")
+        self.assertEqual(payload["mask"],
+                         "data:image/png;base64,bWFzay1wbmc=")
+        self.assertEqual(payload["prompt_strength"], 0.6)
+
+    def test_image_outpaints_registers_a_real_prediction(self):
+        self._seed_sync_run("stability-ai/sdxl", ["https://r/outpaint.png"])
+        with mock.patch.object(rep_mod, "time") as t:
+            t.time.return_value = 0
+            t.sleep.side_effect = lambda s: None
+            result = rep_mod.dispatch_image_outpaints({
+                "image": b"source-png",
+                "directions": ["right"],
+                "prompt": "continue the landscape",
+                "aspect_ratio": "16:9",
+            })
+        self.assertEqual(result, {"image_url": "https://r/outpaint.png"})
+        payload = self.fake.posts[0][2]["input"]
+        self.assertEqual(payload["image"],
+                         "data:image/png;base64,c291cmNlLXBuZw==")
+        self.assertEqual(payload["directions"], ["right"])
+        self.assertEqual(payload["aspect_ratio"], "16:9")
+
+    def test_image_upscales_uses_configured_scale(self):
+        self._seed_sync_run("nightmareai/real-esrgan", ["https://r/upscaled.png"])
+        with mock.patch.object(rep_mod, "time") as t:
+            t.time.return_value = 0
+            t.sleep.side_effect = lambda s: None
+            result = rep_mod.dispatch_image_upscales({
+                "image": memoryview(b"source-png"),
+                "scale_factor": 4,
+            })
+        self.assertEqual(result, {"image_url": "https://r/upscaled.png"})
+        payload = self.fake.posts[0][2]["input"]
+        self.assertEqual(payload["image"],
+                         "data:image/png;base64,c291cmNlLXBuZw==")
+        self.assertEqual(payload["scale"], 4)
+
 
 # ---------------------------------------------------------------------------
 # Async dispatch (queue interaction)
@@ -508,7 +560,8 @@ class RegistrationTests(unittest.TestCase):
             registered = rep_mod.register_replicate_provider(registry)
         # Replicate fulfills these slots — they all live in the shipped
         # capabilities.json.
-        for slot in ("image_styles", "image_varies", "image_to_prompt",
+        for slot in ("image_edits", "image_outpaints", "image_upscales",
+                     "image_styles", "image_varies", "image_to_prompt",
                      "video_generates", "style_trains"):
             self.assertIn(slot, registered)
             self.assertTrue(registry.has_provider(slot, "replicate"))
