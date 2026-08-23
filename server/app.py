@@ -5402,6 +5402,10 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             boot_context.reset_model_stage_context(tokens)
 
     response = ""
+    # A direct request may reuse a Flask worker context after a prior loop
+    # reached its iteration cap. Start this loop with a fresh limiter state;
+    # normal no-tool replies reset it at the terminal branch below.
+    reset_consecutive()
     for iteration in range(MAX_ITERATIONS):
         call_images = images if iteration == 0 else None
         # Pass images only on the first call (they accompany the user's original message)
@@ -5504,6 +5508,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     # overrun so the user doesn't receive a stripped-empty response with
     # no signal that the model never converged. Parity with
     # boot._run_model_with_tools's overrun fix.
+    reset_consecutive()
     clean = strip_tool_calls(response)
     clean = _boot_context_api()._append_codex_canvas_image_notice(
         clean, images,

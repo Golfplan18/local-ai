@@ -20,11 +20,13 @@ test_dispatcher_windows_live.py.
 from __future__ import annotations
 
 import contextlib
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import shlex
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 from types import SimpleNamespace
@@ -73,8 +75,6 @@ class DispatchBase(unittest.TestCase):
         self.runtime_workspace = dispatcher.WORKSPACE
         self._orig_permission_mode = dispatcher._permission_mode
         self._orig_approved_categories = set(dispatcher._approved_categories)
-        self._orig_consecutive = (dispatcher._consecutive_tool,
-                                  dispatcher._consecutive_count)
         self._orig_queued_hashes = set(tool_events._queued_hashes)
         self._orig_mcp_axes_cache = tool_events._mcp_axes_cache
         self._orig_telemetry_health = tool_events.get_telemetry_health()
@@ -163,8 +163,6 @@ class DispatchBase(unittest.TestCase):
             dispatcher._approved_categories.clear()
             dispatcher._approved_categories.update(
                 self._orig_approved_categories)
-            (dispatcher._consecutive_tool,
-             dispatcher._consecutive_count) = self._orig_consecutive
             dispatcher.ALLOWED_BASES.remove(self.workspace)
             file_ops.ALLOWED_BASES.remove(self.workspace)
             tool_events._PRIVATE_ROOTS.remove(self._private_root)
@@ -185,12 +183,68 @@ class DispatchBase(unittest.TestCase):
             return [json.loads(l) for l in f if l.strip()]
 
 
+class TestConsecutiveToolLimiter(unittest.TestCase):
+    def setUp(self):
+        dispatcher.reset_consecutive()
+
+    def tearDown(self):
+        dispatcher.reset_consecutive()
+
+    def test_repeat_warning_and_block_threshold_are_unchanged(self):
+        with dispatcher.tool_loop_context():
+            warnings = [
+                dispatcher._check_consecutive("file_read")
+                for _ in range(8)
+            ]
+
+        self.assertTrue(all(warning is None for warning in warnings[:4]))
+        self.assertIn("Pause and assess", warnings[4])
+        self.assertIn("7 times consecutively", warnings[6])
+        self.assertIn("Maximum consecutive calls", warnings[7])
+
+    def test_simultaneous_loops_do_not_share_repeat_state(self):
+        barrier = threading.Barrier(2)
+
+        def run_loop():
+            with dispatcher.tool_loop_context():
+                warnings = []
+                for _ in range(4):
+                    barrier.wait()
+                    warnings.append(
+                        dispatcher._check_consecutive("file_read")
+                    )
+                    barrier.wait()
+                return warnings
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first, second = pool.map(lambda _: run_loop(), (None, None))
+
+        self.assertEqual(first, [None, None, None, None])
+        self.assertEqual(second, [None, None, None, None])
+
+
 @unittest.skipUnless(dispatcher._TOOLS_LOADED, "dispatcher tools not loaded")
 class TestGateBeforeExecution(DispatchBase):
     def test_registry_entries_all_carry_valid_axes(self):
         for name, entry in dispatcher.TOOL_REGISTRY.items():
             self.assertEqual(tool_events.validate_axes(entry), [],
                              f"invalid axes on {name}")
+
+    def test_repeated_dispatch_still_blocks_at_the_runaway_threshold(self):
+        target = os.path.join(self.workspace, "repeat.txt")
+        with open(target, "w") as handle:
+            handle.write("repeat fixture")
+
+        results = [
+            dispatcher.dispatch("file_read", {"path": target})
+            for _ in range(8)
+        ]
+
+        self.assertNotIn("Maximum consecutive calls", results[6])
+        self.assertIn("Maximum consecutive calls", results[7])
+        events = [event for event in self._events()
+                  if event.get("action") == "file_read"]
+        self.assertEqual(len(events), 7)
 
     def test_unknown_shell_command_blocked_under_auto_approve(self):
         result = dispatcher.dispatch(

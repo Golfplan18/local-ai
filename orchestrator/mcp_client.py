@@ -57,6 +57,7 @@ MAX_DISCOVERY_BYTES = 512 * 1024
 MAX_TOOLS_PER_SERVER = 128
 MAX_SCHEMA_DEPTH = 32
 MAX_CATALOG_BYTES = 64 * 1024
+MCP_BUSY_WAIT_SECONDS = 0.25
 _TOOL_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
@@ -69,6 +70,10 @@ class MCPConfigError(MCPError):
 
 
 class MCPProtocolError(MCPError):
+    pass
+
+
+class MCPBusyError(MCPError):
     pass
 
 
@@ -417,8 +422,13 @@ class MCPConnection:
     def _notify(self, method: str, params: dict) -> None:
         self._write_message({"jsonrpc": "2.0", "method": method, "params": params})
 
-    def _request(self, method: str, params: dict, *, timeout: float) -> object:
-        with self._request_lock:
+    def _request(self, method: str, params: dict, *, timeout: float,
+                 allow_error: bool = False) -> object:
+        if not self._request_lock.acquire(timeout=MCP_BUSY_WAIT_SECONDS):
+            raise MCPBusyError(
+                f"MCP server {self.name} is busy; try again"
+            )
+        try:
             request_id = self._next_id()
             self._write_message({"jsonrpc": "2.0", "id": request_id,
                                  "method": method, "params": params})
@@ -426,8 +436,12 @@ class MCPConnection:
             if response is None:
                 raise MCPProtocolError(f"{method} timed out or the server closed")
             if "error" in response:
+                if allow_error:
+                    return {"error": response["error"]}
                 raise MCPProtocolError(f"{method} returned JSON-RPC error")
             return response["result"]
+        finally:
+            self._request_lock.release()
 
     def _server_request_error(self, message: dict) -> None:
         self._write_message({
@@ -537,9 +551,13 @@ class MCPConnection:
         try:
             result = self._request(
                 "tools/call", {"name": tool_name, "arguments": arguments},
-                timeout=max(1, min(int(timeout), 120)),
+                timeout=max(1, min(int(timeout), 120)), allow_error=True,
             )
-            return result if isinstance(result, dict) else {"error": "MCP tool result is malformed"}
+            if not isinstance(result, dict):
+                raise MCPProtocolError("MCP tool result is malformed")
+            return result
+        except MCPBusyError as exc:
+            return {"error": str(exc)}
         except Exception as exc:
             self.shutdown()
             return {"error": str(exc)}
@@ -586,6 +604,82 @@ class MCPClientManager:
         self.connections: dict[str, MCPConnection] = {}
         self.all_tools: dict[str, tuple[str, str]] = {}
         self._definitions: dict[str, dict] = {}
+        self._server_configs: dict[str, dict] = {}
+        self._authorized_tools: dict[str, tuple[str, str]] = {}
+        self._lock = threading.RLock()
+
+    def _remove_active_tools_locked(self, server_name: str) -> None:
+        for namespaced, binding in list(self.all_tools.items()):
+            if binding[0] == server_name:
+                self.all_tools.pop(namespaced, None)
+                self._definitions.pop(namespaced, None)
+
+    def _remember_server_config_locked(self, cfg: dict) -> None:
+        name = cfg["name"]
+        self._server_configs[name] = cfg
+        for tool_name in cfg["tools"]:
+            self._authorized_tools[f"mcp_{name}_{tool_name}"] = (name, tool_name)
+
+    def _connect_server(self, name: str, cfg: dict) -> tuple[bool, str]:
+        conn = None
+        try:
+            if any(not os.environ.get(key) for key in cfg["required_env"]):
+                raise MCPConfigError(f"{name}: required environment is unavailable")
+            if cfg["create_cwd"]:
+                os.makedirs(cfg["cwd"], exist_ok=True)
+            elif not os.path.isdir(cfg["cwd"]):
+                raise MCPConfigError(f"{name}: working directory is missing")
+            conn = MCPConnection(
+                name=name, command=cfg["command"], args=cfg["args"],
+                env=cfg["env"], cwd=cfg["cwd"],
+                env_allowlist=cfg["env_allowlist"],
+                env_from_parent=cfg["env_from_parent"],
+            )
+            if not conn.connect():
+                raise MCPError("connection failed")
+            discovered = conn.discover_tools()
+            recognized = [tool for tool in discovered if tool["name"] in cfg["tools"]]
+            conn.tools = recognized
+            with self._lock:
+                self._remove_active_tools_locked(name)
+                self.connections[name] = conn
+                for tool in recognized:
+                    namespaced = f"mcp_{name}_{tool['name']}"
+                    self.all_tools[namespaced] = (name, tool["name"])
+                    self._definitions[namespaced] = {
+                        "name": namespaced,
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("inputSchema", {}),
+                    }
+            return True, ""
+        except Exception as exc:
+            if conn is not None:
+                conn.shutdown()
+            return False, str(exc)
+
+    def _remove_server(self, server_name: str, connection=None) -> None:
+        stale = None
+        with self._lock:
+            current = self.connections.get(server_name)
+            if connection is None or current is connection:
+                stale = self.connections.pop(server_name, None)
+                self._remove_active_tools_locked(server_name)
+        if stale is not None:
+            stale.shutdown()
+
+    def _recover_server(self, server_name: str) -> tuple[MCPConnection | None, str]:
+        with self._lock:
+            cfg = self._server_configs.get(server_name)
+            if cfg is None:
+                return None, f"MCP server {server_name} is not authorised"
+            stale = self.connections.pop(server_name, None)
+            self._remove_active_tools_locked(server_name)
+            if stale is not None:
+                stale.shutdown()
+            connected, reason = self._connect_server(server_name, cfg)
+            if not connected:
+                return None, reason
+            return self.connections.get(server_name), ""
 
     def initialize(self) -> None:
         if not os.path.exists(MCP_REGISTRY):
@@ -603,48 +697,36 @@ class MCPClientManager:
             print("[MCP] registry has no server list", file=sys.stderr)
             return
         for raw in servers:
-            conn = None
             name = str(raw.get("name") or "unknown") if isinstance(raw, dict) else "unknown"
             try:
                 cfg = _validate_server_config(raw)
                 if any(not os.environ.get(key) for key in cfg["required_env"]):
                     print(f"[MCP] {name}: skipped because its required token is absent")
                     continue
-                if cfg["create_cwd"]:
-                    os.makedirs(cfg["cwd"], exist_ok=True)
-                elif not os.path.isdir(cfg["cwd"]):
-                    raise MCPConfigError(f"{name}: working directory is missing")
-                conn = MCPConnection(
-                    name=name, command=cfg["command"], args=cfg["args"],
-                    env=cfg["env"], cwd=cfg["cwd"],
-                    env_allowlist=cfg["env_allowlist"],
-                    env_from_parent=cfg["env_from_parent"],
-                )
-                if not conn.connect():
+                with self._lock:
+                    self._remember_server_config_locked(cfg)
+                connected, reason = self._connect_server(name, cfg)
+                if not connected:
+                    print(f"[MCP] {name}: failed-soft ({reason})", file=sys.stderr)
                     continue
-                discovered = conn.discover_tools()
-                allowed = cfg["tools"]
-                recognized = [tool for tool in discovered if tool["name"] in allowed]
-                conn.tools = recognized
-                self.connections[name] = conn
-                for tool in recognized:
-                    namespaced = f"mcp_{name}_{tool['name']}"
-                    self.all_tools[namespaced] = (name, tool["name"])
-                    self._definitions[namespaced] = {
-                        "name": namespaced,
-                        "description": tool.get("description", ""),
-                        "parameters": tool.get("inputSchema", {}),
-                    }
-                print(f"[MCP] Connected to {name}: {len(recognized)} recognized tools")
+                with self._lock:
+                    count = len(self.connections[name].tools)
+                print(f"[MCP] Connected to {name}: {count} recognized tools")
             except Exception as exc:
                 print(f"[MCP] {name}: failed-soft ({exc})", file=sys.stderr)
-                if conn is not None:
-                    conn.shutdown()
 
     def call_mcp_tool(self, namespaced_name: str, parameters: dict) -> dict:
-        binding = self.all_tools.get(namespaced_name)
+        binding = self._authorized_tools.get(namespaced_name)
         if binding is None:
-            return {"error": f"Unknown MCP tool: {namespaced_name}"}
+            # Keep the small direct-manager fixture path compatible for callers
+            # that seed an active binding without running initialize(). Normal
+            # runtime bindings are also retained in _authorized_tools so a
+            # failed server can remove its advertised tools and still recover
+            # only an explicitly configured tool later.
+            with self._lock:
+                binding = self.all_tools.get(namespaced_name)
+            if binding is None:
+                return {"error": f"Unknown MCP tool: {namespaced_name}"}
         try:
             try:
                 import tool_events
@@ -654,24 +736,49 @@ class MCPClientManager:
         except Exception as exc:
             return {"error": f"MCP policy denied the call: {exc}"}
         server_name, tool_name = binding
-        conn = self.connections.get(server_name)
+        with self._lock:
+            conn = self.connections.get(server_name)
+            active = namespaced_name in self.all_tools
         if conn is None:
-            return {"error": f"MCP server {server_name} not connected"}
-        return conn.call_tool(tool_name, resolved["parameters"])
+            conn, reason = self._recover_server(server_name)
+            if conn is None:
+                return {
+                    "error": f"MCP server {server_name} unavailable: {reason}"
+                }
+            with self._lock:
+                active = namespaced_name in self.all_tools
+        if not active:
+            return {
+                "error": (
+                    f"MCP tool {namespaced_name} unavailable: "
+                    f"server {server_name} did not advertise it"
+                )
+            }
+        result = conn.call_tool(tool_name, resolved["parameters"])
+        if getattr(conn, "_closed", False):
+            reason = result.get("error", "connection failed") if isinstance(result, dict) else str(result)
+            self._remove_server(server_name, conn)
+            return {"error": f"MCP server {server_name} unavailable: {reason}"}
+        return result
 
     def get_tool_definitions(self) -> list[dict]:
-        definitions = [self._definitions[name] for name in sorted(self._definitions)]
+        with self._lock:
+            definitions = [self._definitions[name] for name in sorted(self._definitions)]
         encoded = json.dumps(definitions, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         if len(encoded) > MAX_CATALOG_BYTES:
             return []
         return definitions
 
     def shutdown(self) -> None:
-        for conn in list(self.connections.values()):
+        with self._lock:
+            connections = list(self.connections.values())
+            self.connections.clear()
+            self.all_tools.clear()
+            self._definitions.clear()
+            self._server_configs.clear()
+            self._authorized_tools.clear()
+        for conn in connections:
             conn.shutdown()
-        self.connections.clear()
-        self.all_tools.clear()
-        self._definitions.clear()
 
 
 _manager: MCPClientManager | None = None

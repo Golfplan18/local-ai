@@ -1450,7 +1450,12 @@ try:
     from file_ops import file_read, file_write
     from knowledge_search import knowledge_search, knowledge_search_raw
     from credential_store import credential_store
-    from dispatcher import dispatch as dispatcher_dispatch, reset_consecutive, cleanup_all
+    from dispatcher import (
+        dispatch as dispatcher_dispatch,
+        reset_consecutive,
+        tool_loop_context,
+        cleanup_all,
+    )
 except ImportError as e:
     print(f"[WARNING] Tool import failed: {e}")
     TOOLS_AVAILABLE = False
@@ -12327,11 +12332,15 @@ def _run_model_with_tools(messages: list, endpoint: dict,
     """
     stage_tokens = set_model_stage_context(step_name)
     try:
-        return _run_model_with_tools_impl(
-            messages, endpoint, max_iterations=max_iterations,
-            images=images, trace_dir=trace_dir, step_name=step_name,
-        )
+        with tool_loop_context():
+            return _run_model_with_tools_impl(
+                messages, endpoint, max_iterations=max_iterations,
+                images=images, trace_dir=trace_dir, step_name=step_name,
+            )
     finally:
+        # Do not restore a stale request-context count after this loop ends;
+        # the next dispatcher call in the request must start clean as well.
+        reset_consecutive()
         reset_model_stage_context(stage_tokens)
 
 
@@ -12348,6 +12357,7 @@ def _run_model_with_tools_impl(messages: list, endpoint: dict,
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
+            reset_consecutive()
             return strip_tool_calls(response)
 
         # Execute all tool calls. Use the structured-outcome wrapper so

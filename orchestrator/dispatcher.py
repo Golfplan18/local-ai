@@ -26,6 +26,14 @@ _RAG_ISOLATION_CTX: ContextVar[str | None] = ContextVar(
     "rag_isolation", default=None,
 )
 
+# Consecutive-tool protection is loop-local state. The ContextVar is shared
+# as a definition, but each request/agentic-loop context carries its own
+# immutable ``(tool_name, count)`` value, so parallel conversations cannot
+# advance one another's limiter.
+_CONSECUTIVE_TOOL_CTX: ContextVar[tuple[str | None, int]] = ContextVar(
+    "consecutive_tool_state", default=(None, 0),
+)
+
 
 def set_rag_isolation(value: str | None) -> None:
     """Set the per-turn rag_isolation flag. Called by boot.py at step 2.
@@ -440,25 +448,40 @@ def _log_dispatch(tool_name: str, parameters: dict, classification: dict | None,
 
 # ── Consecutive call limiter ──────────────────────────────────────────────
 
-_consecutive_tool = None
-_consecutive_count = 0
+@contextlib.contextmanager
+def tool_loop_context():
+    """Run one agentic tool loop with a fresh consecutive-call counter.
+
+    Restoring the caller's value on exit matters for nested or sequential
+    loops in the same request context, while the ContextVar itself keeps
+    parallel request contexts independent.
+    """
+    token = _CONSECUTIVE_TOOL_CTX.set((None, 0))
+    try:
+        yield
+    finally:
+        _CONSECUTIVE_TOOL_CTX.reset(token)
+
+
+def _current_consecutive_count() -> int:
+    return _CONSECUTIVE_TOOL_CTX.get()[1]
 
 
 def _check_consecutive(tool_name: str) -> str | None:
     """Track consecutive calls. Returns a warning message or None."""
-    global _consecutive_tool, _consecutive_count
+    previous_tool, count = _CONSECUTIVE_TOOL_CTX.get()
 
-    if tool_name == _consecutive_tool:
-        _consecutive_count += 1
+    if tool_name == previous_tool:
+        count += 1
     else:
-        _consecutive_tool = tool_name
-        _consecutive_count = 1
+        count = 1
+    _CONSECUTIVE_TOOL_CTX.set((tool_name, count))
 
-    if _consecutive_count >= 8:
+    if count >= 8:
         return (f"Maximum consecutive calls reached for {tool_name}. "
                 "Report the current state to the user and ask for guidance.")
-    if _consecutive_count >= 5:
-        return (f"You have called {tool_name} {_consecutive_count} times consecutively. "
+    if count >= 5:
+        return (f"You have called {tool_name} {count} times consecutively. "
                 "Pause and assess: are you making progress or repeating the same approach? "
                 "State your diagnosis of the problem before making another attempt.")
     return None
@@ -466,9 +489,7 @@ def _check_consecutive(tool_name: str) -> str | None:
 
 def reset_consecutive():
     """Reset the consecutive call counter (called when model produces non-tool response)."""
-    global _consecutive_tool, _consecutive_count
-    _consecutive_tool = None
-    _consecutive_count = 0
+    _CONSECUTIVE_TOOL_CTX.set((None, 0))
 
 
 # ── MCP routing ───────────────────────────────────────────────────────────
@@ -766,7 +787,7 @@ def dispatch(tool_name: str, parameters: dict,
 
     # Consecutive call check (includes MCP tools now)
     warning = _check_consecutive(tool_name)
-    if warning and _consecutive_count >= 8:
+    if warning and _current_consecutive_count() >= 8:
         duration = int((time.time() - start) * 1000)
         _log_dispatch(tool_name, parameters, None, "blocked-consecutive",
                       warning, duration)
@@ -1144,7 +1165,7 @@ def dispatch(tool_name: str, parameters: dict,
         pass  # recorder is best-effort; its own failure path sets health
 
     # Inject consecutive call warning as prefix
-    if warning and _consecutive_count >= 5:
+    if warning and _current_consecutive_count() >= 5:
         result_str = f"[SYSTEM: {warning}]\n\n{result_str}"
 
     return result_str

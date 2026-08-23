@@ -609,6 +609,21 @@ class TestCodeExecuteNonMac(unittest.TestCase):
         import code_execute
         importlib.reload(code_execute)  # must not raise
 
+    def test_timeout_input_is_finite_and_bounded(self):
+        import code_execute
+        self.assertEqual(code_execute._normalize_timeout(None),
+                         code_execute.DEFAULT_TIMEOUT_SECONDS)
+        self.assertEqual(code_execute._normalize_timeout("not-a-timeout"),
+                         code_execute.DEFAULT_TIMEOUT_SECONDS)
+        self.assertEqual(code_execute._normalize_timeout(float("nan")),
+                         code_execute.DEFAULT_TIMEOUT_SECONDS)
+        self.assertEqual(code_execute._normalize_timeout(float("inf")),
+                         code_execute.MAX_TIMEOUT_SECONDS)
+        self.assertEqual(code_execute._normalize_timeout(10**100),
+                         code_execute.MAX_TIMEOUT_SECONDS)
+        self.assertEqual(code_execute._normalize_timeout(-1),
+                         code_execute.DEFAULT_TIMEOUT_SECONDS)
+
 
 class TestSandboxDeniesRelocatedRoots(unittest.TestCase):
     """Revision 7 fold: the code_execute sandbox read-denies must cover the
