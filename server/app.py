@@ -21391,6 +21391,19 @@ def api_triggers_review(trigger_id):
         return _trigger_error(exc)
 
 
+@app.route("/api/triggers/<trigger_id>/inspect", methods=["GET"])
+def api_triggers_inspect(trigger_id):
+    """Show an exact local email message before any provider contact."""
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.inspect(trigger_id)), 200, {
+            "Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
 @app.route("/api/triggers/<trigger_id>/activate", methods=["POST"])
 def api_triggers_activate(trigger_id):
     """Deploy a draft Trigger. Body: ``{"spec_digest": "sha256:…"}``.
@@ -21425,6 +21438,19 @@ def api_triggers_lifecycle(trigger_id):
         return json.dumps(
             service.lifecycle(trigger_id, str(data.get("action") or ""))
         ), 200, {"Content-Type": "application/json"}
+    except ImportError:
+        return json.dumps({"error": "Trigger surface unavailable"}), 503
+    except Exception as exc:
+        return _trigger_error(exc)
+
+
+@app.route("/api/triggers/<trigger_id>/rollback", methods=["POST"])
+def api_triggers_rollback(trigger_id):
+    """Cancel an unsent email, revoke unused approval, and retire its Trigger."""
+    try:
+        _triggers, service = _trigger_service()
+        return json.dumps(service.rollback(trigger_id)), 200, {
+            "Content-Type": "application/json"}
     except ImportError:
         return json.dumps({"error": "Trigger surface unavailable"}), 503
     except Exception as exc:

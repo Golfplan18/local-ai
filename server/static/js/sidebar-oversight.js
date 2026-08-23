@@ -61,6 +61,7 @@
     internalDeadlines: null,
     laneHealth: null,
     actions: null,         // cached /api/triggers/actions for the form
+    triggerInspection: null,
   };
 
   // ── Accordion behavior ────────────────────────────────────────────────
@@ -623,6 +624,10 @@
       const args = (a.args || []).join(' ');
       return `${a.nexus}:${a.tool}${args ? ' ' + args : ''}`;
     }
+    if (a.kind === 'email_send') {
+      return `email via Fastmail to ${(a.to || []).join(', ')}`
+        + ` · ${a.subject || '(no subject)'}`;
+    }
     return `framework ${a.framework}`;
   };
 
@@ -739,6 +744,13 @@
       ['Runs', actionSummary(spec)],
       ['Fires', conditionSummary(spec)],
     ];
+    if (spec.action && spec.action.kind === 'email_send') {
+      const last = (t.firings || [])[0];
+      const sent = last && last.receipt && last.receipt.provider_contacted;
+      rows.push(['Approval', sent
+        ? 'provider contacted; no recall is promised'
+        : 'one-shot approval required before provider contact']);
+    }
     if (spec.runtime_justification) {
       rows.push(['Why time is the cause', spec.runtime_justification]);
     }
@@ -747,6 +759,23 @@
       row.className = 'oversight-detail-reasoning';
       row.textContent = `${label}: ${value}`;
       det.appendChild(row);
+    }
+    if (spec.action && spec.action.kind === 'email_send') {
+      const inspect = document.createElement('button');
+      inspect.type = 'button';
+      inspect.textContent = 'Inspect exact message';
+      inspect.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        await inspectTrigger(spec.trigger_id);
+      });
+      det.appendChild(inspect);
+      if (state.triggerInspection
+          && state.triggerInspection.trigger_id === spec.trigger_id) {
+        const pre = document.createElement('pre');
+        pre.className = 'trigger-message-inspection';
+        pre.textContent = JSON.stringify(state.triggerInspection.message, null, 2);
+        det.appendChild(pre);
+      }
     }
     if (t.intermittency) {
       const note = document.createElement('div');
@@ -784,14 +813,21 @@
     };
 
     if (t.status !== 'retired') {
-      button('Run now', (b) => runTrigger(spec.trigger_id, b));
+      button(spec.action && spec.action.kind === 'email_send'
+        ? 'Send exact message' : 'Run now', (b) => runTrigger(spec.trigger_id, b));
     }
     if (t.status === 'draft') {
       button('Review and activate…', () => openReview(spec.trigger_id), true);
     }
     if (t.status === 'active') button('Pause', () => lifecycle(spec.trigger_id, 'pause'));
     if (t.status === 'paused') button('Resume', () => lifecycle(spec.trigger_id, 'resume'));
-    if (t.status !== 'retired') {
+    if (t.status !== 'retired' && spec.action && spec.action.kind === 'email_send') {
+      button('Cancel and retire', () => {
+        if (window.confirm(`Cancel unsent email "${spec.name}"?`)) {
+          rollbackTrigger(spec.trigger_id);
+        }
+      });
+    } else if (t.status !== 'retired') {
       button('Retire', () => {
         if (window.confirm(`Retire "${spec.name}"? It stops firing and leaves this list.`)) {
           lifecycle(spec.trigger_id, 'retire');
@@ -814,9 +850,13 @@
     heading.textContent = 'Approve exactly this before it is deployed';
     box.appendChild(heading);
 
+    const binding = review.action_binding || {};
+    const bindingDigest = binding.command_digest
+      || binding.message_digest
+      || binding.mime_digest;
     const lines = [
       `Will run: ${review.will_run}`,
-      `Bound identity: ${review.action_binding && review.action_binding.command_digest}`,
+      `Bound identity: ${bindingDigest}`,
       `Specification: ${review.spec_digest}`,
     ];
     if (review.runtime_justification) {
@@ -871,6 +911,23 @@
     }
   };
 
+  const inspectTrigger = async (triggerId) => {
+    try {
+      const r = await fetch(`/api/triggers/${encodeURIComponent(triggerId)}/inspect`);
+      const data = await r.json();
+      if (!r.ok) { window.alert(data.error || 'Could not inspect the message.'); return; }
+      state.triggerInspection = { trigger_id: triggerId, message: data };
+      renderTriggers();
+    } catch (e) { window.alert('Could not inspect the message.'); }
+  };
+
+  const rollbackTrigger = async (triggerId) => {
+    await postTrigger(
+      `/api/triggers/${encodeURIComponent(triggerId)}/rollback`, {}, null);
+    state.triggerInspection = null;
+    await fetchTriggers();
+  };
+
   const postTrigger = async (url, body, button) => {
     const original = button ? button.textContent : '';
     try {
@@ -919,9 +976,11 @@
     if (state.actions) return state.actions;
     try {
       const r = await fetch('/api/triggers/actions');
-      state.actions = r.ok ? await r.json() : { project_tools: [], frameworks: [] };
+      state.actions = r.ok ? await r.json() : {
+        project_tools: [], frameworks: [], channel_actions: [],
+      };
     } catch (e) {
-      state.actions = { project_tools: [], frameworks: [] };
+      state.actions = { project_tools: [], frameworks: [], channel_actions: [] };
     }
     return state.actions;
   };
@@ -987,7 +1046,11 @@
       `${t.nexus}:${t.tool}${t.description ? ' — ' + t.description : ''}`,
     ]);
     const frameworkOptions = actions.frameworks.map(f => [`framework:${f}`, f]);
-    const actionSelect = select('action', toolOptions.concat(frameworkOptions));
+    const channelOptions = (actions.channel_actions || []).map(a => [
+      `channel:${a.kind}`, `${a.provider || 'channel'}: ${a.description || a.kind}`,
+    ]);
+    const actionSelect = select('action',
+      toolOptions.concat(frameworkOptions, channelOptions));
     field('Runs', actionSelect,
           toolOptions.length ? '' :
           'No project tools are registered. Declare the script in an '
@@ -995,6 +1058,24 @@
 
     const argsInput = input('args', 'optional arguments or framework input');
     field('Input', argsInput);
+
+    const emailToInput = input('email_to', 'recipient@example.com, other@example.com');
+    const emailToField = field('To', emailToInput,
+      'Bare addresses only; separate multiple recipients with commas.');
+    const emailFromInput = input('email_from', 'sender@example.com');
+    const emailFromField = field('From', emailFromInput,
+      'The exact Fastmail identity used for this message.');
+    const emailSubjectInput = input('email_subject', 'Subject');
+    const emailSubjectField = field('Subject', emailSubjectInput);
+    const emailBodyInput = document.createElement('textarea');
+    emailBodyInput.name = 'email_body';
+    emailBodyInput.rows = 7;
+    emailBodyInput.placeholder = 'Write the exact message body.';
+    const emailBodyField = field('Message', emailBodyInput,
+      'Ora adds the Persona disclosure before this exact body.');
+    const emailPersonaInput = input('email_persona', 'ora');
+    const emailPersonaField = field('Persona', emailPersonaInput,
+      'Visible sender/disclosure identity; defaults to Ora.');
 
     const causeSelect = select('cause', [
       ['manual', 'Only when I run it'],
@@ -1035,13 +1116,21 @@
 
     const calendarFields = [timeField, cadenceField, weekdaysField, tzField,
                             missedField, becauseField];
+    const emailFields = [emailToField, emailFromField, emailSubjectField,
+      emailBodyField, emailPersonaField];
     const syncCause = () => {
       const cause = causeSelect.value;
-      for (const el of calendarFields) el.hidden = cause !== 'calendar';
-      weekdaysField.hidden = cause !== 'calendar' || cadenceSelect.value !== 'weekly';
-      pathField.hidden = cause !== 'file_change';
-      sourceField.hidden = cause !== 'trigger_completion';
+      const email = actionSelect.value.startsWith('channel:email_send');
+      for (const el of emailFields) el.hidden = !email;
+      causeSelect.disabled = email;
+      if (email) causeSelect.value = 'manual';
+      for (const el of calendarFields) el.hidden = email || cause !== 'calendar';
+      weekdaysField.hidden = email || cause !== 'calendar'
+        || cadenceSelect.value !== 'weekly';
+      pathField.hidden = email || cause !== 'file_change';
+      sourceField.hidden = email || cause !== 'trigger_completion';
     };
+    actionSelect.addEventListener('change', syncCause);
     causeSelect.addEventListener('change', syncCause);
     cadenceSelect.addEventListener('change', syncCause);
     syncCause();
@@ -1082,6 +1171,8 @@
             nameInput, idInput, actionSelect, argsInput, causeSelect,
             timeInput, cadenceSelect, weekdaysInput, tzInput, missedSelect,
             becauseInput, pathInput, sourceSelect,
+            emailToInput, emailFromInput, emailSubjectInput, emailBodyInput,
+            emailPersonaInput,
           })),
         });
         const data = await r.json().catch(() => ({}));
@@ -1112,7 +1203,14 @@
 
   const buildSpecFromForm = (f) => {
     const [kind, ...rest] = f.actionSelect.value.split(':');
-    const action = kind === 'tool'
+    const action = kind === 'channel' && rest.join(':') === 'email_send'
+      ? { kind: 'email_send',
+          to: f.emailToInput.value.split(',').map(value => value.trim()).filter(Boolean),
+          from_email: f.emailFromInput.value.trim(),
+          subject: f.emailSubjectInput.value,
+          body: f.emailBodyInput.value,
+          persona_id: f.emailPersonaInput.value.trim() || 'ora' }
+      : kind === 'tool'
       ? { kind: 'project_tool', nexus: rest[0], tool: rest[1],
           args: f.argsInput.value.trim() ? f.argsInput.value.trim().split(/\s+/) : [] }
       : { kind: 'framework', framework: rest.join(':'),
