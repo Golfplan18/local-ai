@@ -546,15 +546,15 @@ const exportThroughMenu = async (format) => {
   // A user edit made while the old Dialogue is visible may become dirty after
   // load() starts but before its target envelope resolves. Binding dirtiness
   // to its owner prevents the subsequent target load from stealing the draft.
-  w.OraCanvas.setConversationContext('old-dialogue', '');
-  w.OraCanvas.reset();
+  await w.OraCanvas.setConversationContext('old-dialogue', '');
+  await w.OraCanvas.reset();
   await Promise.resolve();
   if (api.appState.viewBackgroundColor !== 'transparent') {
     throw new Error('Excalidraw reset restored its white default instead of Ora transparency');
   }
   api.elements = [{ id: 'dirty-old-scene', type: 'rectangle' }];
   islandOptions.onChange(api.elements, api.appState, api.files);
-  w.OraCanvas.setConversationContext('target-dialogue', '');
+  await w.OraCanvas.setConversationContext('target-dialogue', '');
   const stateEventsBeforeLoad = canvasStateEvents;
   await w.OraCanvas.loadCheckpoint(
     'target-dialogue', '20260813T123456123456Z-deadbeef', null,
@@ -573,6 +573,62 @@ const exportThroughMenu = async (format) => {
       || canvasStateEvents !== stateEventsBeforeLoad + 1
       || w.document.getElementById('visualExportButton').disabled) {
     throw new Error('current-dialogue load did not refresh the non-empty canvas/export state once');
+  }
+
+  // Dialogue identity is part of the same controller queue as assistant
+  // mutations. A slow Excalidraw compile from A must finish and save as A
+  // before B becomes the controller's mutable identity or restores its scene.
+  await w.OraCanvas.loadCheckpoint(
+    'queued-excalidraw-origin', '20260813T123456123456Z-deadbeef', null,
+    { active_editor: 'excalidraw' }, { currentDialogue: true, preferDraft: false }
+  );
+  const originalCompileWithNav = w.OraVisualCompiler.compileWithNav;
+  let releaseQueuedCompile = null;
+  let queuedCompileOwner = null;
+  w.OraVisualCompiler.compileWithNav = function (envelope) {
+    if (!envelope || envelope.id !== 'queued-excalidraw-visual') {
+      return originalCompileWithNav(envelope);
+    }
+    return new Promise((resolve) => {
+      releaseQueuedCompile = function () {
+        queuedCompileOwner = w.OraCanvas.snapshotForSubmit().conversationId;
+        resolve(originalCompileWithNav(envelope));
+      };
+    });
+  };
+  const queuedDraftStart = calls.length;
+  const queuedExcalidrawRender = w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: {
+      id: 'queued-excalidraw-visual', type: 'comparison', canvas_action: 'replace',
+    } }],
+    ora_visual_dispatch_key: 'queued-excalidraw-origin#0',
+  });
+  await tick();
+  const queuedExcalidrawContext = w.OraCanvas.setConversationContext(
+    'queued-excalidraw-target', ''
+  );
+  const queuedExcalidrawLoad = w.OraCanvas.loadCheckpoint(
+    'queued-excalidraw-target', null, null,
+    { active_editor: 'excalidraw' }, { currentDialogue: true, preferDraft: true }
+  );
+  await tick();
+  if (!releaseQueuedCompile) {
+    throw new Error('slow Excalidraw mutation did not enter the controller queue');
+  }
+  releaseQueuedCompile();
+  await Promise.all([
+    queuedExcalidrawRender, queuedExcalidrawContext, queuedExcalidrawLoad,
+  ]);
+  w.OraVisualCompiler.compileWithNav = originalCompileWithNav;
+  const queuedDraftOwners = calls.slice(queuedDraftStart)
+    .filter((call) => call.url === '/api/canvas/draft' && call.method === 'POST')
+    .map((call) => call.conversationId);
+  if (queuedCompileOwner !== 'queued-excalidraw-origin'
+      || queuedDraftOwners.indexOf('queued-excalidraw-target') !== -1
+      || api.elements.some((element) => element.id === 'assistant-png-1')) {
+    throw new Error('queued Excalidraw work crossed into the newly selected Dialogue: '
+      + JSON.stringify({ queuedCompileOwner, queuedDraftOwners,
+        elements: api.elements.map((element) => element.id) }));
   }
 
   const exportButton = w.document.getElementById('visualExportButton');
@@ -600,10 +656,10 @@ const exportThroughMenu = async (format) => {
       + JSON.stringify({ exportRoutes, shareGateCalls, downloadedFilenames }));
   }
 
-  w.OraCanvas.setConversationContext('privacy-parent', '');
+  await w.OraCanvas.setConversationContext('privacy-parent', '');
   api.elements = [{ id: 'privacy-parent-visual', type: 'rectangle' }];
   const privacySnapshot = w.OraCanvas.snapshotForSubmit();
-  w.OraCanvas.setConversationContext('privacy-child', 'private');
+  await w.OraCanvas.setConversationContext('privacy-child', 'private');
   api.elements = [];
   await w.OraCanvas.persistSnapshotDraft(privacySnapshot);
   if (drafts.has('privacy-parent')
@@ -1565,6 +1621,56 @@ const exportThroughMenu = async (format) => {
   if (w.OraCanvas.getActiveEditor() !== 'konva') {
     throw new Error('reload during Konva authority did not restore baseline K');
   }
+
+  // Konva is behind the same controller queue. Its slow bridge result must
+  // still observe A as owner even when selection of B is already waiting.
+  const originalKonvaBridge = w.OraCanvas.panel.onBridgeUpdate;
+  let releaseQueuedKonva = null;
+  let queuedKonvaOwner = null;
+  w.OraCanvas.panel.onBridgeUpdate = function () {
+    return new Promise((resolve) => {
+      releaseQueuedKonva = function () {
+        queuedKonvaOwner = w.OraCanvas.snapshotForSubmit().conversationId;
+        liveObjects = [{
+          id: 'queued-konva-origin-artifact', x: 0, y: 0, width: 25, height: 25,
+        }];
+        resolve({ svg: '<svg/>', errors: [], warnings: [] });
+      };
+    });
+  };
+  const queuedKonvaRender = w.OraPanels.visual.onBridgeUpdate({
+    ora_visual_blocks: [{ envelope: {
+      id: 'queued-konva-visual', type: 'comparison', canvas_action: 'replace',
+    } }],
+    ora_visual_dispatch_key: 'target-dialogue#queued-konva',
+  });
+  await tick();
+  const queuedKonvaContext = w.OraCanvas.setConversationContext(
+    'queued-konva-target', ''
+  );
+  const queuedKonvaLoad = w.OraCanvas.loadCheckpoint(
+    'queued-konva-target', null, null,
+    { active_editor: 'excalidraw' }, { currentDialogue: true, preferDraft: true }
+  );
+  await tick();
+  if (!releaseQueuedKonva) {
+    throw new Error('slow Konva mutation did not enter the controller queue');
+  }
+  releaseQueuedKonva();
+  await Promise.all([queuedKonvaRender, queuedKonvaContext, queuedKonvaLoad]);
+  w.OraCanvas.panel.onBridgeUpdate = originalKonvaBridge;
+  if (queuedKonvaOwner !== 'target-dialogue'
+      || w.OraCanvas.getActiveEditor() !== 'excalidraw'
+      || api.elements.some((element) => element.id === 'queued-konva-origin-artifact')) {
+    throw new Error('queued Konva work crossed into the newly selected Dialogue: '
+      + JSON.stringify({ queuedKonvaOwner, editor: w.OraCanvas.getActiveEditor(),
+        elements: api.elements.map((element) => element.id) }));
+  }
+
+  await w.OraCanvas.loadCheckpoint(
+    'target-dialogue', '20260813T123456123456Z-deadbeef', null,
+    xToK, { currentDialogue: true }
+  );
 
   stageWidth = 880;
   stageHeight = 640;

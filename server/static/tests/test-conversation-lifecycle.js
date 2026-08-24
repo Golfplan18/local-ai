@@ -73,6 +73,24 @@ var envelopes = {
       { role: 'assistant', content: 'Answer' },
     ],
   },
+  narrowOwner: {
+    conversation_id: 'narrow-owner',
+    tag: '',
+    display_name: 'Narrow owner',
+    messages: [
+      { role: 'user', content: 'Show the system' },
+      {
+        role: 'assistant',
+        content: 'Analysis before.\n```ora-visual\n'
+          + '{"type":"concept_map","title":"Original visual"}\n```\nAnalysis after.',
+        visual_outcome: {
+          state: 'building',
+          stage: 'legibility',
+          legibility_attempts: { 0: 'in_progress' },
+        },
+      },
+    ],
+  },
   stealth: {
     conversation_id: 'stealth',
     tag: 'stealth',
@@ -232,6 +250,10 @@ w.fetch = function (url, opts) {
     return new Promise(function (resolve) { concurrentDeleteResolve = resolve; });
   }
   if (decoded === '/api/conversation/retained') return response(true, envelopes.retained);
+  if (decoded === '/api/conversation/narrow-owner') {
+    // A real fetch parse creates fresh message objects on every reload.
+    return response(true, JSON.parse(JSON.stringify(envelopes.narrowOwner)));
+  }
   if (decoded === '/api/conversation/stealth') return response(true, envelopes.stealth);
   if (decoded === '/api/conversation/fork-parent') return response(true, envelopes.forkParent);
   if (decoded === '/api/conversation/exit-parent') return response(true, envelopes.exitParent);
@@ -1694,6 +1716,68 @@ async function run() {
       && w.document.querySelector('.output-content').textContent === 'Parent answer two'
       && w.document.getElementById('outputPaneTurnPosition').textContent === '2 of 2'
       && !navFirst.disabled && !navBack.disabled && navForward.disabled && navLast.disabled);
+
+  // A slow narrower-subject callback owns the assistant object that started
+  // it. If the user navigates away and reloads that Dialogue before synthesis
+  // completes, the callback must also update the fresh same-Dialogue object.
+  var priorVisualDispatch = w.OraV3VisualDispatch;
+  var originalNarrowCallback = null;
+  w.OraV3VisualDispatch = {
+    setActiveKey: function () {},
+    resetDedupe: function () {},
+    persistOutcome: function (_meta, outcome) {
+      return Promise.resolve({ ok: true, visual_outcome: outcome });
+    },
+    stripBlocks: function (content) { return content; },
+    replaceBlocksWithEnvelope: function (content, envelope, targetIndex) {
+      var fencePattern = /```ora-visual[ \t]*\n((?:(?![ \t]*```)[^\n]*\n)*?)[ \t]*```+[ \t]*(?=\n|$)/g;
+      var blockIndex = 0;
+      return String(content || '').replace(fencePattern, function (match) {
+        if (blockIndex++ !== targetIndex) return match;
+        return '```ora-visual\n' + JSON.stringify(envelope, null, 2) + '\n```';
+      });
+    },
+    dispatch: function (content, key, meta) {
+      if (key === 'narrow-owner#0' && !originalNarrowCallback) {
+        originalNarrowCallback = meta.onNarrowedEnvelopePersisted;
+      }
+      return String(content || '').indexOf('ora-visual') === -1 ? 0 : 1;
+    },
+  };
+  await w.OraConversation.load('narrow-owner');
+  var originatingNarrowAssistant = w.OraConversation.getCurrentTurn().assistant;
+  await w.OraConversation.load('retained');
+  var otherDialogueAssistant = w.OraConversation.getCurrentTurn().assistant;
+  await w.OraConversation.load('narrow-owner');
+  var reloadedNarrowAssistant = w.OraConversation.getCurrentTurn().assistant;
+  var narrowedOutcome = {
+    state: 'building',
+    stage: 'legibility',
+    reason: 'A narrower visual was saved and is awaiting insertion.',
+    legibility_attempts: { 0: 'exhausted' },
+  };
+  originalNarrowCallback({
+    type: 'concept_map', title: 'Narrowed visual', spec: {},
+  }, narrowedOutcome, 0);
+  var failedNarrowOutcome = {
+    state: 'failed',
+    stage: 'legibility',
+    reason: 'The narrower visual could not be synthesized.',
+    legibility_attempts: { 0: 'exhausted' },
+  };
+  originalNarrowCallback(null, failedNarrowOutcome);
+  record('away-and-back narrower callback updates success and failure on same-Dialogue snapshots only',
+    originatingNarrowAssistant !== reloadedNarrowAssistant
+      && originatingNarrowAssistant.content.indexOf('Narrowed visual') !== -1
+      && reloadedNarrowAssistant.content.indexOf('Narrowed visual') !== -1
+      && originatingNarrowAssistant.visual_outcome.state === 'failed'
+      && reloadedNarrowAssistant.visual_outcome.state === 'failed'
+      && originatingNarrowAssistant.visual_outcome.legibility_attempts['0'] === 'exhausted'
+      && otherDialogueAssistant.content === 'Answer'
+      && otherDialogueAssistant.visual_outcome === undefined);
+  w.OraV3VisualDispatch = priorVisualDispatch;
+  await w.OraConversation.load('fork-parent');
+
   var privacyInput = w.document.querySelector('.input-pane textarea');
   privacyInput.value = 'My secret key is abc';
   w.localStorage.setItem('ora-v3-draft-fork-parent', privacyInput.value);

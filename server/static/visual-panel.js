@@ -75,9 +75,10 @@
  * values; serialization consumers should treat a missing attr as null.
  *
  * ── Bridge contract ──────────────────────────────────────────────────────
- * onBridgeUpdate(state) inspects state.ora_visual_blocks. If the array
- * contains at least one block, the panel delegates the MOST RECENT entry
- * to the canvas_action state machine (WP-2.4).
+ * onBridgeUpdate(state) inspects state.ora_visual_blocks. Every entry is
+ * delegated to the canvas_action state machine in source order. Multi-block
+ * updates resolve to one aligned result per entry; a one-block update keeps
+ * the historical direct-result shape.
  *
  * ── Canvas-action state machine (WP-2.4) ─────────────────────────────────
  * State: { _currentEnvelope, _conversationTurn, _hasPriorVisual }.
@@ -168,6 +169,44 @@
     while ((m = re.exec(text)) !== null) last = m[1];
     if (!last) return null;
     try { return JSON.parse(last); } catch (e) { return null; }
+  }
+
+  /** A settled bridge failure is data, not an omitted/undefined render. */
+  function _bridgeFailure(code, message, errors) {
+    var items = Array.isArray(errors) && errors.length
+      ? errors : [{ code: code, message: message }];
+    var warnings = items.map(function (item) {
+      if (typeof item === 'string') return item;
+      return item && (item.message || item.code) || message;
+    }).filter(Boolean);
+    return {
+      rendered: false,
+      unsupported: true,
+      errors: items,
+      warnings: warnings.length ? warnings : [message],
+    };
+  }
+
+  function _bridgeEnvelope(block) {
+    var hasEnvelope = block && typeof block === 'object'
+      && Object.prototype.hasOwnProperty.call(block, 'envelope');
+    var hasRawJson = block && typeof block === 'object'
+      && Object.prototype.hasOwnProperty.call(block, 'raw_json');
+    if (hasEnvelope) {
+      return block.envelope && typeof block.envelope === 'object'
+        && !Array.isArray(block.envelope) ? block.envelope : null;
+    }
+    if (hasRawJson && typeof block.raw_json === 'string') {
+      try {
+        var parsed = JSON.parse(block.raw_json);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? parsed : null;
+      } catch (e) { return null; }
+    }
+    if (hasRawJson) return null;
+    if (typeof block === 'string') return _extractOraVisualBlock(block);
+    if (block && typeof block === 'object' && !Array.isArray(block)) return block;
+    return null;
   }
 
   // ── VisualPanel class ─────────────────────────────────────────────────────
@@ -576,23 +615,40 @@
     var blocks = state.ora_visual_blocks;
     if (!Array.isArray(blocks) || blocks.length === 0) return;
 
-    var block = blocks[blocks.length - 1];
-    var envelope = null;
-    if (block && block.envelope) envelope = block.envelope;
-    else if (block && block.raw_json) {
-      try { envelope = JSON.parse(block.raw_json); } catch (e) { envelope = null; }
-    } else if (typeof block === 'string') {
-      envelope = _extractOraVisualBlock(block);
-    }
+    var self = this;
+    var results = [];
+    var sequence = Promise.resolve();
+    blocks.forEach(function (block) {
+      sequence = sequence.then(function () {
+        var envelope = _bridgeEnvelope(block);
+        if (!envelope) {
+          return _bridgeFailure(
+            'E_BRIDGE_ENVELOPE',
+            'Visual bridge block did not contain a parseable envelope.'
+          );
+        }
 
-    if (!envelope) return;
-
-    // Bump the conversation turn counter BEFORE dispatching so the state
-    // machine sees the new turn. _applyCanvasAction also uses this to
-    // decide whether to treat an omitted canvas_action as replace or update.
-    this._conversationTurn += 1;
-
-    return this._applyCanvasAction(envelope, envelope.canvas_action);
+        // Bump immediately before this block is applied. Serial settlement is
+        // load-bearing: an omitted canvas_action on the next sibling must see
+        // the state produced by every preceding sibling.
+        self._conversationTurn += 1;
+        return self._applyCanvasAction(envelope, envelope.canvas_action);
+      }).then(function (result) {
+        results.push(result === undefined ? _bridgeFailure(
+          'E_BRIDGE_NO_RESULT',
+          'The visual panel did not confirm that this block was applied.'
+        ) : result);
+      }, function (error) {
+        results.push(_bridgeFailure(
+          'E_BRIDGE_REJECTED',
+          'The visual block could not be applied: '
+            + (error && error.message ? error.message : String(error))
+        ));
+      });
+    });
+    return sequence.then(function () {
+      return results.length === 1 ? results[0] : results;
+    });
   };
 
   // ── Public/internal: canvas-action state machine (WP-2.4) ─────────────────
@@ -612,8 +668,12 @@
    * or Promise.resolve() for annotate/clear (which are synchronous).
    */
   VisualPanel.prototype._applyCanvasAction = function (envelope, explicitAction) {
-    if (this._destroyed) return Promise.resolve();
-    if (!envelope || typeof envelope !== 'object') return Promise.resolve();
+    if (this._destroyed) return Promise.resolve(_bridgeFailure(
+      'E_PANEL_DESTROYED', 'The visual panel is no longer mounted.'
+    ));
+    if (!envelope || typeof envelope !== 'object') return Promise.resolve(_bridgeFailure(
+      'E_NO_ENVELOPE', 'No envelope provided.'
+    ));
 
     var action = explicitAction;
     if (!action) {
@@ -627,17 +687,32 @@
 
     if (action === 'clear') {
       this._doClear();
-      return Promise.resolve();
+      return Promise.resolve({ action: 'clear', applied: true });
     }
     if (action === 'annotate') {
+      this._annotationWarnings = [];
+      var before = this.annotationLayer && this.annotationLayer.getChildren
+        ? this.annotationLayer.getChildren().length : 0;
       this._doAnnotate(envelope);
-      return Promise.resolve();
+      var after = this.annotationLayer && this.annotationLayer.getChildren
+        ? this.annotationLayer.getChildren().length : before;
+      var warningDetails = Array.isArray(this._annotationWarnings)
+        ? this._annotationWarnings.slice() : [];
+      var annotationResult = {
+        action: 'annotate',
+        applied: after > before,
+        warnings: warningDetails.map(function (warning) {
+          return warning && (warning.message || warning.code) || String(warning);
+        }),
+      };
+      if (!annotationResult.applied) annotationResult.unsupported = true;
+      return Promise.resolve(annotationResult);
     }
     if (action === 'replace') {
       this._doReplacePrep();
       var self0 = this;
       return this.renderSpec(envelope).then(function (r) {
-        if (!r || r.needs_narrower_subject !== true) self0._hasPriorVisual = true;
+        if (r && r.rendered === true) self0._hasPriorVisual = true;
         return r;
       });
     }
@@ -645,7 +720,7 @@
     this._doUpdatePrep();
     var self = this;
     return this.renderSpec(envelope).then(function (r) {
-      if (!r || r.needs_narrower_subject !== true) self._hasPriorVisual = true;
+      if (r && r.rendered === true) self._hasPriorVisual = true;
       return r;
     });
   };
@@ -1017,10 +1092,13 @@
   // ── Public: renderSpec ────────────────────────────────────────────────────
 
   VisualPanel.prototype.renderSpec = function (envelope) {
-    if (this._destroyed) return Promise.resolve();
+    if (this._destroyed) return Promise.resolve(_bridgeFailure(
+      'E_PANEL_DESTROYED', 'The visual panel is no longer mounted.'
+    ));
     if (!envelope || typeof envelope !== 'object') {
-      this._showFallback(null, [{ code: 'E_NO_ENVELOPE', message: 'No envelope provided.' }]);
-      return Promise.resolve();
+      var noEnvelope = _bridgeFailure('E_NO_ENVELOPE', 'No envelope provided.');
+      this._showFallback(null, noEnvelope.errors);
+      return Promise.resolve(noEnvelope);
     }
 
     var self = this;
@@ -1029,31 +1107,35 @@
       : null;
 
     if (!compilerApi) {
-      this._showFallback(envelope, [{
-        code: 'E_COMPILER_UNAVAILABLE',
-        message: 'Ora visual compiler not loaded.',
-      }]);
-      return Promise.resolve();
+      var unavailable = _bridgeFailure(
+        'E_COMPILER_UNAVAILABLE', 'Ora visual compiler not loaded.'
+      );
+      this._showFallback(envelope, unavailable.errors);
+      return Promise.resolve(unavailable);
     }
 
     var result;
     try {
       result = compilerApi.compileWithNav(envelope);
     } catch (e) {
-      this._showFallback(envelope, [{
-        code: 'E_COMPILER_THREW',
-        message: 'Compiler threw: ' + (e && e.message ? e.message : String(e)),
-      }]);
-      return Promise.resolve();
+      var threw = _bridgeFailure(
+        'E_COMPILER_THREW',
+        'Compiler threw: ' + (e && e.message ? e.message : String(e))
+      );
+      this._showFallback(envelope, threw.errors);
+      return Promise.resolve(threw);
     }
 
     // compileWithNav may return a Promise (Vega-Lite, Mermaid) or a plain object.
     var thenable = (result && typeof result.then === 'function') ? result : Promise.resolve(result);
     return thenable.then(function (r) {
-      if (self._destroyed) return;
+      if (self._destroyed) return _bridgeFailure(
+        'E_PANEL_DESTROYED', 'The visual panel was unmounted before rendering completed.'
+      );
       if (!r) {
-        self._showFallback(envelope, [{ code: 'E_COMPILER_NULL', message: 'Compiler returned null.' }]);
-        return;
+        var nullResult = _bridgeFailure('E_COMPILER_NULL', 'Compiler returned null.');
+        self._showFallback(envelope, nullResult.errors);
+        return nullResult;
       }
       var legibilityFinding = window.OraV3VisualDispatch
         && typeof window.OraV3VisualDispatch.reviewLegibility === 'function'
@@ -1067,19 +1149,24 @@
       }
       if (r.errors && r.errors.length > 0) {
         self._showFallback(envelope, r.errors);
-        return;
+        return _bridgeFailure(
+          'E_COMPILER_ERRORS', 'Compiler reported one or more errors.', r.errors
+        );
       }
       if (!r.svg || r.svg.length === 0) {
-        self._showFallback(envelope, [{ code: 'E_EMPTY_SVG', message: 'Compiler produced empty SVG.' }]);
-        return;
+        var emptySvg = _bridgeFailure('E_EMPTY_SVG', 'Compiler produced empty SVG.');
+        self._showFallback(envelope, emptySvg.errors);
+        return emptySvg;
       }
       self._installSvg(r.svg, envelope, r.ariaDescription);
-      return r;
+      return Object.assign({}, r, { rendered: true });
     }, function (err) {
-      self._showFallback(envelope, [{
-        code: 'E_COMPILER_REJECTED',
-        message: 'Compile rejected: ' + (err && err.message ? err.message : String(err)),
-      }]);
+      var rejected = _bridgeFailure(
+        'E_COMPILER_REJECTED',
+        'Compile rejected: ' + (err && err.message ? err.message : String(err))
+      );
+      self._showFallback(envelope, rejected.errors);
+      return rejected;
     });
   };
 
@@ -6623,9 +6710,19 @@
       inst.init();
       return inst;
     },
-    // Dispatch helpers on the active instance. No-ops if no instance is mounted.
+    // Dispatch helpers on the active instance. Bridge calls report an explicit
+    // aligned failure when no instance is mounted.
     destroy: function () { if (_active) _active.destroy(); },
-    onBridgeUpdate: function (state) { if (_active) _active.onBridgeUpdate(state); },
+    onBridgeUpdate: function (state) {
+      if (_active) return _active.onBridgeUpdate(state);
+      var blocks = state && Array.isArray(state.ora_visual_blocks)
+        ? state.ora_visual_blocks : [];
+      if (blocks.length === 0) return;
+      var failures = blocks.map(function () {
+        return _bridgeFailure('E_PANEL_UNMOUNTED', 'The visual panel is not mounted.');
+      });
+      return Promise.resolve(failures.length === 1 ? failures[0] : failures);
+    },
     renderSpec: function (envelope) { return _active ? _active.renderSpec(envelope) : Promise.resolve(); },
     showError: function (message) { if (_active) _active.showError(message); },
     clearArtifact: function () { if (_active) _active.clearArtifact(); },

@@ -1087,7 +1087,47 @@ def _normalize_visual_outcome(value: dict[str, Any] | None) -> dict[str, Any] | 
         item = value.get(key)
         if isinstance(item, str) and item.strip():
             clean[key] = item.strip()[:500]
+    attempts = value.get("legibility_attempts")
+    if isinstance(attempts, dict):
+        clean_attempts: dict[str, str] = {}
+        for raw_index, status in attempts.items():
+            try:
+                index = int(raw_index)
+            except (TypeError, ValueError):
+                continue
+            if (
+                isinstance(raw_index, bool)
+                or index < 0
+                or str(raw_index).strip() != str(index)
+                or status not in {"in_progress", "exhausted"}
+            ):
+                continue
+            clean_attempts[str(index)] = status
+        if clean_attempts:
+            clean["legibility_attempts"] = dict(
+                sorted(clean_attempts.items(), key=lambda item: int(item[0]))
+            )
     return clean
+
+
+def _merge_legibility_attempts(
+    current: dict[str, Any] | None,
+    incoming: dict[str, Any] | None,
+) -> dict[str, str]:
+    """Merge the monotonic per-fence retry record without losing exhaustion."""
+    merged: dict[str, str] = {}
+    for source in (current, incoming):
+        attempts = (source or {}).get("legibility_attempts")
+        if not isinstance(attempts, dict):
+            continue
+        for raw_index, status in attempts.items():
+            key = str(raw_index)
+            if status not in {"in_progress", "exhausted"}:
+                continue
+            if merged.get(key) == "exhausted":
+                continue
+            merged[key] = status
+    return dict(sorted(merged.items(), key=lambda item: int(item[0])))
 
 
 def begin_visual_outcome(
@@ -1118,27 +1158,143 @@ def set_assistant_visual_outcome(
     *,
     assistant_index: int | None = None,
     sessions_root: Path | None = None,
-) -> Path | None:
-    """Update one existing assistant message without adding a new record."""
+    return_outcome: bool = False,
+) -> Path | None | tuple[Path | None, dict[str, Any] | None]:
+    """Update one assistant message; optionally return its exact stored outcome."""
     clean = _normalize_visual_outcome(visual_outcome)
     if clean is None:
-        return None
+        return (None, None) if return_outcome else None
+    if assistant_index is not None and (
+        type(assistant_index) is not int or assistant_index < 0
+    ):
+        return (None, None) if return_outcome else None
     root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    stored_outcome: dict[str, Any] | None = None
+
+    class _AssistantNotFound(Exception):
+        pass
 
     def mutate(envelope: dict[str, Any]) -> None:
+        nonlocal stored_outcome
         assistants = [
             message for message in envelope.get("messages", [])
             if isinstance(message, dict) and message.get("role") == "assistant"
         ]
         target = None
-        if isinstance(assistant_index, int) and 0 <= assistant_index < len(assistants):
+        if assistant_index is not None:
+            if assistant_index >= len(assistants):
+                raise _AssistantNotFound
             target = assistants[assistant_index]
         elif assistants:
             target = assistants[-1]
-        if target is not None:
-            target["visual_outcome"] = copy.deepcopy(clean)
+        if target is None:
+            raise _AssistantNotFound
+        next_outcome = copy.deepcopy(clean)
+        attempts = _merge_legibility_attempts(
+            _normalize_visual_outcome(target.get("visual_outcome")),
+            next_outcome,
+        )
+        if attempts:
+            next_outcome["legibility_attempts"] = attempts
+        target["visual_outcome"] = next_outcome
+        stored_outcome = copy.deepcopy(next_outcome)
 
-    return _mutate_conversation_envelope(conversation_id, root, mutate)
+    try:
+        path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    except _AssistantNotFound:
+        path = None
+        stored_outcome = None
+    if return_outcome:
+        return path, stored_outcome if path is not None else None
+    return path
+
+
+def claim_assistant_visual_legibility_attempt(
+    conversation_id: str,
+    *,
+    assistant_index: int,
+    visual_block_index: int,
+    sessions_root: Path | None = None,
+) -> tuple[Path | None, dict[str, Any] | None, bool]:
+    """Atomically claim one exact assistant fence's sole narrowing attempt.
+
+    Returns ``(path, outcome, claimed)``. A present outcome with ``claimed``
+    false means the fence already has an in-progress or exhausted attempt;
+    a missing outcome means the assistant or exact parseable fence was not
+    found. The claim lands before slow synthesis so reload cannot race a
+    competing request for the same fence.
+    """
+    if (
+        type(assistant_index) is not int
+        or assistant_index < 0
+        or type(visual_block_index) is not int
+        or visual_block_index < 0
+    ):
+        return None, None, False
+    try:
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+    except ImportError:  # package-qualified import context
+        from orchestrator.visual_recovery import ORA_VISUAL_FENCE_RE
+
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    claimed_outcome: dict[str, Any] | None = None
+
+    class _TargetVisualNotFound(Exception):
+        pass
+
+    class _AttemptAlreadyRecorded(Exception):
+        pass
+
+    def mutate(envelope: dict[str, Any]) -> None:
+        nonlocal claimed_outcome
+        assistants = [
+            message for message in envelope.get("messages", [])
+            if isinstance(message, dict) and message.get("role") == "assistant"
+        ]
+        if not 0 <= assistant_index < len(assistants):
+            raise _TargetVisualNotFound
+        target = assistants[assistant_index]
+        content = target.get("content")
+        if not isinstance(content, str):
+            raise _TargetVisualNotFound
+        matches = list(ORA_VISUAL_FENCE_RE.finditer(content))
+        if not 0 <= visual_block_index < len(matches):
+            raise _TargetVisualNotFound
+        try:
+            candidate = json.loads(matches[visual_block_index].group(1))
+        except (json.JSONDecodeError, TypeError):
+            raise _TargetVisualNotFound
+        if not isinstance(candidate, dict):
+            raise _TargetVisualNotFound
+
+        current = _normalize_visual_outcome(target.get("visual_outcome")) or {
+            "state": "building",
+        }
+        attempts = _merge_legibility_attempts(current, None)
+        key = str(visual_block_index)
+        if key in attempts:
+            claimed_outcome = copy.deepcopy(current)
+            claimed_outcome["legibility_attempts"] = attempts
+            raise _AttemptAlreadyRecorded
+        attempts[key] = "in_progress"
+        current["state"] = "building"
+        current["stage"] = "legibility"
+        current["reason"] = "A narrower visual is being synthesized."
+        current["legibility_attempts"] = dict(
+            sorted(attempts.items(), key=lambda item: int(item[0]))
+        )
+        target["visual_outcome"] = copy.deepcopy(current)
+        claimed_outcome = current
+
+    try:
+        path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    except _AttemptAlreadyRecorded:
+        return None, claimed_outcome, False
+    except _TargetVisualNotFound:
+        return None, None, False
+    if path is None:
+        return None, None, False
+    return path, claimed_outcome, True
 
 
 def replace_assistant_visual_envelope(
@@ -1146,17 +1302,28 @@ def replace_assistant_visual_envelope(
     visual_envelope: dict[str, Any],
     *,
     assistant_index: int,
+    visual_block_index: int,
     sessions_root: Path | None = None,
-) -> Path | None:
+    return_outcome: bool = False,
+) -> Path | None | tuple[Path | None, dict[str, Any] | None]:
     """Atomically replace one assistant turn's canonical visual block.
 
     This is the persistence half of the client's single narrower-subject
     round trip. The surrounding prose is left byte-for-byte intact; only
-    canonical ``ora-visual`` fences are replaced. The outcome returns to
-    ``building`` until the client confirms that the saved result was inserted.
+    the exact zero-based canonical ``ora-visual`` fence is replaced. The
+    outcome is terminally failed until the client positively confirms that
+    the saved result was inserted. Invalid or out-of-range targets perform no
+    write. ``return_outcome`` confirms the exact outcome stored beside the
+    replacement without changing the established path-only return contract.
     """
-    if not isinstance(visual_envelope, dict) or not isinstance(assistant_index, int):
-        return None
+    if (
+        not isinstance(visual_envelope, dict)
+        or type(assistant_index) is not int
+        or assistant_index < 0
+        or type(visual_block_index) is not int
+        or visual_block_index < 0
+    ):
+        return (None, None) if return_outcome else None
     try:
         from visual_recovery import ORA_VISUAL_FENCE_RE
     except ImportError:  # package-qualified import context
@@ -1167,43 +1334,70 @@ def replace_assistant_visual_envelope(
         visual_envelope, indent=2, ensure_ascii=False,
     ) + "\n```"
     replaced = False
+    stored_outcome: dict[str, Any] | None = None
+
+    class _TargetVisualNotFound(Exception):
+        """Abort the locked mutation without rewriting unrelated content."""
 
     def mutate(envelope: dict[str, Any]) -> None:
-        nonlocal replaced
+        nonlocal replaced, stored_outcome
         assistants = [
             message for message in envelope.get("messages", [])
             if isinstance(message, dict) and message.get("role") == "assistant"
         ]
         if not 0 <= assistant_index < len(assistants):
-            return
+            raise _TargetVisualNotFound
         target = assistants[assistant_index]
         content = target.get("content")
         if not isinstance(content, str):
-            return
+            raise _TargetVisualNotFound
 
-        installed = False
+        current_block_index = 0
 
-        def replace_block(_match) -> str:
-            nonlocal installed
-            if installed:
-                return ""
-            installed = True
-            return block
+        def replace_block(match) -> str:
+            nonlocal current_block_index, replaced
+            if current_block_index == visual_block_index:
+                replaced = True
+                current_block_index += 1
+                return block
+            current_block_index += 1
+            return match.group(0)
 
         next_content = ORA_VISUAL_FENCE_RE.sub(replace_block, content)
-        if not installed:
-            separator = "\n\n" if next_content and not next_content.endswith("\n") else "\n"
-            next_content = next_content + separator + block
+        if not replaced:
+            raise _TargetVisualNotFound
         target["content"] = next_content
-        target["visual_outcome"] = {
-            "state": "building",
+        current = _normalize_visual_outcome(target.get("visual_outcome"))
+        attempts = _merge_legibility_attempts(current, None)
+        attempts[str(visual_block_index)] = "exhausted"
+        outcome = {
+            "state": "failed",
             "stage": "legibility",
-            "reason": "A narrower visual was saved and is awaiting insertion.",
+            "reason": (
+                "A narrower visual was saved, but insertion has not been "
+                "confirmed."
+            ),
+            "legibility_attempts": dict(
+                sorted(attempts.items(), key=lambda item: int(item[0]))
+            ),
         }
-        replaced = True
+        for key in ("origin", "trace_ref"):
+            if current and current.get(key):
+                outcome[key] = current[key]
+        target["visual_outcome"] = outcome
+        stored_outcome = copy.deepcopy(outcome)
 
-    path = _mutate_conversation_envelope(conversation_id, root, mutate)
-    return path if replaced else None
+    try:
+        path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    except _TargetVisualNotFound:
+        path = None
+    confirmed_path = path if replaced else None
+    if return_outcome:
+        return (
+            confirmed_path,
+            stored_outcome if confirmed_path is not None else None,
+        )
+    return confirmed_path
 
 
 def set_visual_state(
@@ -2051,9 +2245,16 @@ def mark_conversation_errored(
                         continue
                     if ((message.get("visual_outcome") or {}).get("state")
                             == "building"):
-                        message["visual_outcome"] = copy.deepcopy(
-                            clean_visual_outcome
+                        next_outcome = copy.deepcopy(clean_visual_outcome)
+                        attempts = _merge_legibility_attempts(
+                            _normalize_visual_outcome(
+                                message.get("visual_outcome")
+                            ),
+                            next_outcome,
                         )
+                        if attempts:
+                            next_outcome["legibility_attempts"] = attempts
+                        message["visual_outcome"] = next_outcome
                     break
 
     return _mutate_conversation_envelope(conversation_id, root, mutate)
@@ -2273,6 +2474,7 @@ __all__ = [
     "save_turn_spatial_state",
     "begin_visual_outcome",
     "set_assistant_visual_outcome",
+    "claim_assistant_visual_legibility_attempt",
     "replace_assistant_visual_envelope",
     "set_visual_state",
     "get_prior_spatial_state",

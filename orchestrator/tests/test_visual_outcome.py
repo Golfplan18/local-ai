@@ -402,16 +402,183 @@ class VisualOutcomePersistenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             memory.begin_visual_outcome("visual-outcome-2", "Compare the options", sessions_root=root)
-            path = memory.set_assistant_visual_outcome(
+            memory.set_assistant_visual_outcome(
                 "visual-outcome-2",
-                {"state": "failed", "stage": "dispatch", "reason": "editor unavailable"},
+                {
+                    "state": "building",
+                    "stage": "legibility",
+                    "legibility_attempts": {
+                        "0": "exhausted",
+                        "2": "in_progress",
+                        "invalid": "exhausted",
+                        "3": "unknown",
+                    },
+                },
+                assistant_index=0,
+                sessions_root=root,
+            )
+            path, stored_outcome = memory.set_assistant_visual_outcome(
+                "visual-outcome-2",
+                {
+                    "state": "failed",
+                    "stage": "dispatch",
+                    "reason": "editor unavailable",
+                    "legibility_attempts": {
+                        "0": "in_progress",
+                        "2": "exhausted",
+                    },
+                },
                 assistant_index=0, sessions_root=root,
+                return_outcome=True,
             )
             self.assertIsNotNone(path)
             data = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(len(data["messages"]), 2)
             self.assertEqual(data["messages"][-1]["visual_outcome"]["state"], "failed")
             self.assertEqual(data["messages"][-1]["visual_outcome"]["stage"], "dispatch")
+            self.assertEqual(
+                data["messages"][-1]["visual_outcome"]["legibility_attempts"],
+                {"0": "exhausted", "2": "exhausted"},
+            )
+            self.assertEqual(
+                stored_outcome,
+                data["messages"][-1]["visual_outcome"],
+            )
+            bytes_before_missing_target = path.read_bytes()
+            self.assertIsNone(memory.set_assistant_visual_outcome(
+                "visual-outcome-2",
+                {"state": "ready"},
+                assistant_index=9,
+                sessions_root=root,
+            ))
+            self.assertEqual(path.read_bytes(), bytes_before_missing_target)
+
+    def test_visual_outcome_route_returns_exact_merged_stored_outcome(self):
+        import conversation_memory as server_memory
+        from server import app as server_app
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            server_memory.save_turn_spatial_state(
+                "visual-outcome-route",
+                "Compare the options",
+                "Answer",
+                visual_outcome={
+                    "state": "building",
+                    "stage": "legibility",
+                    "legibility_attempts": {"0": "exhausted"},
+                },
+                sessions_root=root,
+            )
+            with mock.patch.object(
+                server_memory, "_DEFAULT_SESSIONS_ROOT", root,
+            ):
+                response = server_app.app.test_client().post(
+                    "/api/conversation/visual-outcome-route/visual-outcome",
+                    json={
+                        "state": "ready",
+                        "reason": "  inserted  ",
+                        "legibility_attempts": {"0": "in_progress"},
+                        "assistant_index": 0,
+                    },
+                )
+                persisted = server_memory.load_conversation_json(
+                    "visual-outcome-route", sessions_root=root,
+                )["messages"][-1]["visual_outcome"]
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.get_data(as_text=True))
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["visual_outcome"], persisted)
+        self.assertEqual(payload["visual_outcome"], {
+            "state": "ready",
+            "reason": "inserted",
+            "legibility_attempts": {"0": "exhausted"},
+        })
+
+    def test_visual_outcome_route_does_not_report_an_unconfirmed_write(self):
+        import conversation_memory as server_memory
+        from server import app as server_app
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            server_memory.save_turn_spatial_state(
+                "visual-outcome-write-failure",
+                "Compare the options",
+                "Answer",
+                visual_outcome={"state": "building"},
+                sessions_root=root,
+            )
+            with mock.patch.object(
+                server_memory,
+                "set_assistant_visual_outcome",
+                return_value=(None, None),
+            ):
+                response = server_app.app.test_client().post(
+                    "/api/conversation/visual-outcome-write-failure/visual-outcome",
+                    json={"state": "ready", "assistant_index": 0},
+                )
+
+        self.assertGreaterEqual(response.status_code, 400)
+        self.assertNotIn(
+            "visual_outcome", json.loads(response.get_data(as_text=True)),
+        )
+
+    def test_legibility_claim_is_single_flight_per_raw_fence(self):
+        content = (
+            "Before.\n```ora-visual\n{\"type\":\"concept_map\"}\n```\n"
+            "Between.\n```ora-visual\n{\"type\":\"pro_con\"}\n```\nAfter."
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            memory.save_turn_spatial_state(
+                "visual-outcome-fences",
+                "Show both",
+                content,
+                visual_outcome={"state": "building"},
+                sessions_root=root,
+            )
+            first_path, first_outcome, first_claimed = (
+                memory.claim_assistant_visual_legibility_attempt(
+                    "visual-outcome-fences",
+                    assistant_index=0,
+                    visual_block_index=0,
+                    sessions_root=root,
+                )
+            )
+            duplicate_path, duplicate_outcome, duplicate_claimed = (
+                memory.claim_assistant_visual_legibility_attempt(
+                    "visual-outcome-fences",
+                    assistant_index=0,
+                    visual_block_index=0,
+                    sessions_root=root,
+                )
+            )
+            sibling_path, sibling_outcome, sibling_claimed = (
+                memory.claim_assistant_visual_legibility_attempt(
+                    "visual-outcome-fences",
+                    assistant_index=0,
+                    visual_block_index=1,
+                    sessions_root=root,
+                )
+            )
+
+        self.assertIsNotNone(first_path)
+        self.assertTrue(first_claimed)
+        self.assertEqual(
+            first_outcome["legibility_attempts"], {"0": "in_progress"},
+        )
+        self.assertIsNone(duplicate_path)
+        self.assertFalse(duplicate_claimed)
+        self.assertEqual(
+            duplicate_outcome["legibility_attempts"], {"0": "in_progress"},
+        )
+        self.assertIsNotNone(sibling_path)
+        self.assertTrue(sibling_claimed)
+        self.assertEqual(
+            sibling_outcome["legibility_attempts"],
+            {"0": "in_progress", "1": "in_progress"},
+        )
 
     def test_noninteractive_result_is_headlessly_rendered_and_persisted(self):
         example = Path(os.environ.get("ORA_HOME", os.path.expanduser("~/ora"))) \

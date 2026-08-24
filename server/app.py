@@ -3371,7 +3371,8 @@ def visual_regenerate():
     'Regenerate visual' button. Body: ``{prose, mode,
     manual_visual_type?}``; ``visual_kind`` is an alias. A client legibility
     retry also supplies ``narrow_subject``, ``conversation_id``, and
-    ``assistant_index`` so the replacement is durable before insertion. Runs the same
+    ``assistant_index`` plus the zero-based ``visual_block_index`` so the
+    exact replacement is durable before insertion. Runs the same
     synthesize→validate→repair loop the pipeline uses on a miss, and returns
     a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
     """
@@ -3387,16 +3388,22 @@ def visual_regenerate():
     narrow_subject = data.get("narrow_subject") is True
     conversation_id = (data.get("conversation_id") or "").strip()
     assistant_index = data.get("assistant_index")
+    visual_block_index = data.get("visual_block_index")
     if not prose:
         return jsonify({"ok": False, "reason": "no prose supplied"}), 400
     if narrow_subject and (
         not _valid_existing_conversation_id(conversation_id)
         or type(assistant_index) is not int
         or assistant_index < 0
+        or type(visual_block_index) is not int
+        or visual_block_index < 0
     ):
         return jsonify({
             "ok": False,
-            "reason": "a valid assistant turn is required for a narrower visual",
+            "reason": (
+                "a valid assistant turn and zero-based visual block index are "
+                "required for a narrower visual"
+            ),
         }), 400
     try:
         from boot import (_mode_target_types, _resolve_synthesis_endpoint,
@@ -3409,6 +3416,77 @@ def visual_regenerate():
     if not endpoint:
         return jsonify({"ok": False, "reason": "no synthesis endpoint resolved"}), 503
     clean = _strip_visual_blocks_and_markers(prose)
+    claimed_outcome = None
+    if narrow_subject:
+        try:
+            from conversation_memory import claim_assistant_visual_legibility_attempt
+            with _conversation_lifecycle_lock(conversation_id):
+                _claim_path, claimed_outcome, claimed = (
+                    claim_assistant_visual_legibility_attempt(
+                        conversation_id,
+                        assistant_index=assistant_index,
+                        visual_block_index=visual_block_index,
+                    )
+                )
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "reason": f"narrower visual attempt could not be claimed: {exc}",
+            }), 500
+        if claimed_outcome is None:
+            return jsonify({
+                "ok": False,
+                "reason": "the targeted visual block was not found in that assistant turn",
+            }), 404
+        if not claimed:
+            retry_status = (
+                claimed_outcome.get("legibility_attempts", {})
+                .get(str(visual_block_index), "exhausted")
+            )
+            return jsonify({
+                "ok": False,
+                "retry_status": retry_status,
+                "visual_outcome": claimed_outcome,
+                "visual_outcome_persisted": True,
+                "reason": (
+                    "that visual fence already has a narrowing attempt in progress"
+                    if retry_status == "in_progress"
+                    else "that visual fence has exhausted its narrowing attempt"
+                ),
+            }), 409
+
+    def _finish_narrowing_failure(reason):
+        outcome = dict(claimed_outcome or {"state": "building"})
+        attempts = dict(outcome.get("legibility_attempts") or {})
+        attempts[str(visual_block_index)] = "exhausted"
+        outcome.update({
+            "state": "failed",
+            "stage": "legibility",
+            "reason": str(reason)[:500],
+            "legibility_attempts": attempts,
+        })
+        try:
+            from conversation_memory import set_assistant_visual_outcome
+            with _conversation_lifecycle_lock(conversation_id):
+                path, stored_outcome = set_assistant_visual_outcome(
+                    conversation_id,
+                    outcome,
+                    assistant_index=assistant_index,
+                    return_outcome=True,
+                )
+        except Exception:
+            path, stored_outcome = None, None
+        return stored_outcome, bool(path is not None and stored_outcome is not None)
+
+    def _failure_payload(reason, outcome, persisted):
+        payload = {
+            "ok": False,
+            "reason": reason,
+            "visual_outcome_persisted": persisted,
+        }
+        if persisted:
+            payload["visual_outcome"] = outcome
+        return payload
 
     def _call_fn(prompt):
         if narrow_subject:
@@ -3428,30 +3506,54 @@ def visual_regenerate():
     try:
         env, attempts = synthesize_envelope(clean, mode or "unknown", target_types, _call_fn)
     except Exception as exc:
-        return jsonify({"ok": False, "reason": f"synthesis error: {exc}"}), 500
+        reason = f"synthesis error: {exc}"
+        outcome, persisted = (
+            _finish_narrowing_failure(reason)
+            if narrow_subject else (None, False)
+        )
+        payload = (
+            _failure_payload(reason, outcome, persisted)
+            if narrow_subject else {"ok": False, "reason": reason}
+        )
+        return jsonify(payload), 500
     if env is None:
-        return jsonify({"ok": False, "reason": f"synthesis failed after {len(attempts)} attempt(s)"})
+        reason = f"synthesis failed after {len(attempts)} attempt(s)"
+        outcome, persisted = (
+            _finish_narrowing_failure(reason)
+            if narrow_subject else (None, False)
+        )
+        payload = (
+            _failure_payload(reason, outcome, persisted)
+            if narrow_subject else {"ok": False, "reason": reason}
+        )
+        return jsonify(payload)
     block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
     persisted = False
     if narrow_subject:
         try:
             from conversation_memory import replace_assistant_visual_envelope
             with _conversation_lifecycle_lock(conversation_id):
-                path = replace_assistant_visual_envelope(
+                path, claimed_outcome = replace_assistant_visual_envelope(
                     conversation_id,
                     env,
                     assistant_index=assistant_index,
+                    visual_block_index=visual_block_index,
+                    return_outcome=True,
                 )
         except Exception as exc:
-            return jsonify({
-                "ok": False,
-                "reason": f"narrower visual could not be saved: {exc}",
-            }), 500
+            reason = f"narrower visual could not be saved: {exc}"
+            outcome, outcome_persisted = _finish_narrowing_failure(reason)
+            return jsonify(_failure_payload(
+                reason, outcome, outcome_persisted,
+            )), 500
         if path is None:
-            return jsonify({
-                "ok": False,
-                "reason": "the assistant turn for the narrower visual was not found",
-            }), 404
+            reason = "the targeted visual block was not found in that assistant turn"
+            outcome, outcome_persisted = _finish_narrowing_failure(
+                "The targeted visual block disappeared before its narrower replacement was saved."
+            )
+            return jsonify(_failure_payload(
+                reason, outcome, outcome_persisted,
+            )), 404
         persisted = True
     return jsonify({
         "ok": True,
@@ -3459,6 +3561,8 @@ def visual_regenerate():
         "type": env.get("type"),
         "envelope": env,
         "persisted": persisted,
+        **({"visual_outcome_persisted": True} if narrow_subject else {}),
+        **({"visual_outcome": claimed_outcome} if narrow_subject else {}),
     })
 
 
@@ -13616,22 +13720,45 @@ def conversation_visual_outcome(conversation_id):
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             outcome[key] = value.strip()[:500]
+    attempts = data.get("legibility_attempts")
+    if isinstance(attempts, dict):
+        clean_attempts = {}
+        for raw_index, status in attempts.items():
+            try:
+                index = int(raw_index)
+            except (TypeError, ValueError):
+                continue
+            if (
+                index >= 0
+                and str(raw_index).strip() == str(index)
+                and status in {"in_progress", "exhausted"}
+            ):
+                clean_attempts[str(index)] = status
+        if clean_attempts:
+            outcome["legibility_attempts"] = dict(
+                sorted(clean_attempts.items(), key=lambda item: int(item[0]))
+            )
     assistant_index = data.get("assistant_index")
-    if not isinstance(assistant_index, int):
-        assistant_index = None
+    if assistant_index is not None and (
+        type(assistant_index) is not int or assistant_index < 0
+    ):
+        return json.dumps({"error": "invalid assistant_index"}), 400
     try:
         from conversation_memory import set_assistant_visual_outcome
         with _conversation_lifecycle_lock(conversation_id):
-            path = set_assistant_visual_outcome(
+            path, stored_outcome = set_assistant_visual_outcome(
                 conversation_id,
                 outcome,
                 assistant_index=assistant_index,
+                return_outcome=True,
             )
     except Exception as exc:
         return json.dumps({"error": str(exc)}), 500
     if path is None:
         return json.dumps({"error": "assistant message not found"}), 404
-    return json.dumps({"ok": True, "visual_outcome": outcome})
+    if stored_outcome is None:
+        return json.dumps({"error": "visual outcome write was not confirmed"}), 500
+    return json.dumps({"ok": True, "visual_outcome": stored_outcome})
 
 
 @app.route(
