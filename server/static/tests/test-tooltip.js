@@ -95,6 +95,36 @@ async function run() {
   record('visual-toolbar teardown dismisses the shared tooltip',
     !surfaceVisible() && win.OraTooltip._state.anchor === null);
 
+  win.OraTooltip.disable();
+  var fallbackRow = win.document.createElement('div');
+  fallbackRow.className = 'sidebar-row';
+  fallbackRow.setAttribute('data-tooltip', 'New conversation title');
+  win.document.body.appendChild(fallbackRow);
+  win.OraVisualToolbar.register({
+    id: 'fallback-toolbar',
+    label: 'Fallback toolbar',
+    items: [{ id: 'fallback-tool', binding: 'tool:fallback', label: 'Fallback action', icon: 'square' }]
+  });
+  var fallbackToolbar = win.OraVisualToolbar.render('fallback-toolbar', { doc: win.document });
+  win.document.body.appendChild(fallbackToolbar.el);
+  var fallbackButton = fallbackToolbar.itemEls['fallback-tool'];
+  var genuineTitle = win.document.createElement('button');
+  genuineTitle.setAttribute('data-tooltip', 'Renderer text');
+  genuineTitle.setAttribute('title', 'Genuine native title');
+  win.document.body.appendChild(genuineTitle);
+  await flushMutations();
+  record('disabled tooltips give dynamically created sidebar and toolbar controls native titles',
+    fallbackRow.getAttribute('title') === 'New conversation title'
+      && fallbackButton.getAttribute('title') === 'Fallback action');
+
+  win.OraTooltip.enable();
+  await flushMutations();
+  record('re-enabled tooltips remove only renderer-owned native titles',
+    !fallbackRow.hasAttribute('title')
+      && !fallbackButton.hasAttribute('title')
+      && genuineTitle.getAttribute('title') === 'Genuine native title');
+  fallbackToolbar.destroy();
+
   var failed = results.filter(function (result) { return !result.ok; });
   console.log('');
   console.log((results.length - failed.length) + ' / ' + results.length + ' tests passed');
