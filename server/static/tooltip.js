@@ -3,6 +3,7 @@
   'use strict';
 
   var SURFACE_ID = 'ora-shared-tooltip';
+  var OWNED_TITLE_ATTRIBUTE = 'data-ora-tooltip-native-title';
   var DEFAULT_DELAY_MS = 500;
   var OFFSET_PX = 10;
   var EDGE_GUARD_PX = 6;
@@ -103,6 +104,52 @@
       if (!state.anchor.hasAttribute('title')) state.anchor.setAttribute('title', state.nativeTitle);
     }
     state.nativeTitle = null;
+  }
+
+  function _removeNativeFallback(el) {
+    if (!el || !el.getAttribute || !el.hasAttribute(OWNED_TITLE_ATTRIBUTE)) return;
+    var ownedTitle = el.getAttribute(OWNED_TITLE_ATTRIBUTE);
+    if (el.getAttribute('title') === ownedTitle) el.removeAttribute('title');
+    el.removeAttribute(OWNED_TITLE_ATTRIBUTE);
+  }
+
+  function _applyNativeFallback(el) {
+    if (!el || !el.getAttribute) return;
+    var text = el.getAttribute('data-tooltip');
+    if (!text) {
+      _removeNativeFallback(el);
+      return;
+    }
+
+    var ownedTitle = el.getAttribute(OWNED_TITLE_ATTRIBUTE);
+    if (ownedTitle !== null) {
+      if (el.getAttribute('title') !== ownedTitle) {
+        // Another owner changed the title while the renderer was disabled.
+        // Keep that genuine title and give up our ownership marker.
+        el.removeAttribute(OWNED_TITLE_ATTRIBUTE);
+        return;
+      }
+      if (ownedTitle !== text) {
+        el.setAttribute('title', text);
+        el.setAttribute(OWNED_TITLE_ATTRIBUTE, text);
+      }
+      return;
+    }
+
+    if (!el.hasAttribute('title')) {
+      el.setAttribute('title', text);
+      el.setAttribute(OWNED_TITLE_ATTRIBUTE, text);
+    }
+  }
+
+  function _syncNativeFallbacks() {
+    var doc = root.document;
+    if (!doc || !doc.querySelectorAll) return;
+    var controls = doc.querySelectorAll('[data-tooltip]');
+    for (var i = 0; i < controls.length; i += 1) {
+      if (state.enabled) _removeNativeFallback(controls[i]);
+      else _applyNativeFallback(controls[i]);
+    }
   }
 
   function _isConnected(el) {
@@ -227,6 +274,7 @@
 
   function _onDomChange() {
     if (state.anchor && !_isConnected(state.anchor)) _hide();
+    if (!state.enabled) _syncNativeFallbacks();
     _onBodyClassChange();
   }
 
@@ -241,7 +289,7 @@
     state.bodyObserver = new root.MutationObserver(_onDomChange);
     state.bodyObserver.observe(root.document.body, {
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ['class', 'data-tooltip', 'title'],
       childList: true,
       subtree: true
     });
@@ -267,11 +315,12 @@
     _listen(doc, 'ora-toolbar:chrome-shown', function () { state.chromeHidden = false; });
     _bindBodyObserver();
     if (doc && !doc.body && doc.addEventListener) _listen(doc, 'DOMContentLoaded', function () { _surface(); _bindBodyObserver(); });
+    _syncNativeFallbacks();
     return api;
   }
 
-  function enable() { state.enabled = true; return api; }
-  function disable() { state.enabled = false; _hide(); return api; }
+  function enable() { state.enabled = true; _syncNativeFallbacks(); return api; }
+  function disable() { state.enabled = false; _hide(); _syncNativeFallbacks(); return api; }
   function setDelay(ms) { state.delayMs = Math.max(0, Number(ms) || 0); return api; }
   function destroy() {
     _hide();
