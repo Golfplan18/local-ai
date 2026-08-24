@@ -70,6 +70,13 @@ class TestContentVerdict(unittest.TestCase):
         self.assertEqual(ef._content_verdict(_fake_fetch(503), None)[0], "INDETERMINATE")
         self.assertEqual(ef._content_verdict(_fake_fetch(None, error="timeout"), None)[0],
                          "INDETERMINATE")
+        limited = _fake_fetch(200, "has slug-x")
+        limited["content_limit_exceeded"] = True
+        self.assertEqual(ef._content_verdict(limited, "slug-x")[0], "INDETERMINATE")
+        unsupported = _fake_fetch(200, "has slug-x")
+        unsupported["unsupported_content_encoding"] = "br"
+        self.assertEqual(ef._content_verdict(unsupported, "slug-x")[0],
+                         "INDETERMINATE")
 
 
 class TestHeadersVerdict(unittest.TestCase):

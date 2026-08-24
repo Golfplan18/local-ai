@@ -1124,8 +1124,8 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             "provider registry's declared environment or OS-keyring coordinates",
             "Standalone Programming",
             "installs no clock, scheduled cleanup, recovery sweep, cron job, or LaunchAgent",
-            "Full G1.22 remains open",
-            "Telegram and email credentials",
+            "G1.22 can close only after",
+            "Telegram, inbound email, generic channel, or agent-mask operation",
             "G1.24 retains ownership",
         ):
             self.assertIn(token, canonical)
@@ -1143,7 +1143,7 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             )
         )
         for token in (
-            "Current verdict — replacement end to end.",
+            "Current verdict — pre-channel correction and original hardening landed; ordinary-use follow-up identity pending; full gate still open.",
             "G1.22A IMPLEMENTED / JUDGMENT PENDING",
             "G1.22A SECURITY CORRECTION SUBMITTED",
             "G1.22A RESIDUAL AUTHORITY CORRECTION SUBMITTED",

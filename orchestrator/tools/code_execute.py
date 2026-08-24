@@ -249,6 +249,7 @@ def code_execute(code: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
     os.makedirs(tmpdir, exist_ok=True)
     profile = _sandbox_profile(SCRATCH_DIR, tmpdir)
     process = None
+    process_group_terminated = False
     capture = _BoundedCapture(MAX_RESULT_BYTES)
     readers = []
     try:
@@ -273,11 +274,13 @@ def code_execute(code: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
         while process.poll() is None:
             if capture.exceeded.is_set():
                 truncated = True
+                process_group_terminated = True
                 _terminate_process_group(process)
                 break
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 timed_out = True
+                process_group_terminated = True
                 _terminate_process_group(process)
                 break
             try:
@@ -287,8 +290,10 @@ def code_execute(code: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
 
         # A short-lived process can finish before the reader observes the
         # final over-cap chunk. Check once more before joining the drainers.
-        if capture.exceeded.is_set() and not timed_out:
+        if (capture.exceeded.is_set() and not timed_out
+                and not process_group_terminated):
             truncated = True
+            process_group_terminated = True
             _terminate_process_group(process)
         for reader in readers:
             reader.join()
@@ -297,7 +302,8 @@ def code_execute(code: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> str:
         return _format_result(*capture.values(), truncated=truncated or
                               capture.exceeded.is_set())
     except Exception as e:
-        if process is not None:
+        if process is not None and not process_group_terminated:
+            process_group_terminated = True
             _terminate_process_group(process)
         for reader in readers:
             reader.join()

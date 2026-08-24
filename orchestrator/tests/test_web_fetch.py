@@ -479,7 +479,7 @@ class LocalStreamFixtureTests(unittest.TestCase):
         self.assertEqual(body, b"")
         self.assertTrue(exceeded)
 
-    def test_optional_codec_is_refused_before_raw_body_iteration(self):
+    def test_optional_codec_is_refused_before_raw_body_iteration_and_auto_falls_back(self):
         class _OptionalCodecResponse:
             status_code = 200
             headers = {"Content-Encoding": "br", "Content-Length": "4"}
@@ -528,6 +528,23 @@ class LocalStreamFixtureTests(unittest.TestCase):
             client_factory.call_args.kwargs["headers"]["Accept-Encoding"],
             "gzip, deflate",
         )
+
+        browser_result = {
+            "url": self._url("optional-codec"),
+            "markdown": "browser content " * 50,
+            "title": "browser",
+            "channel": "local",
+            "fetched_at": "now",
+        }
+        with self._allow_fixture_urls(), mock.patch(
+            "httpx.Client", return_value=_Client(_OptionalCodecResponse()),
+        ), mock.patch.object(
+            wf, "_fetch_playwright", return_value=browser_result,
+        ) as browser, mock.patch.object(wf, "_fetch_jina") as jina:
+            automatic = wf.web_fetch(self._url("optional-codec"))
+        self.assertIs(automatic, browser_result)
+        browser.assert_called_once()
+        jina.assert_not_called()
 
     def test_oversized_jina_response_is_bounded(self):
         with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024), \
@@ -676,7 +693,7 @@ class BrowserBusyTests(unittest.TestCase):
         self.assertEqual(first.is_alive(), False)
         render.assert_called_once()
 
-    def test_busy_browser_result_stops_auto_cascade(self):
+    def test_busy_browser_result_falls_through_to_jina_in_auto_mode(self):
         self.assertTrue(wf._BROWSER_FETCH_LOCK.acquire(blocking=False))
         try:
             bad = {
@@ -684,13 +701,20 @@ class BrowserBusyTests(unittest.TestCase):
                 "title": None, "channel": "httpx", "fetched_at": "now",
                 "error": "short",
             }
+            jina_result = {
+                "url": "https://example.com", "markdown": "j" * 600,
+                "title": "jina", "channel": "api", "fetched_at": "now",
+            }
             with mock.patch.object(wf, "_fetch_httpx", return_value=bad), \
-                 mock.patch.object(wf, "_fetch_jina") as jina:
+                 mock.patch.object(wf, "_fetch_jina",
+                                   return_value=jina_result) as jina:
                 result = wf.web_fetch("https://example.com")
         finally:
             wf._BROWSER_FETCH_LOCK.release()
-        self.assertTrue(result["browser_busy"])
-        jina.assert_not_called()
+        self.assertIs(result, jina_result)
+        jina.assert_called_once_with(
+            "https://example.com/", reason="automatic-fallback",
+        )
 
 
 @unittest.skipUnless(_LIVE, "set ORA_WEB_FETCH_LIVE=1 to run network smoke")

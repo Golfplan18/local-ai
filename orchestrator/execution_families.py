@@ -102,6 +102,10 @@ def _content_verdict(result: dict, must_contain: str | None) -> tuple[str, str]:
     network-error/unknown-status → INDETERMINATE (never a silent PASS)."""
     if not isinstance(result, dict):
         return "INDETERMINATE", "no result"
+    if result.get("content_limit_exceeded"):
+        return "INDETERMINATE", "response content limit exceeded"
+    if result.get("unsupported_content_encoding"):
+        return "INDETERMINATE", "response content encoding unsupported"
     status = result.get("status_code")
     if status is None:
         return "INDETERMINATE", f"no status (error: {result.get('error') or 'unknown'})"

@@ -57,7 +57,6 @@ MAX_DISCOVERY_BYTES = 512 * 1024
 MAX_TOOLS_PER_SERVER = 128
 MAX_SCHEMA_DEPTH = 32
 MAX_CATALOG_BYTES = 64 * 1024
-MCP_BUSY_WAIT_SECONDS = 0.25
 _TOOL_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
@@ -424,15 +423,21 @@ class MCPConnection:
 
     def _request(self, method: str, params: dict, *, timeout: float,
                  allow_error: bool = False) -> object:
-        if not self._request_lock.acquire(timeout=MCP_BUSY_WAIT_SECONDS):
+        deadline = time.monotonic() + timeout
+        if not self._request_lock.acquire(timeout=timeout):
             raise MCPBusyError(
-                f"MCP server {self.name} is busy; try again"
+                f"MCP server {self.name} is busy; timeout elapsed before request was sent"
             )
         try:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise MCPBusyError(
+                    f"MCP server {self.name} is busy; timeout elapsed before request was sent"
+                )
             request_id = self._next_id()
             self._write_message({"jsonrpc": "2.0", "id": request_id,
                                  "method": method, "params": params})
-            response = self._recv(expected_id=request_id, timeout=timeout)
+            response = self._recv(expected_id=request_id, timeout=remaining)
             if response is None:
                 raise MCPProtocolError(f"{method} timed out or the server closed")
             if "error" in response:
@@ -607,6 +612,7 @@ class MCPClientManager:
         self._server_configs: dict[str, dict] = {}
         self._authorized_tools: dict[str, tuple[str, str]] = {}
         self._lock = threading.RLock()
+        self._recovery_locks: dict[str, threading.Lock] = {}
 
     def _remove_active_tools_locked(self, server_name: str) -> None:
         for namespaced, binding in list(self.all_tools.items()):
@@ -641,6 +647,8 @@ class MCPClientManager:
             recognized = [tool for tool in discovered if tool["name"] in cfg["tools"]]
             conn.tools = recognized
             with self._lock:
+                if self._server_configs.get(name) is not cfg:
+                    raise MCPError(f"{name}: server configuration is no longer current")
                 self._remove_active_tools_locked(name)
                 self.connections[name] = conn
                 for tool in recognized:
@@ -672,14 +680,29 @@ class MCPClientManager:
             cfg = self._server_configs.get(server_name)
             if cfg is None:
                 return None, f"MCP server {server_name} is not authorised"
-            stale = self.connections.pop(server_name, None)
-            self._remove_active_tools_locked(server_name)
+            recovery_lock = self._recovery_locks.setdefault(
+                server_name, threading.Lock(),
+            )
+
+        with recovery_lock:
+            stale = None
+            with self._lock:
+                cfg = self._server_configs.get(server_name)
+                if cfg is None:
+                    return None, f"MCP server {server_name} is not authorised"
+                current = self.connections.get(server_name)
+                if current is not None and not getattr(current, "_closed", False):
+                    return current, ""
+                if current is not None:
+                    stale = self.connections.pop(server_name, None)
+                    self._remove_active_tools_locked(server_name)
             if stale is not None:
                 stale.shutdown()
             connected, reason = self._connect_server(server_name, cfg)
             if not connected:
                 return None, reason
-            return self.connections.get(server_name), ""
+            with self._lock:
+                return self.connections.get(server_name), ""
 
     def initialize(self) -> None:
         if not os.path.exists(MCP_REGISTRY):
