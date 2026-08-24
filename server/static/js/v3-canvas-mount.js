@@ -1014,6 +1014,9 @@
             elementId: idMap.get(element.endBinding.elementId),
           });
         }
+        if (element.containerId && idMap.has(element.containerId)) {
+          element.containerId = idMap.get(element.containerId);
+        }
         if (Array.isArray(element.boundElements)) {
           element.boundElements = element.boundElements.map((binding) => (
             idMap.has(binding.id) ? Object.assign({}, binding, { id: idMap.get(binding.id) }) : binding
@@ -1587,12 +1590,20 @@
           .filter((element) => nativeGenerationKey(element)
             && inModifiedAnnotationGroup(element))
           .map(nativeGenerationKey));
+        const modifiedNativeGenerations = new Set(owned
+          .filter((element) => nativeGenerationKey(element)
+            && assistantElementWasModified(element))
+          .map(nativeGenerationKey));
+        const preservedNativeGenerations = new Set([
+          ...attachedGenerations,
+          ...modifiedNativeGenerations,
+        ]);
         const preservedAssistant = new Set(owned.filter((element) => (
           (element.customData
             && element.customData.oraAssistantVisualKind === 'annotation'
             && inModifiedAnnotationGroup(element))
           || (nativeGenerationKey(element)
-            && attachedGenerations.has(nativeGenerationKey(element)))
+            && preservedNativeGenerations.has(nativeGenerationKey(element)))
         )));
         const preservedAnnotationGroupIds = new Set(owned
           .filter((element) => (
@@ -1612,10 +1623,11 @@
             && element.groupIds.some((groupId) => removedAnnotationGroupIds.has(groupId))
           ))
           .map((element) => element.id));
-        // Clear removes untouched assistant output atomically. Every member
-        // of an edited annotation group and the complete native generation it
-        // annotates stay together, so no connector, label, or bound target is
-        // left dangling.
+        // Clear removes untouched assistant output atomically. A direct edit
+        // to any native member preserves that member's complete generation;
+        // every edited annotation group and its attached native generation
+        // also stay together, so no connector, label, or bound target is left
+        // dangling.
         const removableAssistant = owned.filter((element) => (
           !preservedAssistant.has(element) && !assistantElementWasModified(element)
         ));
@@ -1667,6 +1679,16 @@
         throw new Error('Ora visual compiler is unavailable');
       }
       const result = await Promise.resolve(compiler.compileWithNav(envelope));
+      const legibilityFinding = window.OraV3VisualDispatch
+        && typeof window.OraV3VisualDispatch.reviewLegibility === 'function'
+        ? window.OraV3VisualDispatch.reviewLegibility(result, host)
+        : null;
+      if (legibilityFinding) {
+        return Object.assign({}, result, {
+          needs_narrower_subject: true,
+          legibility_finding: legibilityFinding,
+        });
+      }
       if (!result || (result.errors && result.errors.length) || !result.svg) {
         throw new Error('Ora visual compiler did not produce an SVG');
       }
@@ -1729,6 +1751,39 @@
           oraCapabilityObjectId: canvasObject && canvasObject.id || null,
         },
         bounds: canvasObject,
+      });
+      await persistExcalidrawMutation(viewIsCurrent);
+      return placed;
+    });
+
+    const insertAssistantImage = (file, metadata = {}) => enqueue(async () => {
+      const assistantVisualId = metadata.assistant_visual_id
+        || metadata.assistantVisualId
+        || 'assistant-generated-image';
+      if (editor === 'konva' || !excalidrawApi) {
+        if (!panel || typeof panel.attachAssistantImage !== 'function') return null;
+        return panel.attachAssistantImage(file, {
+          assistantVisualId,
+          semanticElementId: `${assistantVisualId}:image`,
+        });
+      }
+      const png = await normalizeImageToPng(file);
+      const currentElements = snapshotExcalidraw().elements || [];
+      const generationRevision = currentElements.reduce((value, element) => {
+        const data = element && element.customData;
+        return data && data.assistantVisualId === assistantVisualId
+          ? Math.max(value, Number(data.generationRevision) || 0) : value;
+      }, 0) + 1;
+      const placed = await placeExcalidrawPng(png, {
+        action: 'replace',
+        locked: false,
+        customData: {
+          oraAssistantVisual: true,
+          oraAssistantVisualKind: 'artifact',
+          assistantVisualId,
+          generationRevision,
+          semanticElementId: `${assistantVisualId}:image`,
+        },
       });
       await persistExcalidrawMutation(viewIsCurrent);
       return placed;
@@ -1884,6 +1939,7 @@
         () => loadCheckpoint(id, checkpointId, legacyTurn, state, options)
       ),
       insertImageObject: insertCapabilityImage,
+      insertAssistantImage,
       attachImage,
       switchEditor,
       _canonicalizeKonva: canonicalizeKonva,

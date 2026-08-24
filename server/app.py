@@ -3369,7 +3369,9 @@ def _build_visual_diagnostics_frame(context_pkg: dict | None) -> dict | None:
 def visual_regenerate():
     """Phase 1 — on-demand envelope synthesis for the visual pane's
     'Regenerate visual' button. Body: ``{prose, mode,
-    manual_visual_type?}``; ``visual_kind`` is an alias. Runs the same
+    manual_visual_type?}``; ``visual_kind`` is an alias. A client legibility
+    retry also supplies ``narrow_subject``, ``conversation_id``, and
+    ``assistant_index`` so the replacement is durable before insertion. Runs the same
     synthesize→validate→repair loop the pipeline uses on a miss, and returns
     a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
     """
@@ -3382,8 +3384,20 @@ def visual_regenerate():
     preferred_kind = (
         data.get("manual_visual_type") or data.get("visual_kind") or ""
     ).strip() or None
+    narrow_subject = data.get("narrow_subject") is True
+    conversation_id = (data.get("conversation_id") or "").strip()
+    assistant_index = data.get("assistant_index")
     if not prose:
         return jsonify({"ok": False, "reason": "no prose supplied"}), 400
+    if narrow_subject and (
+        not _valid_existing_conversation_id(conversation_id)
+        or type(assistant_index) is not int
+        or assistant_index < 0
+    ):
+        return jsonify({
+            "ok": False,
+            "reason": "a valid assistant turn is required for a narrower visual",
+        }), 400
     try:
         from boot import (_mode_target_types, _resolve_synthesis_endpoint,
                           _strip_visual_blocks_and_markers, call_model)
@@ -3397,6 +3411,14 @@ def visual_regenerate():
     clean = _strip_visual_blocks_and_markers(prose)
 
     def _call_fn(prompt):
+        if narrow_subject:
+            prompt += (
+                "\n\nNARROWER-SUBJECT RETRY: The first complete diagram was not "
+                "legible in the user's viewport. Choose one load-bearing subject "
+                "supported by the analyst prose and build the complete diagram for "
+                "that narrower subject. Narrow scope before depth. Do not prune an "
+                "already-completed graph, invent relationships, or re-abstract labels."
+            )
         return call_model(
             [{"role": "system", "content": SYSTEM_PROMPT},
              {"role": "user", "content": prompt}],
@@ -3410,7 +3432,34 @@ def visual_regenerate():
     if env is None:
         return jsonify({"ok": False, "reason": f"synthesis failed after {len(attempts)} attempt(s)"})
     block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
-    return jsonify({"ok": True, "block": block, "type": env.get("type"), "envelope": env})
+    persisted = False
+    if narrow_subject:
+        try:
+            from conversation_memory import replace_assistant_visual_envelope
+            with _conversation_lifecycle_lock(conversation_id):
+                path = replace_assistant_visual_envelope(
+                    conversation_id,
+                    env,
+                    assistant_index=assistant_index,
+                )
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "reason": f"narrower visual could not be saved: {exc}",
+            }), 500
+        if path is None:
+            return jsonify({
+                "ok": False,
+                "reason": "the assistant turn for the narrower visual was not found",
+            }), 404
+        persisted = True
+    return jsonify({
+        "ok": True,
+        "block": block,
+        "type": env.get("type"),
+        "envelope": env,
+        "persisted": persisted,
+    })
 
 
 # In-memory vision-retry queue keyed by conversation_id. Each entry is a
@@ -9520,6 +9569,7 @@ def chat():
         return _json_response({"error": str(exc)}, 400)
     style_audience = str(data.get("style_audience") or "").strip()
     manual_visual_type = str(data.get("manual_visual_type") or "").strip()
+    image_provider_override = str(data.get("image_provider_override") or "").strip()
     output_destination = str(data.get("output_destination") or "").strip()
     config_name = data.get("config_name")
     if isinstance(config_name, str):
@@ -9564,6 +9614,8 @@ def chat():
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected": framework_selected,
+            "manual_visual_type": manual_visual_type,
+            "image_provider_override": image_provider_override,
             "output_destination": output_destination,
             "attachments": data.get("attachments", []),
             "trace_debug": trace_debug_payload,
@@ -9575,6 +9627,8 @@ def chat():
     extra_context = {}
     if manual_visual_type:
         extra_context["visual_kind"] = manual_visual_type
+    if image_provider_override:
+        extra_context["image_provider_override"] = image_provider_override
     if trace_debug_payload:
         extra_context["trace_debug"] = trace_debug_payload
     return _invoke_pipeline(
@@ -9668,6 +9722,8 @@ def chat_multipart():
       * ``spatial_representation`` (optional, JSON-encoded string per
         ``config/visual-schemas/spatial_representation.json``)
       * ``image`` (optional, binary file field)
+      * ``manual_visual_type`` and ``image_provider_override`` (optional,
+        per-turn visual preference; an explicit provider is pinned)
       * ``history``, ``is_main_feed``, ``panel_id`` (optional — carried over
         from the JSON /chat contract)
 
@@ -9696,6 +9752,10 @@ def chat_multipart():
     except ValueError as exc:
         return _json_response({"error": str(exc)}, 400)
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
+    manual_visual_type    = (form.get("manual_visual_type") or "").strip()
+    image_provider_override = (
+        form.get("image_provider_override") or ""
+    ).strip()
     retry_visual_checkpoint_id = (
         form.get("retry_visual_checkpoint_id") or ""
     ).strip()
@@ -10004,6 +10064,8 @@ def chat_multipart():
             "manual_mode_selection": manual_mode_selection,
             "manual_lens_selection": manual_lens_selection,
             "framework_selected":    framework_selected,
+            "manual_visual_type":    manual_visual_type,
+            "image_provider_override": image_provider_override,
             "output_destination":    output_destination,
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
@@ -10023,6 +10085,10 @@ def chat_multipart():
 
     # Build extra_context threaded into the pipeline
     extra_context = {}
+    if manual_visual_type:
+        extra_context["visual_kind"] = manual_visual_type
+    if image_provider_override:
+        extra_context["image_provider_override"] = image_provider_override
     model_images = []
     if image_path is not None:
         model_images.append({
@@ -13568,6 +13634,40 @@ def conversation_visual_outcome(conversation_id):
     return json.dumps({"ok": True, "visual_outcome": outcome})
 
 
+@app.route(
+    "/api/conversation/<conversation_id>/visual-artifacts/<filename>",
+    methods=["GET"],
+)
+def conversation_visual_artifact(conversation_id, filename):
+    """Serve only generated images referenced by this durable conversation."""
+    conversation_id = (conversation_id or "").strip()
+    filename = (filename or "").strip()
+    if not _valid_existing_conversation_id(conversation_id):
+        return json.dumps({"error": "invalid conversation_id"}), 400
+    if not re.fullmatch(
+        r"generated-[0-9a-f]{24}\.(?:png|jpg|gif|webp|avif)", filename,
+    ):
+        return json.dumps({"error": "invalid visual artifact"}), 400
+    try:
+        from conversation_memory import load_conversation_json
+        envelope = load_conversation_json(conversation_id) or {}
+    except Exception as exc:
+        return json.dumps({"error": str(exc)}), 500
+    referenced_url = (
+        f"/api/conversation/{conversation_id}/visual-artifacts/{filename}"
+    )
+    referenced = any(
+        isinstance(message, dict)
+        and message.get("role") == "assistant"
+        and referenced_url in str(message.get("content") or "")
+        for message in (envelope.get("messages") or [])
+    )
+    if not referenced:
+        return json.dumps({"error": "visual artifact not found"}), 404
+    artifact_root = Path(rp.ORA_HOME) / "sessions" / conversation_id / "visual-artifacts"
+    return send_from_directory(str(artifact_root), filename, conditional=True)
+
+
 # -- Trace Walk (Chunk 2): safe read-side projections + per-trace pinning ---
 
 @app.route("/api/trace/list/<conversation_id>", methods=["GET"])
@@ -15239,8 +15339,9 @@ def _persist_turn_spatial_state_unlocked(
                 visual_outcome = extra_context.get("_visual_outcome")
         if visual_outcome is None:
             visual_outcome = {
-                "state": "not_applicable",
-                "reason": "This turn did not produce a visual envelope.",
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": "Terminal visual authority did not provide an outcome.",
             }
         try:
             from orchestrator.active_project import (
@@ -17225,78 +17326,34 @@ def capability_image_generates():
         or None
     )
     try:
+        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+        from capability_registry import (
+            invoke_image_generation as _invoke_image_generation,
+            resolve_image_provider_override as _resolve_image_provider_override,
+        )
         locks = _active_project_model_locks()
-        locked_image_model = (locks or {}).get("image_model")
-        if isinstance(locked_image_model, str) and locked_image_model:
-            if provider_override not in (None, "", locked_image_model):
-                return Response(json.dumps({"error": {
-                    "code": "model_profile_image_lock_conflict",
-                    "message": (
-                        "The active project's Model Profile locks image generation "
-                        f"to {locked_image_model!r}."
-                    ),
-                }}), status=409, mimetype="application/json")
-            provider_override = locked_image_model
+        provider_override = _resolve_image_provider_override(
+            provider_override, locks,
+        )
     except ValueError as exc:
         return Response(json.dumps({"error": {
             "code": "model_profile_binding_invalid",
             "message": str(exc),
         }}), status=409, mimetype="application/json")
-
-    # Load the registry (auto-registers local-diffusers when installed)
-    # and additionally register the OpenAI provider so the resolver has
-    # both options available. Both registrations are best-effort —
-    # missing deps don't break the route; resolve_provider just walks
-    # past unregistered providers.
-    try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        registry = _load_registry()
     except Exception as exc:
+        code = getattr(exc, "code", "model_unavailable")
         return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Capability registry unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
-
-    # civitai-hector-lora-v1 (Hector editorial-cartoon LoRA) decommissioned
-    # 2026-06-01 with the moral-disgust pivot; butt-face device retired.
-    try:
-        import openai_images as _oai
-        _oai.register(registry)
-    except Exception:
-        pass
-    # §5.8.1 Slot 3 — Gemini 2.5 Flash Image, the moderation-lottery
-    # fallback when Slot 2 (gpt-image-1) returns prompt_rejected. The
-    # capability registry's invoke() walks the routing-config chain
-    # automatically on prompt_rejected / model_unavailable /
-    # quota_exceeded, so the Slot-1 → Slot-2 → Slot-3 fall-through is
-    # transparent to this route — the InvocationResult records the
-    # attempt chain.
-    try:
-        import gemini_images as _gemini
-        _gemini.register(registry)
-    except Exception:
-        pass
-    # OpenRouter-catalog image models (openrouter:<vendor>/<model> ids).
-    # Registration is catalog-file-based (no network) and MUST happen on
-    # this invoke route, not just on GET /api/capability/providers:
-    # resolve_provider_chain silently skips unregistered ids, so without
-    # this the shipped default chain (and any openrouter:* pick saved in
-    # the Visual pane) collapsed to [local-diffusers] at dispatch time.
-    try:
-        import openrouter_images as _orimg
-        _orimg.register(registry)
-    except Exception:
-        pass
+            "code": code,
+            "message": str(exc),
+        }}), status=409 if code == "model_profile_image_lock_conflict" else 503,
+            mimetype="application/json")
 
     inputs = {"prompt": prompt, "aspect_ratio": aspect_ratio}
     if style:
         inputs["style"] = style
 
     try:
-        result = registry.invoke(
-            "image_generates",
+        result, output, mime_type, _suffix = _invoke_image_generation(
             inputs,
             provider_id=provider_override,
         )
@@ -17327,13 +17384,7 @@ def capability_image_generates():
         }}), status=502 if code in ("model_unavailable", "handler_failed", "no_provider_registered") else 400,
             mimetype="application/json")
 
-    output = getattr(result, "output", result)
     provider_id = getattr(result, "provider_id", "unknown")
-    if not isinstance(output, (bytes, bytearray)):
-        return Response(json.dumps({"error": {
-            "code": "handler_failed",
-            "message": "Handler did not return image bytes."
-        }}), status=502, mimetype="application/json")
 
     # Surface the fallback chain so the UI can show "tried gpt-image-1
     # (refused for content_policy) → used gemini-2.5-flash-image".
@@ -17343,8 +17394,8 @@ def capability_image_generates():
     import base64
     return Response(json.dumps({
         "image": {
-            "data": base64.b64encode(bytes(output)).decode("ascii"),
-            "mime_type": "image/png",
+            "data": base64.b64encode(output).decode("ascii"),
+            "mime_type": mime_type,
         },
         "provider": provider_id,
         "attempts": attempts,

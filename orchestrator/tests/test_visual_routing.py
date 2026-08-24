@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -949,6 +950,7 @@ class ModeToVisualIntegrityTests(unittest.TestCase):
 
     CONFIG = WORKSPACE / "config" / "mode-to-visual.json"
     MODES_DIR = WORKSPACE / "modes"
+    FRAMEWORKS_DIR = WORKSPACE / "frameworks" / "book"
 
     def _modes(self) -> dict:
         with open(self.CONFIG, encoding="utf-8") as fh:
@@ -967,13 +969,14 @@ class ModeToVisualIntegrityTests(unittest.TestCase):
         import boot
         offenders = {
             mode: [t for t in cfg.get("visual_types", [])
-                   if t not in boot._KNOWN_VISUAL_TYPES]
+                   if t not in boot._KNOWN_VISUAL_TYPES and t != "annotated_image"]
             for mode, cfg in self._modes().items()
         }
         offenders = {m: t for m, t in offenders.items() if t}
         self.assertEqual(
             {}, offenders,
             f"unrecognized visual_types are dropped silently: {offenders}")
+        self.assertNotIn("annotated_image", boot._KNOWN_VISUAL_TYPES)
 
     def test_both_red_team_successors_are_configured(self):
         modes = self._modes()
@@ -986,6 +989,23 @@ class ModeToVisualIntegrityTests(unittest.TestCase):
         for retired in ("red-team", "systems-dynamics"):
             with self.subTest(retired=retired):
                 self.assertNotIn(retired, modes)
+
+    def test_named_runtime_prompts_use_concept_maps_not_generic_tree_fallbacks(self):
+        forbidden = re.compile(
+            r"\bmind[\s-]*map(?:s|ped|ping)?\b"
+            r"|\bvisual[\s-]*outlines?\b"
+            r"|\btree[\s-]*fallbacks?\b",
+            re.IGNORECASE,
+        )
+        for name in (
+            "problem-evolution.md",
+            "mission-objectives-milestones.md",
+            "terrain-mapping.md",
+        ):
+            with self.subTest(framework=name):
+                prompt = (self.FRAMEWORKS_DIR / name).read_text(encoding="utf-8")
+                self.assertIsNone(forbidden.search(prompt))
+                self.assertRegex(prompt, re.compile(r"\bconcept[ -]map\b", re.I))
 
 
 class VisualTypePreflightAcceptSetTests(unittest.TestCase):
@@ -1048,11 +1068,13 @@ class VisualTypePreflightAcceptSetTests(unittest.TestCase):
         out = self._preflight("causal-loop-diagram", "root-cause-analysis")
         self.assertNotIn("visual preflight", out)
 
-    def test_unknown_mode_uses_safe_concept_map_fallback(self):
-        """Unknown modes use the deterministic concept-map target."""
-        out = self._preflight("fishbone", "unknown-mode")
-        self.assertIn("visual preflight", out)
-        self.assertIn("concept_map", out)
+    def test_unknown_and_project_modes_use_safe_concept_map_fallback(self):
+        """Unknown and project modes use the deterministic concept-map target."""
+        for mode in ("unknown-mode", "project-mode"):
+            with self.subTest(mode=mode):
+                out = self._preflight("fishbone", mode)
+                self.assertIn("visual preflight", out)
+                self.assertIn("concept_map", out)
 
     def test_draft_without_an_envelope_is_untouched(self):
         text = "Just prose, no envelope."

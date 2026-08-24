@@ -42,6 +42,8 @@
     var spec = (envelope && envelope.spec) || {};
     var nodes = [];
     var edges = [];
+    var boundaries = [];
+    var canonicalPositions = null;
     var seen = new Set();
     var match;
 
@@ -89,13 +91,21 @@
       }
     }
 
-    function nestedCause(parent, cause, path) {
+    function nestedCause(parent, cause, path, metadata) {
       if (!cause) return;
-      var id = path + '-' + nodes.length;
-      node(id, cause.text || cause.label || id, 'cause');
-      edge(parent, id, 'causes', 'cause');
+      var id = path;
+      var causeMetadata = Object.assign({ fishboneParentId: parent }, metadata || {});
+      node(id, cause.text || cause.label || id, 'cause', causeMetadata);
+      // Ishikawa direction is cause → category → effect. The old projection
+      // reversed this edge and made the effect appear to cause its causes.
+      edge(id, parent, 'causes', 'cause');
       (cause.sub_causes || cause.children || []).forEach(function (child, index) {
-        nestedCause(id, child, id + '-' + index);
+        nestedCause(id, child, id + '-' + index, {
+          fishboneCategoryIndex: causeMetadata.fishboneCategoryIndex,
+          fishboneDepth: (causeMetadata.fishboneDepth || 1) + 1,
+          fishboneSiblingIndex: index,
+          fishboneSiblingCount: (cause.sub_causes || cause.children || []).length,
+        });
       });
     }
 
@@ -152,46 +162,163 @@
     } else if (type === 'fishbone') {
       var effect = node('effect', spec.effect, 'effect');
       (spec.categories || []).forEach(function (category, index) {
-        var categoryId = node('category-' + index, category.name, 'category');
+        var categoryId = node('category-' + index, category.name, 'category', {
+          fishboneCategoryIndex: index,
+        });
         edge(categoryId, effect, category.name, 'category');
         (category.causes || []).forEach(function (cause, causeIndex) {
-          nestedCause(categoryId, cause, 'cause-' + index + '-' + causeIndex);
+          nestedCause(categoryId, cause, 'cause-' + index + '-' + causeIndex, {
+            fishboneCategoryIndex: index,
+            fishboneDepth: 1,
+            fishboneSiblingIndex: causeIndex,
+            fishboneSiblingCount: (category.causes || []).length,
+          });
         });
       });
     } else if (type === 'decision_tree') {
-      function walkDecision(entry, parent, path) {
-        if (!entry) return;
-        var id = path || 'root';
-        node(id, entry.label, entry.kind || 'decision');
-        if (parent) edge(parent, id, entry.edge_label || '', 'decision');
-        (entry.children || []).forEach(function (child, index) {
-          walkDecision(child.node || child, id, id + '-' + index);
-        });
+      // Reuse the canonical decision renderer's walker and rollback logic so
+      // the SVG and native projections agree on chance probabilities,
+      // terminal/edge payoffs, and computed decision values.
+      var decisionRenderer = ns._renderers && ns._renderers.decisionTree;
+      if (!decisionRenderer || typeof decisionRenderer._walk !== 'function'
+          || typeof decisionRenderer._rollback !== 'function') {
+        throw new Error('The canonical decision-tree normalizer is unavailable');
       }
-      walkDecision(spec.root, null, 'root');
+      var decisionErrors = [];
+      var normalizedDecision = decisionRenderer._walk(
+        spec.root, spec.mode, decisionErrors
+      );
+      if (decisionErrors.length || !normalizedDecision.tree) {
+        throw new Error('The canonical decision-tree normalizer rejected the envelope');
+      }
+      if (spec.mode === 'decision') {
+        decisionRenderer._rollback(normalizedDecision.tree);
+      }
+      function decisionValue(value) {
+        var formatter = decisionRenderer._fmtEv;
+        var rendered = typeof formatter === 'function' ? formatter(value) : String(value);
+        return rendered + (spec.utility_units ? ' ' + spec.utility_units : '');
+      }
+      normalizedDecision.nodes.forEach(function (entry) {
+        var annotations = [];
+        if (typeof entry.payoff === 'number') {
+          annotations.push('Payoff: ' + decisionValue(entry.payoff));
+        } else if (spec.mode === 'decision'
+            && typeof entry.ev === 'number' && isFinite(entry.ev)) {
+          annotations.push('EV: ' + decisionValue(entry.ev));
+        }
+        var display = '[' + entry.kind.charAt(0).toUpperCase()
+          + entry.kind.slice(1) + '] ' + entry.label;
+        if (annotations.length) display += ' — ' + annotations.join(' · ');
+        node(entry.id, display, entry.kind, {
+          decisionKind: entry.kind,
+          decisionPayoff: entry.payoff,
+          rollbackEv: entry.ev,
+          optimalChildIndex: entry.optimalChildIndex,
+          utilityUnits: spec.utility_units || '',
+        });
+      });
+      normalizedDecision.edges.forEach(function (entry) {
+        var labels = [];
+        if (entry.edgeLabel) labels.push(entry.edgeLabel);
+        if (typeof entry.probability === 'number') {
+          labels.push('p=' + String(entry.probability));
+        }
+        if (typeof entry.payoff === 'number') {
+          labels.push('Payoff: ' + decisionValue(entry.payoff));
+        }
+        edge(entry.from, entry.to, labels.join(' · '), 'decision', {
+          decisionProbability: entry.probability,
+          decisionPayoff: entry.payoff,
+          decisionOptimal: entry.optimal === true,
+          utilityUnits: spec.utility_units || '',
+        });
+      });
     } else if (type === 'influence_diagram') {
-      (spec.nodes || []).forEach(function (entry) { node(entry.id, entry.label, entry.kind); });
+      (spec.nodes || []).forEach(function (entry) {
+        var influenceKind = text(entry.kind, 'node');
+        var influenceLabel = '[' + influenceKind.charAt(0).toUpperCase()
+          + influenceKind.slice(1) + '] ' + text(entry.label, entry.id);
+        node(entry.id, influenceLabel, influenceKind);
+      });
       (spec.arcs || []).forEach(function (entry) { edge(entry.from, entry.to, entry.type, 'influence'); });
     } else if (type === 'bow_tie') {
-      var hazard = node('hazard', spec.hazard_event && spec.hazard_event.label, 'hazard');
-      (spec.threats || []).forEach(function (threat) {
-        node(threat.id, threat.label, 'threat');
-        edge(threat.id, hazard, 'threatens', 'threat');
-        (threat.preventive_controls || []).forEach(function (control) {
-          node(control.id, control.label, 'control');
-          edge(control.id, threat.id, control.type || 'prevents', 'control');
-        });
+      var hazard = node('hazard', '[Top event] '
+        + text(spec.hazard_event && spec.hazard_event.label, 'Hazard'), 'hazard', {
+        bowTieSide: 'center',
       });
-      (spec.consequences || []).forEach(function (consequence) {
-        node(consequence.id, consequence.label, 'consequence');
-        edge(hazard, consequence.id, 'leads to', 'consequence');
-        (consequence.mitigative_controls || []).forEach(function (control) {
-          node(control.id, control.label, 'control');
-          edge(control.id, consequence.id, control.type || 'mitigates', 'control');
+      var bowTieControlIds = new Set();
+      (spec.threats || []).forEach(function (threat, threatIndex) {
+        node(threat.id, '[Threat] ' + threat.label, 'threat', {
+          bowTieSide: 'left', bowTiePathIndex: threatIndex,
         });
+        var previous = threat.id;
+        var preventive = threat.preventive_controls || [];
+        preventive.forEach(function (control, controlIndex) {
+          bowTieControlIds.add(control.id);
+          var qualifier = [control.type];
+          if (control.effectiveness) qualifier.push('effectiveness ' + control.effectiveness);
+          node(control.id, control.label + ' [' + qualifier.join('; ') + ']',
+            'preventive-control', {
+              bowTieSide: 'left', bowTiePathIndex: threatIndex,
+              bowTieControlIndex: controlIndex,
+              bowTieControlCount: preventive.length,
+              bowTieControlType: control.type,
+              bowTieEffectiveness: control.effectiveness || '',
+            });
+          edge(previous, control.id, '', 'preventive-path');
+          previous = control.id;
+        });
+        edge(previous, hazard, 'threatens', 'preventive-path');
+      });
+      (spec.consequences || []).forEach(function (consequence, consequenceIndex) {
+        var consequenceLabel = '[Consequence] ' + consequence.label;
+        if (consequence.severity) consequenceLabel += ' [severity ' + consequence.severity + ']';
+        node(consequence.id, consequenceLabel, 'consequence', {
+          bowTieSide: 'right', bowTiePathIndex: consequenceIndex,
+          bowTieSeverity: consequence.severity || '',
+        });
+        var previous = hazard;
+        var mitigative = consequence.mitigative_controls || [];
+        mitigative.forEach(function (control, controlIndex) {
+          bowTieControlIds.add(control.id);
+          var qualifier = [control.type];
+          if (control.effectiveness) qualifier.push('effectiveness ' + control.effectiveness);
+          node(control.id, control.label + ' [' + qualifier.join('; ') + ']',
+            'mitigative-control', {
+              bowTieSide: 'right', bowTiePathIndex: consequenceIndex,
+              bowTieControlIndex: controlIndex,
+              bowTieControlCount: mitigative.length,
+              bowTieControlType: control.type,
+              bowTieEffectiveness: control.effectiveness || '',
+            });
+          edge(previous, control.id, '', 'mitigative-path');
+          previous = control.id;
+        });
+        edge(previous, consequence.id, 'leads to', 'mitigative-path');
       });
       (spec.escalation_factors || []).forEach(function (factor, index) {
-        node(factor.id || 'factor-' + index, factor.label, 'escalation');
+        if (!bowTieControlIds.has(factor.from_control_id)) {
+          throw new Error('Bow-tie escalation factor references an unknown control');
+        }
+        var factorId = 'escalation-factor-' + index;
+        node(factorId, '[Escalation factor] ' + factor.label, 'escalation-factor', {
+          bowTieSide: 'escalation', bowTieEscalationIndex: index,
+          fromControlId: factor.from_control_id,
+        });
+        edge(factorId, factor.from_control_id, 'degrades', 'escalation-factor', {
+          fromControlId: factor.from_control_id,
+        });
+        if (factor.escalation_control) {
+          node(factor.escalation_control.id,
+            '[Escalation control] ' + factor.escalation_control.label,
+            'escalation-control', {
+              bowTieSide: 'escalation', bowTieEscalationIndex: index,
+              escalationFactorId: factorId,
+            });
+          edge(factor.escalation_control.id, factorId, 'controls',
+            'escalation-control');
+        }
       });
     } else if (type === 'ibis') {
       (spec.nodes || []).forEach(function (entry) { node(entry.id, entry.text, entry.type); });
@@ -237,31 +364,52 @@
       // into the generic placeholder below.
       var c4Vendor = (ns._vendor || {}).structurizrMini;
       var c4Parser = c4Vendor && c4Vendor.parser;
-      if (!c4Parser || typeof c4Parser.parse !== 'function') {
-        throw new Error('The canonical Structurizr parser is unavailable');
+      var c4Renderer = c4Vendor && c4Vendor.renderer;
+      if (!c4Parser || typeof c4Parser.parse !== 'function'
+          || !c4Renderer || typeof c4Renderer.selectLayout !== 'function') {
+        throw new Error('The canonical Structurizr parser/layout is unavailable');
       }
       var ast = c4Parser.parse(typeof spec.dsl === 'string' ? spec.dsl : '');
-      var declared = new Set();
-      (ast.model && ast.model.people || []).forEach(function (person) {
-        declared.add(person.id);
-        node(person.id, person.name, 'person');
-      });
-      (ast.model && ast.model.softwareSystems || []).forEach(function (system) {
-        declared.add(system.id);
-        node(system.id, system.name, 'softwareSystem', {
-          external: system.external === true,
+      var selected = c4Renderer.selectLayout(ast, { level: spec.level });
+      canonicalPositions = {};
+      (selected.elements || []).forEach(function (element) {
+        var metatype = element.kind === 'container'
+          ? '[Container' + (element.technology ? ': ' + element.technology : '') + ']'
+          : (element.kind === 'system'
+            ? (element.external
+              ? '[Software System — External]' : '[Software System]')
+            : '[Person]');
+        var c4Label = element.name + ' ' + metatype;
+        if (element.description) c4Label += ' — ' + element.description;
+        node(element.id, c4Label,
+          element.kind === 'system' ? 'softwareSystem' : element.kind, {
+          external: element.external === true,
+          technology: element.technology || '',
+          c4Kind: element.kind,
+          c4Level: spec.level,
+          c4Description: element.description || '',
         });
-        (system.containers || []).forEach(function (container) {
-          declared.add(container.id);
-          node(container.id, container.name, 'container', {
-            technology: container.technology || '',
-          });
-        });
+        canonicalPositions[element.id] = {
+          x: Number(element.x) || 0,
+          y: Number(element.y) || 0,
+          width: Number(element.w) || 0,
+          height: Number(element.h) || 0,
+        };
       });
-      (ast.model && ast.model.relationships || []).forEach(function (rel) {
-        if (!declared.has(rel.fromId) || !declared.has(rel.toId)) return;
+      (selected.edges || []).forEach(function (rel) {
         edge(rel.fromId, rel.toId, rel.description, 'uses');
       });
+      if (spec.level === 'container' && selected.boundaryLabel) {
+        boundaries.push({
+          id: 'c4-system-boundary',
+          label: selected.boundaryLabel + ' [System]',
+          kind: 'c4-system-boundary',
+          members: (selected.elements || []).filter(function (element) {
+            return element.kind === 'container';
+          }).map(function (element) { return element.id; }),
+          c4BoundaryLabel: selected.boundaryLabel,
+        });
+      }
     }
 
     // A malformed C4 source must fail at the canonical parser boundary. Do
@@ -270,10 +418,149 @@
     if (!nodes.length && type !== 'c4') {
       node('visual', envelope && envelope.title || type || 'visual', 'visual');
     }
-    return { nodes: nodes, edges: edges };
+    return {
+      type: type,
+      nodes: nodes,
+      edges: edges,
+      positions: canonicalPositions,
+      boundaries: boundaries,
+    };
+  }
+
+  function nodeBounds(entry, x, y, width, height) {
+    return {
+      x: x,
+      y: y,
+      width: width || Math.max(150, Math.min(280, entry.label.length * 7 + 32)),
+      height: height || 56,
+    };
+  }
+
+  function evenlySpacedTop(index, count, centerY, spacing) {
+    return centerY + (index - (count - 1) / 2) * spacing;
+  }
+
+  // Keep the Ishikawa reading direction explicit in geometry as well as in
+  // the graph: nested cause -> cause -> category -> effect, left to right.
+  // Categories alternate above and below the spine, matching the canonical
+  // SVG renderer's fish-swimming-right convention.
+  function layoutFishbone(graphData) {
+    var positions = {};
+    var categories = graphData.nodes.filter(function (entry) {
+      return entry.kind === 'category';
+    }).sort(function (left, right) {
+      return left.fishboneCategoryIndex - right.fishboneCategoryIndex;
+    });
+    var spineY = 300;
+    var categoryStep = 250;
+    var effectX = 260 + Math.max(categories.length, 1) * categoryStep;
+    var effect = graphData.nodes.find(function (entry) { return entry.kind === 'effect'; });
+    if (effect) positions[effect.id] = nodeBounds(effect, effectX, spineY - 38, 230, 76);
+
+    categories.forEach(function (category, categoryIndex) {
+      var above = categoryIndex % 2 === 0;
+      var categoryX = 210 + categoryIndex * categoryStep;
+      var categoryY = above ? spineY - 170 : spineY + 115;
+      positions[category.id] = nodeBounds(category, categoryX, categoryY, 170, 56);
+    });
+
+    graphData.nodes.filter(function (entry) { return entry.kind === 'cause'; })
+      .sort(function (left, right) {
+        return (left.fishboneDepth || 1) - (right.fishboneDepth || 1);
+      }).forEach(function (entry) {
+        var parent = positions[entry.fishboneParentId];
+        if (!parent) return;
+        var siblingCount = Math.max(1, entry.fishboneSiblingCount || 1);
+        var siblingIndex = entry.fishboneSiblingIndex || 0;
+        var categoryIndex = entry.fishboneCategoryIndex || 0;
+        var awayFromSpine = categoryIndex % 2 === 0 ? -1 : 1;
+        var offsetY = evenlySpacedTop(siblingIndex, siblingCount, 0, 72);
+        positions[entry.id] = nodeBounds(
+          entry,
+          parent.x - 210,
+          parent.y + awayFromSpine * 82 + offsetY,
+          180,
+          50
+        );
+      });
+    return positions;
+  }
+
+  // Bow-tie controls are barriers ON their respective pathways. Giving each
+  // control a point between the path endpoints makes the native scene retain
+  // the canonical threat -> top event -> consequence split. Escalation
+  // factors and their controls are placed below, still connected to the
+  // control they qualify.
+  function layoutBowTie(graphData) {
+    var positions = {};
+    var threats = graphData.nodes.filter(function (entry) {
+      return entry.kind === 'threat';
+    }).sort(function (left, right) { return left.bowTiePathIndex - right.bowTiePathIndex; });
+    var consequences = graphData.nodes.filter(function (entry) {
+      return entry.kind === 'consequence';
+    }).sort(function (left, right) { return left.bowTiePathIndex - right.bowTiePathIndex; });
+    var pathCount = Math.max(threats.length, consequences.length, 1);
+    var centerY = 120 + ((pathCount - 1) * 180) / 2;
+    var hazard = graphData.nodes.find(function (entry) { return entry.kind === 'hazard'; });
+    if (hazard) positions[hazard.id] = nodeBounds(hazard, 560, centerY, 230, 76);
+
+    threats.forEach(function (entry, index) {
+      positions[entry.id] = nodeBounds(
+        entry, 40, evenlySpacedTop(index, threats.length, centerY, 180), 180, 62
+      );
+    });
+    consequences.forEach(function (entry, index) {
+      positions[entry.id] = nodeBounds(
+        entry, 1130, evenlySpacedTop(index, consequences.length, centerY, 180), 220, 62
+      );
+    });
+
+    graphData.nodes.filter(function (entry) {
+      return entry.kind === 'preventive-control';
+    }).forEach(function (entry) {
+      var start = positions[threats[entry.bowTiePathIndex].id];
+      var end = positions.hazard;
+      var fraction = (entry.bowTieControlIndex + 1) / (entry.bowTieControlCount + 1);
+      positions[entry.id] = nodeBounds(entry,
+        start.x + start.width + (end.x - start.x - start.width) * fraction - 85,
+        start.y + (end.y - start.y) * fraction,
+        170, 54);
+    });
+    graphData.nodes.filter(function (entry) {
+      return entry.kind === 'mitigative-control';
+    }).forEach(function (entry) {
+      var start = positions.hazard;
+      var end = positions[consequences[entry.bowTiePathIndex].id];
+      var fraction = (entry.bowTieControlIndex + 1) / (entry.bowTieControlCount + 1);
+      positions[entry.id] = nodeBounds(entry,
+        start.x + start.width + (end.x - start.x - start.width) * fraction - 85,
+        start.y + (end.y - start.y) * fraction,
+        170, 54);
+    });
+
+    var escalationBaseY = centerY + ((pathCount - 1) * 180) / 2 + 180;
+    graphData.nodes.filter(function (entry) {
+      return entry.kind === 'escalation-factor';
+    }).forEach(function (entry) {
+      var target = positions[entry.fromControlId];
+      if (!target) return;
+      positions[entry.id] = nodeBounds(entry,
+        target.x, escalationBaseY + entry.bowTieEscalationIndex * 120, 190, 54);
+    });
+    graphData.nodes.filter(function (entry) {
+      return entry.kind === 'escalation-control';
+    }).forEach(function (entry) {
+      var factor = positions[entry.escalationFactorId];
+      if (!factor) return;
+      positions[entry.id] = nodeBounds(entry, factor.x - 230, factor.y, 190, 54);
+    });
+    return positions;
   }
 
   function layout(graphData) {
+    if (graphData && graphData.positions) return graphData.positions;
+    if (graphData && graphData.type === 'fishbone') return layoutFishbone(graphData);
+    if (graphData && graphData.type === 'bow_tie') return layoutBowTie(graphData);
     var incoming = {};
     graphData.nodes.forEach(function (entry) { incoming[entry.id] = []; });
     graphData.edges.forEach(function (entry) {
@@ -306,18 +593,13 @@
         ? entry.hierarchyLevel : depth(entry.id, {});
       var columnEntries = columns[column];
       var row = columnEntries.indexOf(entry);
-      var width = Math.max(150, Math.min(280, entry.label.length * 7 + 32));
-      positions[entry.id] = {
-        x: 80 + column * 260,
-        y: 80 + row * 120,
-        width: width,
-        height: 56,
-      };
+      positions[entry.id] = nodeBounds(entry, 80 + column * 260, 80 + row * 120);
     });
     return positions;
   }
 
   function baseElement(id, type, bounds, customData) {
+    var filledShape = type === 'rectangle' || type === 'diamond' || type === 'ellipse';
     return {
       id: id,
       type: type,
@@ -327,7 +609,7 @@
       height: bounds.height,
       angle: 0,
       strokeColor: '#1e1e1e',
-      backgroundColor: type === 'rectangle' ? '#f8f9fa' : 'transparent',
+      backgroundColor: filledShape ? '#f8f9fa' : 'transparent',
       fillStyle: 'solid',
       strokeWidth: 2,
       strokeStyle: 'solid',
@@ -419,6 +701,28 @@
     return element;
   }
 
+  function c4BoundaryBounds(boundary, positions) {
+    var members = (boundary.members || []).map(function (id) { return positions[id]; })
+      .filter(Boolean);
+    if (!members.length) return null;
+    var minX = Math.min.apply(null, members.map(function (bounds) { return bounds.x; }));
+    var minY = Math.min.apply(null, members.map(function (bounds) { return bounds.y; }));
+    var maxX = Math.max.apply(null, members.map(function (bounds) {
+      return bounds.x + bounds.width;
+    }));
+    var maxY = Math.max.apply(null, members.map(function (bounds) {
+      return bounds.y + bounds.height;
+    }));
+    // Match the canonical Structurizr SVG enclosure: 18px around the
+    // containers plus 16px above for the system label.
+    return {
+      x: minX - 18,
+      y: minY - 34,
+      width: maxX - minX + 36,
+      height: maxY - minY + 52,
+    };
+  }
+
   function buildScene(envelope, options) {
     var assistantVisualId = text(options && options.assistantVisualId,
       'assistant:' + text(envelope && envelope.id, 'visual'));
@@ -452,18 +756,90 @@
       if (Number.isInteger(entry.hierarchyLevel)) {
         metadata.hierarchyLevel = entry.hierarchyLevel;
       }
+      [
+        'decisionKind', 'decisionPayoff', 'decisionProbability',
+        'decisionOptimal', 'rollbackEv', 'optimalChildIndex', 'utilityUnits',
+        'fishboneParentId', 'fishboneCategoryIndex', 'fishboneDepth',
+        'fishboneSiblingIndex', 'bowTieSide', 'bowTiePathIndex',
+        'bowTieControlIndex', 'bowTieControlType', 'bowTieEffectiveness',
+        'bowTieSeverity', 'bowTieEscalationIndex', 'fromControlId',
+        'escalationFactorId', 'c4Kind', 'c4Level', 'c4Description',
+        'technology', 'external',
+      ].forEach(function (name) {
+        if (entry[name] !== undefined) metadata[name] = entry[name];
+      });
       return metadata;
     }
+
+    var boundaryBoxes = [];
+    (graphData.boundaries || []).forEach(function (entry) {
+      var bounds = c4BoundaryBounds(entry, positions);
+      if (!bounds) return;
+      boundaryBoxes.push(bounds);
+      var semantic = text(envelope.type, 'visual') + ':boundary:' + entry.id;
+      var boundaryGroup = groupId + '-' + safe(entry.id);
+      var boundary = baseElement(
+        'ora-' + hash(assistantVisualId + ':' + semantic + ':shape'),
+        'rectangle', bounds,
+        owned(entry.kind, semantic, {
+          c4BoundaryLabel: entry.c4BoundaryLabel,
+          c4BoundaryMembers: (entry.members || []).slice(),
+        })
+      );
+      boundary.backgroundColor = 'transparent';
+      boundary.strokeStyle = 'dashed';
+      boundary.strokeWidth = 1;
+      boundary.groupIds = [boundaryGroup];
+      elements.push(boundary);
+
+      var label = baseElement(
+        'ora-' + hash(assistantVisualId + ':' + semantic + ':label'),
+        'text',
+        { x: bounds.x + 10, y: bounds.y + 8, width: bounds.width - 20, height: 20 },
+        owned(entry.kind + '-label', semantic + ':label', {
+          c4BoundaryLabel: entry.c4BoundaryLabel,
+        })
+      );
+      label.text = entry.label;
+      label.originalText = entry.label;
+      label.fontSize = 14;
+      label.fontFamily = 1;
+      label.textAlign = 'left';
+      label.verticalAlign = 'middle';
+      label.autoResize = false;
+      label.lineHeight = 1.25;
+      label.groupIds = [boundaryGroup];
+      elements.push(label);
+    });
 
     graphData.nodes.forEach(function (entry) {
       var bounds = positions[entry.id];
       var semantic = text(envelope.type, 'visual') + ':node:' + entry.id;
+      var elementType = 'rectangle';
+      if (entry.kind === 'chance') {
+        elementType = 'ellipse';
+      } else if (envelope.type === 'decision_tree' && entry.kind === 'decision') {
+        // Preserve the established native decision glyph. The canonical SVG
+        // also distinguishes decision, chance, and terminal nodes, while
+        // Excalidraw has no editable triangle for the terminal glyph.
+        elementType = 'diamond';
+      } else if (envelope.type === 'influence_diagram' && entry.kind === 'value') {
+        // Closest editable counterpart to the canonical octagonal value node.
+        elementType = 'diamond';
+      }
       var nodeElement = baseElement(
         'ora-' + hash(assistantVisualId + ':' + semantic + ':shape'),
-        entry.kind === 'decision' ? 'diamond' : 'rectangle',
+        elementType,
         bounds,
         owned(entry.kind, semantic, semanticMetadata(entry))
       );
+      // Excalidraw has no double-bordered rectangle. A heavy border plus the
+      // visible kind label keeps deterministic nodes distinct from decisions.
+      if (envelope.type === 'influence_diagram' && entry.kind === 'deterministic') {
+        nodeElement.strokeWidth = 4;
+      }
+      if (entry.external === true) nodeElement.strokeStyle = 'dashed';
+      if (entry.kind === 'escalation-factor') nodeElement.strokeStyle = 'dashed';
       nodeElement.groupIds = [groupId + '-' + safe(entry.id)];
       elements.push(nodeElement);
       byId[entry.id] = { element: nodeElement, bounds: bounds, semantic: semantic };
@@ -471,7 +847,12 @@
       var label = baseElement(
         'ora-' + hash(assistantVisualId + ':' + semantic + ':label'),
         'text',
-        { x: bounds.x + 10, y: bounds.y + 16, width: bounds.width - 20, height: 24 },
+        {
+          x: bounds.x + 10,
+          y: bounds.y + 10,
+          width: bounds.width - 20,
+          height: Math.max(24, bounds.height - 20),
+        },
         owned(entry.kind + '-label', semantic + ':label', semanticMetadata(entry))
       );
       label.text = entry.label;
@@ -537,7 +918,9 @@
       arrow.endArrowhead = operator === '--' ? null : 'arrow';
       arrow.startBinding = { elementId: from.element.id, focus: 0, gap: 4, fixedPoint: null };
       arrow.endBinding = { elementId: to.element.id, focus: 0, gap: 4, fixedPoint: null };
-      arrow.boundElements = null;
+      arrow.boundElements = [];
+      if (entry.decisionOptimal === true) arrow.strokeWidth = 4;
+      if (entry.kind === 'escalation-factor') arrow.strokeStyle = 'dashed';
       elements.push(arrow);
       from.element.boundElements.push({ id: arrow.id, type: 'arrow' });
       to.element.boundElements.push({ id: arrow.id, type: 'arrow' });
@@ -565,7 +948,9 @@
         edgeLabel.verticalAlign = 'middle';
         edgeLabel.autoResize = false;
         edgeLabel.lineHeight = 1.25;
-        edgeLabel.groupIds = [groupId + '-' + safe(semantic + ':label')];
+        edgeLabel.containerId = arrow.id;
+        edgeLabel.groupIds = arrow.groupIds.slice();
+        arrow.boundElements.push({ id: edgeLabel.id, type: 'text' });
         elements.push(edgeLabel);
       }
     });
@@ -577,6 +962,10 @@
     Object.keys(positions).forEach(function (id) {
       maxX = Math.max(maxX, positions[id].x + positions[id].width);
       maxY = Math.max(maxY, positions[id].y + positions[id].height);
+    });
+    boundaryBoxes.forEach(function (bounds) {
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
     });
     return {
       elements: elements,
@@ -600,6 +989,7 @@
     return {
       nodes: positions,
       edges: graphData.edges,
+      boundaries: graphData.boundaries,
       width: width + 80,
       height: height + 80,
     };

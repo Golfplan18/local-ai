@@ -30,6 +30,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
@@ -42,6 +43,7 @@ from capability_registry import (  # noqa: E402
     InvocationResult,
     load_registry,
 )
+import capability_registry as capability_registry_module  # noqa: E402
 
 CAPABILITIES_JSON = WORKSPACE / "config" / "capabilities.json"
 ROUTING_CONFIG_JSON = WORKSPACE / "config" / "routing-config.json"
@@ -117,6 +119,31 @@ class CapabilityRegistryStubTests(unittest.TestCase):
         # - The validated input dict (what the handler actually saw).
         self.assertEqual(result.inputs_used["prompt"], "hello world")
         self.assertEqual(result.inputs_used["style"], "default-style")
+
+    def test_image_generation_rejects_mock_provider_success(self) -> None:
+        config = {
+            "slots": {
+                "image_generates": {
+                    "required_inputs": [{"name": "prompt", "type": "text"}],
+                    "optional_inputs": [],
+                    "output": {"type": "image-bytes"},
+                    "execution_pattern": "sync",
+                    "common_errors": [],
+                },
+            },
+        }
+        registry = CapabilityRegistry(config_dict=config)
+        registry.register_provider(
+            "image_generates", "mock-image", lambda _inputs: b"mock image bytes",
+        )
+        with mock.patch.object(
+            capability_registry_module, "load_registry", return_value=registry,
+        ), mock.patch.object(
+            capability_registry_module, "_register_image_generation_providers",
+        ), self.assertRaises(CapabilityError) as raised:
+            capability_registry_module.invoke_image_generation({"prompt": "Draw it"})
+        self.assertEqual(raised.exception.code, "handler_failed")
+        self.assertIn("Mock or placeholder", str(raised.exception))
 
     def test_sync_check_passes_on_section_11_5_table(self) -> None:
         """Sync-check passes on the §11.5 table (the shipped configs)."""

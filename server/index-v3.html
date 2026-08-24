@@ -2205,6 +2205,7 @@
     audienceRevision: audienceSnapshot ? audienceSnapshot.revision : null,
     attachmentRevision: attachmentSnapshot ? attachmentSnapshot.revision : null,
     visualIdentity: composition.visualIdentity,
+    visualPreference: JSON.stringify(composition.visualPreference || null),
     attachmentEntries: attachmentSnapshot && Array.isArray(attachmentSnapshot.entries)
       ? attachmentSnapshot.entries.slice() : [],
   });
@@ -2221,6 +2222,7 @@
     && left.audienceRevision === right.audienceRevision
     && left.attachmentRevision === right.attachmentRevision
     && left.visualIdentity === right.visualIdentity
+    && left.visualPreference === right.visualPreference
     && left.attachmentEntries.length === right.attachmentEntries.length
     && left.attachmentEntries.every((entry, index) => (
       entry === right.attachmentEntries[index]
@@ -2231,7 +2233,7 @@
   // canvas materialization, and every other await: a later Inquiry can use
   // fresh controls without changing the turn already being prepared.
   const _reserveInquiryComposition = (text, displayText = text,
-    carriedVisualSnapshot = null) => {
+    carriedVisualSnapshot = null, visualPreference = null) => {
     const composition = {
       conversationId: currentConversationId(),
       tag: currentTag(),
@@ -2253,6 +2255,8 @@
           && typeof window.OraInputAttachments.snapshotForSubmission === 'function'
         ? window.OraInputAttachments.snapshotForSubmission() : null,
       visualSnapshot: carriedVisualSnapshot,
+      visualPreference: visualPreference && typeof visualPreference === 'object'
+        ? Object.assign({}, visualPreference) : null,
       canvasSummary: '',
       accepted: false,
       released: false,
@@ -2507,6 +2511,14 @@
         body.append('style_audience', 'internal');
       }
     } catch (e) {}
+    if (composition.visualPreference && composition.visualPreference.kind) {
+      body.append('manual_visual_type', composition.visualPreference.kind);
+      if (composition.visualPreference.providerOverride) {
+        body.append(
+          'image_provider_override', composition.visualPreference.providerOverride
+        );
+      }
+    }
 
     // The snapshot was captured at the reservation boundary, before any
     // privacy/framework await. Materialization may be asynchronous, but it
@@ -2756,10 +2768,11 @@
   const submitWithFrameworkCheck = async (
     text,
     privacyApprovedText = null,
-    carriedVisualSnapshot = null
+    carriedVisualSnapshot = null,
+    visualPreference = null
   ) => {
     const composition = _reserveInquiryComposition(
-      text, text, carriedVisualSnapshot
+      text, text, carriedVisualSnapshot, visualPreference
     );
     if (!composition) return;
     composition.canvasSummary = _summarizeCanvas();
@@ -2924,25 +2937,6 @@
     return /\b(text[-\s]?to[-\s]?image|image of|picture of|photo of)\b/.test(t)
         || /\b(generate|create|draw|make|render|illustrate|design)\b[\s\S]{0,120}\b(image|picture|photo|illustration|logo|icon|portrait|scene|artwork|drawing)\b/.test(t)
         || /\b(image|picture|photo|illustration|logo|icon|portrait|scene|artwork|drawing)\b[\s\S]{0,80}\b(generate|create|draw|make|render|illustrate|design)\b/.test(t);
-  };
-
-  const submitImageGenerationPrompt = (text) => {
-    const prompt = (text || '').trim();
-    if (!prompt) {
-      if (leftInputArea) leftInputArea.focus();
-      return;
-    }
-    const evt = new CustomEvent('capability-dispatch', {
-      detail: {
-        slot: 'image_generates',
-        inputs: { prompt },
-        execution_pattern: 'sync',
-        source: 'input-pane',
-      },
-      bubbles: true,
-    });
-    document.body.dispatchEvent(evt);
-    renderAssistantTurn('[Generating image in the Exhibits pane.]');
   };
 
   // V3 Backlog 6 — Right-column Aside. /api/scratchpad uses the dedicated
@@ -3144,18 +3138,10 @@
       return;
     }
     if (routeAsImageGeneration) {
-      if (!window.OraConversation
-          || typeof window.OraConversation.submitAfterPrivacy !== 'function') {
-        renderAssistantTurn('[Privacy check unavailable; Inquiry was not sent.]');
-        return;
-      }
-      await window.OraConversation.submitAfterPrivacy(leftContent, async () => {
-        leftInputArea.value = '';
-        renderUserTurn(leftContent);
-        setImageGenerateMode(false);
-        submitImageGenerationPrompt(leftContent);
-      });
-      return;
+      setImageGenerateMode(false);
+      return submitWithFrameworkCheck(
+        leftContent, null, null, { kind: 'image' }
+      );
     }
     if (window.OraProgramming && window.OraProgramming.isActive()) {
       await window.OraProgramming.submit(leftContent, {

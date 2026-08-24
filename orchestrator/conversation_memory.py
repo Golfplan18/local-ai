@@ -1141,6 +1141,71 @@ def set_assistant_visual_outcome(
     return _mutate_conversation_envelope(conversation_id, root, mutate)
 
 
+def replace_assistant_visual_envelope(
+    conversation_id: str,
+    visual_envelope: dict[str, Any],
+    *,
+    assistant_index: int,
+    sessions_root: Path | None = None,
+) -> Path | None:
+    """Atomically replace one assistant turn's canonical visual block.
+
+    This is the persistence half of the client's single narrower-subject
+    round trip. The surrounding prose is left byte-for-byte intact; only
+    canonical ``ora-visual`` fences are replaced. The outcome returns to
+    ``building`` until the client confirms that the saved result was inserted.
+    """
+    if not isinstance(visual_envelope, dict) or not isinstance(assistant_index, int):
+        return None
+    try:
+        from visual_recovery import ORA_VISUAL_FENCE_RE
+    except ImportError:  # package-qualified import context
+        from orchestrator.visual_recovery import ORA_VISUAL_FENCE_RE
+
+    root = Path(sessions_root) if sessions_root else _DEFAULT_SESSIONS_ROOT
+    block = "```ora-visual\n" + json.dumps(
+        visual_envelope, indent=2, ensure_ascii=False,
+    ) + "\n```"
+    replaced = False
+
+    def mutate(envelope: dict[str, Any]) -> None:
+        nonlocal replaced
+        assistants = [
+            message for message in envelope.get("messages", [])
+            if isinstance(message, dict) and message.get("role") == "assistant"
+        ]
+        if not 0 <= assistant_index < len(assistants):
+            return
+        target = assistants[assistant_index]
+        content = target.get("content")
+        if not isinstance(content, str):
+            return
+
+        installed = False
+
+        def replace_block(_match) -> str:
+            nonlocal installed
+            if installed:
+                return ""
+            installed = True
+            return block
+
+        next_content = ORA_VISUAL_FENCE_RE.sub(replace_block, content)
+        if not installed:
+            separator = "\n\n" if next_content and not next_content.endswith("\n") else "\n"
+            next_content = next_content + separator + block
+        target["content"] = next_content
+        target["visual_outcome"] = {
+            "state": "building",
+            "stage": "legibility",
+            "reason": "A narrower visual was saved and is awaiting insertion.",
+        }
+        replaced = True
+
+    path = _mutate_conversation_envelope(conversation_id, root, mutate)
+    return path if replaced else None
+
+
 def set_visual_state(
     conversation_id: str,
     visual_state: dict[str, Any],
@@ -2208,6 +2273,7 @@ __all__ = [
     "save_turn_spatial_state",
     "begin_visual_outcome",
     "set_assistant_visual_outcome",
+    "replace_assistant_visual_envelope",
     "set_visual_state",
     "get_prior_spatial_state",
     "get_prior_annotations",

@@ -17,6 +17,8 @@ import glob as globmod
 import contextvars
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import quote
 
 try:
     from orchestrator import runtime_paths as _runtime_paths
@@ -1681,6 +1683,288 @@ def _is_standalone_greeting_response(response: str) -> bool:
     return bool(prose and _STANDALONE_GREETING_RE.fullmatch(prose))
 
 
+_VISUAL_RELATIONSHIP_FREE_ATOM_RE = re.compile(
+    r"""^(?:
+        [A-Za-z]+(?:['’][A-Za-z]+)*
+        |
+        [+-]?(?:[$£€¥]\s*)?
+        (?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)
+        (?:\s?(?:%|[A-Za-z]{1,12}))?
+    )\.?$""",
+    re.VERBOSE,
+)
+
+
+def _is_positively_relationship_free_response(response: str) -> bool:
+    """Recognize only a scalar or one-token answer as relationship-free.
+
+    Failed extraction cannot prove that a clause has no relationship: an
+    unlisted verb can still connect two concepts.  This positive grammar
+    therefore accepts only forms that cannot contain two relationship
+    endpoints.  Every multiword natural-language statement remains ambiguous
+    and must produce a visual or a conspicuous failure.
+    """
+    if not isinstance(response, str):
+        return False
+    prose = response.strip()
+    return bool(prose and _VISUAL_RELATIONSHIP_FREE_ATOM_RE.fullmatch(prose))
+
+
+_IMAGE_VISUAL_PREFERENCES = frozenset({
+    "image", "generated_image", "image_generation", "image_generates",
+})
+
+
+def _is_image_visual_preference(context_pkg: dict | None) -> bool:
+    if not isinstance(context_pkg, dict):
+        return False
+    return str(context_pkg.get("visual_kind") or "").strip().lower() in (
+        _IMAGE_VISUAL_PREFERENCES
+    )
+
+
+def _noninteractive_visual_context(context_pkg: dict | None) -> bool:
+    return bool(
+        isinstance(context_pkg, dict)
+        and context_pkg.get("execution_context") in ("agent", "autonomous")
+    )
+
+
+def _write_generated_image_artifact(
+    image_bytes: bytes,
+    mime_type: str,
+    suffix: str,
+    provider_id: str,
+    prompt: str,
+    context_pkg: dict,
+) -> dict:
+    """Persist one generated image and return its durable delivery metadata."""
+    conversation_id = str(context_pkg.get("conversation_id") or "").strip()
+    noninteractive = _noninteractive_visual_context(context_pkg)
+    if noninteractive:
+        trace_dir = str(context_pkg.get("trace_dir") or "").strip()
+        if not trace_dir:
+            raise RuntimeError("noninteractive image trace directory is missing")
+        artifact_root = Path(trace_dir)
+        artifact_name = f"visual-artifact.{suffix}"
+    else:
+        if (not conversation_id or Path(conversation_id).name != conversation_id
+                or conversation_id in {".", ".."}):
+            raise RuntimeError("interactive image conversation identity is missing or invalid")
+        ora_home = Path(getattr(_runtime_paths, "ORA_HOME", WORKSPACE))
+        artifact_root = ora_home / "sessions" / conversation_id / "visual-artifacts"
+        digest = hashlib.sha256(image_bytes).hexdigest()[:24]
+        artifact_name = f"generated-{digest}.{suffix}"
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    artifact_path = artifact_root / artifact_name
+    temporary_path = artifact_root / f".{artifact_name}.{os.getpid()}.tmp"
+    try:
+        temporary_path.write_bytes(image_bytes)
+        os.replace(temporary_path, artifact_path)
+    finally:
+        try:
+            if temporary_path.exists():
+                temporary_path.unlink()
+        except OSError:
+            pass
+
+    visual_identity = hashlib.sha256(
+        f"{conversation_id}|{prompt}".encode("utf-8")
+    ).hexdigest()[:24]
+    metadata = {
+        "schema_version": "ora.image-artifact/1.0",
+        "mime_type": mime_type,
+        "provider": provider_id,
+        "assistant_visual_id": f"assistant-image-{visual_identity}",
+        "filename": artifact_name,
+    }
+    if noninteractive:
+        metadata["path"] = str(artifact_path)
+        (artifact_root / "visual-artifact.json").write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        metadata["url"] = (
+            "/api/conversation/"
+            + quote(conversation_id, safe="")
+            + "/visual-artifacts/"
+            + quote(artifact_name, safe="")
+        )
+    context_pkg["_visual_artifact"] = {
+        "type": "generated_image",
+        "path": str(artifact_path),
+        "provider": provider_id,
+        "renderer": "image_generates",
+    }
+    return metadata
+
+
+def _image_artifact_block(metadata: dict) -> str:
+    return (
+        "```ora-image\n"
+        + json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))
+        + "\n```"
+    )
+
+
+def _materialize_noninteractive_visual(
+    text: str,
+    context_pkg: dict,
+) -> tuple[str, str | None]:
+    """Compile and persist one settled envelope for a producer without a client."""
+    final_env, final_block = _extract_first_visual_envelope(text)
+    if not final_env or not final_block:
+        return text, "terminal visual envelope unavailable"
+    rendered_svg, render_error = _render_visual_svg_cli(final_env)
+    if not rendered_svg:
+        return text, render_error or "headless visual render failed"
+    artifact_path = None
+    try:
+        trace_dir_value = context_pkg.get("trace_dir")
+        if not trace_dir_value:
+            raise RuntimeError("noninteractive visual trace directory is missing")
+        artifact_root = Path(trace_dir_value)
+        artifact_root.mkdir(parents=True, exist_ok=True)
+        artifact_path = artifact_root / "visual-artifact.svg"
+        artifact_path.write_text(rendered_svg, encoding="utf-8")
+        (artifact_root / "visual-artifact.json").write_text(
+            json.dumps(final_env, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        return text, f"artifact persistence failed: {exc}"
+    context_pkg["_visual_artifact"] = {
+        "type": final_env.get("type"),
+        "path": str(artifact_path) if artifact_path else None,
+        "renderer": "node-jsdom-cli",
+    }
+    return _strip_visual_blocks_and_markers(text), None
+
+
+def _run_preferred_image_visual(
+    response: str,
+    context_pkg: dict,
+) -> tuple[bool, str]:
+    """Honor an explicit image preference before ordinary visual selection."""
+    if not _is_image_visual_preference(context_pkg):
+        return False, response
+    prose = _strip_visual_blocks_and_markers(response).strip()
+    prompt = str(
+        context_pkg.get("cleaned_prompt")
+        or context_pkg.get("user_input")
+        or prose
+    ).strip()
+    provider_id = None
+    failure_stage = "image_generation"
+    failure = None
+    try:
+        try:
+            from capability_registry import (
+                invoke_image_generation,
+                resolve_image_provider_override,
+            )
+        except ImportError:
+            from orchestrator.capability_registry import (  # type: ignore
+                invoke_image_generation,
+                resolve_image_provider_override,
+            )
+        provider_override = resolve_image_provider_override(
+            context_pkg.get("image_provider_override"),
+            context_pkg.get("model_profile_locks"),
+        )
+        result, image_bytes, mime_type, suffix = invoke_image_generation(
+            {"prompt": prompt, "aspect_ratio": "1:1"},
+            provider_id=provider_override,
+        )
+        provider_id = str(result.provider_id or "unknown")
+        failure_stage = "image_persistence"
+        metadata = _write_generated_image_artifact(
+            image_bytes, mime_type, suffix, provider_id, prompt, context_pkg,
+        )
+    except Exception as exc:
+        failure = exc
+    else:
+        context_pkg["visual_diagnostics"] = {"visuals": [{
+            "kind": "generated_image",
+            "provider": provider_id,
+            "blocked": False,
+        }]}
+        if _noninteractive_visual_context(context_pkg):
+            context_pkg["_visual_outcome"] = {
+                "state": "ready",
+                "stage": "image_generation",
+                "reason": f"Generated and persisted by {provider_id} without a browser.",
+            }
+            return True, prose
+        context_pkg["_visual_outcome"] = {
+            "state": "building",
+            "stage": "image_generation",
+            "reason": f"Generated by {provider_id}; awaiting Exhibits insertion.",
+        }
+        return True, prose + "\n\n" + _image_artifact_block(metadata)
+
+    code = str(getattr(failure, "code", "model_unavailable"))
+    detail = str(failure).strip()[:350] or "The selected image provider failed."
+    disclosure = (
+        f"> **Image generation failed ({code}).** {detail} "
+        "Ora supplied a source-grounded concept map instead."
+    )
+    fallback_text = None
+    fallback_diag = None
+    if VISUAL_HOOK_AVAILABLE:
+        try:
+            fallback_text, fallback_diag = _maybe_build_concept_map(
+                prose, context_pkg, context_pkg.get("mode_name"),
+            )
+        except Exception as exc:
+            detail = f"{detail}; concept-map fallback failed: {exc}"[:500]
+    context_pkg["visual_diagnostics"] = {
+        "visuals": [fallback_diag] if fallback_diag else [],
+    }
+    if fallback_text:
+        _env, block = _extract_first_visual_envelope(fallback_text)
+        delivered = prose + "\n\n" + disclosure
+        if block:
+            delivered += "\n\n" + block
+        if _noninteractive_visual_context(context_pkg):
+            delivered, render_error = _materialize_noninteractive_visual(
+                delivered, context_pkg,
+            )
+            if render_error:
+                context_pkg["_visual_outcome"] = {
+                    "state": "failed",
+                    "stage": "image_fallback_render",
+                    "reason": f"{detail}; {render_error}"[:500],
+                }
+            else:
+                context_pkg["_visual_outcome"] = {
+                    "state": "ready",
+                    "stage": failure_stage,
+                    "reason": f"{detail}; grounded concept-map fallback persisted."[:500],
+                    "origin": "provider_failure",
+                }
+        else:
+            context_pkg["_visual_outcome"] = {
+                "state": "building",
+                "stage": failure_stage,
+                "reason": f"{detail}; awaiting grounded concept-map insertion."[:500],
+                "origin": "provider_failure",
+            }
+        return True, delivered
+
+    context_pkg["_visual_outcome"] = {
+        "state": "failed",
+        "stage": "image_fallback",
+        "reason": f"{detail}; no grounded concept map could be produced."[:500],
+        "origin": "provider_failure",
+    }
+    return True, prose + "\n\n" + disclosure.replace(
+        "Ora supplied a source-grounded concept map instead.",
+        "Ora could not produce the grounded fallback visual.",
+    )
+
+
 def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     """Run the WP-1.6 visual validator + adversarial pass over the response.
 
@@ -1711,6 +1995,10 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
             return response
     if not response:
         return response
+    if isinstance(context_pkg, dict) and _is_image_visual_preference(context_pkg):
+        handled, image_response = _run_preferred_image_visual(response, context_pkg)
+        if handled:
+            return image_response
     if not VISUAL_HOOK_AVAILABLE:
         greeting_outcome = _visual_exception_outcome(
             context_pkg, allow_greeting=True,
@@ -1879,49 +2167,12 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
     # remove the transport envelope from the prose they publish. This is
     # deliberately after the terminal authority has selected the final prose
     # and before the durable outcome is assigned.
-    noninteractive = bool(
-        isinstance(context_pkg, dict)
-        and context_pkg.get("execution_context") in ("agent", "autonomous")
-    )
+    noninteractive = _noninteractive_visual_context(context_pkg)
     noninteractive_render_error = None
     if noninteractive and rendered_ok:
-        final_env, final_block = _extract_first_visual_envelope(new_text)
-        if final_env and final_block:
-            rendered_svg, render_error = _render_visual_svg_cli(final_env)
-            if rendered_svg:
-                trace_dir_value = (context_pkg or {}).get("trace_dir")
-                artifact_path = None
-                try:
-                    if not trace_dir_value:
-                        raise RuntimeError("noninteractive visual trace directory is missing")
-                    from pathlib import Path
-                    artifact_root = Path(trace_dir_value)
-                    artifact_root.mkdir(parents=True, exist_ok=True)
-                    artifact_path = artifact_root / "visual-artifact.svg"
-                    artifact_path.write_text(rendered_svg, encoding="utf-8")
-                    (artifact_root / "visual-artifact.json").write_text(
-                        json.dumps(final_env, indent=2, ensure_ascii=False)
-                        + "\n",
-                        encoding="utf-8",
-                    )
-                except Exception as artifact_exc:
-                    render_error = f"artifact persistence failed: {artifact_exc}"
-                if render_error is None:
-                    context_pkg["_visual_artifact"] = {
-                        "type": final_env.get("type"),
-                        "path": str(artifact_path) if artifact_path else None,
-                        "renderer": "node-jsdom-cli",
-                    }
-                    # The published text remains canonical; the visual is
-                    # durable in the trace and is not leaked into an article
-                    # or other non-interactive text sink.
-                    new_text = _strip_visual_blocks_and_markers(new_text)
-                else:
-                    noninteractive_render_error = render_error
-            else:
-                noninteractive_render_error = render_error or "headless visual render failed"
-        else:
-            noninteractive_render_error = "terminal visual envelope unavailable"
+        new_text, noninteractive_render_error = _materialize_noninteractive_visual(
+            new_text, context_pkg,
+        )
 
     # Client-facing diagnostics: if a visual was recovered, synthesized, or
     # schema-repaired in place, don't alarm the user about the superseded
@@ -1965,21 +2216,19 @@ def _run_visual_hook(response: str, context_pkg: dict | None) -> str:
                     "greeting_or_acknowledgement"
                 ],
             }
-        elif context_pkg.get("_visual_fallback_origin") == "failed_claim_extraction":
+        elif _is_positively_relationship_free_response(review_prose):
             context_pkg["_visual_outcome"] = {
                 "state": "not_applicable",
                 "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
-            }
-        elif _mode_target_types(mode, (context_pkg or {}).get("visual_kind")):
-            context_pkg["_visual_outcome"] = {
-                "state": "failed",
-                "stage": "visual_hook",
-                "reason": "No grounded visual could be produced from this response.",
             }
         else:
             context_pkg["_visual_outcome"] = {
-                "state": "not_applicable",
-                "reason": _VISUAL_NOT_APPLICABLE_REASONS["no_relationships"],
+                "state": "failed",
+                "stage": "visual_hook",
+                "reason": (
+                    "No grounded visual could be produced, and the response "
+                    "was not positively established as relationship-free."
+                ),
             }
         if context_pkg.get("_visual_fallback_origin"):
             context_pkg["_visual_outcome"]["origin"] = context_pkg[
@@ -2023,7 +2272,6 @@ _KNOWN_VISUAL_TYPES = frozenset({
     "causal_loop_diagram", "stock_and_flow", "causal_dag", "fishbone",
     "decision_tree", "influence_diagram", "ach_matrix", "quadrant_matrix", "bow_tie",
     "ibis", "pro_con", "concept_map", "sequence", "flowchart", "state", "c4",
-    "annotated_image",
 })
 
 

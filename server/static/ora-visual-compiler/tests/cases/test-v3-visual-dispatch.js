@@ -15,7 +15,8 @@
  *   7. dispatch hands {ora_visual_blocks} to OraPanels.visual.onBridgeUpdate.
  *   8. dispatch dedupes on repeated key; new key re-dispatches.
  *   9. an unsupported asynchronous result is surfaced visibly.
- *  10. dispatch with no panel registry still returns the block count.
+ *  10. a viewport-legibility finding gets one saved narrower-subject retry.
+ *  11. dispatch with no panel registry still returns the block count.
  */
 
 'use strict';
@@ -132,14 +133,142 @@ module.exports = {
            && errorBar[0].indexOf('switch to Konva') !== -1,
            'alerts=' + JSON.stringify(alerts) + ' errorBar=' + JSON.stringify(errorBar));
 
-    // 10. No registry → still counts, no throw
+    // 10. One whole-diagram viewport finding requests exactly one narrower
+    // visual, saves it against the same assistant turn, and then reports ready.
+    const priorNarrowFetch = win.fetch;
+    const narrowPanelCalls = [];
+    const narrowRequests = [];
+    const narrowOutcomes = [];
+    const legibilityFinding = D.reviewLegibility({
+      svg: '<svg viewBox="0 0 1000 1000"><text font-size="12">Load-bearing claim</text></svg>',
+      errors: [], warnings: [],
+    }, { clientWidth: 300, clientHeight: 200 });
+    win.OraPanels = { visual: {
+      showError: function (message) { errorBar.push(String(message)); },
+      onBridgeUpdate: function (state) {
+        narrowPanelCalls.push(state);
+        if (narrowPanelCalls.length === 1) {
+          return Promise.resolve([{
+            needs_narrower_subject: true,
+            legibility_finding: legibilityFinding,
+          }]);
+        }
+        return Promise.resolve([{ svg: '<svg/>', errors: [], warnings: [] }]);
+      },
+    } };
+    win.fetch = function (url, options) {
+      if (String(url) === '/api/visual/regenerate') {
+        narrowRequests.push(JSON.parse(options.body));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: function () { return Promise.resolve({
+            ok: true,
+            persisted: true,
+            envelope: JSON.parse(ENVELOPE),
+          }); },
+        });
+      }
+      if (String(url).indexOf('/visual-outcome') !== -1) {
+        narrowOutcomes.push(JSON.parse(options.body));
+        return Promise.resolve({ ok: true, status: 200 });
+      }
+      return Promise.reject(new Error('unexpected fetch ' + url));
+    };
+    D.resetDedupe();
+    D.dispatch(text, 'conv-legibility#0', {
+      conversationId: 'conv-legibility',
+      assistantIndex: 0,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    record('dispatch: viewport finding performs one durable narrower-subject retry',
+           legibilityFinding && legibilityFinding.code === 'W_VIEWPORT_TEXT_LEGIBILITY'
+           && narrowPanelCalls.length === 2
+           && narrowRequests.length === 1
+           && narrowRequests[0].narrow_subject === true
+           && narrowRequests[0].conversation_id === 'conv-legibility'
+           && narrowRequests[0].assistant_index === 0
+           && narrowRequests[0].manual_visual_type === 'concept_map'
+           && narrowOutcomes.length === 1
+           && narrowOutcomes[0].state === 'ready'
+           && narrowOutcomes[0].stage === 'legibility',
+           'finding=' + JSON.stringify(legibilityFinding)
+             + ' renders=' + narrowPanelCalls.length
+             + ' requests=' + narrowRequests.length
+             + ' outcomes=' + JSON.stringify(narrowOutcomes));
+    win.fetch = priorNarrowFetch;
+
+    // 11. No registry → still counts, no throw
     win.OraPanels = undefined;
     D.resetDedupe();
     let threw = false, n3 = 0;
     try { n3 = D.dispatch(text, 'conv2#0'); } catch (e) { threw = true; }
     record('dispatch: registry absent is safe', !threw && n3 === 1, 'threw=' + threw + ' n=' + n3);
 
+    // A durable generated-image descriptor fetches the stored artifact and
+    // never re-enters the image provider route, including on replay/dedupe.
+    const priorFetch = win.fetch;
+    const priorCanvas = win.OraCanvas;
+    const fetched = [];
+    const inserted = [];
+    const savedOutcomes = [];
+    win.fetch = function (url, options) {
+      fetched.push(String(url));
+      if (String(url).indexOf('/visual-outcome') !== -1) {
+        savedOutcomes.push(JSON.parse(options.body));
+        return Promise.resolve({ ok: true, status: 200 });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        blob: function () {
+          return Promise.resolve(new win.Blob(['stored-image'], { type: 'image/png' }));
+        },
+      });
+    };
+    win.OraCanvas = {
+      insertAssistantImage: function (file, artifact) {
+        inserted.push({ file, artifact });
+        return Promise.resolve({ id: 'assistant-image' });
+      },
+    };
+    const imageArtifact = {
+      schema_version: 'ora.image-artifact/1.0',
+      url: '/api/conversation/image-turn/visual-artifacts/generated-0123456789abcdef01234567.png',
+      mime_type: 'image/png',
+      filename: 'generated-0123456789abcdef01234567.png',
+      assistant_visual_id: 'assistant-image-test',
+    };
+    const imageText = 'Prose.\n```ora-image\n'
+      + JSON.stringify(imageArtifact) + '\n```';
+    D.resetDedupe();
+    const imageCount = D.dispatch(imageText, 'image-turn#0', {
+      conversationId: 'image-turn',
+      assistantIndex: 0,
+      visualOutcome: {
+        state: 'building',
+        stage: 'image_generation',
+        reason: 'Generated; awaiting insertion.',
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    D.dispatch(imageText, 'image-turn#0', { conversationId: 'image-turn' });
+    const artifactFetches = fetched.filter((url) => url.indexOf('/visual-artifacts/') !== -1);
+    record('dispatch: stored generated image inserts once without provider replay',
+           imageCount === 1 && inserted.length === 1 && artifactFetches.length === 1
+           && fetched.every((url) => url.indexOf('/api/capability/image_generates') === -1)
+           && savedOutcomes.length === 1
+           && savedOutcomes[0].state === 'ready'
+           && savedOutcomes[0].stage === 'image_generation'
+           && D.stripBlocks(imageText).indexOf('ora-image') === -1,
+           'fetched=' + JSON.stringify(fetched) + ' inserted=' + inserted.length);
+
     win.OraPanels = priorRegistry;
     win.alert = priorAlert;
+    win.fetch = priorFetch;
+    win.OraCanvas = priorCanvas;
   },
 };

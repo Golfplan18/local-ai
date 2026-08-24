@@ -100,7 +100,7 @@ Q1 (situation): "Are you executing a defined project (walk through the steps),
 - **Analyst.** Render source into requested format; trace every substantive claim to source; flag gaps explicitly in Gap report; preserve visual envelopes byte-equivalent with mode_context preserved.
 - **Evaluator.** Verify fidelity (every substantive claim traces to source); verify format followed; verify gaps flagged not silently filled; verify no added recommendation; verify envelope passthrough.
 - **Reviser.** Remove substantive claims that do not trace to source; flag gaps that were silently filled; restore visual envelope byte-equivalence where regeneration occurred; preserve mode_context on passthrough envelopes (do NOT rewrite to "structured-output"); resist analytical contribution.
-- **Verifier.** Confirm three required sections (formatted_deliverable, gap_report, format_notes); confirm envelope count matches source (if source has N visuals, output has N visuals).
+- **Verifier.** Confirm three required sections (formatted_deliverable, gap_report, format_notes); confirm the source-envelope count matches source (if source has N visual envelopes, output contains those N byte-equivalent source envelopes); treat any separately marked terminal-authority envelope as additional output and exclude it from the source-envelope count.
 - **Consolidator.** Merge as formatted deliverable plus gap report and format notes; format follows deliverable type; conversation history weight higher than for analytical modes (source content is usually in history).
 
 **Source tradition.** Format-template library (per document type); de Bono AGO (when format selection requires goal clarification).

@@ -381,6 +381,13 @@
   };
 
   const renderTurn = () => {
+    const visualDispatchKey = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
+    if (window.OraV3VisualDispatch
+        && typeof window.OraV3VisualDispatch.setActiveKey === 'function') {
+      // Invalidate any slow legibility retry as soon as navigation changes
+      // the displayed turn, including pending and visual-free destinations.
+      window.OraV3VisualDispatch.setActiveKey(visualDispatchKey);
+    }
     if (!outputContent) return;
     const t = state.turns[state.currentTurnIndex];
     outputContent.replaceChildren();
@@ -405,15 +412,22 @@
       // and swap the raw JSON fences for a one-line marker in the transcript.
       if (window.OraV3VisualDispatch
           && state.visualReadyTurnIndex === state.currentTurnIndex) {
-        const key = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
         const assistantIndex = state.turns
           .slice(0, state.currentTurnIndex + 1)
           .filter((turn) => turn && turn.assistant).length - 1;
-        const blockCount = window.OraV3VisualDispatch.dispatch(content, key, {
+        const persistedOutcome = t.assistant.visual_outcome;
+        const blockCount = window.OraV3VisualDispatch.dispatch(content, visualDispatchKey, {
           conversationId: state.activeConversationId,
           assistantIndex,
+          visualOutcome: persistedOutcome,
+          onNarrowedEnvelopePersisted(envelope, outcome) {
+            if (!t.assistant) return;
+            t.assistant.content = window.OraV3VisualDispatch.replaceBlocksWithEnvelope(
+              t.assistant.content || '', envelope,
+            );
+            t.assistant.visual_outcome = outcome;
+          },
         });
-        const persistedOutcome = t.assistant.visual_outcome;
         if (blockCount === 0
             && persistedOutcome
             && persistedOutcome.state === 'building'
@@ -687,11 +701,21 @@
       return false;
     }
     const epoch = ++loadEpoch;
+    const previousVisualKey = `${state.activeConversationId || ''}#${state.currentTurnIndex}`;
+    if (window.OraV3VisualDispatch
+        && typeof window.OraV3VisualDispatch.setActiveKey === 'function') {
+      window.OraV3VisualDispatch.setActiveKey(`loading:${conversation_id}:${epoch}`);
+    }
     if (window.OraCanvas && typeof window.OraCanvas.flushDraft === 'function') {
       try {
         await window.OraCanvas.flushDraft();
       } catch (e) {
         console.warn('[v3-conversation] Excalidraw draft flush failed:', e);
+        if (epoch === loadEpoch
+            && window.OraV3VisualDispatch
+            && typeof window.OraV3VisualDispatch.setActiveKey === 'function') {
+          window.OraV3VisualDispatch.setActiveKey(previousVisualKey);
+        }
         return false;
       }
       if (epoch !== loadEpoch) return null;

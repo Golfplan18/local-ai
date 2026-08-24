@@ -69,7 +69,15 @@ window.OraVisualCompiler = window.OraVisualCompiler || {};
         result.warnings = (result.warnings || []).concat(review.findings);
       }
     } catch (e) {
-      // Reviewer must never break compile(). Swallow and return original.
+      // An unavailable reviewer cannot clear an adversarial finding. Fail
+      // closed for visual integrity while leaving the prose path untouched.
+      result.svg = '';
+      result.errors = (result.errors || []).concat([{
+        code: 'E_ARTIFACT_REVIEW_EXCEPTION',
+        severity: 'error',
+        message: 'Artifact review failed; visual installation is blocked.',
+        cause: String(e),
+      }]);
     }
     return result;
   }

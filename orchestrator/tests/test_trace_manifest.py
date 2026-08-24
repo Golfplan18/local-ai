@@ -2795,9 +2795,11 @@ class TestTraceDebugChunk3(TraceManifestBase):
 class TestTraceCompletenessV5Behavior(TraceManifestBase):
     """Behavioral coverage through the real Gear and CLI/server funnels.
 
-    Production functions under test are never replaced. The only call seams
-    replaced below are model, web-search, retrieval, embedding, and Chroma
-    boundaries; trace failures use real filesystem permissions.
+    Production functions under test are not replaced. Call seams are limited
+    to model, web-search, retrieval, embedding, and Chroma boundaries; a test
+    whose concern is physical-call attribution may isolate the terminal visual
+    hook so its synthesis calls do not become part of the behavior under test.
+    Trace failures use real filesystem permissions.
     """
 
     CONFIG_NAME = "qwen-9b-only"
@@ -3621,9 +3623,16 @@ class TestTraceCompletenessV5Behavior(TraceManifestBase):
         # whenever RAG returns candidates, so leaving it on makes the call
         # count depend on whether a live embedder answered — 3 in isolation,
         # 2 whenever another module in the run installed the embedding stub.
-        # This test is about step attribution, not retrieval.
+        # This test is about step attribution, not retrieval or mandatory
+        # visual synthesis. Isolate the visual hook in this test only so the
+        # two production response calls remain the two physical events under
+        # assertion.
         with self._routing_config([endpoint]), \
              self._fake_openai_transport() as sdk_calls, \
+             mock.patch.object(
+                 self.boot, "_run_visual_hook",
+                 side_effect=lambda response, context_pkg=None: response,
+             ), \
              mock.patch.dict(os.environ, {"ORA_TOOL_EVENTS": "on",
                                           "ORA_RAG_SELECTION": "0"},
                              clear=False):

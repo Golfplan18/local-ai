@@ -316,6 +316,31 @@ class MultipartEndpointIntegrationTests(unittest.TestCase):
                                     content_type="multipart/form-data")
         self.assertEqual(resp.status_code, 400)
 
+    def test_multipart_threads_image_preference_and_provider_override(self) -> None:
+        captured = {}
+        data = {
+            "message": "Create an image of the dependency.",
+            "conversation_id": "e2e-image-preference",
+            "manual_visual_type": "image",
+            "image_provider_override": "openai:gpt-image-1",
+        }
+        with mock.patch.object(
+            self.server, "agentic_loop_stream",
+            side_effect=self._mock_agentic_stream("analytical prose", captured),
+        ), mock.patch.object(self.server.threading, "Thread", _NoopThread):
+            resp = self.client.post(
+                "/chat/multipart", data=data,
+                content_type="multipart/form-data",
+            )
+            b"".join(resp.response)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(captured["extra_context"]["visual_kind"], "image")
+        self.assertEqual(
+            captured["extra_context"]["image_provider_override"],
+            "openai:gpt-image-1",
+        )
+
     def test_multipart_no_extras_falls_back_to_text_only(self) -> None:
         """Missing image + missing spatial_representation → text-only path works.
 

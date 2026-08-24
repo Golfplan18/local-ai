@@ -997,12 +997,11 @@ async function runIndexPrivacyEgressTests() {
       return selectedFramework ? { id: 'terrain-mapping' } : null;
     },
   };
-  blankContext.submitWithFrameworkCheck = function (text) {
-    gatedSubmissions.push(text);
+  blankContext.submitWithFrameworkCheck = function () {
+    gatedSubmissions.push(Array.prototype.slice.call(arguments));
   };
   blankContext.renderUserTurn = function () {};
   blankContext.setImageGenerateMode = function () {};
-  blankContext.submitImageGenerationPrompt = function () {};
   vm.runInContext(
     sourceSlice(indexSource, '  const submitInput = async',
       '  // V3 Backlog 7 — pulse the O on submit')
@@ -1016,12 +1015,21 @@ async function runIndexPrivacyEgressTests() {
   selectedFramework = true;
   await bw.__submitInput();
   record('selected framework allows blank text and blank canvas through the framework path',
-    gatedSubmissions.length === 1 && gatedSubmissions[0] === '');
+    gatedSubmissions.length === 1 && gatedSubmissions[0][0] === '');
   selectedFramework = false;
   backgroundState.objects.push({ id: 'drawn-rect', kind: 'shape', layer: 'user_input' });
   await bw.__submitInput();
   record('drawing-only Inquiry passes the send gate without invented model text',
-    gatedSubmissions.length === 2 && gatedSubmissions[1] === '');
+    gatedSubmissions.length === 2 && gatedSubmissions[1][0] === '');
+  backgroundState.objects = [];
+  blankContext.leftInputArea.value = 'Create an image of the dependency.';
+  blankContext.imageGenerateMode = true;
+  await bw.__submitInput();
+  record('Image input enters the normal analytical turn with an explicit preference',
+    gatedSubmissions.length === 3
+      && gatedSubmissions[2][0] === 'Create an image of the dependency.'
+      && gatedSubmissions[2][3]
+      && gatedSubmissions[2][3].kind === 'image');
   blankDom.window.close();
 }
 
