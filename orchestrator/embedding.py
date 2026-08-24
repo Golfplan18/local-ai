@@ -54,6 +54,7 @@ _DEFAULT_COLLECTIONS = {
     "conversations": "conversations",
     "atomics": "atomic_dedup",
     "conversations_incognito": "conversations-incognito",
+    "help": "help",
 }
 
 

@@ -26,6 +26,7 @@ DEFAULT_COLLECTIONS = {
     "conversations": "conversations",
     "atomics": "atomic_dedup",
     "conversations_incognito": "conversations-incognito",
+    "help": "help",
 }
 
 DEFAULT_EMBEDDING_PROFILES: list[dict[str, Any]] = [
@@ -305,6 +306,7 @@ def target_collections_for_profile(profile_id: str) -> dict[str, str]:
         "conversations": f"conversations_{suffix}",
         "atomics": f"atomic_dedup_{suffix}",
         "conversations_incognito": f"conversations_incognito_{suffix}",
+        "help": f"help_{suffix}",
         "msi_news_articles": f"msi_news_articles_{suffix}",
     }
 

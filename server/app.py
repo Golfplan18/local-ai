@@ -48,6 +48,7 @@ sys.path.insert(0, WORKSPACE.rstrip("/\\") or WORKSPACE)
 
 import runtime_paths as rp
 import network_policy
+from orchestrator.help_retrieval import get_help_context, refresh_help_index
 
 # Conversation roots come from the single cross-platform source (honors
 # ORA_CONVERSATIONS / a relocation), not a hardcoded ~/Documents path. They are
@@ -13978,8 +13979,10 @@ def api_scratchpad():
     user does not see model thinking; the answer is pushed to the right-
     column output as soon as it's ready. The dedicated Aside model preference
     is independent of the active configuration's SMALL/utility cell. Context
-    is an in-memory five-turn rolling window; nothing is written to disk or
-    ChromaDB. The client separately keeps its visible DOM history bounded.
+    is an in-memory five-turn rolling window; prompts and answers are not
+    written to disk or ChromaDB. Bounded product-help excerpts may be supplied
+    from the separate tracked help corpus. The client separately keeps its
+    visible DOM history bounded.
 
     Request body:
         { "prompt": "<string>" }
@@ -14037,7 +14040,18 @@ def api_scratchpad():
         # rapid submits cannot both read the same prior turn and then land out
         # of causal order. The lock is per window, not process-global.
         with window.transaction():
+            help_context = ""
+            try:
+                help_context = get_help_context(prompt)
+            except Exception as help_exc:
+                print(
+                    f"[aside] help retrieval failed open: {help_exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
             messages = window.get_history()
+            if help_context:
+                messages.insert(0, {"role": "system", "content": help_context})
             messages.append({"role": "user", "content": prompt})
             answer = call_model(messages, ep)
             if isinstance(answer, str) and answer.lstrip().startswith("[Error"):
@@ -20321,9 +20335,11 @@ if __name__ == "__main__":
     # embedding model are reachable. Cross-platform (Win/Linux/Mac).
     # Loud failure here beats silent fallback to a different embedder
     # locking the chromadb collection at the wrong dimension.
+    _embedding_ready = False
     try:
         from orchestrator.embedding import assert_embedding_ready, EMBEDDING_MODEL
         ready, messages = assert_embedding_ready()
+        _embedding_ready = ready
         for msg in messages:
             print(f"[startup] embedding: {msg}")
         if not ready:
@@ -20335,6 +20351,28 @@ if __name__ == "__main__":
             )
     except Exception as _embed_err:
         print(f"[startup] embedding: check skipped — {_embed_err}")
+
+    # The help collection is a disposable projection of tracked Markdown.
+    # Refresh it only when the configured semantic path is ready; otherwise
+    # Aside uses deterministic lexical retrieval over the same files.
+    try:
+        if not _embedding_ready:
+            raise RuntimeError("embedding pipeline is unavailable")
+        _help_stats = refresh_help_index()
+        if _help_stats["changed"]:
+            print(
+                "[startup] help: refreshed "
+                f"{_help_stats['chunks']} chunks "
+                f"({_help_stats['upserted']} upserted, "
+                f"{_help_stats['deleted']} stale removed)"
+            )
+        else:
+            print(f"[startup] help: {_help_stats['chunks']} chunks unchanged")
+    except Exception as _help_err:
+        print(
+            "[startup] help: WARNING — semantic help refresh unavailable; "
+            f"Aside will use lexical help search: {_help_err}"
+        )
 
     config   = load_config()
     endpoint = get_endpoint(config)
