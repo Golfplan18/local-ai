@@ -34,6 +34,47 @@ import boot  # noqa: E402
 
 
 class TestApiCapacityMetadata(unittest.TestCase):
+    def test_missing_capacity_uses_shared_default_for_boot_packing(self):
+        endpoint = {"id": "missing-capacity", "type": "local"}
+        history = [
+            {"role": "user", "content": "history user " + ("u" * 4000)},
+            {"role": "assistant", "content": "history answer " + ("a" * 4000)},
+        ]
+        messages, _reference, coverage = boot._pack_physical_call_context(
+            history,
+            endpoint,
+            [{"role": "system", "content": "required system"}],
+            include_prompt_metadata=False,
+        )
+
+        self.assertEqual(boot._endpoint_context_window(endpoint), 256_000)
+        self.assertEqual(coverage["context_window"], 256_000)
+        self.assertEqual(coverage["output_reserve"], 32_000)
+        self.assertEqual(coverage["safe_input_capacity"], 223_872)
+        self.assertGreater(len(messages), 1)
+
+    def test_missing_api_capacity_defaults_to_256k(self):
+        router = Router(config_dict={"endpoints": []})
+        for key in ("context_window", "context_length", "max_context_length"):
+            with self.subTest(key=key):
+                endpoint = router._to_v1_endpoint({
+                    "id": f"missing-{key}", "type": "api",
+                    "service": "openrouter", "model_id": "missing-capacity",
+                    key: None,
+                })
+                self.assertEqual(endpoint["context_window"], 256_000)
+
+    def test_context_aliases_survive_v1_conversion(self):
+        router = Router(config_dict={"endpoints": []})
+        for key in ("context_window", "context_length", "max_context_length"):
+            with self.subTest(key=key):
+                endpoint = router._to_v1_endpoint({
+                    "id": f"explicit-{key}", "type": "api",
+                    "service": "openrouter", "model_id": "explicit",
+                    key: 128_000,
+                })
+                self.assertEqual(endpoint["context_window"], 128_000)
+
     def test_production_api_route_keeps_positive_bounded_phase_a_and_gear_history(self):
         raw_endpoint = {
             "id": "openrouter/production-shaped",
@@ -122,6 +163,125 @@ class TestApiCapacityMetadata(unittest.TestCase):
             )
             - 128,
         )
+
+
+class TestMsiCapacityBoundary(unittest.TestCase):
+    def _router(self):
+        return Router(config_dict={
+            "endpoints": [
+                {"id": "small", "type": "api", "service": "openrouter",
+                 "model_id": "small", "context_window": 128_000,
+                 "enabled": True, "status": "active"},
+                {"id": "missing", "type": "api", "service": "openrouter",
+                 "model_id": "missing", "enabled": True, "status": "active"},
+                {"id": "large", "type": "api", "service": "openrouter",
+                 "model_id": "large", "context_window": 400_000,
+                 "enabled": True, "status": "active"},
+            ],
+        })
+
+    def test_msi_skips_explicit_small_and_uses_missing_default(self):
+        router = self._router()
+        config = {"cells": {"analysis": {"gear4": {
+            "depth": {"primary": "small", "fallback": ["missing", "large"]},
+        }}}}
+        with mock.patch.object(router, "_load_configuration", return_value=config):
+            endpoint = router.resolve_endpoint(
+                "depth", 4, "interactive", config_name="msi-publication",
+                mutex_check=False)
+        self.assertEqual(endpoint["id"], "missing")
+
+    def test_msi_keeps_explicit_small_capacity_out_of_analysis(self):
+        router = self._router()
+        config = {"cells": {"analysis": {"gear4": {
+            "depth": {"primary": "small", "fallback": []},
+        }}}}
+        with mock.patch.object(router, "_load_configuration", return_value=config):
+            endpoint = router.resolve_endpoint(
+                "depth", 4, "interactive", config_name="msi-publication",
+                mutex_check=False)
+        self.assertIsNone(endpoint)
+
+    def test_msi_does_not_filter_small_utility_endpoint(self):
+        router = self._router()
+        config = {"cells": {"utility": {
+            "step1_cleanup": {"primary": "small", "fallback": []},
+        }}}
+        with mock.patch.object(router, "_load_configuration", return_value=config):
+            endpoint = router.resolve_utility_slot(
+                "step1_cleanup", config_name="msi-publication")
+        self.assertEqual(endpoint["id"], "small")
+
+    def test_aliases_resolve_against_registry_catalog(self):
+        router = Router(config_dict={
+            "endpoints": [{
+                "id": "deepseek/deepseek-v4-flash", "type": "api",
+                "service": "openrouter", "model_id": "deepseek/deepseek-v4-flash",
+            }],
+        })
+        self.assertEqual(
+            router._resolve_endpoint_id("~deepseek/deepseek-v4-flash-latest"),
+            "deepseek/deepseek-v4-flash")
+
+    def test_providerless_leaf_does_not_choose_first_endpoint(self):
+        router = Router(config_dict={
+            "endpoints": [
+                {"id": "provider-a/shared-model", "type": "api"},
+                {"id": "provider-b/shared-model", "type": "api"},
+            ],
+        })
+        self.assertEqual(
+            router._resolve_endpoint_id("shared-model"), "shared-model")
+        self.assertEqual(
+            router._resolve_endpoint_id("provider-a/shared-model"),
+            "provider-a/shared-model")
+
+    def test_installer_models_json_missing_capacity_defaults_to_256k(self):
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            model_path = root / "models" / "missing-capacity"
+            models_json = root / "models.json"
+            models_json.write_text(json.dumps({"local_models": [{
+                "id": "local-missing", "path": str(model_path),
+            }]}))
+            config = {"endpoints": [{
+                "id": "local-missing", "type": "local",
+                "model_path": str(model_path), "enabled": True,
+                "status": "active",
+            }]}
+            with mock.patch.object(
+                router_module.rp, "models_json_path", return_value=models_json,
+            ):
+                router = Router(config_dict=config)
+            self.assertEqual(
+                router._endpoints["local-missing"]["context_window"], 256_000)
+
+    def test_local_capacity_alias_survives_discovery_and_v1_conversion(self):
+        import router as router_module
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            model_path = root / "models" / "explicit-capacity"
+            models_json = root / "models.json"
+            models_json.write_text(json.dumps({"local_models": [{
+                "id": "local-explicit", "path": str(model_path),
+                "context_length": 128_000,
+            }]}))
+            config = {"endpoints": [{
+                "id": "local-explicit", "type": "local",
+                "model_path": str(model_path), "enabled": True,
+                "status": "active",
+            }]}
+            with mock.patch.object(
+                router_module.rp, "models_json_path", return_value=models_json,
+            ):
+                router = Router(config_dict=config)
+            endpoint = router._endpoints["local-explicit"]
+            self.assertEqual(endpoint["context_window"], 128_000)
+            self.assertEqual(
+                router._to_v1_endpoint(endpoint)["context_window"], 128_000)
 
 
 class TestConfigNameEquivalence(unittest.TestCase):

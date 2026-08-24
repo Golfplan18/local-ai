@@ -108,6 +108,68 @@ class TestLoadRegistry(_RegistryFixture):
 
 class TestOverlayRoutingConfig(_RegistryFixture):
 
+    def test_missing_context_defaults_to_256k(self):
+        self.assertEqual(
+            self.module.context_window_for_model("unknown/model"), 256_000)
+
+    def test_native_and_latest_aliases_resolve_to_registry_capacity(self):
+        self.registry_path.write_text(json.dumps({
+            "models": {
+                "minimax/MiniMax-M3": {
+                    "id": "minimax/MiniMax-M3", "context_length": 1_048_576,
+                },
+                "deepseek/deepseek-v4-flash": {
+                    "id": "deepseek/deepseek-v4-flash",
+                    "context_length": 1_048_576,
+                },
+            },
+        }))
+        self.module.reload()
+
+        self.assertEqual(
+            self.module.context_window_for_model("MiniMax-M3"), 1_048_576)
+        self.assertEqual(
+            self.module.context_window_for_model(
+                "~deepseek/deepseek-v4-flash-latest"), 1_048_576)
+
+    def test_ambiguous_provider_alias_refuses_registry_match(self):
+        self.registry_path.write_text(json.dumps({
+            "models": {
+                "minimax/minimax-m3": {
+                    "id": "minimax/minimax-m3",
+                    "context_length": 1_048_576,
+                    "_provenance": {"openrouter": {"model_id": "MiniMax-M3"}},
+                },
+                "minimax/minimax-m3-batch": {
+                    "id": "minimax/minimax-m3-batch",
+                    "context_length": 131_072,
+                    "_provenance": {"batch": {"model_id": "MiniMax-M3"}},
+                },
+            },
+        }))
+        self.module.reload()
+
+        self.assertIsNone(self.module.lookup("MiniMax-M3"))
+        self.assertEqual(
+            self.module.lookup("minimax/minimax-m3")["id"],
+            "minimax/minimax-m3",
+        )
+        self.assertEqual(
+            self.module.context_window_for_model("MiniMax-M3"), 256_000)
+
+    def test_overlay_preserves_explicit_small_and_large_capacities(self):
+        result = self.module.overlay_routing_config({
+            "endpoints": [
+                {"id": "openai/gpt-4o", "context_window": 128_000},
+                {"id": "openai/gpt-4o", "context_window": 2_000_000},
+                {"id": "qwen/qwen3.6-plus"},
+            ],
+        })
+        self.assertEqual(result["endpoints"][0]["context_window"], 128_000)
+        self.assertEqual(result["endpoints"][1]["context_window"], 2_000_000)
+        self.assertEqual(
+            result["endpoints"][2]["context_window"], 256_000)
+
     def test_overlay_corrects_vision_capable(self):
         # Simulate a routing-config where kimi is marked vision_capable=True
         # (the actual bug shape from 2026-05-20).

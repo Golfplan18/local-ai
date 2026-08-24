@@ -33,6 +33,11 @@ try:
 except ImportError:  # pragma: no cover - direct orchestrator import context
     import network_policy as _network_policy
 
+try:
+    from orchestrator.model_registry import DEFAULT_CONTEXT_WINDOW
+except ImportError:  # pragma: no cover - direct orchestrator import context
+    from model_registry import DEFAULT_CONTEXT_WINDOW
+
 
 def _submit_with_context(executor, fn, *args, **kwargs):
     """Submit ``fn(*args, **kwargs)`` to ``executor`` with a copy of the
@@ -557,7 +562,7 @@ def _endpoint_context_window(endpoint: dict | None) -> int:
         value = endpoint.get(key)
         if isinstance(value, int) and not isinstance(value, bool) and value > 0:
             return value
-    return 32_768
+    return DEFAULT_CONTEXT_WINDOW
 
 
 def _endpoint_initial_output_tokens(
