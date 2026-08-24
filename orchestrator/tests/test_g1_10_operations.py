@@ -228,18 +228,24 @@ class OperationalIdentityTests(unittest.TestCase):
         retired_external_name = "cloud-" + "ora-sync"
         self.assertNotIn(retired_external_name, source.read_text(encoding="utf-8"))
 
-    def test_macos_rollback_keeps_obsolete_cloud_sync_agent_retired(self):
+    def test_macos_rollback_keeps_both_obsolete_agents_retired(self):
         source = (CURRENT / "macos" / "rollback-macos-cutover.sh").read_text()
-        self.assertIn(
-            'if name in {"com.ora.server.plist", "com.cloud-ora.sync.plist"}:',
-            source,
-        )
-        self.assertIn(
-            '[[ "$label" == "com.ora.server" || '
-            '"$label" == "com.cloud-ora.sync" ]] && continue',
-            source,
-        )
-        self.assertIn("cloud sync remains event-driven", source)
+        self.assertIn('"restored_labels": [', source)
+        self.assertIn('"retained_retired_labels": [', source)
+        for label in ("com.cloud-ora.sync", "com.msi.image-mirror"):
+            with self.subTest(label=label):
+                self.assertIn(f'"{label}.plist"', source)
+                self.assertIn(f'"$label" == "{label}"', source)
+                self.assertIn(f'"{label}"', source)
+        for restored in (
+            "com.msi.repo-pullsync",
+            "com.ora.vault-derive-sync",
+            "com.ora.vault-git-autocommit",
+        ):
+            with self.subTest(restored=restored):
+                self.assertIn(f'"{restored}"', source)
+        self.assertIn("Restored three captured pre-G1.10 cadence agents", source)
+        self.assertIn("scheduled MSI image mirror agents remain retired", source)
 
     def test_vault_event_pipeline_derives_for_any_markdown_under_active_roots(self):
         source = CURRENT / "macos" / "vault-event-pipeline.py"
