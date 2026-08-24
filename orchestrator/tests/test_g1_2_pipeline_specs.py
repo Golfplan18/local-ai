@@ -1,7 +1,6 @@
 """G1.2 — frozen Gear 1/2/3 routing, specifications, and record parity."""
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import sys
@@ -228,8 +227,9 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         json_path = evidence / "campaign-audit.json"
         md_path = evidence / "campaign-audit.md"
         closeout_path = evidence / "closeout-evidence.md"
-        for path in (json_path, md_path, closeout_path):
+        for path in (json_path, md_path):
             self.assertTrue(path.is_file(), path)
+        self.assertFalse(closeout_path.exists(), closeout_path)
 
         audit = json.loads(json_path.read_text(encoding="utf-8"))
         self.assertEqual(
@@ -243,45 +243,48 @@ class TestG12PipelineSpecifications(unittest.TestCase):
         health = audit["accepted_trace_health"]
         self.assertEqual(health["bare_control_records_excluded"], 396)
         self.assertEqual(health["accepted_trace_count"], 792)
-        self.assertEqual(health["accepted_trace_with_health"], 3)
-        self.assertEqual(len(health["accepted_trace_missing_health"]), 789)
+        self.assertEqual(health["accepted_trace_with_health"], 0)
+        self.assertEqual(len(health["accepted_trace_missing_health"]), 792)
         self.assertIn("distinct from campaign-row completeness",
                       health["historical_step_health_limitation"])
 
-        closeout = closeout_path.read_text(encoding="utf-8")
-        self.assertIn(
-            "python3 scripts/campaign_run.py audit --output-dir outputs/g1-2",
-            closeout,
+        capture = audit["capture_integrity"]
+        self.assertEqual(capture["checked_cells"], 1188)
+        self.assertEqual(capture["valid_cells"], 1188)
+        self.assertEqual(capture["affected_cells"], [])
+        self.assertEqual(
+            capture["evidence_counts"],
+            {"unverified_legacy": 1164, "attested": 20, "verified": 4},
         )
-        self.assertIn("Exit status: `0`", closeout)
-        for path in (json_path, md_path):
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            self.assertIn(f"SHA-256 `{digest}`", closeout)
+
+        markdown = md_path.read_text(encoding="utf-8")
+        for token in (
+            "Complete main four lanes: 198 / 198",
+            "Complete selected lanes: 198 / 198",
+            "Cells accepted by both manifest and capture verifier: 1188",
+            "Verifier-reported affected cells: 0",
+            "Accepted Ora traces with retained step-health: 0",
+            "Historical Ora traces missing step-health: 792",
+        ):
+            self.assertIn(token, markdown)
 
     def test_tracker_and_registry_record_accepted_g1_2_disposition(self):
         tracker = TRACKER.read_text(encoding="utf-8")
         section = h3_section(
             tracker, "G1.2 — Trigger Prompt Evaluation Sequence — ✅")
-        correction = section[section.index("**Gate correction 2026-07-19"):]
         for token in (
-            "revised and resubmitted",
-            "works without `ORA_HOME` or `ORA_CAMPAIGN_DIR`",
-            "All active campaign sources specify six lanes",
-            "396 control rows",
-            "792 accepted Ora traces",
-            "789 historical traces",
-            "limitation distinct from 198/198 row completeness",
+            "accepted and complete",
+            "198 identities (60 modes, 22 visual outputs, 116 lenses)",
+            "1,188 valid cells, 0 affected",
+            "4 `verified`, 20 `attested`, and 1,164 accepted `unverified_legacy`",
+            "all six lanes are 198/198",
+            "mode:causal-dag` remains distinct from `visual:causal-dag",
+            "visual:fishbone-diagram` remains distinct from `lens:fishbone-diagram",
+            "0 retain `step-health`",
+            "all **792** remain disclosed as historical missing health",
         ):
-            self.assertIn(token, correction)
-        current = section[section.rindex("**Gate acceptance 2026-07-20"):]
-        for token in (
-            "G1.2 accepted and complete",
-            "71 focused tests plus 67 subtests",
-            "789 historical health gaps remain a disclosed limitation",
-            "not retroactively certified",
-            "G1.3 is authorized",
-        ):
-            self.assertIn(token, current)
+            self.assertIn(token, section)
+        self.assertNotIn("OAuth session expired", section)
 
         registry = REGISTRY.read_text(encoding="utf-8")
         for heading in (
@@ -296,9 +299,9 @@ class TestG12PipelineSpecifications(unittest.TestCase):
             self.assertNotIn("candidate v0.9", entry)
         tracker_entry = h3_section(
             registry, "Working — Ora Setup and Refinement.md")
-        self.assertIn("G1.2 is complete after independent acceptance", tracker_entry)
-        self.assertIn("789 historical trace-health gaps remain disclosed", tracker_entry)
-        self.assertIn("G1.3 is authorized and active", tracker_entry)
+        self.assertIn("G1.2 is ✅ accepted and complete", tracker_entry)
+        self.assertIn("full 198-entry / 1,188-cell campaign", tracker_entry)
+        self.assertIn("Historical trace health remains 0 present / 792 missing", tracker_entry)
 
 
 if __name__ == "__main__":

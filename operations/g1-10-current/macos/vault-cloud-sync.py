@@ -7,7 +7,8 @@ over Tailscale via rsync.
 
   Mac -> cloud: non-`private`-tagged vault content -> REMOTE_VAULT_PATH
   cloud -> Mac: new MSI articles -> vault (MSI News/); general/atomics content
-                -> local inbox (~/cloud-ora-sync/inbox), not the vault
+                -> local operator inbox (~/ora/data/cloud-sync/inbox), not
+                   the vault
 
 Triggered by an exact committed vault-change event. There is no clock-driven
 fallback. Sync filter is tag-based:
@@ -22,6 +23,7 @@ is the live MSI publication mirror the cloud -> Mac pull reads from.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -36,10 +38,12 @@ REMOTE_USER = "oracle"
 REMOTE_VAULT_PATH = "/home/oracle/ora/vault-sync"
 REMOTE_OUTBOX = "/home/oracle/cloud-outbox"  # live production path: the article.live follow-up mirrors MSI news to cloud-outbox/msi-news/; pulled cloud -> Mac (the Mac-local mirror folder is capitalized "MSI News/" per LOCAL_MSI_NEWS)
 
-WORK_DIR = Path.home() / "cloud-ora-sync" / "var"
+ORA_HOME = Path(os.environ.get("ORA_HOME") or Path.home() / "ora").expanduser()
+STATE_ROOT = ORA_HOME / "data" / "cloud-sync"
+WORK_DIR = STATE_ROOT / "var"
 EXCLUDE_FILE = WORK_DIR / "exclude.txt"
 LOG_FILE = WORK_DIR / "sync.log"
-LOCAL_INBOX = Path.home() / "cloud-ora-sync" / "inbox"
+LOCAL_INBOX = STATE_ROOT / "inbox"
 
 STATIC_EXCLUDES = [
     ".git/",
@@ -214,7 +218,7 @@ def rsync_cloud_to_mac(dry_run: bool = False) -> int:
         # msi-news/ is handled by the dedicated vault-mirror sync (see
         # rsync_cloud_msi_news_to_vault below); excluding it from the
         # general inbox pull avoids a second copy of every MSI article
-        # landing in ~/cloud-ora-sync/inbox/msi-news/.
+        # landing in ~/ora/data/cloud-sync/inbox/msi-news/.
         "--exclude=msi-news/",
         f"{REMOTE_USER}@{REMOTE_HOST}:{REMOTE_OUTBOX}/",
         str(LOCAL_INBOX) + "/",
@@ -296,7 +300,7 @@ def index_synced_msi_news(changed: list[str], deleted: list[str]) -> None:
     if not changed and not deleted:
         return
     try:
-        ora_home = str(Path.home() / "ora")
+        ora_home = str(ORA_HOME)
         if ora_home not in sys.path:
             sys.path.insert(0, ora_home)
         from orchestrator.tools.index_msi_news import (

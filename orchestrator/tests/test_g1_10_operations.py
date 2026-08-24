@@ -212,6 +212,41 @@ class OperationalIdentityTests(unittest.TestCase):
         self.assertIn('step.get("exit_status") == 0', source)
         self.assertNotIn("time.sleep", source)
 
+    def test_vault_cloud_sync_uses_ignored_ora_local_state_and_keeps_privacy_rules(self):
+        source = CURRENT / "macos" / "vault-cloud-sync.py"
+        with mock.patch.dict(os.environ, {"ORA_HOME": "/tmp/ora-operator"}):
+            module = load_script(source, "g1_10_vault_cloud_sync")
+        self.assertEqual(module.STATE_ROOT, Path("/tmp/ora-operator/data/cloud-sync"))
+        self.assertEqual(module.WORK_DIR, module.STATE_ROOT / "var")
+        self.assertEqual(module.LOCAL_INBOX, module.STATE_ROOT / "inbox")
+        self.assertEqual(module.LOG_FILE, module.WORK_DIR / "sync.log")
+        self.assertEqual(module.EXCLUDE_FILE, module.WORK_DIR / "exclude.txt")
+        self.assertTrue(module.has_private_tag("private: true"))
+        self.assertTrue(module.has_private_tag("tags:\n  - private"))
+        self.assertTrue(module.has_private_tag("tags: [reference, private]"))
+        self.assertFalse(module.has_private_tag("tags: [reference, public]"))
+        retired_external_name = "cloud-" + "ora-sync"
+        self.assertNotIn(retired_external_name, source.read_text(encoding="utf-8"))
+
+    def test_macos_rollback_keeps_both_obsolete_agents_retired(self):
+        source = (CURRENT / "macos" / "rollback-macos-cutover.sh").read_text()
+        self.assertIn('"restored_labels": [', source)
+        self.assertIn('"retained_retired_labels": [', source)
+        for label in ("com.cloud-ora.sync", "com.msi.image-mirror"):
+            with self.subTest(label=label):
+                self.assertIn(f'"{label}.plist"', source)
+                self.assertIn(f'"$label" == "{label}"', source)
+                self.assertIn(f'"{label}"', source)
+        for restored in (
+            "com.msi.repo-pullsync",
+            "com.ora.vault-derive-sync",
+            "com.ora.vault-git-autocommit",
+        ):
+            with self.subTest(restored=restored):
+                self.assertIn(f'"{restored}"', source)
+        self.assertIn("Restored three captured pre-G1.10 cadence agents", source)
+        self.assertIn("scheduled MSI image mirror agents remain retired", source)
+
     def test_vault_event_pipeline_derives_for_any_markdown_under_active_roots(self):
         source = CURRENT / "macos" / "vault-event-pipeline.py"
         module = load_script(source, "g1_10_vault_route_pipeline")
