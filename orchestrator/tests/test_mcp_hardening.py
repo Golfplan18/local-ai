@@ -353,7 +353,7 @@ for raw in sys.stdin:
         calls += 1
         if calls == 1:
             started.write_text('started', encoding='utf-8')
-            time.sleep(0.6)
+            time.sleep(1.2)
         send({'jsonrpc':'2.0','id':message['id'],'result':{'content':[{'type':'text','text':'ok'}]}})
 """
 
@@ -416,7 +416,7 @@ for raw in sys.stdin:
         finally:
             conn.shutdown()
 
-    def test_busy_connection_returns_prompt_result_without_waiting_for_request(self):
+    def test_busy_connection_uses_the_caller_timeout_without_sending(self):
         with tempfile.TemporaryDirectory() as directory:
             started = Path(directory) / "started"
             conn = mcp_client.MCPConnection(
@@ -436,15 +436,20 @@ for raw in sys.stdin:
                 while not started.exists() and time.monotonic() < deadline:
                     time.sleep(0.01)
                 self.assertTrue(started.exists())
-                with mock.patch.object(mcp_client, "MCP_BUSY_WAIT_SECONDS", 0.05):
-                    began = time.monotonic()
-                    busy = conn.call_tool("read_file", {"path": "x"}, timeout=2)
-                    elapsed = time.monotonic() - began
+                began = time.monotonic()
+                busy = conn.call_tool("read_file", {"path": "x"}, timeout=1)
+                elapsed = time.monotonic() - began
                 self.assertIn("busy", busy["error"].lower())
-                self.assertLess(elapsed, 0.4)
+                self.assertGreater(elapsed, 0.8)
+                self.assertLess(elapsed, 1.3)
+                self.assertFalse(conn._closed)
                 worker.join(timeout=2)
                 self.assertFalse(worker.is_alive())
                 self.assertEqual(first[0]["content"][0]["text"], "ok")
+                self.assertEqual(
+                    conn.call_tool("read_file", {"path": "x"})["content"][0]["text"],
+                    "ok",
+                )
             finally:
                 if worker.is_alive():
                     worker.join(timeout=2)
@@ -595,7 +600,7 @@ class MCPManagerTests(unittest.TestCase):
         finally:
             manager.shutdown()
 
-    def test_failed_response_removes_tools_and_recovers_on_later_use(self):
+    def test_failed_response_removes_tools_and_concurrent_later_use_recovers_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             state = root / "state"
@@ -618,8 +623,18 @@ class MCPManagerTests(unittest.TestCase):
                 "tools": {"read_file"},
             }
             manager = mcp_client.MCPClientManager()
+            real_connection = mcp_client.MCPConnection
+            created = []
+
+            def make_connection(*args, **kwargs):
+                connection = real_connection(*args, **kwargs)
+                created.append(connection)
+                return connection
+
             with mock.patch.object(mcp_client, "MCP_REGISTRY", str(registry_path)), \
                  mock.patch.object(mcp_client, "_validate_server_config", return_value=cfg), \
+                 mock.patch.object(mcp_client, "MCPConnection",
+                                   side_effect=make_connection), \
                  mock.patch.object(tool_events._rp, "VAULT_STR", str(root)):
                 manager.initialize()
                 try:
@@ -633,12 +648,28 @@ class MCPManagerTests(unittest.TestCase):
                     self.assertIn("unavailable", failed["error"])
                     self.assertEqual(manager.get_tool_definitions(), [])
 
-                    recovered = manager.call_mcp_tool(
-                        "mcp_vault-fs_read_file", {"path": "probe.txt"},
-                    )
-                    self.assertEqual(
-                        recovered["content"][0]["text"], "recovered",
-                    )
+                    barrier = threading.Barrier(3)
+                    recovered = []
+
+                    def recover():
+                        barrier.wait()
+                        recovered.append(manager.call_mcp_tool(
+                            "mcp_vault-fs_read_file", {"path": "probe.txt"},
+                        ))
+
+                    workers = [threading.Thread(target=recover) for _ in range(2)]
+                    for worker in workers:
+                        worker.start()
+                    barrier.wait()
+                    for worker in workers:
+                        worker.join(timeout=5)
+                    self.assertFalse(any(worker.is_alive() for worker in workers))
+                    self.assertEqual(len(created), 2)
+                    self.assertEqual(len(recovered), 2)
+                    self.assertTrue(all(
+                        result["content"][0]["text"] == "recovered"
+                        for result in recovered
+                    ))
                     self.assertIn(
                         "mcp_vault-fs_read_file",
                         {item["name"] for item in manager.get_tool_definitions()},

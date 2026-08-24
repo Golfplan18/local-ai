@@ -914,9 +914,7 @@ def _is_terminal_result(result: dict[str, Any]) -> bool:
 
     return bool(result and (
         result.get("content_limit_exceeded")
-        or result.get("unsupported_content_encoding")
         or result.get("policy_refusal")
-        or result.get("browser_busy")
     ))
 
 
