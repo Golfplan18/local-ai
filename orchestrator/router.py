@@ -39,6 +39,7 @@ CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
 _DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
 
 DEFAULT_MACHINE_ID = "studio-128"
+DEFAULT_CONTEXT_WINDOW = 256_000
 
 # Default configuration name when one is not explicitly provided.
 # Maps from the legacy ``context`` parameter for backward compatibility.
@@ -81,6 +82,13 @@ UTILITY_SLOTS = {"step1_cleanup", "rag_planner", "sidebar", "classification"}
 # Slots that need capable models (underkill warning if small/free used)
 ANALYSIS_SLOTS = {"depth", "breadth", "consolidation", "verification", "evaluator",
                   "consolidator", "primary"}
+
+# MSI's analysis contract is stricter than the general router contract. Keep
+# this gate at the named-configuration boundary so local/utility routing can
+# continue to represent its smaller, truthful capacities.
+MSI_ANALYSIS_CONFIG_NAME = "msi-publication"
+MSI_MIN_CONTEXT_WINDOW = 256_000
+MSI_ANALYSIS_SLOTS = ANALYSIS_SLOTS | {"formatter"}
 
 # Default overkill thresholds: these tiers trigger warnings in utility slots
 OVERKILL_TIERS = {"local-premium", "premium", "mid"}
@@ -251,7 +259,19 @@ class Router:
                 "enabled": bool(installed and endpoint.get("enabled", True)),
                 "ram_resident_gb": endpoint.get("ram_resident_gb") or ram_gb,
                 "ram_overhead_gb": endpoint.get("ram_overhead_gb") or 0,
-                "context_window": endpoint.get("context_window") or 32768,
+                # Installer discovery may omit capacity. Treat absence as the
+                # user-facing 256K baseline; an explicit smaller value remains
+                # visible for unrelated routing and is filtered only by MSI's
+                # analysis boundary.
+                "context_window": (
+                    endpoint.get("context_window")
+                    or endpoint.get("context_length")
+                    or endpoint.get("max_context_length")
+                    or model.get("context_window")
+                    or model.get("context_length")
+                    or model.get("max_context_length")
+                    or DEFAULT_CONTEXT_WINDOW
+                ),
                 "parameters_b": (endpoint.get("parameters_b")
                                  or model.get("parameters_b")
                                  or model.get("active_params_per_token")),
@@ -309,15 +329,73 @@ class Router:
         falling through the chain.
         """
         aliases: dict[str, str] = {}
+        ambiguous: set[str] = set()
         for ep_id in self._endpoints:
             if isinstance(ep_id, str):
-                aliases.setdefault(ep_id.lower(), ep_id)
+                key = ep_id.casefold()
+                if key in ambiguous:
+                    continue
+                previous = aliases.get(key)
+                if previous is not None and previous != ep_id:
+                    aliases.pop(key, None)
+                    ambiguous.add(key)
+                else:
+                    aliases[key] = ep_id
         return aliases
 
     def _resolve_endpoint_id(self, ep_id: str) -> str:
         if ep_id in self._endpoints:
             return ep_id
-        return self._endpoint_aliases.get(ep_id.lower(), ep_id)
+        resolved = self._endpoint_aliases.get(ep_id.lower())
+        if resolved:
+            return resolved
+        try:
+            from orchestrator import model_registry
+        except ImportError:
+            try:
+                from . import model_registry
+            except ImportError:
+                model_registry = None
+        if model_registry is not None:
+            matches = [
+                candidate for candidate in self._endpoints
+                if model_registry.model_ids_equivalent(ep_id, candidate)
+            ]
+            if len(matches) == 1:
+                return matches[0]
+        return ep_id
+
+    @staticmethod
+    def _msi_endpoint_context_window(endpoint: dict) -> int:
+        """Return truthful capacity for an MSI analysis endpoint.
+
+        An absent value is safe at the MSI boundary because the caller's
+        prefilter contract guarantees at least the floor. Explicit smaller
+        values remain visible and therefore fail the boundary check.
+        """
+        for key in ("context_window", "context_length", "max_context_length"):
+            try:
+                value = int(endpoint.get(key, 0))
+            except (TypeError, ValueError):
+                value = 0
+            if value > 0:
+                # An explicit endpoint value is authoritative here. In
+                # particular, do not let a model's larger catalog capacity
+                # erase an intentionally smaller endpoint setting: that
+                # setting remains valid elsewhere but is below MSI's floor.
+                return value
+        model_id = endpoint.get("model_id") or endpoint.get("model") or endpoint.get("id")
+        try:
+            from orchestrator import model_registry
+        except ImportError:
+            try:
+                from . import model_registry
+            except ImportError:
+                model_registry = None
+        if model_registry is not None:
+            return model_registry.context_window_for_model(
+                model_id, default=DEFAULT_CONTEXT_WINDOW)
+        return DEFAULT_CONTEXT_WINDOW
 
     @staticmethod
     def _supports_explicit_interactive(endpoint: dict | None) -> bool:
@@ -1332,6 +1410,12 @@ class Router:
                 continue
             if ep_id in excluded_ids or resolved_ep_id in excluded_ids:
                 continue
+            if (
+                config_name == MSI_ANALYSIS_CONFIG_NAME
+                and slot in MSI_ANALYSIS_SLOTS
+                and self._msi_endpoint_context_window(ep) < MSI_MIN_CONTEXT_WINDOW
+            ):
+                continue
             if mutex_check and ep.get("type") == "local":
                 machine_id = ep.get("machine") or DEFAULT_MACHINE_ID
                 try:
@@ -1431,7 +1515,12 @@ class Router:
             v1["engine"] = ep.get("engine", "mlx")
             v1["model"] = ep.get("model_path", "")
             v1["url"] = ep.get("url", "http://localhost:11434")
-            v1["context_window"] = ep.get("context_window", 0)
+            v1["context_window"] = (
+                ep.get("context_window")
+                or ep.get("context_length")
+                or ep.get("max_context_length")
+                or DEFAULT_CONTEXT_WINDOW
+            )
             v1["ram_required_gb"] = ep.get("ram_resident_gb", 0) + ep.get("ram_overhead_gb", 0)
             v1["model_name"] = ep.get("display_name", "")
             v1["tool_access"] = ep.get("capabilities", {}).get("tool_access", False)
@@ -1467,7 +1556,7 @@ class Router:
                 ep.get("context_window")
                 or ep.get("context_length")
                 or ep.get("max_context_length")
-                or 0
+                or DEFAULT_CONTEXT_WINDOW
             )
             output_cap = (
                 ep.get("max_tokens")

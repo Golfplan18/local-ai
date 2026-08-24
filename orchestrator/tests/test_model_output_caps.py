@@ -16,11 +16,9 @@ from unittest import mock
 from orchestrator import boot
 
 # What one first call requests when the endpoint declares neither an explicit
-# cap nor any context metadata: a conservative quarter of the fail-small
-# 32_768 window (boot._endpoint_initial_output_tokens). Until 2026-08-10 this
-# was a flat default regardless of the endpoint, which reserved the whole
-# unknown window for output and could reject even a short prompt.
-NO_METADATA_FALLBACK = 8192
+# cap nor any context metadata: the 32_000 output-sizing cap applied to the
+# shared 256_000 context default (boot._endpoint_initial_output_tokens).
+NO_METADATA_FALLBACK = 32_000
 # An endpoint that declares a real context window but no cap gets the full
 # frontier-model allowance instead.
 DECLARED_WINDOW_FALLBACK = 32_000

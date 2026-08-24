@@ -45,6 +45,168 @@ def _registry_path() -> Path:
 _registry: dict | None = None
 _load_lock = threading.Lock()
 
+DEFAULT_CONTEXT_WINDOW = 256_000
+CONTEXT_CAPACITY_KEYS = ("context_window", "context_length", "max_context_length")
+
+
+def _positive_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def _identifier_forms(value: object) -> set[str]:
+    """Return safe exact/alias forms for a model identifier.
+
+    The registry contains OpenRouter ids while runtime endpoints may carry a
+    provider-native label (for example ``MiniMax-M3``), a leading ``~`` or an
+    unpinned ``-latest`` alias. These forms are identity-preserving aliases;
+    this helper deliberately does not fuzzy-match model families.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return set()
+    raw = value.strip()
+    if raw.lower().startswith("openrouter:"):
+        raw = raw.split(":", 1)[1].strip()
+    raw = raw.lstrip("~")
+    forms = {raw.casefold()}
+    if "/" in raw:
+        forms.add(raw.rsplit("/", 1)[1].casefold())
+    if raw.casefold().endswith("-latest"):
+        base = raw[:-len("-latest")]
+        forms.add(base.casefold())
+        if "/" in base:
+            forms.add(base.rsplit("/", 1)[1].casefold())
+    return forms
+
+
+def _exact_identifier(value: object) -> str | None:
+    """Return the unexpanded, case-insensitive form of an exact model id."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    raw = value.strip()
+    if raw.lower().startswith("openrouter:"):
+        raw = raw.split(":", 1)[1].strip()
+    return raw.casefold() or None
+
+
+def _alias_resolution_identifier(value: object) -> object:
+    """Normalize the explicit ``~``/``-latest`` alias to its base id."""
+    if not isinstance(value, str) or not value.strip():
+        return value
+    raw = value.strip()
+    if raw.lower().startswith("openrouter:"):
+        raw = raw.split(":", 1)[1].strip()
+    raw = raw.lstrip("~")
+    if raw.casefold().endswith("-latest"):
+        raw = raw[:-len("-latest")]
+    return raw
+
+
+def _record_identifiers(record: dict, key: str) -> set[str]:
+    values: list[object] = [key]
+    for field in ("id", "model_id", "native_model_id"):
+        values.append(record.get(field))
+    aliases = record.get("also_known_as") or []
+    if isinstance(aliases, (list, tuple, set)):
+        values.extend(aliases)
+    else:
+        values.append(aliases)
+    provenance = record.get("_provenance") or {}
+    if isinstance(provenance, dict):
+        for source in provenance.values():
+            if not isinstance(source, dict):
+                continue
+            for field in ("lookup_key", "model_id", "aa_name", "name"):
+                values.append(source.get(field))
+    forms: set[str] = set()
+    for value in values:
+        forms.update(_identifier_forms(value))
+    return forms
+
+
+def _matching_registry_records(model_id: str | None) -> list[dict]:
+    """Return every registry record matching an exact id or declared alias."""
+    requested = _identifier_forms(model_id)
+    if not requested:
+        return []
+    models = load_registry().get("models") or {}
+    # Prefer exact ids before considering provider-less leaves and declared
+    # aliases. An exact qualified id is authoritative even when another
+    # record happens to advertise the same provider-native alias.
+    exact_requested = _exact_identifier(model_id)
+    if exact_requested:
+        exact_matches = []
+        for key, record in models.items():
+            if not isinstance(record, dict):
+                continue
+            exact_values = [
+                key,
+                record.get("id"),
+                record.get("model_id"),
+                record.get("native_model_id"),
+            ]
+            if any(_exact_identifier(value) == exact_requested
+                   for value in exact_values):
+                if all(record is not existing for existing in exact_matches):
+                    exact_matches.append(record)
+        if exact_matches:
+            return exact_matches
+
+    matches = [
+        record for key, record in models.items()
+        if isinstance(record, dict) and requested.intersection(
+            _record_identifiers(record, key))
+    ]
+    unique_matches = []
+    for record in matches:
+        if all(record is not existing for existing in unique_matches):
+            unique_matches.append(record)
+    return unique_matches
+
+
+def lookup(model_id: str | None) -> dict | None:
+    """Return the registry record for an exact or unique declared alias."""
+    matches = _matching_registry_records(model_id)
+    return matches[0] if len(matches) == 1 else None
+
+
+def model_ids_equivalent(left: str | None, right: str | None) -> bool:
+    """Whether two runtime ids are the same exact/declared model alias."""
+    left_matches = _matching_registry_records(_alias_resolution_identifier(left))
+    right_matches = _matching_registry_records(_alias_resolution_identifier(right))
+    if len(left_matches) > 1 or len(right_matches) > 1:
+        return False
+    if len(left_matches) == 1 and len(right_matches) == 1:
+        return left_matches[0] is right_matches[0]
+    left_forms = _identifier_forms(left)
+    right_forms = _identifier_forms(right)
+    return bool(left_forms and right_forms and left_forms.intersection(right_forms))
+
+
+def context_window_for_model(
+    model_id: str | None, default: int = DEFAULT_CONTEXT_WINDOW,
+) -> int:
+    """Return registry context capacity for a model, or ``default``."""
+    record = lookup(model_id)
+    if not record:
+        return default
+    candidates = [_positive_int(record.get(key)) for key in CONTEXT_CAPACITY_KEYS]
+    provenance = record.get("_provenance") or {}
+    if isinstance(provenance, dict):
+        for source in provenance.values():
+            if isinstance(source, dict):
+                candidates.extend(
+                    _positive_int(source.get(key))
+                    for key in ("max_input_tokens", "context_length")
+                )
+    capacities = [value for value in candidates if value is not None]
+    return max(capacities, default=default)
+
 
 def load_registry(force: bool = False) -> dict:
     """Return the parsed registry dict.
@@ -91,6 +253,8 @@ def overlay_routing_config(rc: dict) -> dict:
       vision_capable — registry's empirically-verified value overrides
                        the routing-config flag (the source of the
                        2026-05-20 kimi-k2.6 bug).
+      context_window — registry/catalog capacity fills a missing endpoint
+                       value while preserving any explicit capacity value.
       intelligence_score — added as a new endpoint field for downstream
                        consumers that want to rank-order models.
 
@@ -112,9 +276,20 @@ def overlay_routing_config(rc: dict) -> dict:
         model_id = ep.get("id") or ep.get("model_id") or ep.get("model")
         if not model_id:
             continue
-        reg = models.get(model_id)
+        reg = lookup(str(model_id))
         if reg is None:
             continue
+        registry_capacity = context_window_for_model(
+            str(model_id), default=DEFAULT_CONTEXT_WINDOW)
+        declared_capacities = [
+            _positive_int(ep.get(key)) for key in CONTEXT_CAPACITY_KEYS
+        ]
+        capacities = [value for value in declared_capacities if value is not None]
+        # Keep an explicit endpoint capacity truthful, including a smaller
+        # value. MSI analysis filters that value at its own boundary; ordinary
+        # routing must still be able to represent it accurately.
+        if not capacities:
+            ep["context_window"] = registry_capacity
         # Vision capability: registry wins when it has a non-null value.
         vc = reg.get("vision_capable")
         if vc is not None:
@@ -291,9 +466,12 @@ def _empty_registry() -> dict:
 
 
 __all__ = [
+    "DEFAULT_CONTEXT_WINDOW",
     "load_registry",
     "reload",
     "lookup",
+    "model_ids_equivalent",
+    "context_window_for_model",
     "vision_capable",
     "intelligence_score",
     "overlay_routing_config",
