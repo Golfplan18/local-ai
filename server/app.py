@@ -17813,8 +17813,8 @@ def capability_image_styles():
         )
 
     inputs = {
-        "source_image":    data.get("source_image_data_url"),
-        "style_reference": data.get("style_reference_data_url"),
+        "source_image":    source_bytes,
+        "style_reference": style_bytes,
         "strength":        strength,
     }
     provider_override = data.get("provider_override") or None
@@ -18164,7 +18164,7 @@ def _coerce_rubric_scores(obj):
 # and the WP-7.3.2c `dispatch_image_varies` handler in
 # orchestrator/integrations/replicate.py. The browser POSTs:
 #   { slot, inputs: { source_image, count?, variation_strength?,
-#                     source_image_data_url? }, provider_override? }
+#                     source_image_data_url }, provider_override? }
 # Per Contracts §3.6: required `source_image`; optional `count` (default 4),
 # `variation_strength` (default 0.5). Returns an `images` list per JS
 # `_extractImages`. Sync.
@@ -18185,7 +18185,7 @@ def capability_image_varies():
       inputs: { source_image (str id, required),
                 count (int 1-8, optional, default 4),
                 variation_strength (float 0-1, optional, default 0.5),
-                source_image_data_url (data URL, optional) },
+                source_image_data_url (data URL, required provider input) },
       provider_override (str, optional).
 
     Response:
@@ -18236,7 +18236,19 @@ def capability_image_varies():
     elif variation_strength > 1.0:
         variation_strength = 1.0
 
-    src_data_url = inputs.get("source_image_data_url")
+    try:
+        source_bytes = _decode_data_url(
+            inputs.get("source_image_data_url"), "source_image_data_url"
+        )
+    except ValueError as exc:
+        return _capability_error_response(
+            "source_ambiguous",
+            "image_varies requires usable source image bytes in "
+            f"'source_image_data_url': {exc}",
+            status=400,
+            attempts=[],
+        )
+
     try:
         registry = _load_image_capability_registry()
     except Exception as exc:
@@ -18248,7 +18260,7 @@ def capability_image_varies():
         )
 
     handler_inputs = {
-        "source_image":       src_data_url or source_id,
+        "source_image":       source_bytes,
         "count":              count,
         "variation_strength": variation_strength,
     }

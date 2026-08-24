@@ -848,6 +848,8 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
                                side_effect=fake_stream), \
              mock.patch.object(self.server, "_save_conversation",
                                return_value="session-test-pair-001"), \
+             mock.patch.object(self.server, "_log_pending_submission",
+                               return_value="submission-test-001"), \
              mock.patch.object(self.server.threading, "Thread", _NoopThread):
             resp = self.client.post(
                 "/chat",
@@ -866,8 +868,11 @@ class ChatEndpointBackwardCompatTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["conversation_id"], "main")
         self.assertEqual(payload["chunk_id"], "session-test-pair-001")
-        # Ordinary chat carries no Programming context unless explicitly entered.
-        self.assertIsNone(captured.get("extra_context"))
+        # Ordinary chat carries only the pending-submission identity needed by
+        # the framework continuation boundary.
+        self.assertEqual(captured.get("extra_context"), {
+            "_framework_submission_id": "submission-test-001",
+        })
 
 
 if __name__ == "__main__":

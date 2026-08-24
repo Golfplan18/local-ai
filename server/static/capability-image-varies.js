@@ -199,8 +199,8 @@
   /**
    * Given a canvas-object id, ask the visual panel for the underlying
    * data URL. Returns null when the panel doesn't expose a lookup or
-   * the id isn't found. The server can synthesise a stand-in when this
-   * resolves to null (mock path), so this is best-effort.
+   * the id isn't found. A request without resolved image bytes is rejected
+   * by the server because a canvas-object id is not provider image input.
    *
    * Recognised panel APIs (preference order):
    *   getImageDataUrlById(id)        → string
@@ -625,8 +625,8 @@
       if (!isFinite(strength)) strength = DEFAULT_STRENGTH;
       strength = Math.min(1.0, Math.max(0.0, strength));
 
-      // Try to resolve source bytes via the panel; fall back to id-only
-      // (server can mock from a stand-in in that case).
+      // Try to resolve source bytes via the panel. The source id is retained
+      // for UI identity, but the server rejects an id-only provider request.
       var dataUrl = inputs.source_image_data_url
         || _resolveSourceImageDataUrl(state.visualPanel, sourceId);
 

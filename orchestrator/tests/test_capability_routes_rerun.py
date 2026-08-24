@@ -179,6 +179,39 @@ class CapabilityMockBoundaryTests(unittest.TestCase):
                 load_registry.assert_not_called()
 
 
+class CapabilityImageStylesRouteTests(unittest.TestCase):
+    """Regression coverage for /api/capability/image_styles."""
+
+    def setUp(self) -> None:
+        from server import app as server  # noqa: WPS433
+        self.server = server
+        self.client = server.app.test_client()
+
+    def test_decoded_source_and_style_bytes_reach_provider(self) -> None:
+        registry, calls = _fake_registry(
+            "image_styles",
+            "local-diffusers",
+            _tiny_png_bytes(),
+        )
+        with mock.patch.object(
+            self.server, "_load_image_capability_registry", return_value=registry
+        ):
+            resp = self.client.post(
+                "/api/capability/image_styles",
+                data=json.dumps({
+                    "source_image_data_url": _tiny_png_data_url(),
+                    "style_reference_data_url": _tiny_png_data_url(),
+                    "strength": 0.6,
+                }),
+                content_type="application/json",
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(calls[0]["inputs"]["source_image"], _tiny_png_bytes())
+        self.assertEqual(calls[0]["inputs"]["style_reference"], _tiny_png_bytes())
+        self.assertEqual(calls[0]["inputs"]["strength"], 0.6)
+
+
 class CapabilityImageVariesRouteTests(unittest.TestCase):
     """Smoke tests for /api/capability/image_varies (Contracts §3.6)."""
 
@@ -187,8 +220,8 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         self.server = server
         self.client = server.app.test_client()
 
-    def test_patched_provider_returns_image_list(self) -> None:
-        """A patched provider returns the route's real image-list shape."""
+    def test_source_bytes_flow_and_unresolved_id_returns_400(self) -> None:
+        """Provider receives bytes; a canvas id alone is rejected truthfully."""
         body = {
             "slot": "image_varies",
             "inputs": {
@@ -198,7 +231,7 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
                 "source_image_data_url": _tiny_png_data_url(),
             },
         }
-        registry, _calls = _fake_registry(
+        registry, calls = _fake_registry(
             "image_varies",
             "local-diffusers",
             lambda inputs: [
@@ -218,6 +251,7 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         payload = json.loads(resp.data)
         self.assertNotIn("mocked", payload)
         self.assertEqual(payload.get("provider"), "local-diffusers")
+        self.assertEqual(calls[0]["inputs"]["source_image"], _tiny_png_bytes())
         self.assertIsInstance(payload.get("images"), list)
         self.assertEqual(len(payload["images"]), 4)
         for entry in payload["images"]:
@@ -227,6 +261,20 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
             self.assertTrue(len(entry["data"]) > 50, "expected non-empty base64")
             # Ensure it's actually decodable.
             base64.b64decode(entry["data"])
+
+        unresolved = self.client.post(
+            "/api/capability/image_varies",
+            data=json.dumps({
+                "slot": "image_varies",
+                "inputs": {"source_image": "obj_42", "count": 2},
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(unresolved.status_code, 400)
+        error = json.loads(unresolved.data)["error"]
+        self.assertEqual(error["code"], "source_ambiguous")
+        self.assertIn("source_image_data_url", error["message"])
+        self.assertEqual(len(calls), 1)
 
     def test_count_clamps_to_bounds(self) -> None:
         """Count outside [1,8] is silently clamped."""
@@ -271,32 +319,6 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         payload = json.loads(resp.data)
         self.assertEqual(payload["error"]["code"], "source_ambiguous")
 
-    def test_no_source_bytes_falls_back_to_placeholder(self) -> None:
-        """When no source_image_data_url is supplied, patched provider emits images."""
-        body = {
-            "slot": "image_varies",
-            "inputs": {"source_image": "obj_42", "count": 2},
-        }
-        registry, _calls = _fake_registry(
-            "image_varies",
-            "local-diffusers",
-            lambda inputs: [
-                {"image_data_uri": _tiny_png_data_url()}
-                for _ in range(2)
-            ],
-        )
-        with mock.patch.object(
-            self.server, "_load_image_capability_registry", return_value=registry
-        ):
-            resp = self.client.post(
-                "/api/capability/image_varies",
-                data=json.dumps(body),
-                content_type="application/json",
-            )
-        self.assertEqual(resp.status_code, 200)
-        payload = json.loads(resp.data)
-        self.assertEqual(len(payload["images"]), 2)
-
     def test_no_provider_error_includes_attempts(self) -> None:
         """Fallback exhaustion stays visible in the typed error response."""
         from capability_registry import CapabilityError
@@ -323,7 +345,10 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
         )
         body = {
             "slot": "image_varies",
-            "inputs": {"source_image": "obj_42"},
+            "inputs": {
+                "source_image": "obj_42",
+                "source_image_data_url": _tiny_png_data_url(),
+            },
         }
         with mock.patch.object(
             self.server, "_load_image_capability_registry", return_value=registry
@@ -361,7 +386,10 @@ class CapabilityImageVariesRouteTests(unittest.TestCase):
                         "/api/capability/image_varies",
                         data=json.dumps({
                             "slot": "image_varies",
-                            "inputs": {"source_image": "obj_42"},
+                            "inputs": {
+                                "source_image": "obj_42",
+                                "source_image_data_url": _tiny_png_data_url(),
+                            },
                         }),
                         content_type="application/json",
                     )
