@@ -172,6 +172,37 @@ def _boot_context_api():
     return __import__("boot")
 
 
+# ── Core HTTP and upload helpers ───────────────────────────────────────────
+
+def _json_response(payload: dict, status: int = 200):
+    return Response(json.dumps(payload), status=status,
+                    mimetype="application/json")
+
+
+def _save_filestorage_no_follow(file_storage, target_path: str) -> None:
+    """Stream one Werkzeug upload into an exclusive sibling then replace."""
+    target = Path(target_path)
+    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(temporary, flags, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            file_storage.save(stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 # ── Async job queue (WP-7.6) ────────────────────────────────────────────────
 #
 # orchestrator/job_queue.py tracks every async capability invocation
@@ -286,11 +317,6 @@ except Exception as _e:  # pragma: no cover — defensive
 
 # Capture SSE fan-out retired 2026-05-01 — browser polls
 # /api/capture/<id>/state via capture-controls.js since 2026-04-30.
-
-
-def _json_response(payload: dict, status: int = 200):
-    return Response(json.dumps(payload), status=status,
-                    mimetype="application/json")
 
 
 @app.route("/api/capture/devices", methods=["GET"])
@@ -974,30 +1000,6 @@ def _media_library_staging_dir(
     if create:
         return str(rp.safe_owned_subdir(parent, cid, create=True))
     return str(path)
-
-
-def _save_filestorage_no_follow(file_storage, target_path: str) -> None:
-    """Stream one Werkzeug upload into an exclusive sibling then replace."""
-    target = Path(target_path)
-    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    fd = os.open(temporary, flags, 0o600)
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            fd = -1
-            file_storage.save(stream)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, target)
-    finally:
-        if fd >= 0:
-            os.close(fd)
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 def _purge_media_library_staging(conversation_id: str) -> int:
