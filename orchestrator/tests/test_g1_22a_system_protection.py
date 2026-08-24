@@ -1143,7 +1143,7 @@ class TestSystemProtectionDocumentation(unittest.TestCase):
             )
         )
         for token in (
-            "Current verdict — pre-channel correction and original hardening landed; ordinary-use follow-up identity pending; full gate still open.",
+            "Current verdict — pre-channel correction and original hardening landed; ordinary-use follow-up landed; full gate still open.",
             "G1.22A IMPLEMENTED / JUDGMENT PENDING",
             "G1.22A SECURITY CORRECTION SUBMITTED",
             "G1.22A RESIDUAL AUTHORITY CORRECTION SUBMITTED",
