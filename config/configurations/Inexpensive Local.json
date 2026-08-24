@@ -1,0 +1,85 @@
+{
+  "name": "Inexpensive Local",
+  "description": "Copied from 'free' via the Models pane Customize action. Original lineage: free.",
+  "preset_lineage": "custom",
+  "cells": {
+    "utility": {
+      "step1_cleanup": {
+        "primary": "local-mlx-qwen3.5-9b",
+        "fallback": [
+          "cohere/north-mini-code:free",
+          "nvidia/nemotron-nano-9b-v2:free"
+        ]
+      },
+      "classification": {
+        "primary": "local-mlx-qwen3.5-9b",
+        "fallback": [
+          "cohere/north-mini-code:free",
+          "nvidia/nemotron-nano-9b-v2:free"
+        ]
+      },
+      "rag_planner": {
+        "primary": "local-mlx-qwen3.5-9b",
+        "fallback": [
+          "cohere/north-mini-code:free",
+          "nvidia/nemotron-nano-9b-v2:free"
+        ]
+      },
+      "gear2_rag_lookup": {
+        "primary": "local-mlx-qwen3.6-27b",
+        "fallback": []
+      }
+    },
+    "analysis": {
+      "gear4": {
+        "depth": {
+          "primary": "local-mlx-mistral-medium-128b",
+          "fallback": [
+            "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "nvidia/nemotron-3.5-lightning:free"
+          ]
+        },
+        "breadth": {
+          "primary": "minimax/MiniMax-M3",
+          "fallback": []
+        }
+      },
+      "gear3": {
+        "depth": {
+          "primary": "local-mlx-qwen3.6-27b",
+          "fallback": []
+        },
+        "breadth": null
+      }
+    },
+    "post_analysis": {
+      "consolidation": {
+        "primary": "codex-subscription:gpt-5.6-luna",
+        "fallback": [
+          "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "nvidia/nemotron-3.5-lightning:free"
+        ]
+      },
+      "verification": {
+        "primary": "local-mlx-mistral-medium-128b",
+        "fallback": [
+          "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "nvidia/nemotron-3.5-lightning:free"
+        ]
+      },
+      "formatter": {
+        "primary": "local-mlx-mistral-medium-128b",
+        "fallback": [
+          "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "nvidia/nemotron-3.5-lightning:free"
+        ]
+      }
+    }
+  },
+  "toggles": {
+    "adversarial_diversity": true,
+    "vision_only": true,
+    "min_context_1m": true
+  },
+  "diversity_override": true
+}
