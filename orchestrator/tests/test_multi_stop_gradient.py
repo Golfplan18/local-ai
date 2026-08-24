@@ -18,10 +18,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from orchestrator.render import (  # noqa: E402
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
+from plugins.video.backend.render import (  # noqa: E402
     _build_title_card_gradient,
 )
-from orchestrator.timeline import _normalize_clip  # noqa: E402
+from plugins.video.backend.timeline import _normalize_clip  # noqa: E402
 
 
 class TestNormalizerStops(unittest.TestCase):

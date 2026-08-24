@@ -33,8 +33,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from orchestrator import preview  # noqa: E402  (path setup must precede)
-from orchestrator.render import (  # noqa: E402
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
+from plugins.video.backend import preview  # noqa: E402  (path setup must precede)
+from plugins.video.backend.render import (  # noqa: E402
     STATE_COMPLETE,
     STATE_RENDERING,
 )

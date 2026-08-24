@@ -235,9 +235,9 @@ function standInRegistry(listValue, entries) {
   };
 }
 
-var CORE_IDS = ['models', 'visual', 'styles', 'avmedia', 'general',
+var CORE_IDS = ['models', 'visual', 'styles', 'audio', 'general',
                 'shortcuts', 'apis', 'projects'];
-var ALIAS_IDS = ['transcription', 'speech', 'capture', 'export', 'whisper',
+var ALIAS_IDS = ['transcription', 'speech', 'whisper',
                  'retrieval', 'aside', 'interface'];
 var FAILED_TEXT = 'This section could not be displayed.';
 

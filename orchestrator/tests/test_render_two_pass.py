@@ -24,7 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from orchestrator.render import (  # noqa: E402  (path setup must precede)
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
+from plugins.video.backend.render import (  # noqa: E402  (path setup must precede)
     PRESETS,
     _cleanup_passlog,
     _split_for_two_pass,

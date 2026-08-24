@@ -7,11 +7,10 @@
  * Two invocation paths share one helper:
  *
  *   1. Right-click on a canvas image → small context menu with a
- *      "Send to media library" entry. Wired by visual-panel.js's
- *      stage-level contextmenu listener.
- *   2. Toolbar button (tool:send_to_library, on the universal toolbar)
- *      → finds the most relevant image on the canvas and sends it.
- *      Disabled when no candidate image is present.
+ *      "Send to media library" entry. Wired by this plugin's stage-level
+ *      contextmenu listener.
+ *   2. The plugin's Exhibits mount button finds the most relevant image on
+ *      the canvas and sends it.
  *
  * Source-byte rule (decision 2 from the design conversation): we send
  * the ORIGINAL image bytes — never a rasterized snapshot of the canvas.
@@ -328,7 +327,27 @@
     }, 0);
   }
 
+  function init(panel) {
+    if (!panel || !panel.stage || panel.stage._oraVideoLibraryContextMenu) return false;
+    panel.stage._oraVideoLibraryContextMenu = true;
+    panel.stage.on('contextmenu.vp-cl', function (event) {
+      var target = event && event.target;
+      if (!target || typeof target.getClassName !== 'function'
+          || target.getClassName() !== 'Image') return;
+      var native = event.evt;
+      if (native && typeof native.preventDefault === 'function') native.preventDefault();
+      openContextMenu(
+        panel,
+        (native && native.clientX) || 0,
+        (native && native.clientY) || 0,
+        target
+      );
+    });
+    return true;
+  }
+
   root.OraV3CanvasToLibrary = {
+    init: init,
     findCandidateImage: findCandidateImage,
     send: send,
     sendBest: sendBest,

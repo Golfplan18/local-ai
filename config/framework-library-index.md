@@ -41,6 +41,5 @@
 | style-registry.md | frameworks/book/style-registry.md | *Canonical source for the Output Style framework's registry of built-in Output Style profiles. Engine mirror (loaded at  |
 | supplemental-rag-protocol.md | frameworks/book/supplemental-rag-protocol.md | *Standing instruction for analytical consumers that need a truthful way to report an evidence gap. A supplemental reques |
 | terrain-mapping.md | frameworks/book/terrain-mapping.md | Terrain Mapping (TMF) |
-| video-editing-suggestions.md | frameworks/book/video-editing-suggestions.md | Video Editing Suggestions |
 | wicked-future-analysis.md | frameworks/book/wicked-future-analysis.md | *A Framework for Producing an Integrated Forward Analysis with Probability-Weighted Scenarios, Adversarial-Future Stress |
 | worldview-cartography-analysis.md | frameworks/book/worldview-cartography-analysis.md | *A Framework for Producing a Cartography of Competing Worldviews — Each Worldview's Foundational Commitments Surfaced, |

@@ -51,6 +51,7 @@
   var _hostEl = null;         // visual-panel root we mount into
   var _conversationId = null;
   var _entries = [];
+  var _browserBody = null;
   var _captureSse = null;
 
   var _AUDIO_GLYPH = ''
@@ -291,7 +292,7 @@
     var countEl = _panelEl && _panelEl.querySelector('[data-role="count"]');
     if (countEl) countEl.textContent = String(_entries.length);
     if (_emptyEl) _emptyEl.style.display = _entries.length === 0 ? '' : 'none';
-    if (_entries.length === 0) return;
+    if (_entries.length === 0) { _renderBrowserEntries(); return; }
 
     _entries.forEach(function (entry) {
       var card = document.createElement('div');
@@ -374,6 +375,49 @@
 
       _gridEl.appendChild(card);
     });
+    _renderBrowserEntries();
+  }
+
+  function _renderBrowserEntries() {
+    if (!_browserBody) return;
+    _browserBody.innerHTML = '';
+    if (!_entries.length) {
+      var empty = document.createElement('div');
+      empty.className = 'conversation-browser-row';
+      empty.textContent = _conversationId
+        ? 'No media in this Dialogue yet.'
+        : 'Open a Dialogue to browse its media.';
+      _browserBody.appendChild(empty);
+      return;
+    }
+    _entries.forEach(function (entry) {
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'conversation-browser-row';
+      row.dataset.mediaEntryId = entry.id;
+      row.textContent = (entry.display_name || entry.source_path || entry.id)
+        + (entry.duration_ms ? ' · ' + _formatDuration(entry.duration_ms) : '');
+      row.title = entry.source_path || '';
+      row.draggable = true;
+      row.addEventListener('dragstart', function (event) {
+        if (!event.dataTransfer) return;
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData('application/x-ora-media-entry', entry.id);
+        event.dataTransfer.setData('text/plain', entry.display_name || entry.id);
+      });
+      row.addEventListener('dblclick', function () {
+        document.dispatchEvent(new CustomEvent('ora:media-library-entry-selected', {
+          detail: { entry: entry, conversation_id: _conversationId },
+        }));
+      });
+      _browserBody.appendChild(row);
+    });
+  }
+
+  function renderBrowser(body) {
+    _browserBody = body || null;
+    _renderBrowserEntries();
+    return refresh();
   }
 
   // ── network ──────────────────────────────────────────────────────────────
@@ -546,6 +590,7 @@
     init: init,
     setConversationId: setConversationId,
     refresh: refresh,
+    renderBrowser: renderBrowser,
     acceptDrop: acceptDrop,
     getState: function () {
       return { entries: _entries.slice(), conversationId: _conversationId };

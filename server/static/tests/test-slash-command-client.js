@@ -265,6 +265,58 @@ async function run() {
 
   delete w.OraPromptTemplateRuntime;
 
+  record('/video is absent and unconsumed before the plugin loads',
+    w.OraSlashCommands.handleClientCommand('/video') === false);
+
+  var settingsBeforeOptionalAliases = settingsOpens.length;
+  record('/settings video is absent and unconsumed before the plugin loads',
+    w.OraSlashCommands.handleClientCommand('/settings video') === false
+      && settingsOpens.length === settingsBeforeOptionalAliases);
+  record('/settings audio continues opening core Audio',
+    w.OraSlashCommands.handleClientCommand('/settings audio') === true
+      && settingsOpens[settingsOpens.length - 1].tab === 'audio');
+
+  var paneOwner = null;
+  var paneTakes = 0;
+  var paneReleases = 0;
+  w.OraPanes = {
+    register: function () { return true; },
+    owner: function () { return paneOwner; },
+    take: function (mode) { paneTakes += 1; paneOwner = mode; return true; },
+    release: function (mode) {
+      paneReleases += 1;
+      if (paneOwner === mode) paneOwner = null;
+      return true;
+    },
+  };
+  w.OraMounts = { register: function () { return true; }, setActive: function () {} };
+  w.OraSettingsSections = { register: function () { return true; } };
+  w.OraBrowseOverlays = {
+    register: function () { return true; },
+    isOpen: function () { return false; },
+    open: function () {},
+    close: function () {},
+  };
+  w.OraVideoSettings = { render: function () {} };
+  require(path.resolve(
+    __dirname, '..', '..', '..', 'plugins', 'video', 'static', 'video-plugin.js'
+  ));
+
+  record('video package owns /video and routes it through pane ownership',
+    w.OraSlashCommands.handleClientCommand('/video open') === true
+      && paneTakes === 1
+      && paneOwner === 'video'
+      && w.OraSlashCommands.handleClientCommand('/video close') === true
+      && paneReleases === 1
+      && paneOwner === null);
+
+  var videoAliases = ['video', 'capture', 'export', 'av', 'media', 'avmedia'];
+  record('installed video settings aliases open the plugin Video section',
+    videoAliases.every(function (alias) {
+      return w.OraSlashCommands.handleClientCommand('/settings ' + alias) === true
+        && settingsOpens[settingsOpens.length - 1].tab === 'video';
+    }));
+
   summarize();
 }
 

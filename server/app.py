@@ -172,6 +172,37 @@ def _boot_context_api():
     return __import__("boot")
 
 
+# ── Core HTTP and upload helpers ───────────────────────────────────────────
+
+def _json_response(payload: dict, status: int = 200):
+    return Response(json.dumps(payload), status=status,
+                    mimetype="application/json")
+
+
+def _save_filestorage_no_follow(file_storage, target_path: str) -> None:
+    """Stream one Werkzeug upload into an exclusive sibling then replace."""
+    target = Path(target_path)
+    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(temporary, flags, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            file_storage.save(stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 # ── Async job queue (WP-7.6) ────────────────────────────────────────────────
 #
 # orchestrator/job_queue.py tracks every async capability invocation
@@ -261,165 +292,6 @@ def job_artifact(conversation_id, job_id, filename):
             )
         except (OSError, ValueError):
             return _json_response({"error": "artifact unavailable"}, status=404)
-
-
-# ── Audio/Video Phase 1 — capture endpoints ──────────────────────────────────
-#
-# media_capture.CaptureManager emits events (started, duration, level,
-# paused, resumed, complete, failed) to subscribers; this section fans
-# them out to per-connection SSE queues. Same pattern as the job_queue
-# wiring above.
-
-try:
-    from media_capture import (
-        get_default_manager as _get_capture_manager,
-        list_avfoundation_devices as _list_capture_devices,
-        capture_region_snapshot as _capture_region_snapshot,
-    )
-    _HAS_CAPTURE = True
-except Exception as _e:  # pragma: no cover — defensive
-    _get_capture_manager = None
-    _list_capture_devices = None
-    _capture_region_snapshot = None
-    _HAS_CAPTURE = False
-    print(f"[server] media_capture unavailable: {_e}")
-
-# Capture SSE fan-out retired 2026-05-01 — browser polls
-# /api/capture/<id>/state via capture-controls.js since 2026-04-30.
-
-
-def _json_response(payload: dict, status: int = 200):
-    return Response(json.dumps(payload), status=status,
-                    mimetype="application/json")
-
-
-@app.route("/api/capture/devices", methods=["GET"])
-def capture_devices():
-    """Return the platform's available capture devices.
-
-    On macOS this is the parsed output of
-    ``ffmpeg -f avfoundation -list_devices true -i ""``. The browser
-    populates the source dropdown from this. ``available: false`` if
-    FFmpeg is missing.
-    """
-    if not _HAS_CAPTURE or _list_capture_devices is None:
-        return _json_response({"available": False, "video": [], "audio": []})
-    devices = _list_capture_devices()
-    return _json_response({"available": True, **devices})
-
-
-@app.route("/api/capture/region-snapshot", methods=["POST"])
-def capture_region_snapshot_endpoint():
-    """Grab a single still frame of a video device for region selection.
-
-    Phase 4: the client posts ``{video_device: <index>}``. The server
-    captures one frame via FFmpeg and returns it as JPEG. The client
-    paints it inside the visual pane and lets the user drag a rectangle
-    to define the crop region used on the next Start.
-    """
-    if not _HAS_CAPTURE or _capture_region_snapshot is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    body = request.get_json(silent=True) or {}
-    video_device = (body.get("video_device") or "").strip()
-    if not video_device:
-        return _json_response({"error": "video_device required"}, status=400)
-
-    snapshots_dir = os.path.expanduser("~/ora/staging/region-snapshots/")
-    os.makedirs(snapshots_dir, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
-    target = os.path.join(snapshots_dir, f"snapshot-{timestamp}.jpg")
-    try:
-        ok = _capture_region_snapshot(video_device, __import__("pathlib").Path(target))
-    except Exception as e:
-        return _json_response({"error": f"snapshot failed: {e}"}, status=500)
-    if not ok or not os.path.exists(target):
-        return _json_response({"error": "snapshot produced no file"}, status=500)
-
-    # Stream the bytes back inline. Small enough that we don't need a
-    # separate static-serving step (a screen frame is ~200 KB JPEG).
-    return send_from_directory(snapshots_dir, os.path.basename(target),
-                               mimetype="image/jpeg")
-
-
-@app.route("/api/capture/start", methods=["POST"])
-def capture_start():
-    if not _HAS_CAPTURE or _get_capture_manager is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    body = request.get_json(silent=True) or {}
-    conv_id = (body.get("conversation_id") or "").strip()
-    if not _valid_live_conversation_id(conv_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    options = dict(body.get("options") or {})
-    with _conversation_lifecycle_lock(conv_id):
-        if _is_conversation_deleted(conv_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            effective_tag, _created = _ensure_artifact_conversation_envelope(
-                conv_id, body.get("tag", ""),
-            )
-        except Exception as exc:
-            return _json_response({"error": str(exc)}, status=409)
-        options["_effective_conversation_tag"] = effective_tag
-        try:
-            capture_id = _get_capture_manager().start_capture(conv_id, options)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-    state = _get_capture_manager().get_state(capture_id)
-    return _json_response({"capture_id": capture_id, "state": state})
-
-
-@app.route("/api/capture/<capture_id>/pause", methods=["POST"])
-def capture_pause(capture_id):
-    if not _HAS_CAPTURE or _get_capture_manager is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    try:
-        _get_capture_manager().pause_capture(capture_id)
-        state = _get_capture_manager().get_state(capture_id)
-    except KeyError:
-        return _json_response({"error": "unknown capture_id"}, status=404)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    return _json_response({"state": state})
-
-
-@app.route("/api/capture/<capture_id>/resume", methods=["POST"])
-def capture_resume(capture_id):
-    if not _HAS_CAPTURE or _get_capture_manager is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    try:
-        _get_capture_manager().resume_capture(capture_id)
-        state = _get_capture_manager().get_state(capture_id)
-    except KeyError:
-        return _json_response({"error": "unknown capture_id"}, status=404)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    return _json_response({"state": state})
-
-
-@app.route("/api/capture/<capture_id>/stop", methods=["POST"])
-def capture_stop(capture_id):
-    if not _HAS_CAPTURE or _get_capture_manager is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    try:
-        result = _get_capture_manager().stop_capture(capture_id)
-    except KeyError:
-        return _json_response({"error": "unknown capture_id"}, status=404)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    return _json_response(result)
-
-
-@app.route("/api/capture/<capture_id>/state", methods=["GET"])
-def capture_state(capture_id):
-    if not _HAS_CAPTURE or _get_capture_manager is None:
-        return _json_response({"error": "capture unavailable"}, status=503)
-    try:
-        return _json_response(_get_capture_manager().get_state(capture_id))
-    except KeyError:
-        return _json_response({"error": "unknown capture_id"}, status=404)
-
-
-# /api/capture/stream retired 2026-05-01 — see comment above.
 
 
 # ── Audio/Video Phase 2 — transcription endpoints ────────────────────────────
@@ -875,50 +747,7 @@ def tts_synthesize():
                     headers={"Content-Disposition": f"inline; filename=tts.{ext}"})
 
 
-# ── Audio/Video Phase 3 — media library endpoints ────────────────────────────
-#
-# Per-conversation reference list of captured / imported media. Items
-# added via:
-#   1. Capture completion — server hook auto-adds the rendered file.
-#   2. Canvas drop in video editing mode — multipart upload, staged.
-#   3. JSON ``{path: <abs_path>}`` POST — register existing file.
-
-try:
-    from media_library import get_library as _get_media_library
-    _HAS_MEDIA_LIBRARY = True
-except Exception as _e:  # pragma: no cover — defensive
-    _get_media_library = None
-    _HAS_MEDIA_LIBRARY = False
-    print(f"[server] media_library unavailable: {_e}")
-
-
-# ── A/V Phase 8 follow-up — URL import (yt-dlp) ──────────────────────────────
-
-try:
-    from url_import import get_default_manager as _get_url_import_manager
-    _HAS_URL_IMPORT = True
-except Exception as _e:  # pragma: no cover — defensive
-    _get_url_import_manager = None
-    _HAS_URL_IMPORT = False
-    print(f"[server] url_import unavailable: {_e}")
-
-
-# ── A/V Phase 8 — Video Editing Suggestions framework runtime ────────────────
-
-try:
-    from video_suggestions import (
-        generate_suggestions_heuristic as _gen_suggestions_heuristic,
-        SuggestionValidationError as _SuggestionValidationError,
-    )
-    _HAS_VIDEO_SUGGESTIONS = True
-except Exception as _e:  # pragma: no cover — defensive
-    _gen_suggestions_heuristic = None
-    _SuggestionValidationError = Exception
-    _HAS_VIDEO_SUGGESTIONS = False
-    print(f"[server] video_suggestions unavailable: {_e}")
-
-
-# ── A/V Phase 9 — user settings (capture / whisper / export / API keys) ──────
+# ── User settings and retrieval configuration ────────────────────────────────
 
 try:
     import user_settings as _user_settings
@@ -935,620 +764,6 @@ except Exception as _e:  # pragma: no cover — defensive
     _retrieval_config = None
     _HAS_RETRIEVAL_CONFIG = False
     print(f"[server] retrieval_config unavailable: {_e}")
-
-
-_MEDIA_LIBRARY_STAGING_DEFAULT = os.path.join(
-    str(rp.ORA_HOME), "staging", "media-library", "",
-)
-_MEDIA_LIBRARY_STAGING_DIR = _MEDIA_LIBRARY_STAGING_DEFAULT
-
-
-def _media_library_staging_dir(
-    conversation_id: str,
-    *,
-    create: bool = False,
-    existing: bool = False,
-) -> str:
-    """Return an exact per-conversation staging directory.
-
-    The retired flat ``<id>-<timestamp>-<name>`` convention could not
-    distinguish IDs that were prefixes of one another (``a`` versus ``a-b``).
-    A direct child makes ownership structural and deletion exact.
-    """
-    if existing:
-        cid = (conversation_id or "").strip()
-        if not _valid_existing_conversation_id(cid):
-            raise ValueError("invalid conversation_id")
-    else:
-        cid = _canonical_live_conversation_id(conversation_id)
-    if _MEDIA_LIBRARY_STAGING_DIR != _MEDIA_LIBRARY_STAGING_DEFAULT:
-        # Explicit test/deployment override is a trusted configured root.
-        parent = rp.safe_owned_subdir(
-            _MEDIA_LIBRARY_STAGING_DIR, create=create,
-        )
-    else:
-        parent = rp.safe_owned_subdir(
-            rp.ORA_HOME, "staging", "media-library", create=create,
-        )
-    path = parent / cid
-    if create:
-        return str(rp.safe_owned_subdir(parent, cid, create=True))
-    return str(path)
-
-
-def _save_filestorage_no_follow(file_storage, target_path: str) -> None:
-    """Stream one Werkzeug upload into an exclusive sibling then replace."""
-    target = Path(target_path)
-    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    fd = os.open(temporary, flags, 0o600)
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            fd = -1
-            file_storage.save(stream)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, target)
-    finally:
-        if fd >= 0:
-            os.close(fd)
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
-def _purge_media_library_staging(conversation_id: str) -> int:
-    """Remove only the target's structurally-owned media staging subtree."""
-    path = _media_library_staging_dir(conversation_id, existing=True)
-    if os.path.islink(path):
-        os.unlink(path)
-        return 1
-    if not os.path.exists(path):
-        return 0
-    if not os.path.isdir(path):
-        raise ValueError(f"media staging path is not a directory: {path}")
-    removed = 0
-    for walk_root, dirnames, filenames in os.walk(path, followlinks=False):
-        removed += len(filenames)
-        removed += sum(
-            1 for name in dirnames
-            if os.path.islink(os.path.join(walk_root, name))
-        )
-    shutil.rmtree(path)
-    return removed
-
-
-def _capture_conversation_id_for(capture_id):
-    """Look up the conversation_id for an in-flight capture from the manager."""
-    if not capture_id or not _HAS_CAPTURE or _get_capture_manager is None:
-        return None
-    try:
-        state = _get_capture_manager().get_state(capture_id)
-    except Exception:
-        return None
-    return state.get("conversation_id")
-
-
-def _media_library_capture_hook(event: dict) -> None:
-    """Auto-add captured files to the conversation's media library.
-
-    Called from the capture-event fan-out. Only acts on `complete` events
-    that name a real file. Failures here must NOT block the SSE
-    broadcast — we swallow exceptions and log.
-    """
-    if event.get("type") != "complete":
-        return
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return
-    conv_id = event.get("conversation_id") or _capture_conversation_id_for(
-        event.get("capture_id"))
-    if not conv_id:
-        return
-    file_path = event.get("file_path")
-    if not file_path:
-        return
-    try:
-        lib = _get_media_library(conv_id)
-        lib.add_entry(file_path)
-    except Exception as exc:  # pragma: no cover — defensive
-        print(f"[server] media-library auto-add failed: {exc}")
-
-
-if _HAS_CAPTURE and _HAS_MEDIA_LIBRARY and _get_capture_manager is not None:
-    try:
-        _get_capture_manager().subscribe(_media_library_capture_hook)
-    except Exception as _e:  # pragma: no cover — defensive
-        print(f"[server] media-library capture hook subscribe failed: {_e}")
-
-
-@app.route("/api/media-library/<conversation_id>", methods=["GET"])
-def media_library_list(conversation_id):
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"available": False, "entries": []})
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            lib = _get_media_library(conversation_id)
-            return _json_response({"available": True, "entries": lib.list_entries()})
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-
-
-@app.route("/api/media-library/<conversation_id>/add", methods=["POST"])
-def media_library_add(conversation_id):
-    """Add a file to the library.
-
-    Two modes:
-      * ``multipart/form-data`` with field ``file`` — staged to
-        ``~/ora/staging/media-library/`` and registered.
-      * JSON body ``{path: <abs_path>}`` — registers an existing file
-        by absolute path (no copy).
-    """
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    if request.files or request.form:
-        requested_tag = request.form.get("tag", "")
-    else:
-        requested_tag = (request.get_json(silent=True) or {}).get("tag", "")
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _ensure_artifact_conversation_envelope(
-                conversation_id, requested_tag,
-            )
-        except Exception as exc:
-            return _json_response({"error": str(exc)}, status=409)
-        return _media_library_add_live(conversation_id)
-
-
-def _media_library_add_live(conversation_id):
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        lib = _get_media_library(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-
-    file_storage = request.files.get("file")
-    if file_storage is not None and file_storage.filename:
-        safe_name = os.path.basename(file_storage.filename or "upload").strip() or "upload"
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
-        staging_dir = _media_library_staging_dir(conversation_id, create=True)
-        staged_path = os.path.join(staging_dir, f"{timestamp}-{safe_name}")
-        try:
-            _save_filestorage_no_follow(file_storage, staged_path)
-        except Exception as e:
-            return _json_response({"error": f"save failed: {e}"}, status=500)
-        try:
-            entry = lib.add_entry(staged_path,
-                                  display_name=safe_name,
-                                  mime=file_storage.mimetype)
-        except Exception as e:
-            return _json_response({"error": f"add failed: {e}"}, status=500)
-        return _json_response({"entry": entry})
-
-    body = request.get_json(silent=True) or {}
-    abs_path = (body.get("path") or "").strip()
-    if abs_path:
-        try:
-            entry = lib.add_entry(abs_path,
-                                  display_name=body.get("display_name"),
-                                  mime=body.get("mime") or "")
-        except FileNotFoundError as e:
-            return _json_response({"error": str(e)}, status=404)
-        except Exception as e:
-            return _json_response({"error": f"add failed: {e}"}, status=500)
-        return _json_response({"entry": entry})
-
-    return _json_response({"error": "either file or path required"}, status=400)
-
-
-@app.route("/api/media-library/<conversation_id>/<entry_id>", methods=["DELETE"])
-def media_library_remove(conversation_id, entry_id):
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    cross_site = _cross_site_mutation_response()
-    if cross_site is not None:
-        return cross_site
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        entry = lib.get_entry(entry_id)
-        if entry is None:
-            return _json_response({"error": "unknown entry_id"}, status=404)
-        protection = None
-        try:
-            from orchestrator import system_protection as _sp
-            state_path = lib.state_path
-            pre_state = _sp.capture_path_identity(state_path)
-            protection = _sp.authorize_server_action(
-                "media_reference_delete",
-                selectors=[_sp.path_selector(state_path)],
-                params={
-                    "conversation_id_digest": _sp.params_digest({
-                        "conversation_id": conversation_id,
-                    }),
-                    "entry_id": entry_id,
-                    "entry_digest": _sp.params_digest(entry),
-                },
-                pre_state=[pre_state],
-            )
-            with _sp.protected_effect(protection):
-                removed = lib.remove(entry_id)
-            _sp.complete_execution(
-                protection, ok=removed,
-                result={"removed": removed, "entry_id": entry_id},
-                post_state=[_sp.capture_path_identity(state_path)],
-            )
-        except Exception as exc:
-            try:
-                from orchestrator import system_protection as _sp
-                if isinstance(exc, _sp.SystemProtectionError):
-                    return _system_protection_error_response(exc)
-                if protection is not None:
-                    _sp.complete_execution(
-                        protection, ok=False,
-                        result={"error": type(exc).__name__},
-                        post_state=[_sp.capture_path_identity(state_path)],
-                    )
-            except Exception as receipt_error:
-                return _system_protection_error_response(receipt_error)
-            return _json_response({"error": str(exc)}, status=500)
-        if not removed:
-            return _json_response({"error": "entry changed before deletion"}, status=409)
-        return _json_response({"removed": entry_id})
-
-
-@app.route("/api/media-library/<conversation_id>/<entry_id>/rename", methods=["POST"])
-def media_library_rename(conversation_id, entry_id):
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    body = request.get_json(silent=True) or {}
-    new_name = (body.get("new_name") or "").strip()
-    if not new_name:
-        return _json_response({"error": "new_name required"}, status=400)
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        try:
-            entry = lib.rename(entry_id, new_name)
-        except ValueError as e:
-            return _json_response({"error": str(e)}, status=400)
-        if entry is None:
-            return _json_response({"error": "unknown entry_id"}, status=404)
-        return _json_response({"entry": entry})
-
-
-@app.route("/api/media-library/<conversation_id>/<entry_id>/thumbnail",
-           methods=["GET"])
-def media_library_thumbnail(conversation_id, entry_id):
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        thumb = lib.get_thumbnail_path(entry_id)
-        if thumb is None:
-            return _json_response({"error": "no thumbnail"}, status=404)
-        directory = str(thumb.parent)
-        return send_from_directory(directory, thumb.name, mimetype="image/jpeg")
-
-
-@app.route("/api/media-library/<conversation_id>/<entry_id>/waveform",
-           methods=["GET"])
-def media_library_waveform(conversation_id, entry_id):
-    """A/V Phase 5+ polish — audio waveform thumbnail.
-
-    Lazy + cached. First hit runs ffmpeg's ``showwavespic`` filter
-    against the entry's source file; the resulting PNG is cached at
-    ``<thumbnails_dir>/<entry_id>.waveform.png`` and streamed back.
-    Subsequent hits skip ffmpeg.
-
-    Returns 404 for unknown entries, non-audio/video entries, or when
-    waveform rendering fails (no audio track, corrupt source, etc.).
-    The browser falls back to the existing glyph in that case.
-    """
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    try:
-        from pathlib import Path as _Path
-        from waveform import render_waveform, waveform_cache_path
-    except Exception as e:
-        return _json_response({"error": f"waveform module: {e}"}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        entry = lib.get_entry(entry_id)
-        if entry is None:
-            return _json_response({"error": "unknown entry"}, status=404)
-        if entry.get("kind") not in ("audio", "video"):
-            return _json_response({"error": "entry has no audio track"}, status=404)
-        source_path = entry.get("source_path")
-        if not source_path:
-            return _json_response({"error": "entry has no source path"}, status=404)
-        src = _Path(source_path)
-        if not src.exists():
-            return _json_response({"error": "source file missing"}, status=404)
-
-        cache_path = waveform_cache_path(lib.thumbnails_dir, entry_id)
-        if not cache_path.exists():
-            ok = render_waveform(src, cache_path)
-            if not ok:
-                return _json_response({"error": "waveform render failed"}, status=404)
-        return send_from_directory(
-            str(cache_path.parent), cache_path.name, mimetype="image/png"
-        )
-
-
-@app.route("/api/media-library/<conversation_id>/<entry_id>/transcript",
-           methods=["GET"])
-def media_library_transcript(conversation_id, entry_id):
-    """A/V Phase 8 — return whisper-cli segments for a library entry.
-
-    Reads the persistent ``.whisper.json`` that ``transcription.py`` writes
-    next to every transcribed source file (see ``transcription.py`` line ~329:
-    ``persistent_json = job.source_path.with_suffix('.whisper.json')``).
-    Returns normalized segments matching the in-memory shape that
-    ``TranscriptionManager._populate_from_whisper_json`` produces.
-
-    404s are normal — not every library entry has been transcribed.
-    """
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        entry = lib.get_entry(entry_id)
-        if entry is None:
-            return _json_response({"error": "unknown entry"}, status=404)
-        source_path = entry.get("source_path")
-        if not source_path:
-            return _json_response({"error": "entry has no source path"}, status=404)
-    try:
-        from pathlib import Path as _Path
-        json_path = _Path(source_path).with_suffix(".whisper.json")
-    except Exception as e:
-        return _json_response({"error": f"path resolution: {e}"}, status=500)
-    if not json_path.exists():
-        return _json_response({"error": "no transcript"}, status=404)
-    try:
-        import json as _json
-        raw = _json.loads(json_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        return _json_response({"error": f"json parse: {e}"}, status=500)
-    # Normalize to the same shape transcription.py produces internally so
-    # the browser sees consistent fields whether the data is fresh from
-    # the manager (live transcribe) or read from disk on a later session.
-    result = raw.get("result", {}) or {}
-    segments_raw = raw.get("transcription", []) or []
-    out_segments = []
-    duration_ms = 0
-    for seg in segments_raw:
-        offsets = seg.get("offsets", {}) or {}
-        try:
-            start_ms = int(offsets.get("from") or 0)
-            end_ms = int(offsets.get("to") or 0)
-        except (TypeError, ValueError):
-            continue
-        text = (seg.get("text") or "").strip()
-        if not text:
-            continue
-        out_segments.append({
-            "start_ms": start_ms,
-            "end_ms": end_ms,
-            "text": text,
-        })
-        if end_ms > duration_ms:
-            duration_ms = end_ms
-    return _json_response({
-        "entry_id": entry_id,
-        "language": result.get("language"),
-        "duration_ms": duration_ms,
-        "segments": out_segments,
-    })
-
-
-# ── A/V Phase 8 follow-up — URL import endpoints ─────────────────────────────
-#
-# Two-endpoint pair (start + state poll). The browser POSTs a URL,
-# gets an import_id, then polls state until ``complete`` or
-# ``failed``. yt-dlp does the actual download in a background thread
-# in url_import.py. On success a new media-library entry appears.
-
-@app.route("/api/media-library/<conversation_id>/import-url", methods=["POST"])
-def media_library_import_url(conversation_id):
-    if not _HAS_URL_IMPORT or _get_url_import_manager is None:
-        return _json_response(
-            {"error": "url import unavailable (yt-dlp not installed?)"},
-            status=503,
-        )
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    payload = request.get_json(silent=True) or {}
-    url = (payload.get("url") or "").strip()
-    if not url:
-        return _json_response({"error": "url required"}, status=400)
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return _json_response({"error": "url must start with http:// or https://"}, status=400)
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _ensure_artifact_conversation_envelope(
-                conversation_id, payload.get("tag", ""),
-            )
-            mgr = _get_url_import_manager()
-            import_id = mgr.start(conversation_id, url)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-    return _json_response({
-        "import_id": import_id,
-        "conversation_id": conversation_id,
-        "url": url,
-    })
-
-
-@app.route(
-    "/api/media-library/<conversation_id>/import/<import_id>/state",
-    methods=["GET"],
-)
-def media_library_import_state(conversation_id, import_id):
-    if not _HAS_URL_IMPORT or _get_url_import_manager is None:
-        return _json_response({"error": "url import unavailable"}, status=503)
-    try:
-        mgr = _get_url_import_manager()
-        state = mgr.get_state(import_id)
-    except KeyError:
-        return _json_response({"error": "unknown import_id"}, status=404)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    if state.get("conversation_id") != conversation_id:
-        return _json_response({"error": "unknown import_id"}, status=404)
-    return _json_response(state)
-
-
-@app.route("/api/media-library/<conversation_id>/imports", methods=["GET"])
-def media_library_imports_list(conversation_id):
-    """List all imports for a conversation (in-flight + recently completed)."""
-    if not _HAS_URL_IMPORT or _get_url_import_manager is None:
-        return _json_response({"imports": []})
-    try:
-        mgr = _get_url_import_manager()
-        states = mgr.list_states(conversation_id)
-    except Exception as e:
-        return _json_response({"error": str(e)}, status=500)
-    return _json_response({"imports": states})
-
-
-@app.route(
-    "/api/media-library/<conversation_id>/<entry_id>/suggest-edits",
-    methods=["POST"],
-)
-def media_library_suggest_edits(conversation_id, entry_id):
-    """Run the Video Editing Suggestions framework on a clip's transcript.
-
-    POST body (optional): ``{"goals": "...", "existing_clips": [...]}``.
-    Reads the same .whisper.json the transcript endpoint reads;
-    invokes the heuristic suggestion generator (LLM path is wired
-    but gated; user can switch via a future config). Returns the
-    validated suggestions JSON.
-    """
-    if not _HAS_VIDEO_SUGGESTIONS or _gen_suggestions_heuristic is None:
-        return _json_response(
-            {"error": "video suggestions runtime unavailable"},
-            status=503,
-        )
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            lib = _get_media_library(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        entry = lib.get_entry(entry_id)
-        if entry is None:
-            return _json_response({"error": "unknown entry"}, status=404)
-        source_path = entry.get("source_path")
-        if not source_path:
-            return _json_response({"error": "entry has no source path"}, status=404)
-
-    from pathlib import Path as _Path
-    json_path = _Path(source_path).with_suffix(".whisper.json")
-    if not json_path.exists():
-        return _json_response({"error": "no transcript"}, status=404)
-    try:
-        import json as _json
-        raw = _json.loads(json_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        return _json_response({"error": f"json parse: {e}"}, status=500)
-
-    # Normalize transcript shape (same as the /transcript endpoint).
-    result = raw.get("result", {}) or {}
-    segments_raw = raw.get("transcription", []) or []
-    segments = []
-    duration_ms = 0
-    for seg in segments_raw:
-        offsets = seg.get("offsets", {}) or {}
-        try:
-            start_ms = int(offsets.get("from") or 0)
-            end_ms = int(offsets.get("to") or 0)
-        except (TypeError, ValueError):
-            continue
-        text = (seg.get("text") or "").strip()
-        if not text:
-            continue
-        segments.append({
-            "start_ms": start_ms,
-            "end_ms": end_ms,
-            "text": text,
-        })
-        if end_ms > duration_ms:
-            duration_ms = end_ms
-    transcript_view = {
-        "language": result.get("language"),
-        "duration_ms": duration_ms,
-        "segments": segments,
-    }
-
-    payload = request.get_json(silent=True) or {}
-    goals = payload.get("goals")
-    existing_clips = payload.get("existing_clips")
-
-    try:
-        suggestions = _gen_suggestions_heuristic(
-            transcript_view,
-            entry_id=entry_id,
-            goals=goals,
-            existing_clips=existing_clips,
-        )
-    except _SuggestionValidationError as e:
-        return _json_response(
-            {"error": f"suggestion validation: {e}"}, status=500
-        )
-    except Exception as e:
-        return _json_response({"error": f"suggestion generation: {e}"}, status=500)
-    return _json_response(suggestions)
 
 
 # ── A/V Phase 9 — user settings endpoints ────────────────────────────────────
@@ -2698,429 +1913,6 @@ def settings_verify_api_key():
         return _json_response({"ok": False, "message": "No key to verify — save one first."})
     ok, message = _verify_provider_key(entry, key)
     return _json_response({"ok": ok, "message": message})
-
-
-# ── Audio/Video Phase 5 — timeline state endpoints ───────────────────────────
-#
-# Per-conversation timeline persistence. Client loads the full state on
-# mount, mutates locally, PUTs the full state on every change. No
-# partial-update API; the timeline is small enough that a full PUT keeps
-# the server logic simple and avoids race conditions.
-
-try:
-    from timeline import get_timeline as _get_timeline
-    _HAS_TIMELINE = True
-except Exception as _e:  # pragma: no cover — defensive
-    _get_timeline = None
-    _HAS_TIMELINE = False
-    print(f"[server] timeline unavailable: {_e}")
-
-
-@app.route("/api/timeline/<conversation_id>", methods=["GET"])
-def timeline_load(conversation_id):
-    if not _HAS_TIMELINE or _get_timeline is None:
-        return _json_response({"available": False}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            tl = _get_timeline(conversation_id)
-            return _json_response({"available": True, "timeline": tl.load()})
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-
-
-@app.route("/api/timeline/<conversation_id>", methods=["PUT"])
-def timeline_save(conversation_id):
-    if not _HAS_TIMELINE or _get_timeline is None:
-        return _json_response({"error": "timeline unavailable"}, status=503)
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    body = request.get_json(silent=True) or {}
-    requested_tag = body.pop("_conversation_tag", "")
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _ensure_artifact_conversation_envelope(
-                conversation_id, requested_tag,
-            )
-            tl = _get_timeline(conversation_id)
-            normalized = tl.save(body)
-            return _json_response({"timeline": normalized})
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-
-
-# ── A/V Phase 6 follow-up — watermark image upload ───────────────────────────
-#
-# Lets the user replace the default ◎ glyph with an arbitrary PNG.
-# Multipart upload lands at ``~/ora/sessions/<conv_id>/uploads/`` with
-# a timestamped filename. Browser stores the absolute path in the
-# timeline's watermark.image_path field and saves the timeline; the
-# render pipeline then composites via FFmpeg ``overlay`` on next render.
-#
-# Allowed types: PNG, JPEG, WebP (transparent PNG is the typical case).
-
-_WATERMARK_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".webp"}
-
-
-def _store_watermark_upload(conversation_id, file_storage, extension):
-    canonical_id = _canonical_live_conversation_id(conversation_id)
-    runtime_home = Path(
-        os.environ.get("ORA_HOME") or os.path.expanduser("~/ora")
-    )
-    uploads_dir = str(rp.safe_owned_subdir(
-        runtime_home, "sessions", canonical_id, "uploads", create=True,
-    ))
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
-    target_path = os.path.join(
-        uploads_dir, f"watermark-{timestamp}{extension}",
-    )
-    _save_filestorage_no_follow(file_storage, target_path)
-    if os.path.getsize(target_path) > 10 * 1024 * 1024:
-        os.unlink(target_path)
-        raise ValueError("watermark image must be under 10 MB")
-    return target_path
-
-
-@app.route("/api/watermark/<conversation_id>/upload", methods=["POST"])
-def watermark_upload(conversation_id):
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    f = request.files.get("file")
-    if f is None or not f.filename:
-        return _json_response({"error": "file is required"}, status=400)
-    safe_name = os.path.basename(f.filename or "watermark").strip() or "watermark"
-    ext = os.path.splitext(safe_name)[1].lower()
-    if ext not in _WATERMARK_ALLOWED_EXT:
-        return _json_response(
-            {"error": f"unsupported extension {ext!r}; "
-                      f"use PNG, JPEG, or WebP"},
-            status=400,
-        )
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _ensure_artifact_conversation_envelope(
-                conversation_id, request.form.get("tag", ""),
-            )
-            target_path = _store_watermark_upload(conversation_id, f, ext)
-        except ValueError as e:
-            return _json_response({"error": str(e)}, status=400)
-        except Exception as e:
-            return _json_response({"error": f"save failed: {e}"}, status=500)
-    return _json_response({
-        "conversation_id": conversation_id,
-        "image_path": target_path,
-        "filename": os.path.basename(target_path),
-    })
-
-
-# ── Audio/Video Phase 7 — render endpoints ───────────────────────────────────
-#
-# Renders the conversation's timeline through FFmpeg. Output goes to the
-# user's export directory (default ~/ora/exports/) and is auto-added to
-# the conversation's media library.
-
-try:
-    from render import (
-        get_default_manager as _get_render_manager,
-        PRESETS as _RENDER_PRESETS,
-    )
-    _HAS_RENDER = True
-except Exception as _e:  # pragma: no cover — defensive
-    _get_render_manager = None
-    _RENDER_PRESETS = {}
-    _HAS_RENDER = False
-    print(f"[server] render unavailable: {_e}")
-
-
-_render_conversation_lookup: dict[str, str] = {}  # render_id → conversation_id
-
-
-def _render_complete_hook(event: dict) -> None:
-    """Auto-add the rendered output file to the media library on completion.
-
-    The SSE fan-out that used to layer on top of this was retired
-    2026-05-01 (browser polls /api/render/<id>/state since 2026-04-30).
-    The side-effect — adding the rendered file to the conversation's
-    media library so it becomes editable as a clip — remains.
-    """
-    if event.get("type") != "complete":
-        return
-    rid = event.get("render_id")
-    if not rid or not _HAS_MEDIA_LIBRARY:
-        return
-    try:
-        conv = _render_conversation_lookup.get(rid)
-        output = event.get("output_path")
-        if conv and output and _get_media_library is not None:
-            lib = _get_media_library(conv)
-            lib.add_entry(output, display_name=os.path.basename(output))
-    except Exception as exc:  # pragma: no cover — defensive
-        print(f"[server] render auto-add to media library failed: {exc}")
-
-
-if _HAS_RENDER and _get_render_manager is not None:
-    try:
-        _get_render_manager().subscribe(_render_complete_hook)
-    except Exception as _e:  # pragma: no cover — defensive
-        print(f"[server] render manager subscribe failed: {_e}")
-
-
-@app.route("/api/render/presets", methods=["GET"])
-def render_presets():
-    if not _HAS_RENDER:
-        return _json_response({"available": False, "presets": []})
-    out = []
-    for key, p in _RENDER_PRESETS.items():
-        out.append({
-            "key": key,
-            "label": p["label"],
-            "container": p["container"],
-            "video": p["video"],
-        })
-    return _json_response({"available": True, "presets": out})
-
-
-@app.route("/api/render/<conversation_id>", methods=["POST"])
-def render_start(conversation_id):
-    if not _HAS_RENDER or _get_render_manager is None:
-        return _json_response({"error": "render unavailable"}, status=503)
-    if not _HAS_TIMELINE or _get_timeline is None:
-        return _json_response({"error": "timeline unavailable"}, status=503)
-    if not _HAS_MEDIA_LIBRARY or _get_media_library is None:
-        return _json_response({"error": "media library unavailable"}, status=503)
-
-    body = request.get_json(silent=True) or {}
-    preset_key = (body.get("preset") or "standard").strip()
-
-    # Phase 9 wiring — honor the user's configured export directory.
-    export_dir = None
-    if _HAS_USER_SETTINGS and _user_settings is not None:
-        try:
-            user_dir = _user_settings.get_setting("export.default_directory")
-            if user_dir:
-                from pathlib import Path as _Path
-                export_dir = _Path(user_dir).expanduser()
-        except Exception:
-            export_dir = None
-
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _ensure_artifact_conversation_envelope(
-                conversation_id, body.get("tag", ""),
-            )
-            timeline = _get_timeline(conversation_id).load()
-            library = _get_media_library(conversation_id).list_entries()
-            rid = _get_render_manager().start(
-                conversation_id, preset_key, timeline, library,
-                export_dir=export_dir)
-            _render_conversation_lookup[rid] = conversation_id
-        except ValueError as e:
-            return _json_response({"error": str(e)}, status=400)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-
-    state = _get_render_manager().get_state(rid)
-    return _json_response({"render_id": rid, "state": state})
-
-
-@app.route("/api/render/<render_id>/state", methods=["GET"])
-def render_state(render_id):
-    if not _HAS_RENDER or _get_render_manager is None:
-        return _json_response({"error": "render unavailable"}, status=503)
-    try:
-        return _json_response(_get_render_manager().get_state(render_id))
-    except KeyError:
-        return _json_response({"error": "unknown render_id"}, status=404)
-
-
-@app.route("/api/render/<render_id>/cancel", methods=["POST"])
-def render_cancel(render_id):
-    if not _HAS_RENDER or _get_render_manager is None:
-        return _json_response({"error": "render unavailable"}, status=503)
-    try:
-        _get_render_manager().cancel(render_id)
-    except KeyError:
-        return _json_response({"error": "unknown render_id"}, status=404)
-    return _json_response({"cancelled": render_id})
-
-
-try:
-    from preview import (
-        proxy_state as _preview_proxy_state,
-        start_proxy_render as _preview_start_proxy_render,
-        extract_frame as _preview_extract_frame,
-        invalidate_proxy as _preview_invalidate_proxy,
-        proxy_path as _preview_proxy_path,
-        forget_conversation as _preview_forget_conversation,
-    )
-    _HAS_PREVIEW = True
-except Exception as _e:  # pragma: no cover — defensive
-    _preview_proxy_state = None
-    _preview_start_proxy_render = None
-    _preview_extract_frame = None
-    _preview_invalidate_proxy = None
-    _preview_proxy_path = None
-    _preview_forget_conversation = None
-    _HAS_PREVIEW = False
-    print(f"[server] preview unavailable: {_e}")
-
-
-def _conversation_read_guard(conversation_id: str):
-    """Reject unsafe/deleted/missing sessions before any read-side factory."""
-    cid = (conversation_id or "").strip()
-    if not _valid_existing_conversation_id(cid):
-        return cid, _json_response({"error": "invalid conversation_id"}, status=400)
-    if _is_conversation_deleted(cid):
-        return cid, _json_response({"status": "deleted"}, status=410)
-    session_dir = os.path.join(str(rp.ORA_HOME), "sessions", cid)
-    if os.path.islink(session_dir) or not os.path.isdir(session_dir):
-        return cid, _json_response({"error": "conversation not found"}, status=404)
-    return cid, None
-
-
-@contextmanager
-def _conversation_read_scope(conversation_id: str):
-    """Hold the delete barrier across a read-side factory or cache writer.
-
-    Delete Forever installs its tombstone before waiting for this same lock.
-    A read that got here first may finish, after which deletion purges anything
-    it created; a read that gets here second observes the tombstone and never
-    constructs a timeline/library/preview object after the purge.
-    """
-    cid = (conversation_id or "").strip()
-    if not _valid_existing_conversation_id(cid):
-        yield cid, _json_response(
-            {"error": "invalid conversation_id"}, status=400,
-        )
-        return
-    with _conversation_lifecycle_lock(cid):
-        yield _conversation_read_guard(cid)
-
-
-# Compatibility name retained for focused preview tests and older callers.
-_preview_read_guard = _conversation_read_guard
-
-
-@app.route("/api/preview/<conversation_id>/state", methods=["GET"])
-def preview_state(conversation_id):
-    if not _HAS_PREVIEW or _preview_proxy_state is None:
-        return _json_response({"available": False}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            st = _preview_proxy_state(conversation_id)
-            st["available"] = True
-            return _json_response(st)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-
-
-@app.route("/api/preview/<conversation_id>/frame", methods=["GET"])
-def preview_frame(conversation_id):
-    if not _HAS_PREVIEW or _preview_extract_frame is None:
-        return _json_response({"error": "preview unavailable"}, status=503)
-    try:
-        ms = int(request.args.get("ms", "0"))
-    except (TypeError, ValueError):
-        ms = 0
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        try:
-            png_bytes = _preview_extract_frame(conversation_id, ms)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-        return Response(
-            png_bytes,
-            mimetype="image/png",
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Length": str(len(png_bytes)),
-            },
-        )
-
-
-@app.route("/api/preview/<conversation_id>/proxy/start", methods=["POST"])
-def preview_proxy_start(conversation_id):
-    if not _HAS_PREVIEW or _preview_start_proxy_render is None:
-        return _json_response({"error": "preview unavailable"}, status=503)
-    conversation_id = (conversation_id or "").strip()
-    if not _valid_live_conversation_id(conversation_id):
-        return _json_response({"error": "invalid conversation_id"}, status=400)
-    session_dir = os.path.join(str(rp.ORA_HOME), "sessions", conversation_id)
-    if os.path.islink(session_dir) or not os.path.isdir(session_dir):
-        return _json_response({"error": "conversation not found"}, status=404)
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            rid = _preview_start_proxy_render(conversation_id)
-        except RuntimeError as e:
-            # No clips on the timeline, etc.
-            return _json_response({"error": str(e)}, status=400)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-    return _json_response({"render_id": rid})
-
-
-@app.route("/api/preview/<conversation_id>/proxy/file", methods=["GET"])
-def preview_proxy_file(conversation_id):
-    if not _HAS_PREVIEW or _preview_proxy_path is None:
-        return _json_response({"error": "preview unavailable"}, status=503)
-    with _conversation_read_scope(conversation_id) as (
-        conversation_id, error_response,
-    ):
-        if error_response is not None:
-            return error_response
-        p = _preview_proxy_path(conversation_id)
-        if not p.exists() or p.stat().st_size == 0:
-            return _json_response({"error": "no proxy"}, status=404)
-        # send_file handles HTTP Range requests automatically — required for
-        # <video> element seeking.
-        from flask import send_file
-        return send_file(
-            str(p),
-            mimetype="video/mp4",
-            conditional=True,
-            max_age=0,
-        )
-
-
-@app.route("/api/preview/<conversation_id>/invalidate", methods=["POST"])
-def preview_invalidate(conversation_id):
-    if not _HAS_PREVIEW or _preview_invalidate_proxy is None:
-        return _json_response({"error": "preview unavailable"}, status=503)
-    conversation_id, error_response = _preview_read_guard(conversation_id)
-    if error_response is not None:
-        return error_response
-    with _conversation_lifecycle_lock(conversation_id):
-        if _is_conversation_deleted(conversation_id):
-            return _json_response({"status": "deleted"}, status=410)
-        try:
-            _preview_invalidate_proxy(conversation_id)
-        except Exception as e:
-            return _json_response({"error": str(e)}, status=500)
-    return _json_response({"invalidated": True})
-
-
-# /api/render/stream retired 2026-05-01 — render-controls.js polls
-# /api/render/<id>/state since 2026-04-30.
 
 
 # Pending clarification state: {panel_id: {step1, config, history, user_input}}
@@ -5840,11 +4632,20 @@ def index():
     # stable alias for direct V3 access. The legacy /classic and /v2 routes
     # (pre-cutover index.html / index-v2.html) were retired 2026-05-30 —
     # both interfaces remain recoverable from git history.
-    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v3.html")
+    return _index_v3_response()
 
 @app.route("/v3")
 def index_v3():
-    return send_from_directory(os.path.join(WORKSPACE, "server"), "index-v3.html")
+    return _index_v3_response()
+
+
+def _index_v3_response():
+    source = Path(WORKSPACE, "server", "index-v3.html").read_text(encoding="utf-8")
+    source = source.replace(
+        "<!-- ORA_FEATURE_PLUGIN_ASSETS -->",
+        _video_plugin.asset_tags(),
+    )
+    return Response(source, mimetype="text/html")
 
 @app.route("/health")
 def health():
@@ -7913,6 +6714,30 @@ def _conversation_lifecycle_lock(conversation_id: str) -> threading.RLock:
 def _is_conversation_deleted(conversation_id: str) -> bool:
     with _conversation_lifecycle_guard:
         return _conversation_storage_identity(conversation_id) in _deleted_conversations
+
+
+def _conversation_read_guard(conversation_id: str):
+    """Reject unsafe, deleted, or missing sessions before a read factory."""
+    cid = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(cid):
+        return cid, _json_response({"error": "invalid conversation_id"}, status=400)
+    if _is_conversation_deleted(cid):
+        return cid, _json_response({"status": "deleted"}, status=410)
+    session_dir = os.path.join(str(rp.ORA_HOME), "sessions", cid)
+    if os.path.islink(session_dir) or not os.path.isdir(session_dir):
+        return cid, _json_response({"error": "conversation not found"}, status=404)
+    return cid, None
+
+
+@contextmanager
+def _conversation_read_scope(conversation_id: str):
+    """Hold the Delete Forever barrier across read-side cache creation."""
+    cid = (conversation_id or "").strip()
+    if not _valid_existing_conversation_id(cid):
+        yield cid, _json_response({"error": "invalid conversation_id"}, status=400)
+        return
+    with _conversation_lifecycle_lock(cid):
+        yield _conversation_read_guard(cid)
 
 
 def _is_conversation_closed(conversation_id: str) -> bool:
@@ -14472,7 +13297,7 @@ def conversations_retry(conversation_id):
 # ── V3 Phase 1.5: conversation close-out dispatch ────────────────────────────
 
 def _quiesce_conversation_workers(conversation_id: str) -> dict:
-    """Stop conversation-keyed background writers before filesystem purge."""
+    """Stop and tombstone conversation-keyed writers before filesystem purge."""
     cleaned: dict[str, object] = {}
     errors: list[str] = []
 
@@ -14481,77 +13306,26 @@ def _quiesce_conversation_workers(conversation_id: str) -> dict:
             value = callback()
             cleaned[label] = value
             if isinstance(value, dict):
-                for item in value.get("errors") or []:
-                    errors.append(f"{label}: {item}")
+                errors.extend(f"{label}: {item}" for item in value.get("errors") or [])
         except Exception as exc:
-            message = f"{label}: {exc}"
-            errors.append(message)
-            print(f"[conversation-lifecycle] worker cleanup {message}",
-                  flush=True)
+            errors.append(f"{label}: {exc}")
+            print(f"[conversation-lifecycle] worker cleanup {label}: {exc}", flush=True)
 
-    if _HAS_CAPTURE and _get_capture_manager is not None:
-        run("captures", lambda: _get_capture_manager().forget_conversation(
-            conversation_id))
     if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
-        run(
-            "transcriptions",
-            lambda: _get_transcription_manager().forget_conversation(
-                conversation_id,
-            ),
-        )
-    if _HAS_URL_IMPORT and _get_url_import_manager is not None:
-        run("url_imports", lambda: _get_url_import_manager().forget_conversation(
-            conversation_id))
-    if _HAS_PREVIEW and _preview_forget_conversation is not None:
-        run("preview", lambda: _preview_forget_conversation(conversation_id))
-    if _HAS_RENDER and _get_render_manager is not None:
-        run("renders", lambda: _get_render_manager().forget_conversation(
-            conversation_id))
+        run("transcriptions", lambda: _get_transcription_manager().forget_conversation(conversation_id))
     if _HAS_JOB_QUEUE and _get_job_queue is not None:
-        run("job_queue", lambda: _get_job_queue().forget_conversation(
-            conversation_id))
-    # Media registration callbacks run outside the Flask lifecycle lock.
-    # Tombstone and drain both possible import identities before filesystem
-    # purge so a stale add_entry cannot recreate media JSON/thumbnails after
-    # the session tree has been removed.
-    for label, module_name in (
-        ("media_library", "media_library"),
-        ("media_library_package", "orchestrator.media_library"),
-    ):
-        module = sys.modules.get(module_name)
-        callback = getattr(module, "forget_library", None) if module else None
-        if callback is not None:
-            run(label, lambda _callback=callback: _callback(conversation_id))
+        run("job_queue", lambda: _get_job_queue().forget_conversation(conversation_id))
+    plugin_result = _video_plugin.run_lifecycle("quiesce", conversation_id)
+    cleaned["feature_plugins"] = plugin_result.get("results", {})
+    errors.extend(plugin_result.get("errors", []))
     run("documents", lambda: __import__(
         "orchestrator.document_input", fromlist=["purge_conversation"]
     ).purge_conversation(conversation_id))
-
     return {"cleaned": cleaned, "errors": errors}
 
 
 def _release_conversation_runtime_memory(conversation_id: str) -> dict:
-    """Release finished media bookkeeping for a conversation being closed.
-
-    Ora keeps per-conversation records in memory for renders, transcriptions,
-    captures, URL imports and queued jobs, plus cached timelines and media
-    libraries. Until now the only thing that released them was Delete Forever,
-    which is available on Off-Record Dialogues alone — so for every Standard
-    and Private Dialogue those records lived for the life of the process.
-
-    Close is the right place to release them, but Close is REVERSIBLE and
-    retains data, so this is deliberately not the Delete Forever path:
-
-      * nothing is tombstoned — a restored Dialogue can still render, record
-        and import, which ``forget_conversation`` would have made impossible;
-      * nothing in flight is disturbed — a render, transcription, capture or
-        download still running keeps its record and its subprocess, because
-        closing a Dialogue is not a request to abandon work;
-      * no file is touched — the outputs, and the on-disk mirrors the two
-        caches reload from, are exactly as they were.
-
-    Best-effort by design: a failure here must never stop a Close, so every
-    call is guarded and the errors are reported rather than raised.
-    """
+    """Release only finished records when a reversible Close succeeds."""
     released: dict[str, object] = {}
     errors: list[str] = []
 
@@ -14560,58 +13334,27 @@ def _release_conversation_runtime_memory(conversation_id: str) -> dict:
             released[label] = callback()
         except Exception as exc:
             errors.append(f"{label}: {exc}")
-            print(f"[conversation-lifecycle] memory release {label}: {exc}",
-                  flush=True)
+            print(f"[conversation-lifecycle] memory release {label}: {exc}", flush=True)
 
-    if _HAS_CAPTURE and _get_capture_manager is not None:
-        run("captures", lambda: _get_capture_manager().release_finished(
-            conversation_id))
     if _HAS_TRANSCRIPTION and _get_transcription_manager is not None:
-        run("transcriptions",
-            lambda: _get_transcription_manager().release_finished(
-                conversation_id))
-    if _HAS_URL_IMPORT and _get_url_import_manager is not None:
-        run("url_imports", lambda: _get_url_import_manager().release_finished(
-            conversation_id))
-    if _HAS_RENDER and _get_render_manager is not None:
-        run("renders", lambda: _get_render_manager().release_finished(
-            conversation_id))
+        run("transcriptions", lambda: _get_transcription_manager().release_finished(conversation_id))
     if _HAS_JOB_QUEUE and _get_job_queue is not None:
-        run("job_queue", lambda: _get_job_queue().release_cached(
-            conversation_id))
-
-    # The two disk-backed caches. Both import identities are probed for the
-    # same reason the purge path does it — orchestrator/ is on sys.path, so a
-    # packaged and a bare import are separate module objects with separate
-    # caches, and only the copies this process actually has are touched.
-    for label, module_name, function_name in (
-        ("timeline", "timeline", "release_timeline"),
-        ("timeline_package", "orchestrator.timeline", "release_timeline"),
-        ("media_library", "media_library", "release_library"),
-        ("media_library_package", "orchestrator.media_library", "release_library"),
-    ):
-        module = sys.modules.get(module_name)
-        callback = getattr(module, function_name, None) if module else None
-        if callback is not None:
-            run(label, lambda _cb=callback: _cb(conversation_id))
-
+        run("job_queue", lambda: _get_job_queue().release_cached(conversation_id))
+    plugin_result = _video_plugin.run_lifecycle("release", conversation_id)
+    released["feature_plugins"] = plugin_result.get("results", {})
+    errors.extend(plugin_result.get("errors", []))
     return {"released": released, "errors": errors}
 
 
 def _clear_conversation_runtime_state(conversation_id: str) -> dict:
-    """Drop content-bearing caches and Ora-owned staging copies."""
+    """Drop content-bearing core caches after permanent purge."""
     counts: dict[str, object] = {}
     errors: list[str] = []
     identity = _conversation_storage_identity(conversation_id)
     for value in list(_pending_conversations):
         if _conversation_storage_identity(value) == identity:
             _pending_conversations.discard(value)
-    for mapping in (
-        _pending_clarification,
-        _session_data,
-        _bridge_state,
-        _vision_retry_queue,
-    ):
+    for mapping in (_pending_clarification, _session_data, _bridge_state, _vision_retry_queue):
         for key in list(mapping):
             if _conversation_storage_identity(key) == identity:
                 mapping.pop(key, None)
@@ -14620,43 +13363,15 @@ def _clear_conversation_runtime_state(conversation_id: str) -> dict:
         _unreadable_conversations.discard(identity)
         _closed_conversations.discard(identity)
 
-    # Aside histories contain the full user/assistant text for up to five
-    # turns.  Clear the already-instantiated window without calling the
-    # getter, which would manufacture a new correlated cache entry while a
-    # Delete Forever purge is in progress.
     if SIDEBAR_WINDOW_AVAILABLE:
         try:
             counts["sidebar_windows"] = clear_sidebar_window(conversation_id)
         except Exception as exc:
             errors.append(f"sidebar_window: {exc}")
 
-    # Both package-qualified and legacy top-level imports may already exist in
-    # a long-running process. Clear either cache without instantiating one.
-    for label, module_name, function_name in (
-        ("timeline", "timeline", "forget_timeline"),
-        ("timeline_package", "orchestrator.timeline", "forget_timeline"),
-    ):
-        module = sys.modules.get(module_name)
-        callback = getattr(module, function_name, None) if module else None
-        if callback is not None:
-            try:
-                counts[label] = bool(callback(conversation_id))
-            except Exception as exc:
-                errors.append(f"{label}: {exc}")
-
-    # Multipart media uploads are Ora-owned copies. Registered external paths
-    # and user-configured capture/render outputs are references/exports and are
-    # deliberately retained.
-    try:
-        removed_staging = _purge_media_library_staging(conversation_id)
-    except Exception as exc:
-        removed_staging = 0
-        errors.append(f"media_staging: {exc}")
-    counts["media_staging_files"] = removed_staging
-
-    for render_id, cid in list(_render_conversation_lookup.items()):
-        if _conversation_storage_identity(cid) == identity:
-            _render_conversation_lookup.pop(render_id, None)
+    plugin_result = _video_plugin.run_lifecycle("clear", conversation_id)
+    counts["feature_plugins"] = plugin_result.get("results", {})
+    errors.extend(plugin_result.get("errors", []))
 
     identity = conversation_id.casefold()
     with _transcription_metadata_lock:
@@ -15724,6 +14439,11 @@ def serve_static(filename):
     if not safe.startswith(os.path.join(WORKSPACE, "server", "static")):
         return "Forbidden", 403
     return send_from_directory(os.path.join(WORKSPACE, "server", "static"), filename)
+
+
+def serve_video_plugin_asset(filename):
+    root = _video_plugin.static_root()
+    return send_from_directory(str(root), filename, conditional=True)
 
 # ── V3 theme library API ──────────────────────────────────────────────────
 # Folder-per-theme structure used by /v3 — each theme is a directory under
@@ -17306,6 +16026,27 @@ def _load_image_capability_registry():
     return registry
 
 
+def _load_async_capability_registry(conversation_id: str):
+    """Load async providers and select the core job-queue conversation bucket."""
+    sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+    sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
+    from capability_registry import load_registry
+    import replicate
+
+    registry = load_registry()
+    replicate.register_replicate_provider(registry)
+    try:
+        import openrouter_images
+        openrouter_images.register(registry)
+    except Exception:
+        pass
+    try:
+        replicate.set_active_conversation(conversation_id)
+    except Exception:
+        pass
+    return registry
+
+
 def _reject_production_mock(data, inputs=None):
     """Reject deterministic fixture switches on production routes."""
     if bool((data or {}).get("mock")) or bool((inputs or {}).get("mock")):
@@ -18601,160 +17342,6 @@ def capability_image_to_prompt():
     }), status=200, mimetype="application/json")
 
 
-# ── /api/capability/video_generates (WP-7.3.3i) ──────────────────────────────
-# Server-side bridge between the WP-7.3.1 UI's `capability-dispatch` events
-# and the WP-7.3.2c `dispatch_video_generates` handler (Replicate
-# `minimax/video-01`). Async — the JS expects:
-#   200 { job: { id, status, capability, parameters, placeholder_anchor?,
-#                dispatched_at, ... }, conversation_id? }
-# Per Contracts §3.9: required `prompt`; optional `duration`, `style`,
-# `resolution`. Returns video bytes via the WP-7.6.1 job queue (polling
-# thread inside replicate._async_dispatch lands the result).
-#
-# No mock path: async slots return a job dict regardless. When no
-# Replicate token is configured, the registry surfaces model_unavailable
-# at invoke time, the same way the sync slots do.
-
-_VALID_VIDEO_RESOLUTIONS = ("720p", "1080p", "4k", "square")
-
-
-@app.route("/api/capability/video_generates", methods=["POST"])
-def capability_video_generates():
-    """Dispatch the `video_generates` capability slot (Contracts §3.9, async).
-
-    Body JSON:
-      slot: 'video_generates' (ignored — endpoint identifies slot),
-      inputs: { prompt (str, required), duration (int, optional),
-                style (str, optional), resolution (str, optional) },
-      placeholder_anchor (dict {x,y,width,height}, optional),
-      provider_override (str, optional),
-      conversation_id (str, optional — sets the queue bucket).
-
-    Response:
-      200 { job: { id, status, capability, parameters,
-                   placeholder_anchor?, dispatched_at, ... },
-            conversation_id: str | None }
-      4xx { error: { code: 'prompt_rejected'|..., message } }
-      5xx { error: { code: 'model_unavailable', message } }
-    """
-    try:
-        data = request.get_json(force=True) or {}
-    except Exception:
-        return Response(json.dumps({"error": {
-            "code": "prompt_rejected",
-            "message": "Request body must be JSON."
-        }}), status=400, mimetype="application/json")
-
-    inputs = data.get("inputs") or {}
-    if not isinstance(inputs, dict):
-        inputs = {}
-
-    prompt = (inputs.get("prompt") or "").strip()
-    if not prompt:
-        return Response(json.dumps({"error": {
-            "code": "prompt_rejected",
-            "message": "video_generates requires a non-empty 'prompt'."
-        }}), status=400, mimetype="application/json")
-
-    # Optional metadata — pass through to the handler and onto the job
-    # parameters so job-queue.js can render duration/resolution badges.
-    handler_inputs = {"prompt": prompt}
-    duration = inputs.get("duration")
-    if duration is not None:
-        try:
-            handler_inputs["duration"] = int(duration)
-        except (TypeError, ValueError):
-            pass
-    style = inputs.get("style")
-    if isinstance(style, str) and style.strip():
-        handler_inputs["style"] = style.strip()
-    resolution = inputs.get("resolution")
-    if isinstance(resolution, str) and resolution.strip():
-        if resolution.strip().lower() in _VALID_VIDEO_RESOLUTIONS:
-            handler_inputs["resolution"] = resolution.strip().lower()
-
-    placeholder_anchor = data.get("placeholder_anchor")
-    if not isinstance(placeholder_anchor, dict):
-        placeholder_anchor = None
-
-    conversation_id = data.get("conversation_id") or inputs.get("conversation_id") or "default"
-
-    # Async slot: no mock path. The registry surfaces model_unavailable at
-    # invoke time when no token is configured. The JS handles that via
-    # capability-error → fix path. (We still gate on the queue/integration
-    # being importable so we can return a clean 503 instead of an opaque
-    # 500 from a missing module.)
-    try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import replicate as _replicate
-        registry = _load_registry()
-        _replicate.register_replicate_provider(registry)
-        # OpenRouter-catalog video models (openrouter:<vendor>/<model>).
-        # Must register on this invoke route too — the configured chain
-        # (Wan 2.6 → Veo 3.1 Fast) is all openrouter:* ids, and
-        # resolve_provider_chain skips unregistered ids, so without this
-        # the chain collapsed to whatever replicate registered.
-        try:
-            import openrouter_images as _orimg
-            _orimg.register(registry)
-        except Exception:
-            pass
-        # Tell the replicate dispatcher which conversation bucket to file
-        # the job under (per replicate.set_active_conversation).
-        try:
-            _replicate.set_active_conversation(conversation_id)
-        except Exception:
-            pass
-    except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Replicate provider unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
-
-    provider_override = data.get("provider_override") or inputs.get("provider_override") or None
-
-    try:
-        result = registry.invoke(
-            "video_generates",
-            handler_inputs,
-            provider_id=provider_override,
-        )
-    except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        # Per JS `_statusToCode`: 400 → prompt_rejected, 5xx → model_unavailable.
-        status = 502 if code == "model_unavailable" else 400
-        if code in ("prompt_rejected", "duration_unsupported", "resolution_unsupported"):
-            status = 400
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=status, mimetype="application/json")
-
-    # Async dispatcher returns the job dict directly (or via InvocationResult
-    # wrapping). Pull it out the same way as the sync slots.
-    job = getattr(result, "output", result)
-    if not isinstance(job, dict) or not job.get("id"):
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Async dispatcher returned no job descriptor."
-        }}), status=502, mimetype="application/json")
-
-    # Stamp the placeholder_anchor on the returned job dict so job-queue.js
-    # can render the canvas placeholder over the right region. The queue
-    # itself doesn't track this (it's a UI-only field), so we attach it in
-    # the response without mutating the persisted job.
-    if placeholder_anchor is not None:
-        job = dict(job)
-        job["placeholder_anchor"] = placeholder_anchor
-
-    return Response(json.dumps({
-        "job":             job,
-        "conversation_id": conversation_id,
-    }), status=200, mimetype="application/json")
-
-
 @app.route("/api/capability/style_trains", methods=["POST"])
 def capability_style_trains():
     """Dispatch the `style_trains` capability slot (Contracts §3.10, async).
@@ -18811,21 +17398,10 @@ def capability_style_trains():
         data.get("conversation_id") or inputs.get("conversation_id") or "default"
     )
 
-    # Async slot: no mock path, same as video_generates. Gate on the queue and
-    # integration importing so a missing module is a clean 503 rather than an
-    # opaque 500. style_trains routes to Replicate only, so unlike
-    # video_generates there is no OpenRouter chain to register here.
+    # Gate on the core queue/integration loading so a missing module becomes a
+    # clean 503 rather than an opaque 500.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import replicate as _replicate
-        registry = _load_registry()
-        _replicate.register_replicate_provider(registry)
-        try:
-            _replicate.set_active_conversation(conversation_id)
-        except Exception:
-            pass
+        registry = _load_async_capability_registry(conversation_id)
     except Exception as exc:
         return Response(json.dumps({"error": {
             "code": "model_unavailable",
@@ -21551,6 +20127,115 @@ def _select_server_port(environ=None, *, available=None) -> int:
             return port
     raise ServerPortError(
         "no available localhost port in the default range 5000-5010")
+
+
+class _FeaturePluginHTTPError(RuntimeError):
+    """Carry a core policy response across the narrow plugin boundary."""
+
+    def __init__(self, response):
+        super().__init__("feature plugin mutation was rejected by core policy")
+        self.ora_http_response = response
+
+
+def _protected_media_reference_delete(*, conversation_id, entry_id, entry,
+                                      state_path, effect):
+    """Run a plugin media-reference removal through core system protection."""
+    from orchestrator import system_protection as protection
+
+    execution = None
+    pre_state = protection.capture_path_identity(state_path)
+    try:
+        execution = protection.authorize_server_action(
+            "media_reference_delete",
+            selectors=[protection.path_selector(state_path)],
+            params={
+                "conversation_id_digest": protection.params_digest({
+                    "conversation_id": conversation_id,
+                }),
+                "entry_id": entry_id,
+                "entry_digest": protection.params_digest(entry),
+            },
+            pre_state=[pre_state],
+        )
+        with protection.protected_effect(execution):
+            removed = bool(effect())
+        protection.complete_execution(
+            execution,
+            ok=removed,
+            result={"removed": removed, "entry_id": entry_id},
+            post_state=[protection.capture_path_identity(state_path)],
+        )
+        return removed
+    except Exception as exc:
+        if execution is not None:
+            try:
+                protection.complete_execution(
+                    execution,
+                    ok=False,
+                    result={"error": type(exc).__name__},
+                    post_state=[protection.capture_path_identity(state_path)],
+                )
+            except Exception as receipt_error:
+                raise _FeaturePluginHTTPError(
+                    _system_protection_error_response(receipt_error)
+                ) from exc
+        if isinstance(exc, protection.SystemProtectionError):
+            raise _FeaturePluginHTTPError(
+                _system_protection_error_response(exc)
+            ) from exc
+        raise
+
+
+def _feature_plugin_context(plugin_root: Path):
+    """Build the documented core boundary received by one feature plugin."""
+    from orchestrator import tool_events
+    from server.feature_plugins import FeaturePluginContext
+
+    def get_setting(path, default=None):
+        if not _HAS_USER_SETTINGS or _user_settings is None:
+            return default
+        try:
+            value = _user_settings.get_setting(path)
+            return default if value is None else value
+        except Exception:
+            return default
+
+    return FeaturePluginContext(
+        ora_home=Path(rp.ORA_HOME),
+        plugin_root=plugin_root,
+        valid_live_conversation_id=_valid_live_conversation_id,
+        conversation_lifecycle_lock=_conversation_lifecycle_lock,
+        is_conversation_deleted=_is_conversation_deleted,
+        ensure_artifact_envelope=_ensure_artifact_conversation_envelope,
+        conversation_read_scope=_conversation_read_scope,
+        safe_owned_subdir=rp.safe_owned_subdir,
+        atomic_write_text=rp.atomic_write_text,
+        save_upload=_save_filestorage_no_follow,
+        cross_site_mutation_response=_cross_site_mutation_response,
+        protected_media_reference_delete=_protected_media_reference_delete,
+        get_setting=get_setting,
+        get_conversation_tag=lambda conversation_id: _effective_conversation_tag(
+            conversation_id, ""
+        ),
+        record_tool_event=tool_events.record,
+        tool_manifest_axes=tool_events.manifest_axes,
+        load_async_capability_registry=_load_async_capability_registry,
+    )
+
+
+from server.feature_plugins import configured_video_plugin_root, load_video_plugin
+
+_video_plugin = load_video_plugin(
+    app,
+    _feature_plugin_context,
+    plugin_root=configured_video_plugin_root(WORKSPACE),
+)
+if _video_plugin.descriptor is not None:
+    app.add_url_rule(
+        "/plugins/video/<path:filename>",
+        endpoint="serve_video_plugin_asset",
+        view_func=serve_video_plugin_asset,
+    )
 
 
 if __name__ == "__main__":

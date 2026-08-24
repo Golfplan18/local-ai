@@ -59,7 +59,7 @@ class TranscriptEndpoint(unittest.TestCase):
         # touches ~/ora/sessions/. media_library.MediaLibrary computes
         # its own paths from the conversation_id; we bypass the cache
         # and instantiate one rooted at our tmp dir.
-        import media_library as ML  # noqa: WPS433
+        from plugins.video.backend import media_library as ML  # noqa: WPS433
         self._ML = ML
         self._tmp = tempfile.TemporaryDirectory()
         self._tmp_path = Path(self._tmp.name)
@@ -75,20 +75,10 @@ class TranscriptEndpoint(unittest.TestCase):
         # against the patched SESSIONS_ROOT.
         ML._libraries.clear()
 
-        # Patch the server's reference to get_media_library so it
-        # routes through the same patched module.
-        from media_library import get_library as _get_library
-        self._saved_server_getter = self.S._get_media_library
-        self.S._get_media_library = _get_library
-        self._saved_has_flag = self.S._HAS_MEDIA_LIBRARY
-        self.S._HAS_MEDIA_LIBRARY = True
-
         self.client = self.S.app.test_client()
         self.conv_id = "test_conv_phase8"
 
     def tearDown(self):
-        self.S._get_media_library = self._saved_server_getter
-        self.S._HAS_MEDIA_LIBRARY = self._saved_has_flag
         self.S.rp.ORA_HOME = self._saved_server_ora_home
         self._ML.SESSIONS_ROOT = self._saved_sessions_root
         self._ML._libraries.clear()

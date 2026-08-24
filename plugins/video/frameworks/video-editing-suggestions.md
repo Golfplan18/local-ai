@@ -31,7 +31,7 @@ It is intentionally tactical: the model is not asked to redesign the video, only
 ## OUTPUT CONTRACT
 
 The framework MUST emit a single JSON object matching the schema at
-`~/ora/config/framework-schemas/video-editing-suggestions.schema.json`.
+`plugins/video/frameworks/video-editing-suggestions.schema.json`.
 
 The top-level shape:
 
@@ -71,7 +71,7 @@ Suggestions are returned in source-time order (by `start_ms` for cuts, `at_ms` f
 ## OUTPUT SCHEMA REFERENCE
 
 Authoritative JSON Schema at:
-`~/ora/config/framework-schemas/video-editing-suggestions.schema.json`
+`plugins/video/frameworks/video-editing-suggestions.schema.json`
 
 The server validates emitted JSON against this schema before returning it to the browser. Validation failures are surfaced inline ("the model returned malformed suggestions; raw output preserved for debugging").
 

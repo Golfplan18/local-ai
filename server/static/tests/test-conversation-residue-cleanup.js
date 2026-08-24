@@ -74,7 +74,7 @@ async function testMediaLibrary() {
     }
     return response({ entries: [{ id: 'sensitive-entry', kind: 'audio' }] });
   };
-  load(dom, 'media-library.js');
+  load(dom, '../../plugins/video/static/media-library.js');
   w.OraMediaLibrary.init();
   w.OraMediaLibrary.setConversationId('media-target');
   await wait(w, 0);
@@ -105,7 +105,7 @@ async function testTimelineAndTranscript() {
   var timelineDom = makeDom('<div class="visual-panel"></div>');
   var tw = timelineDom.window;
   tw.fetch = function () { return response({ entries: [] }); };
-  load(timelineDom, 'timeline-editor.js');
+  load(timelineDom, '../../plugins/video/static/timeline-editor.js');
   tw.OraTimelineEditor.init();
   tw.OraTimelineEditor.setConversationId('timeline-target');
   tw.OraTimelineEditor._setStateForTests({
@@ -125,7 +125,7 @@ async function testTimelineAndTranscript() {
   var transcriptDom = makeDom('<div class="visual-panel"></div>');
   var sw = transcriptDom.window;
   sw.fetch = function () { return response({ segments: [] }); };
-  load(transcriptDom, 'transcript-panel.js');
+  load(transcriptDom, '../../plugins/video/static/transcript-panel.js');
   sw.OraTranscriptPanel.init();
   sw.OraTranscriptPanel.setConversationId('transcript-target');
   deleteEvent(sw, 'other-dialogue');
@@ -157,7 +157,7 @@ async function testCaptureAndRender() {
     }
     return response({}, 404);
   };
-  load(captureDom, 'capture-controls.js');
+  load(captureDom, '../../plugins/video/static/capture-controls.js');
   cw.OraCaptureControls.init();
   cw.OraCaptureControls.setConversationId('capture-target');
   cw.document.dispatchEvent(new cw.CustomEvent('ora:pane-mode-toggle', {
@@ -201,7 +201,7 @@ async function testCaptureAndRender() {
     }
     return response({}, 404);
   };
-  load(renderDom, 'render-controls.js');
+  load(renderDom, '../../plugins/video/static/render-controls.js');
   rw.OraRenderControls.init();
   await wait(rw, 0);
   rw.OraRenderControls.setConversationId('render-target');
@@ -239,7 +239,7 @@ async function testPreviewAndDocuments() {
     }
     return response({}, 404);
   };
-  load(previewDom, 'preview-monitor.js');
+  load(previewDom, '../../plugins/video/static/preview-monitor.js');
   pw.OraPreviewMonitor.init();
   pw.document.body.classList.add('pane-mode-video');
   pw.OraPreviewMonitor.setConversationId('preview-target');

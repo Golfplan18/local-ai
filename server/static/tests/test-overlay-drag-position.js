@@ -21,8 +21,9 @@ var fs   = require('fs');
 var path = require('path');
 var vm   = require('vm');
 
-var TIMELINE_SRC = path.resolve(__dirname, '..', 'timeline-editor.js');
-var PREVIEW_SRC  = path.resolve(__dirname, '..', 'preview-monitor.js');
+var VIDEO_ROOT = path.resolve(__dirname, '..', '..', '..', 'plugins', 'video', 'static');
+var TIMELINE_SRC = path.join(VIDEO_ROOT, 'timeline-editor.js');
+var PREVIEW_SRC  = path.join(VIDEO_ROOT, 'preview-monitor.js');
 
 // ── Minimal DOM mock (lifted from prior harnesses) ─────────────────────────
 

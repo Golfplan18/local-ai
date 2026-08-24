@@ -30,12 +30,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from orchestrator import job_queue, media_library, timeline  # noqa: E402
-from orchestrator.media_capture import (  # noqa: E402
+from orchestrator import job_queue  # noqa: E402
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
+from plugins.video.backend import media_library, timeline  # noqa: E402
+from plugins.video.backend.media_capture import (  # noqa: E402
     STATE_COMPLETE as CAPTURE_COMPLETE,
     STATE_RECORDING as CAPTURE_RECORDING,
 )
-from orchestrator.render import (  # noqa: E402
+from plugins.video.backend.render import (  # noqa: E402
     STATE_CANCELLED,
     STATE_COMPLETE,
     STATE_FAILED,
@@ -104,7 +106,7 @@ class RenderReleaseTests(unittest.TestCase):
 
 class CaptureReleaseTests(unittest.TestCase):
     def test_a_recording_in_progress_survives_close(self):
-        from orchestrator.media_capture import CaptureManager
+        from plugins.video.backend.media_capture import CaptureManager
 
         mgr = CaptureManager()
 

@@ -26,11 +26,12 @@ HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
 
 class RenderWaveformTests(unittest.TestCase):
 
     def setUp(self):
-        from waveform import render_waveform, waveform_cache_path
+        from plugins.video.backend.waveform import render_waveform, waveform_cache_path
         self.render_waveform = render_waveform
         self.waveform_cache_path = waveform_cache_path
         self._tmp = tempfile.TemporaryDirectory()
@@ -65,7 +66,9 @@ class RenderWaveformTests(unittest.TestCase):
             r.stderr = b""
             return r
 
-        with mock.patch("waveform.subprocess.run", side_effect=fake_run):
+        with mock.patch(
+            "plugins.video.backend.waveform.subprocess.run", side_effect=fake_run,
+        ):
             ok = self.render_waveform(src, out)
         self.assertTrue(ok)
         self.assertTrue(out.exists())
@@ -75,7 +78,9 @@ class RenderWaveformTests(unittest.TestCase):
         src = self._make_source()
         out = self._tmp_path / "out.png"
         proc = mock.Mock(returncode=1, stdout=b"", stderr=b"oops")
-        with mock.patch("waveform.subprocess.run", return_value=proc):
+        with mock.patch(
+            "plugins.video.backend.waveform.subprocess.run", return_value=proc,
+        ):
             ok = self.render_waveform(src, out)
         self.assertFalse(ok)
 
@@ -84,7 +89,9 @@ class RenderWaveformTests(unittest.TestCase):
         src = self._make_source()
         out = self._tmp_path / "out.png"
         proc = mock.Mock(returncode=0, stdout=b"", stderr=b"")
-        with mock.patch("waveform.subprocess.run", return_value=proc):
+        with mock.patch(
+            "plugins.video.backend.waveform.subprocess.run", return_value=proc,
+        ):
             ok = self.render_waveform(src, out)
         self.assertFalse(ok)
 
@@ -93,7 +100,7 @@ class RenderWaveformTests(unittest.TestCase):
         src = self._make_source()
         out = self._tmp_path / "out.png"
         with mock.patch(
-            "waveform.subprocess.run",
+            "plugins.video.backend.waveform.subprocess.run",
             side_effect=_sp.TimeoutExpired(cmd="ffmpeg", timeout=1),
         ):
             ok = self.render_waveform(src, out, timeout=1)
@@ -114,7 +121,9 @@ class RenderWaveformTests(unittest.TestCase):
             r.stderr = b""
             return r
 
-        with mock.patch("waveform.subprocess.run", side_effect=fake_run):
+        with mock.patch(
+            "plugins.video.backend.waveform.subprocess.run", side_effect=fake_run,
+        ):
             self.render_waveform(src, out, width=600, height=120)
 
         cmd = captured["cmd"]
@@ -152,7 +161,7 @@ class WaveformEndpointTests(unittest.TestCase):
                 f"could not import server.py: "
                 f"{getattr(self, 'import_err', '<unknown>')}"
             )
-        import media_library as ML  # noqa: WPS433
+        from plugins.video.backend import media_library as ML  # noqa: WPS433
         self._ML = ML
         self._tmp = tempfile.TemporaryDirectory()
         self._tmp_path = Path(self._tmp.name)
@@ -163,18 +172,11 @@ class WaveformEndpointTests(unittest.TestCase):
         self._saved_ora_home = self.S.rp.ORA_HOME
         self.S.rp.ORA_HOME = self._tmp_path
 
-        from media_library import get_library
-        self._saved_server_getter = self.S._get_media_library
-        self.S._get_media_library = get_library
-        self._saved_has_flag = self.S._HAS_MEDIA_LIBRARY
-        self.S._HAS_MEDIA_LIBRARY = True
         self.client = self.S.app.test_client()
         self.conv_id = "test_conv_waveform"
 
     def tearDown(self):
         if self.import_ok:
-            self.S._get_media_library = self._saved_server_getter
-            self.S._HAS_MEDIA_LIBRARY = self._saved_has_flag
             self.S.rp.ORA_HOME = self._saved_ora_home
             self._ML.SESSIONS_ROOT = self._saved_sessions_root
             self._ML._libraries.clear()
@@ -194,7 +196,10 @@ class WaveformEndpointTests(unittest.TestCase):
             Path(out).parent.mkdir(parents=True, exist_ok=True)
             Path(out).write_bytes(content)
             return True
-        return mock.patch("waveform.render_waveform", side_effect=fake_render)
+        return mock.patch(
+            "plugins.video.backend.waveform.render_waveform",
+            side_effect=fake_render,
+        )
 
     def test_endpoint_renders_on_first_hit_and_caches(self):
         entry = self._add_audio()
@@ -239,7 +244,9 @@ class WaveformEndpointTests(unittest.TestCase):
 
     def test_endpoint_404_when_render_fails(self):
         entry = self._add_audio()
-        with mock.patch("waveform.render_waveform", return_value=False):
+        with mock.patch(
+            "plugins.video.backend.waveform.render_waveform", return_value=False,
+        ):
             resp = self.client.get(
                 f"/api/media-library/{self.conv_id}/{entry['id']}/waveform"
             )

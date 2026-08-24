@@ -43,10 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
-try:
-    from . import runtime_paths as _rp
-except ImportError:  # pragma: no cover - legacy top-level import
-    import runtime_paths as _rp
+from .. import runtime as _runtime
 
 # ── locate yt-dlp ────────────────────────────────────────────────────────────
 
@@ -139,7 +136,7 @@ class URLImportManager:
         self._deleted_conversations: set[str] = set()
         self._lock = threading.Lock()
         self._subs: list[Callable[[dict], None]] = []
-        self._sessions_root = sessions_root or _rp.ORA_HOME / "sessions"
+        self._sessions_root = sessions_root or _runtime.ora_home() / "sessions"
         # Inject the media-library factory so tests can stub registration.
         self._lib_factory = media_library_factory
 
@@ -160,7 +157,7 @@ class URLImportManager:
         with self._lock:
             if conversation_id.casefold() in self._deleted_conversations:
                 raise RuntimeError("conversation was permanently deleted")
-            output_dir = _rp.safe_owned_subdir(
+            output_dir = _runtime.safe_owned_subdir(
                 self._sessions_root,
                 conversation_id,
                 "imports",
@@ -512,7 +509,7 @@ class URLImportManager:
         if self._lib_factory is not None:
             lib = self._lib_factory(job.conversation_id)
         else:
-            from media_library import get_library  # type: ignore
+            from .media_library import get_library
             lib = get_library(job.conversation_id)
         if job.output_path is None:
             return None
