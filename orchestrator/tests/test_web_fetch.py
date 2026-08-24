@@ -18,8 +18,14 @@ from __future__ import annotations
 import os
 import sys
 import json
+from contextlib import contextmanager
+import gzip
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import tempfile
+import threading
+import types
 import unittest
+from urllib.parse import urlsplit
 from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -154,6 +160,17 @@ class CascadeLogicTests(unittest.TestCase):
         j.assert_called_once()
         self.assertEqual(result["channel"], "api")
 
+    def test_policy_refusal_stops_the_cascade(self):
+        refusal = self._bad("httpx", "redirect destination refused")
+        refusal["policy_refusal"] = True
+        with mock.patch.object(wf, "_fetch_httpx", return_value=refusal), \
+             mock.patch.object(wf, "_fetch_playwright") as p, \
+             mock.patch.object(wf, "_fetch_jina") as j:
+            result = wf.web_fetch("https://example.com")
+        self.assertIs(result, refusal)
+        p.assert_not_called()
+        j.assert_not_called()
+
 
 class ChannelPinTests(unittest.TestCase):
     def test_channel_httpx_pins_to_httpx(self):
@@ -286,6 +303,394 @@ class AcceptabilityTests(unittest.TestCase):
         self.assertTrue(wf._is_acceptable(
             {"markdown": "x" * (wf._MIN_USEFUL_CHARS + 1)}
         ))
+
+
+class _FetchFixtureHandler(BaseHTTPRequestHandler):
+    """Small local body fixture; oversized responses omit Content-Length."""
+
+    def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
+        if "redirect" in self.path:
+            self.send_response(302)
+            self.send_header("Location", "/private")
+            self.end_headers()
+            return
+        content_encoding = None
+        if "compressed-oversized" in self.path:
+            body = gzip.compress(b"expanded-fixture-" * 4096)
+            content_type = "text/html; charset=utf-8"
+            content_encoding = "gzip"
+        elif "compressed-normal" in self.path:
+            body = gzip.compress(
+                b"<html><head><title>Fixture article</title></head>"
+                b"<body>" + (b"Deterministic local article sentence. " * 40)
+                + b"</body></html>"
+            )
+            content_type = "text/html; charset=utf-8"
+            content_encoding = "gzip"
+        elif "oversized" in self.path:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            try:
+                for _ in range(32):
+                    self.wfile.write(b"oversized-fixture-" * 64)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
+        elif "/reader/" in self.path:
+            body = (
+                b"Title: Fixture article\n\n"
+                + (b"Deterministic local article sentence. " * 40)
+            )
+            content_type = "text/markdown; charset=utf-8"
+        else:
+            body = (
+                b"<html><head><title>Fixture article</title></head><body>"
+                + (b"Deterministic local article sentence. " * 40)
+                + b"</body></html>"
+            )
+            content_type = "text/html; charset=utf-8"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        if content_encoding:
+            self.send_header("Content-Encoding", content_encoding)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *_args):
+        return None
+
+
+class LocalStreamFixtureTests(unittest.TestCase):
+    """Exercise real httpx streaming without contacting an external service."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), _FetchFixtureHandler)
+        cls.thread = threading.Thread(
+            target=cls.server.serve_forever, name="web-fetch-fixture", daemon=True,
+        )
+        cls.thread.start()
+        cls.base_url = f"http://127.0.0.1:{cls.server.server_port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=2)
+
+    def _url(self, path):
+        return self.base_url + "/" + path
+
+    def _fixture_validation(self, value, **_kwargs):
+        parsed = urlsplit(value)
+        if "private" in (parsed.path or ""):
+            raise network_policy.NetworkPolicyError(
+                "destination resolves to a non-public address",
+            )
+        return network_policy.ValidatedURL(
+            url=value,
+            scheme=parsed.scheme,
+            host=parsed.hostname,
+            port=parsed.port,
+            origin=f"{parsed.scheme}://{parsed.netloc}",
+            resolved_addresses=("127.0.0.1",),
+            third_party_safe=True,
+        )
+
+    @contextmanager
+    def _allow_fixture_urls(self):
+        # setUpModule's offline DNS guard points every hostname at a public
+        # documentation address.  This fixture needs the real loopback socket,
+        # while the validator is still replaced only for these local URLs.
+        with mock.patch.object(
+            wf.network_policy,
+            "validate_public_url",
+            side_effect=self._fixture_validation,
+        ), mock.patch.object(
+            wf.network_policy.socket,
+            "getaddrinfo",
+            return_value=[(
+                wf.network_policy.socket.AF_INET,
+                wf.network_policy.socket.SOCK_STREAM,
+                6,
+                "",
+                ("127.0.0.1", self.server.server_port),
+            )],
+        ):
+            yield
+
+    def test_normal_http_response_is_extracted_unchanged(self):
+        with self._allow_fixture_urls():
+            result = wf.web_fetch(self._url("normal"), channel="httpx")
+        self.assertEqual(result["channel"], "httpx")
+        self.assertNotIn("error", result)
+        self.assertIn("Deterministic local article sentence", result["markdown"])
+
+    def test_oversized_http_response_is_bounded_and_terminal(self):
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024), \
+             self._allow_fixture_urls(), \
+             mock.patch.object(wf, "_fetch_playwright") as browser, \
+             mock.patch.object(wf, "_fetch_jina") as jina:
+            result = wf.web_fetch(self._url("oversized"))
+        self.assertTrue(result["content_limit_exceeded"])
+        self.assertEqual(result["content_limit_bytes"], 1024)
+        self.assertEqual(result["markdown"], "")
+        self.assertIn("shared content cap", result["error"])
+        browser.assert_not_called()
+        jina.assert_not_called()
+
+    def test_compressed_http_response_is_bounded_before_decompression(self):
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024), \
+             self._allow_fixture_urls(), \
+             mock.patch.object(wf, "_fetch_playwright") as browser, \
+             mock.patch.object(wf, "_fetch_jina") as jina:
+            result = wf.web_fetch(
+                self._url("compressed-oversized"), channel="httpx",
+            )
+        self.assertTrue(result["content_limit_exceeded"])
+        self.assertEqual(result["markdown"], "")
+        browser.assert_not_called()
+        jina.assert_not_called()
+
+    def test_bounded_reader_uses_raw_stream_for_compressed_body(self):
+        compressed = gzip.compress(b"expanded-fixture-" * 4096)
+
+        class _CompressedResponse:
+            headers = {
+                "Content-Encoding": "gzip",
+                "Content-Length": str(len(compressed)),
+            }
+
+            def iter_raw(self, chunk_size=None):
+                self.chunk_size = chunk_size
+                yield compressed
+
+            def iter_bytes(self, **_kwargs):
+                raise AssertionError("bounded reader used decoded iterator")
+
+        response = _CompressedResponse()
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024):
+            body, exceeded = wf._read_stream_body(response)
+        self.assertLess(len(compressed), 1024)
+        self.assertEqual(response.chunk_size, wf._STREAM_CHUNK_BYTES)
+        self.assertEqual(body, b"")
+        self.assertTrue(exceeded)
+
+    def test_optional_codec_is_refused_before_raw_body_iteration(self):
+        class _OptionalCodecResponse:
+            status_code = 200
+            headers = {"Content-Encoding": "br", "Content-Length": "4"}
+            encoding = "utf-8"
+
+            def __init__(self):
+                self.raw_iterated = False
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def iter_raw(self, **_kwargs):
+                self.raw_iterated = True
+                raise AssertionError("optional codec body was materialized")
+
+        class _Client:
+            def __init__(self, response):
+                self.response = response
+                self.headers = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            @contextmanager
+            def stream(self, method, url):
+                self.request = (method, url)
+                yield self.response
+
+        response = _OptionalCodecResponse()
+        client = _Client(response)
+        with self._allow_fixture_urls(), mock.patch(
+            "httpx.Client", return_value=client,
+        ) as client_factory:
+            result = wf.web_fetch(self._url("optional-codec"), channel="httpx")
+
+        self.assertEqual(result["unsupported_content_encoding"], "br")
+        self.assertIn("unsupported or unsafe", result["error"].lower())
+        self.assertFalse(response.raw_iterated)
+        self.assertEqual(
+            client_factory.call_args.kwargs["headers"]["Accept-Encoding"],
+            "gzip, deflate",
+        )
+
+    def test_oversized_jina_response_is_bounded(self):
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024), \
+             mock.patch.object(wf, "_JINA_READER_BASE", self.base_url + "/reader/"), \
+             self._allow_fixture_urls():
+            result = wf.web_fetch(self._url("oversized"), channel="api")
+        self.assertTrue(result["content_limit_exceeded"])
+        self.assertEqual(result["content_limit_bytes"], 1024)
+        self.assertEqual(result["markdown"], "")
+        self.assertTrue(result["third_party_forwarding"]["forwarded"])
+
+    def test_compressed_jina_response_is_bounded_before_decompression(self):
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 1024), \
+             mock.patch.object(wf, "_JINA_READER_BASE", self.base_url + "/reader/"), \
+             self._allow_fixture_urls():
+            result = wf.web_fetch(
+                self._url("compressed-oversized"), channel="api",
+            )
+        self.assertTrue(result["content_limit_exceeded"])
+        self.assertEqual(result["markdown"], "")
+        self.assertTrue(result["third_party_forwarding"]["forwarded"])
+
+    def test_normal_gzip_response_remains_supported(self):
+        with mock.patch.object(wf, "_MAX_CONTENT_BYTES", 4096), \
+             self._allow_fixture_urls():
+            result = wf.web_fetch(
+                self._url("compressed-normal"), channel="httpx",
+            )
+        self.assertNotIn("error", result)
+        self.assertIn("Deterministic local article sentence", result["markdown"])
+
+    def test_redirect_policy_refusal_is_terminal(self):
+        with self._allow_fixture_urls(), \
+             mock.patch.object(wf, "_fetch_playwright") as browser, \
+             mock.patch.object(wf, "_fetch_jina") as jina:
+            result = wf.web_fetch(self._url("redirect"))
+        self.assertTrue(result["policy_refusal"])
+        self.assertIn("non-public", result["error"])
+        browser.assert_not_called()
+        jina.assert_not_called()
+
+    def test_normal_jina_response_uses_the_same_streaming_path(self):
+        with mock.patch.object(wf, "_JINA_READER_BASE", self.base_url + "/reader/"), \
+             self._allow_fixture_urls():
+            result = wf.web_fetch(self._url("normal"), channel="api")
+        self.assertEqual(result["channel"], "api")
+        self.assertNotIn("error", result)
+        self.assertEqual(result["title"], "Fixture article")
+
+
+class BrowserBusyTests(unittest.TestCase):
+    def test_browser_route_abort_preserves_policy_refusal_and_stops_cascade(self):
+        class _AbortRoute:
+            request = types.SimpleNamespace(url="https://private.example/secret")
+
+            def abort(self):
+                raise RuntimeError("route aborted")
+
+        class _Page:
+            def __init__(self, context):
+                self.context = context
+
+            def goto(self, _url, **_kwargs):
+                self.context.http_handler(_AbortRoute())
+
+            def content(self):
+                return "<html><body>unreachable</body></html>"
+
+        class _Context:
+            def route(self, _pattern, handler):
+                self.http_handler = handler
+
+            def route_web_socket(self, _pattern, _handler):
+                return None
+
+            def new_page(self):
+                return _Page(self)
+
+        class _Browser:
+            def new_context(self, **_kwargs):
+                self.context = _Context()
+                return self.context
+
+            def close(self):
+                return None
+
+        browser = _Browser()
+        manager = mock.MagicMock()
+        manager.__enter__.return_value = types.SimpleNamespace(
+            chromium=types.SimpleNamespace(
+                launch=mock.Mock(return_value=browser),
+            ),
+        )
+        manager.__exit__.return_value = False
+        playwright_package = types.ModuleType("playwright")
+        playwright_package.__path__ = []
+        sync_api = types.ModuleType("playwright.sync_api")
+        sync_api.sync_playwright = mock.Mock(return_value=manager)
+        trafilatura = types.ModuleType("trafilatura")
+        short = wf._error_result("https://example.com/", "httpx", "short")
+        with mock.patch.dict(sys.modules, {
+            "playwright": playwright_package,
+            "playwright.sync_api": sync_api,
+            "trafilatura": trafilatura,
+        }), mock.patch.object(
+            wf.network_policy,
+            "validate_browser_request",
+            side_effect=network_policy.NetworkPolicyError(
+                "destination resolves to a non-public address",
+            ),
+        ), mock.patch.object(wf, "_fetch_httpx", return_value=short), \
+             mock.patch.object(wf, "_fetch_jina") as jina:
+            result = wf.web_fetch("https://example.com")
+
+        self.assertTrue(result["policy_refusal"])
+        self.assertIn("non-public", result["error"])
+        jina.assert_not_called()
+
+    def test_second_browser_fetch_returns_busy_without_starting_render(self):
+        entered = threading.Event()
+        release = threading.Event()
+        good = {
+            "url": "https://example.com", "markdown": "x" * 600,
+            "title": "ok", "channel": "local", "fetched_at": "now",
+        }
+
+        def hold_render(_url):
+            entered.set()
+            release.wait(timeout=2)
+            return good
+
+        with mock.patch.object(wf, "_fetch_playwright_locked",
+                               side_effect=hold_render) as render:
+            first = threading.Thread(
+                target=wf._fetch_playwright, args=("https://example.com",),
+                name="first-browser-fetch", daemon=True,
+            )
+            first.start()
+            self.assertTrue(entered.wait(timeout=1))
+            second = wf._fetch_playwright("https://example.com")
+            release.set()
+            first.join(timeout=2)
+
+        self.assertTrue(second["browser_busy"])
+        self.assertIn("busy", second["error"])
+        self.assertEqual(first.is_alive(), False)
+        render.assert_called_once()
+
+    def test_busy_browser_result_stops_auto_cascade(self):
+        self.assertTrue(wf._BROWSER_FETCH_LOCK.acquire(blocking=False))
+        try:
+            bad = {
+                "url": "https://example.com", "markdown": "",
+                "title": None, "channel": "httpx", "fetched_at": "now",
+                "error": "short",
+            }
+            with mock.patch.object(wf, "_fetch_httpx", return_value=bad), \
+                 mock.patch.object(wf, "_fetch_jina") as jina:
+                result = wf.web_fetch("https://example.com")
+        finally:
+            wf._BROWSER_FETCH_LOCK.release()
+        self.assertTrue(result["browser_busy"])
+        jina.assert_not_called()
 
 
 @unittest.skipUnless(_LIVE, "set ORA_WEB_FETCH_LIVE=1 to run network smoke")

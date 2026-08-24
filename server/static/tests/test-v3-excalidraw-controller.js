@@ -158,7 +158,11 @@ const api = {
   getSceneElements() { return this.elements; },
   getAppState() { return this.appState; },
   getFiles() { return this.files; },
-  resetScene() { this.elements = []; this.files = {}; },
+  resetScene() {
+    this.elements = [];
+    this.files = {};
+    this.appState = { ...this.appState, viewBackgroundColor: '#ffffff' };
+  },
   addFiles(files) {
     files.forEach((file) => { this.files[file.id] = file; });
   },
@@ -214,6 +218,14 @@ w.OraExcalidrawIsland = {
   mount(_host, options) {
     islandHost = _host;
     islandOptions = options;
+    // Emulate Excalidraw applying its white default after initialData. The
+    // controller must enforce Ora's transparent canvas once the API is ready.
+    api.elements = options.initialData.elements;
+    api.files = options.initialData.files;
+    api.appState = {
+      ...options.initialData.appState,
+      viewBackgroundColor: '#ffffff',
+    };
     options.onReady(api);
     // Real Excalidraw reports its initial empty scene during mount. This must
     // not dirty the default or next Dialogue before an explicit load/clear.
@@ -475,6 +487,9 @@ const exportThroughMenu = async (format) => {
 
 (async () => {
   await tick();
+  if (api.appState.viewBackgroundColor !== 'transparent') {
+    throw new Error('Excalidraw initial mount did not restore Ora canvas transparency');
+  }
   islandOptions.onChange([], {
     zoom: { value: 2 }, scrollX: 5, scrollY: -3,
   }, {});
@@ -534,6 +549,9 @@ const exportThroughMenu = async (format) => {
   w.OraCanvas.setConversationContext('old-dialogue', '');
   w.OraCanvas.reset();
   await Promise.resolve();
+  if (api.appState.viewBackgroundColor !== 'transparent') {
+    throw new Error('Excalidraw reset restored its white default instead of Ora transparency');
+  }
   api.elements = [{ id: 'dirty-old-scene', type: 'rectangle' }];
   islandOptions.onChange(api.elements, api.appState, api.files);
   w.OraCanvas.setConversationContext('target-dialogue', '');

@@ -1452,7 +1452,12 @@ try:
     from file_ops import file_read, file_write
     from knowledge_search import knowledge_search, knowledge_search_raw
     from credential_store import credential_store
-    from dispatcher import dispatch as dispatcher_dispatch, reset_consecutive, cleanup_all
+    from dispatcher import (
+        dispatch as dispatcher_dispatch,
+        reset_consecutive,
+        tool_loop_context,
+        cleanup_all,
+    )
 except ImportError as e:
     print(f"[WARNING] Tool import failed: {e}")
     TOOLS_AVAILABLE = False
@@ -2703,157 +2708,6 @@ def _extract_first_visual_envelope(text: str):
         return None, m.group(0)
 
 
-def _splice_visual_envelope(text: str, old_block: str, env: dict) -> str:
-    block = "```ora-visual\n" + json.dumps(env, indent=2, ensure_ascii=False) + "\n```"
-    return text.replace(old_block, block, 1) if old_block in text else text.rstrip() + "\n\n" + block
-
-
-def _render_visual_svg_browser(env: dict) -> tuple[str | None, str | None]:
-    try:
-        from pathlib import Path
-        from urllib.parse import unquote, urlparse
-        from playwright.sync_api import sync_playwright
-    except Exception as exc:
-        return None, f"playwright unavailable: {exc}"
-
-    try:
-        root = Path(WORKSPACE)
-        static_root = root / "server/static"
-        compiler_root = static_root / "ora-visual-compiler"
-        schema_root = root / "config/visual-schemas"
-        if not compiler_root.exists():
-            return None, "visual compiler missing"
-        if not schema_root.exists():
-            return None, "visual schemas missing"
-
-        scripts = [
-            "ora-visual-compiler/errors.js",
-            "ora-visual-compiler/validator.js",
-            "ora-visual-compiler/renderers/stub.js",
-            "ora-visual-compiler/dispatcher.js",
-            "ora-visual-compiler/index.js",
-            "ora-visual-compiler/vendor/ajv/ajv2020.bundle.min.js",
-            "ora-visual-compiler/vendor/vega/vega.min.js",
-            "ora-visual-compiler/vendor/vega-lite/vega-lite.min.js",
-            "ora-visual-compiler/vendor/mermaid/mermaid.min.js",
-            "ora-visual-compiler/vendor/viz-js/viz-standalone.js",
-            "ora-visual-compiler/vendor/d3/d3.min.js",
-            "ora-visual-compiler/vendor/dagre/dagre.min.js",
-            "ora-visual-compiler/vendor/structurizr-mini/parser.js",
-            "ora-visual-compiler/vendor/structurizr-mini/renderer.js",
-            "ora-visual-compiler/palettes.js",
-            "ora-visual-compiler/dot-engine.js",
-            "ora-visual-compiler/ajv-init.js",
-            "ora-visual-compiler/renderers/vega-lite.js",
-            "ora-visual-compiler/renderers/mermaid.js",
-            "ora-visual-compiler/renderers/causal-dag.js",
-            "ora-visual-compiler/renderers/c4.js",
-            "ora-visual-compiler/renderers/causal-loop-diagram.js",
-            "ora-visual-compiler/renderers/stock-and-flow.js",
-            "ora-visual-compiler/renderers/fishbone.js",
-            "ora-visual-compiler/renderers/decision-tree.js",
-            "ora-visual-compiler/renderers/influence-diagram.js",
-            "ora-visual-compiler/renderers/ach-matrix.js",
-            "ora-visual-compiler/renderers/quadrant-matrix.js",
-            "ora-visual-compiler/renderers/bow-tie.js",
-            "ora-visual-compiler/renderers/ibis.js",
-            "ora-visual-compiler/renderers/pro-con.js",
-            "ora-visual-compiler/renderers/concept-map.js",
-            "ora-visual-compiler/alt-text-generator.js",
-            "ora-visual-compiler/aria-annotator.js",
-            "ora-visual-compiler/keyboard-nav.js",
-            "ora-visual-compiler/artifact-adversarial.js",
-        ]
-        html = (
-            "<!doctype html><html><head><meta charset='utf-8'></head><body>"
-            + "".join(f"<script src='/static/{src}'></script>" for src in scripts)
-            + "</body></html>"
-        )
-
-        def mime_for(path: Path) -> str:
-            if path.suffix == ".js":
-                return "application/javascript"
-            if path.suffix == ".json":
-                return "application/json"
-            if path.suffix == ".css":
-                return "text/css"
-            if path.suffix == ".wasm":
-                return "application/wasm"
-            return "text/plain"
-
-        def route_request(route):
-            parsed = urlparse(route.request.url)
-            req_path = unquote(parsed.path)
-            if req_path == "/visual-renderer":
-                route.fulfill(status=200, content_type="text/html", body=html)
-                return
-            if req_path.startswith("/static/visual-schemas/"):
-                rel = req_path[len("/static/visual-schemas/"):]
-                target = (schema_root / rel).resolve()
-                base = schema_root.resolve()
-            elif req_path.startswith("/static/"):
-                rel = req_path[len("/static/"):]
-                target = (static_root / rel).resolve()
-                base = static_root.resolve()
-            else:
-                route.fulfill(status=404, body="not found")
-                return
-            if base not in target.parents and target != base:
-                route.fulfill(status=403, body="forbidden")
-                return
-            if not target.exists() or not target.is_file():
-                route.fulfill(status=404, body="not found")
-                return
-            route.fulfill(
-                status=200,
-                content_type=mime_for(target),
-                body=target.read_bytes(),
-            )
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page(
-                    device_scale_factor=2,
-                    color_scheme="light",
-                    viewport={"width": 1500, "height": 1200},
-                )
-                page.route("http://ora.local/**", route_request)
-                page.goto("http://ora.local/visual-renderer", wait_until="load", timeout=90000)
-                boot = page.evaluate(
-                    """async () => {
-                        if (!window.OraVisualCompiler || !window.OraVisualCompiler.bootstrapAjv) {
-                            return { ok: false, reason: 'compiler did not boot' };
-                        }
-                        return await window.OraVisualCompiler.bootstrapAjv({
-                            schemaRoot: '/static/visual-schemas/'
-                        });
-                    }"""
-                )
-                if not boot or not boot.get("ok"):
-                    return None, "browser compiler Ajv boot failed: " + str((boot or {}).get("reason") or "unknown")
-                result = page.evaluate(
-                    """async (env) => {
-                        const r = await window.OraVisualCompiler.compileWithNav(env);
-                        return {
-                            svg: (r && r.svg) || '',
-                            errors: (r && r.errors) || [],
-                            warnings: (r && r.warnings) || []
-                        };
-                    }""",
-                    env,
-                )
-                svg = (result or {}).get("svg") or ""
-                if svg.strip().startswith("<"):
-                    return svg, None
-                errors = (result or {}).get("errors") or []
-                return None, json.dumps(errors, ensure_ascii=False)[:500] or "browser render failed"
-            finally:
-                browser.close()
-    except Exception as exc:
-        return None, str(exc)
-
-
 def _render_visual_svg_cli(env: dict) -> tuple[str | None, str | None]:
     try:
         import subprocess
@@ -2873,242 +2727,6 @@ def _render_visual_svg_cli(env: dict) -> tuple[str | None, str | None]:
         return None, (r.stderr or r.stdout or "render failed")[:500]
     except Exception as exc:
         return None, str(exc)
-
-
-def _render_visual_svg(env: dict) -> tuple[str | None, str | None]:
-    # The visual path is also used by non-interactive producers. Keep the
-    # normal turn renderer explicitly headless; browser rendering belongs to
-    # the client and to unrelated web-fetch/MCP paths.
-    return _render_visual_svg_cli(env)
-
-
-def _rasterize_svg_light(svg: str) -> tuple[bytes | None, str | None]:
-    try:
-        from pathlib import Path
-        from playwright.sync_api import sync_playwright
-    except Exception as exc:
-        return None, f"playwright unavailable: {exc}"
-    try:
-        theme_path = Path(WORKSPACE) / "server/static/ora-visual-compiler/ora-visual-theme.css"
-        theme_css = theme_path.read_text() if theme_path.exists() else ""
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page(
-                    device_scale_factor=2,
-                    color_scheme="light",
-                    viewport={"width": 1500, "height": 1200},
-                )
-                page.set_content(
-                    "<!doctype html><html><head><style>" + theme_css + "</style>"
-                    "<style>body{margin:0;background:#FCFCFA;}#host{display:inline-block;background:#FCFCFA;padding:24px;width:max-content;}#host svg{display:block;}</style>"
-                    "</head><body><div id='host'></div></body></html>"
-                )
-                page.locator("#host").evaluate(
-                    """(el, markup) => {
-                        el.innerHTML = markup;
-                        const svg = el.querySelector('svg');
-                        if (!svg) return false;
-                        let w = parseFloat(svg.getAttribute('width'));
-                        let h = parseFloat(svg.getAttribute('height'));
-                        if ((!w || !h) && svg.viewBox && svg.viewBox.baseVal) {
-                            w = svg.viewBox.baseVal.width || w;
-                            h = svg.viewBox.baseVal.height || h;
-                        }
-                        w = Math.max(240, Math.min(1400, w || 960));
-                        h = Math.max(160, Math.min(1000, h || Math.round(w * 0.5625)));
-                        svg.style.width = w + 'px';
-                        svg.style.height = h + 'px';
-                        return true;
-                    }""",
-                    svg,
-                )
-                page.wait_for_function(
-                    """() => {
-                        const host = document.getElementById('host');
-                        if (!host) return false;
-                        const r = host.getBoundingClientRect();
-                        return r.width > 100 && r.height > 100;
-                    }""",
-                    timeout=5000,
-                )
-                png = page.locator("#host").screenshot(type="png")
-                return png, None
-            finally:
-                browser.close()
-    except Exception as exc:
-        return None, str(exc)
-
-
-def _slot_endpoint_from_chain(config: dict, slot_name: str):
-    slots = (config or {}).get("slots") or {}
-    slot = slots.get(slot_name) or {}
-    chain: list[str] = []
-    if isinstance(slot, dict):
-        preferred = slot.get("preferred")
-        if isinstance(preferred, str) and preferred.strip():
-            chain.append(preferred.strip())
-        chain.extend(x.strip() for x in (slot.get("fallback") or [])
-                     if isinstance(x, str) and x.strip())
-    endpoints = {e.get("id"): e for e in (config.get("endpoints") or [])
-                 if isinstance(e, dict) and e.get("id")}
-    for mid in chain:
-        variants = [mid]
-        variants.append(mid.split(":", 1)[1] if mid.startswith("openrouter:") else "openrouter:" + mid)
-        for vid in variants:
-            ep = endpoints.get(vid)
-            if (ep and ep.get("enabled", False)
-                    and ep.get("status") in ("active", None)
-                    and vision_capable_for_endpoint(ep)):
-                return ep
-    return None
-
-
-def _resolve_visual_critique_endpoint(config: dict):
-    return (_slot_endpoint_from_chain(config, "image_critique")
-            or _slot_endpoint_from_chain(config, "vision_input"))
-
-
-def _parse_visual_critique(raw: str) -> dict:
-    if not isinstance(raw, str):
-        raw = "" if raw is None else str(raw)
-    m = re.search(r"```json\s*(\{.*?\})\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
-    candidates = [m.group(1)] if m else []
-    if "{" in raw and "}" in raw:
-        candidates.append(raw[raw.find("{"): raw.rfind("}") + 1])
-    for c in candidates:
-        try:
-            obj = json.loads(c)
-            if isinstance(obj, dict):
-                return obj
-        except Exception:
-            pass
-    low = raw.lower()
-    status = "revise" if any(w in low for w in ("fail", "revise", "unreadable", "wrong")) else "pass"
-    return {"status": status, "issues": [raw.strip()[:500]] if raw.strip() else []}
-
-
-def _critique_rendered_visual(env: dict, png: bytes, config: dict,
-                              context_pkg: dict | None, stage: str):
-    endpoint = _resolve_visual_critique_endpoint(config)
-    if not endpoint:
-        return None, "no image_critique vision endpoint configured"
-    import base64
-    user_question = ""
-    if isinstance(context_pkg, dict):
-        user_question = context_pkg.get("cleaned_prompt") or context_pkg.get("raw_input") or ""
-    rubric = (
-        "Return JSON with keys status, issues, faithful_reading, revision_guidance. "
-        "status must be pass or revise. Choose revise only if the visual is wrong type, "
-        "blank, unreadable, missing important edges/marks, or visibly fails to answer the user's question."
-    )
-    messages = [
-        {"role": "system", "content": (
-            "You are checking a rendered Ora visual. Judge the actual image, not the intent. "
-            "Be strict about blank output, wrong diagram type, missing edges, unreadable labels, "
-            "and visuals that do not answer the user's question."
-        )},
-        {"role": "user", "content": (
-            f"Pipeline stage: {stage}\n\n"
-            f"User question:\n{user_question[:2000]}\n\n"
-            f"Visual type: {env.get('type')}\n\n"
-            f"{rubric}\n\n"
-            "Return only the JSON object."
-        )},
-    ]
-    images = [{
-        "name": "ora-rendered-visual.png",
-        "mime": "image/png",
-        "base64": base64.b64encode(png).decode("ascii"),
-    }]
-    raw = call_model(messages, endpoint, images=images)
-    return _parse_visual_critique(raw), None
-
-
-def _revise_visual_envelope(env: dict, critique: dict, context_pkg: dict | None,
-                            config_name: str | None):
-    endpoint = _resolve_synthesis_endpoint(config_name)
-    if not endpoint:
-        return None, "no synthesis endpoint configured"
-    prompt = (
-        "Revise this ora-visual JSON envelope so the rendered visual passes the critique. "
-        "Keep the same visual type unless the critique says the type is wrong. "
-        "Return exactly one JSON object and no markdown.\n\n"
-        "CRITIQUE:\n" + json.dumps(critique, indent=2, ensure_ascii=False) + "\n\n"
-        "CURRENT ENVELOPE:\n" + json.dumps(env, indent=2, ensure_ascii=False)
-    )
-    raw = call_model(
-        [{"role": "system", "content": "You are a precise JSON-emitting compiler. Output only JSON."},
-         {"role": "user", "content": prompt}],
-        endpoint,
-    )
-    try:
-        candidate = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
-    except Exception as exc:
-        return None, f"revision JSON parse failed: {exc}"
-    try:
-        from visual_recovery import repair_spec
-        from visual_validator import validate_envelope
-        from visual_adversarial import review_envelope
-        candidate = repair_spec(candidate, candidate.get("type") or env.get("type"))
-        vres = validate_envelope(candidate)
-        if not vres.valid:
-            return None, "revision failed schema validation"
-        mode = (context_pkg or {}).get("mode_name") if isinstance(context_pkg, dict) else None
-        review = review_envelope(candidate, mode)
-        if review.blocks:
-            return None, "revision failed spec review"
-    except Exception as exc:
-        return None, f"revision validation failed: {exc}"
-    return candidate, None
-
-
-def _maybe_review_and_refine_visual(text: str, context_pkg: dict | None,
-                                    config: dict, config_name: str | None,
-                                    stage: str) -> str:
-    env, raw_block = _extract_first_visual_envelope(text)
-    if not env or not raw_block:
-        return text
-    trace_dir = (context_pkg or {}).get("trace_dir") if isinstance(context_pkg, dict) else None
-    diag = {"stage": stage, "type": env.get("type"), "status": "skipped"}
-    try:
-        svg, render_err = _render_visual_svg(env)
-        if not svg:
-            diag.update({"status": "render_failed", "reason": render_err})
-            return text
-        png, raster_err = _rasterize_svg_light(svg)
-        if not png:
-            diag.update({"status": "raster_failed", "reason": raster_err})
-            return text
-        critique, critique_err = _critique_rendered_visual(env, png, config, context_pkg, stage)
-        if critique_err:
-            diag.update({"status": "critique_skipped", "reason": critique_err})
-            return text
-        diag["critique"] = critique
-        if str((critique or {}).get("status", "pass")).lower() != "revise":
-            diag["status"] = "passed"
-            return text
-        revised, rev_err = _revise_visual_envelope(env, critique or {}, context_pkg, config_name)
-        if not revised:
-            diag.update({"status": "revision_failed", "reason": rev_err})
-            return text
-        svg2, render2_err = _render_visual_svg(revised)
-        if not svg2:
-            diag.update({"status": "revision_render_failed", "reason": render2_err})
-            return text
-        diag["status"] = "revised"
-        return _splice_visual_envelope(text, raw_block, revised)
-    except Exception as exc:
-        diag.update({"status": "exception", "reason": str(exc)})
-        return text
-    finally:
-        if isinstance(context_pkg, dict):
-            context_pkg.setdefault("visual_render_reviews", []).append(diag)
-        if PIPELINE_TRACE_AVAILABLE and trace_dir:
-            try:
-                pipeline_trace.append_jsonl(trace_dir, "visual-render-review.jsonl", diag)
-            except Exception:
-                pass
 
 
 def _visual_accepted_kinds(context_pkg: dict | None,
@@ -4289,26 +3907,23 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
     when the framework is not in the curated user-pickable registry or when
     either display section is absent.
 
-    Returns::
-
-        {
-            "id": str,                    # filename stem (no .md)
-            "display_name": str,          # 60-char-limit picker title
-            "display_description": str,   # 500-char-limit picker body
-            "category": str,              # "standard" | "user-created" | "one-off"
-            "kind": str,                  # "framework"
-        }
-
-    Shipped rows use the ``standard`` category. User-created and one-off
-    categories land when those provenance sources exist. The curated
-    invocability registry—not file presence—is the exposure boundary.
+    Returns the public row shape used by both the picker and its selection
+    bridge: ``id``, ``display_name``, and ``display_description``. The
+    curated invocability registry—not file presence—is the exposure boundary.
     """
-    from framework_invocability import is_user_pickable_framework
+    from framework_invocability import (
+        is_user_pickable_framework,
+        resolve_user_invocable_framework,
+    )
 
     if not is_user_pickable_framework(framework_id):
         return None
 
-    path = os.path.join(FRAMEWORKS_DIR, framework_id + ".md")
+    try:
+        filename = resolve_user_invocable_framework(framework_id)
+    except Exception:
+        return None
+    path = os.path.join(FRAMEWORKS_DIR, filename)
     try:
         with open(path, "r") as f:
             text = f.read()
@@ -4325,8 +3940,6 @@ def parse_framework_picker_metadata(framework_id: str) -> dict | None:
         "id": framework_id,
         "display_name": display_name,
         "display_description": display_description,
-        "category": "standard",
-        "kind": "framework",
     }
     return metadata
 
@@ -4354,7 +3967,7 @@ def list_pickable_frameworks() -> list[dict]:
     The curated framework-invocability registry is the source of truth for
     which framework IDs may be shown. Framework files that merely exist in
     frameworks/book/ are not picker-eligible unless registered. Sort order is
-    alphabetical by ``display_name`` within each category.
+    alphabetical by ``display_name``.
     """
     if not os.path.isdir(FRAMEWORKS_DIR):
         return []
@@ -4367,7 +3980,7 @@ def list_pickable_frameworks() -> list[dict]:
         if meta is not None:
             rows.append(meta)
 
-    rows.sort(key=lambda r: (r["category"], r["display_name"].lower()))
+    rows.sort(key=lambda r: r["display_name"].lower())
     return rows
 
 
@@ -9082,9 +8695,6 @@ def compare_intent_with_mode(
     prose-level invocation) against the mode the classifier picked.
 
     Resolution rules per Working — Framework — Ora v3 Input Handling Q4:
-    - When a framework is selected, the prefilter is suppressed entirely
-      (framework owns routing). Returns ``matches=True`` with
-      ``expressed_source="framework"`` so callers can short-circuit.
     - When ``manual_mode_selection`` is set, it wins as expressed intent.
       ``detected_invocation`` is recorded but not used for the match check.
     - Otherwise ``detected_invocation`` (if non-empty / non-NONE) is the
@@ -9097,7 +8707,7 @@ def compare_intent_with_mode(
         {
             "expressed_intent": str | None,   # the mode the user expressed
             "expressed_source": str | None,   # "manual" / "detected" /
-                                              # "framework" / None
+                                              # None
             "picked_mode": str,
             "matches": bool,                  # False → prefilter triggers
             "detected_invocation": str,       # always echoed for telemetry
@@ -9108,17 +8718,6 @@ def compare_intent_with_mode(
         detected = ""
 
     manual = (manual_mode_selection or "").strip()
-    framework = (framework_selected or "").strip()
-
-    if framework:
-        return {
-            "expressed_intent": None,
-            "expressed_source": "framework",
-            "picked_mode": picked_mode,
-            "matches": True,
-            "detected_invocation": detected,
-        }
-
     if manual:
         return {
             "expressed_intent": manual,
@@ -12981,11 +12580,15 @@ def _run_model_with_tools(messages: list, endpoint: dict,
     """
     stage_tokens = set_model_stage_context(step_name)
     try:
-        return _run_model_with_tools_impl(
-            messages, endpoint, max_iterations=max_iterations,
-            images=images, trace_dir=trace_dir, step_name=step_name,
-        )
+        with tool_loop_context():
+            return _run_model_with_tools_impl(
+                messages, endpoint, max_iterations=max_iterations,
+                images=images, trace_dir=trace_dir, step_name=step_name,
+            )
     finally:
+        # Do not restore a stale request-context count after this loop ends;
+        # the next dispatcher call in the request must start clean as well.
+        reset_consecutive()
         reset_model_stage_context(stage_tokens)
 
 
@@ -13002,6 +12605,7 @@ def _run_model_with_tools_impl(messages: list, endpoint: dict,
         tool_calls = parse_tool_calls(response)
 
         if not tool_calls:
+            reset_consecutive()
             return strip_tool_calls(response)
 
         # Execute all tool calls. Use the structured-outcome wrapper so

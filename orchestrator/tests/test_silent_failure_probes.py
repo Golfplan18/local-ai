@@ -26,6 +26,7 @@ for p in (HERE, WORKTREE_ROOT):
         sys.path.insert(0, p)
 
 import boot
+import dispatcher
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +292,69 @@ class ProbeAgenticLoopOverrun(unittest.TestCase):
                     rec = json.loads(f.readline())
                 self.assertEqual(rec["max_iterations"], 2)
                 self.assertEqual(rec["step"], "probe")
+
+
+class ProbeAgenticLoopLimiter(unittest.TestCase):
+    def setUp(self):
+        dispatcher.reset_consecutive()
+
+    def tearDown(self):
+        dispatcher.reset_consecutive()
+
+    def test_normal_no_tool_reply_resets_repeat_state(self):
+        for _ in range(7):
+            dispatcher._check_consecutive("file_read")
+
+        with mock.patch.object(boot, "call_model", return_value="terminal"), \
+             mock.patch.object(boot, "parse_tool_calls", return_value=[]):
+            result = boot._run_model_with_tools_impl(
+                [{"role": "system", "content": "s"}],
+                {"name": "fake"},
+                max_iterations=2,
+            )
+
+        self.assertEqual(result, "terminal")
+        self.assertIsNone(dispatcher._check_consecutive("file_read"))
+
+    def test_normal_loop_does_not_restore_stale_request_state(self):
+        for _ in range(7):
+            dispatcher._check_consecutive("file_read")
+
+        with mock.patch.object(boot, "call_model", return_value="terminal"), \
+             mock.patch.object(boot, "parse_tool_calls", return_value=[]):
+            result = boot._run_model_with_tools(
+                [{"role": "system", "content": "s"}],
+                {"name": "fake"},
+                max_iterations=2,
+            )
+
+        self.assertEqual(result, "terminal")
+        self.assertIsNone(dispatcher._check_consecutive("file_read"))
+
+    def test_direct_no_tool_reply_resets_repeat_state(self):
+        from server import app as server_app
+        import risk_gate
+
+        for _ in range(7):
+            dispatcher._check_consecutive("file_read")
+
+        endpoint = {"name": "fake", "context_window": 100_000}
+        with mock.patch.object(server_app, "load_config", return_value={}), \
+             mock.patch.object(server_app, "get_endpoint", return_value=endpoint), \
+             mock.patch.object(server_app, "_direct_system_prompt",
+                               return_value="system"), \
+             mock.patch.object(server_app, "call_model",
+                               return_value="terminal"), \
+             mock.patch.object(risk_gate, "now_ts", return_value=1.0), \
+             mock.patch.object(risk_gate, "assign_tier",
+                               return_value={"risk_tier": "light"}), \
+             mock.patch.object(risk_gate, "evaluate_hold",
+                               return_value=(None, None)), \
+             mock.patch.object(risk_gate, "record_route_observed"):
+            frames = list(server_app._direct_stream_impl("hello", []))
+
+        self.assertTrue(frames)
+        self.assertIsNone(dispatcher._check_consecutive("file_read"))
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,8 @@ Covers ``parse_framework_picker_metadata`` and ``list_pickable_frameworks``:
 - Frameworks missing either heading return ``None`` from the parser and are
   excluded from the picker list. Pipeline-internal frameworks (F-* and
   Phase A — Prompt Cleanup) live in this category by design.
-- The picker list is sorted by ``(category, display_name)`` so the UI can
-  render groups without re-sorting.
+- The picker list is sorted by ``display_name`` so the UI can render it
+  without category metadata.
 - Display Name and Display Description enforce the design-doc length caps
   (60 / 500 chars) across the shipped picker rows.
 """
@@ -36,20 +36,44 @@ PIPELINE_INTERNAL_IDS = {
     "phase-a-prompt-cleanup", "supplemental-rag-protocol",
 }
 
-EXPECTED_PICKABLE_COUNT = 17
+EXPECTED_PUBLIC_FRAMEWORK_IDS = {
+    "conversation-processing",
+    "corpus-formalization",
+    "deep-research",
+    "knowledge-artifact-coaching",
+    "mindspec-interview",
+    "mission-objectives-milestones",
+    "output-formalization",
+    "problem-evolution",
+    "process-formalization",
+    "process-inference",
+    "terrain-mapping",
+}
 
 
 class TestParseFrameworkPickerMetadata(unittest.TestCase):
 
     def test_parses_pickable_framework(self):
-        meta = parse_framework_picker_metadata("document-processing")
+        meta = parse_framework_picker_metadata("terrain-mapping")
         self.assertIsNotNone(meta)
-        self.assertEqual(meta["id"], "document-processing")
-        self.assertEqual(meta["display_name"], "Document Processing")
+        self.assertEqual(meta["id"], "terrain-mapping")
+        self.assertEqual(meta["display_name"], "Terrain Mapping (TMF)")
         self.assertTrue(meta["display_description"].startswith(
-            "Convert any document"))
-        self.assertEqual(meta["category"], "standard")
-        self.assertEqual(meta["kind"], "framework")
+            "Close knowledge gaps"))
+        self.assertNotIn("category", meta)
+        self.assertNotIn("kind", meta)
+
+    def test_public_aliases_parse_existing_framework_files(self):
+        expected_files = {
+            "deep-research": "deep-research-protocol.md",
+            "knowledge-artifact-coaching": "knowledge-artifact-coach.md",
+        }
+        for public_id, filename in expected_files.items():
+            with self.subTest(public_id=public_id):
+                meta = parse_framework_picker_metadata(public_id)
+                self.assertIsNotNone(meta)
+                self.assertEqual(meta["id"], public_id)
+                self.assertTrue((ORCHESTRATOR.parent / "frameworks" / "book" / filename).is_file())
 
     def test_programming_is_not_duplicated_in_the_framework_picker(self):
         self.assertIsNone(parse_framework_picker_metadata("programming"))
@@ -64,12 +88,20 @@ class TestParseFrameworkPickerMetadata(unittest.TestCase):
     def test_unknown_id_returns_none(self):
         self.assertIsNone(parse_framework_picker_metadata("nope-not-a-framework"))
 
+    def test_dedicated_only_frameworks_are_not_picker_eligible(self):
+        for framework_id in (
+            "api-key-setup", "document-processing", "engram-cleaning",
+            "news-supersession", "periodic-maintenance",
+            "video-editing-suggestions",
+        ):
+            self.assertIsNone(parse_framework_picker_metadata(framework_id))
+
 
 class TestListPickableFrameworks(unittest.TestCase):
 
     def test_returns_expected_count(self):
         rows = list_pickable_frameworks()
-        self.assertEqual(len(rows), EXPECTED_PICKABLE_COUNT)
+        self.assertEqual({r["id"] for r in rows}, EXPECTED_PUBLIC_FRAMEWORK_IDS)
 
     def test_excludes_pipeline_internal(self):
         rows = list_pickable_frameworks()
@@ -83,14 +115,14 @@ class TestListPickableFrameworks(unittest.TestCase):
             self.assertIn("id", r)
             self.assertIn("display_name", r)
             self.assertIn("display_description", r)
-            self.assertIn("category", r)
-            self.assertIn("kind", r)
+            self.assertNotIn("category", r)
+            self.assertNotIn("kind", r)
             self.assertTrue(r["display_name"].strip())
             self.assertTrue(r["display_description"].strip())
 
-    def test_sorted_by_category_then_display_name(self):
+    def test_sorted_by_display_name(self):
         rows = list_pickable_frameworks()
-        keys = [(r["category"], r["display_name"].lower()) for r in rows]
+        keys = [r["display_name"].lower() for r in rows]
         self.assertEqual(keys, sorted(keys))
 
     def test_display_name_under_60_chars(self):

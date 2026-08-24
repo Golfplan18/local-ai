@@ -168,7 +168,6 @@ def _patched(h):
         p("_run_claim_verification_preflight", return_value=("", [], {}, []))
         p("_run_unflagged_claim_scan", return_value=("", {}, []))
         p("_maybe_synthesize_visual", return_value=("", {}))
-        p("_maybe_review_and_refine_visual", side_effect=lambda text, *a, **k: text)
         p("_formatter_output_structural_check", return_value=(True, "ok"))
         p("_reviser_output_structural_check", return_value=(True, "ok"))
         p("_strip_consolidator_preamble", side_effect=lambda t: t)

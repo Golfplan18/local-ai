@@ -175,10 +175,9 @@ You need at least one working model endpoint before Ora can answer. The core ins
 3. Add a key. OpenRouter is the broadest single choice; direct provider keys (Anthropic, OpenAI, Google, and others) skip OpenRouter's gateway markup for those providers' own models.
 4. Save. On macOS desktop, keys go into the system keychain, not a plaintext file.
 
-You can also run the guided flow from the Inquiry pane (the text-entry box):
-```
-/framework api-key-setup
-```
+For a conversational walkthrough of provider choices and key-safety guidance, see
+the retained **API Key Setup** guidance document. Key entry itself remains in
+**Settings → External APIs**.
 
 On the Linux server path, keys live in the plaintext file `~/.config/ora-server.env` (permissions `600`), not the keychain — that is by design for a headless host.
 

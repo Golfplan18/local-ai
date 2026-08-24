@@ -124,7 +124,9 @@ def _internal_only_message(value: str) -> str:
 def resolve_user_invocable_framework(value: str) -> str:
     """Return the canonical framework filename for a user-facing token.
 
-    Accepts canonical names with or without ``.md`` plus configured aliases.
+    Accepts public IDs, canonical filename stems with or without ``.md``,
+    plus configured aliases. The returned filename is the internal framework
+    identity used by the parser and executor.
     Raises ``FrameworkInvocabilityError`` when the token is internal-only or
     not listed in the curated registry.
     """
@@ -164,9 +166,20 @@ def is_user_pickable_framework(value: str) -> bool:
 
 
 def user_invocable_framework_ids() -> list[str]:
+    """Return the public IDs for all user-invocable framework files.
+
+    Public aliases in the pickable registry replace the legacy filename stem
+    when one exists. Internal callers can still pass either public IDs or
+    canonical filename stems to ``resolve_user_invocable_framework``.
+    """
     registry = load_framework_invocability_registry()
+    public_id_by_filename = {}
+    for public_id in registry.pickable_ids:
+        filename = registry.invocable_by_key.get(public_id)
+        if filename:
+            public_id_by_filename.setdefault(filename, public_id)
     ids = {
-        _normalize_key(filename)
+        public_id_by_filename.get(filename, _normalize_key(filename))
         for filename in registry.invocable_by_key.values()
     }
     return sorted(ids)

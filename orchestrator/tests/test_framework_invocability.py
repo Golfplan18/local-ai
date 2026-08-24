@@ -46,6 +46,14 @@ class TestFrameworkInvocability(unittest.TestCase):
             resolve_user_invocable_framework("off"),
             "output-formalization.md",
         )
+        self.assertEqual(
+            resolve_user_invocable_framework("deep-research"),
+            "deep-research-protocol.md",
+        )
+        self.assertEqual(
+            resolve_user_invocable_framework("knowledge-artifact-coaching"),
+            "knowledge-artifact-coach.md",
+        )
 
     def test_internal_pipeline_specs_are_not_user_invocable_or_pickable(self):
         for framework_id in ("f-consult", "f-format", "supplemental-rag-protocol"):
@@ -55,21 +63,31 @@ class TestFrameworkInvocability(unittest.TestCase):
             with self.assertRaises(FrameworkInvocabilityError):
                 resolve_user_invocable_framework(framework_id)
 
-    def test_picker_only_framework_can_appear_without_slash_command_access(self):
-        self.assertTrue(is_user_pickable_framework("document-processing"))
-        self.assertFalse(is_user_invocable_framework("document-processing"))
-        with self.assertRaises(FrameworkInvocabilityError):
-            resolve_user_invocable_framework("document-processing")
+    def test_dedicated_only_frameworks_are_neither_picker_nor_slash_invocable(self):
+        for framework_id in (
+            "api-key-setup", "document-processing", "engram-cleaning",
+            "news-supersession", "periodic-maintenance",
+            "video-editing-suggestions",
+        ):
+            self.assertFalse(is_user_pickable_framework(framework_id))
+            self.assertFalse(is_user_invocable_framework(framework_id))
+            with self.assertRaises(FrameworkInvocabilityError):
+                resolve_user_invocable_framework(framework_id)
 
-    def test_registry_lists_keep_picker_and_invocable_boundaries_distinct(self):
+    def test_registry_lists_share_the_same_public_framework_set(self):
         invocable = set(user_invocable_framework_ids())
         pickable = set(user_pickable_framework_ids())
-        self.assertIn("process-formalization", invocable)
-        self.assertIn("document-processing", pickable)
-        self.assertNotIn("document-processing", invocable)
+        expected = {
+            "conversation-processing", "corpus-formalization",
+            "deep-research", "knowledge-artifact-coaching",
+            "mindspec-interview", "mission-objectives-milestones",
+            "output-formalization", "problem-evolution",
+            "process-formalization", "process-inference", "terrain-mapping",
+        }
+        self.assertEqual(invocable, expected)
+        self.assertEqual(pickable, expected)
         self.assertNotIn("programming", pickable)
         self.assertNotIn("programming", invocable)
-        self.assertTrue(invocable.issubset(pickable))
 
     def test_programming_uses_its_explicit_surface_not_framework_invocation(self):
         self.assertFalse(is_user_pickable_framework("programming"))

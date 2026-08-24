@@ -22,6 +22,7 @@ import hashlib
 import hmac
 import os
 import re
+import shutil
 import subprocess
 import threading
 from dataclasses import dataclass, field
@@ -114,6 +115,10 @@ class ToolInvocationError(ProjectError):
         self.exit_code = exit_code
         self.stderr = stderr
         self.stdout = stdout
+
+
+class ProjectExecutionBindingError(ToolInvocationError):
+    """The reviewed project command no longer matches the live registration."""
 
 
 # ---------------------------------------------------------------------------
@@ -1039,6 +1044,168 @@ def _resolve_command(project: Project, command: list[str]) -> list[str]:
     return [head, script] + list(rest)
 
 
+def _resolve_executable_identity(
+    command: list[str],
+) -> tuple[str, str, str, str]:
+    """Resolve the interpreter and declared script, binding both byte sets."""
+    if not command or not command[0]:
+        raise ProjectExecutionBindingError("project command has no executable")
+    executable = Path(command[0]).expanduser()
+    if not executable.is_absolute():
+        located = shutil.which(command[0])
+        if not located:
+            raise ProjectExecutionBindingError(
+                f"project executable {command[0]!r} was not found"
+            )
+        executable = Path(located)
+    try:
+        executable = executable.resolve(strict=True)
+        if not executable.is_file():
+            raise OSError("executable is not a regular file")
+        digest = hashlib.sha256(executable.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise ProjectExecutionBindingError(
+            f"project executable {executable} cannot be authenticated: {exc}"
+        ) from exc
+    interpreter_path = str(executable)
+    script_path = ""
+    script_identity = "sha256:" + hashlib.sha256(b"no-declared-script").hexdigest()
+    if len(command) > 1:
+        candidate = Path(command[1]).expanduser().resolve()
+        script_path = str(candidate)
+        try:
+            if candidate.is_file():
+                script_bytes = candidate.read_bytes()
+                script_identity = "sha256:" + hashlib.sha256(script_bytes).hexdigest()
+            else:
+                script_identity = "sha256:" + hashlib.sha256(
+                    f"not-a-regular-file:{candidate}".encode("utf-8")
+                ).hexdigest()
+        except OSError as exc:
+            raise ProjectExecutionBindingError(
+                f"project script {candidate} cannot be authenticated: {exc}"
+            ) from exc
+    executable_identity = "sha256:" + hashlib.sha256(json.dumps(
+        {
+            "interpreter_path": interpreter_path,
+            "interpreter_identity": "sha256:" + digest,
+            "script_path": script_path,
+            "script_identity": script_identity,
+        }, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")).hexdigest()
+    return interpreter_path, executable_identity, script_path, script_identity
+
+
+def _registered_manifest_digest(
+    project: Project, pointer_dir: str,
+) -> str:
+    pointer_path = _pointer_path(project.nexus, pointer_dir)
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProjectExecutionBindingError(
+            f"project pointer cannot be authenticated: {exc}"
+        ) from exc
+    digest = pointer.get("manifest_sha256") if isinstance(pointer, dict) else None
+    if not isinstance(digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        raise ProjectExecutionBindingError(
+            "project pointer has no authenticated manifest identity"
+        )
+    return digest
+
+
+def project_execution_binding(
+    project: Project,
+    declaration: ProjectTool | ProjectSlashCommand,
+    *,
+    kind: str,
+    args_digest: str,
+    pointer_dir: str = POINTER_DIR,
+) -> dict[str, Any]:
+    """Return the exact live identity a protected project execution will use.
+
+    The returned private ``_resolved_command`` field is for the immediate
+    subprocess boundary only. Callers pass the public digest/path fields to
+    system protection, which never stores project arguments.
+    """
+    if kind not in {"tool", "slash"}:
+        raise ProjectExecutionBindingError(f"unknown project execution kind {kind!r}")
+    if not isinstance(args_digest, str) or not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", args_digest,
+    ):
+        raise ProjectExecutionBindingError("project argument identity is invalid")
+    command = _resolve_command(project, declaration.command)
+    (
+        executable_path, executable_identity, script_path, script_identity,
+    ) = _resolve_executable_identity(command)
+    manifest_sha256 = _registered_manifest_digest(project, pointer_dir)
+    command_digest = "sha256:" + hashlib.sha256(
+        json.dumps(
+            {"kind": kind, "name": declaration.name,
+             "interface": declaration.interface, "command": command},
+            sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    target_key = "tool" if kind == "tool" else "slash"
+    selectors = (
+        f"project:{project.nexus}/{target_key}:{declaration.name}",
+        f"project:{project.nexus}/manifest:{manifest_sha256}",
+        f"project:{project.nexus}/command:{command_digest}",
+        f"project:{project.nexus}/interface:{declaration.interface}",
+        f"project:{project.nexus}/executable:{executable_identity}",
+        f"project:{project.nexus}/args:{args_digest}",
+    )
+    return {
+        "kind": kind,
+        "nexus": project.nexus,
+        "name": declaration.name,
+        "interface": declaration.interface,
+        "manifest_sha256": manifest_sha256,
+        "command_digest": command_digest,
+        "executable_path": executable_path,
+        "executable_identity": executable_identity,
+        "script_path": script_path,
+        "script_identity": script_identity,
+        "args_digest": args_digest,
+        "selectors": selectors,
+        "_resolved_command": command,
+    }
+
+
+def project_args_digest(
+    declaration: ProjectTool | ProjectSlashCommand,
+    *,
+    args: Optional[list] = None,
+    stdin_json: Any = None,
+) -> str:
+    """Digest only the invocation inputs bound to a project declaration."""
+    if declaration.interface == TOOL_INTERFACE_STDIN_STDOUT:
+        payload = {"stdin": stdin_json}
+    else:
+        payload = {"args": args or []}
+    return "sha256:" + hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")).hexdigest()
+
+
+def _assert_expected_binding(
+    expected: dict[str, Any] | None,
+    current: dict[str, Any],
+) -> None:
+    if expected is None:
+        return
+    public_keys = (
+        "kind", "nexus", "name", "interface", "manifest_sha256",
+        "command_digest", "executable_path", "executable_identity",
+        "script_path", "script_identity", "args_digest", "selectors",
+    )
+    if any(expected.get(key) != current.get(key) for key in public_keys):
+        raise ProjectExecutionBindingError(
+            "project registration, command, executable, or arguments changed "
+            "after approval"
+        )
+
+
 def _ora_home() -> str:
     """Return the Ora installation root (parent of the orchestrator directory).
 
@@ -1125,6 +1292,7 @@ def invoke_project_tool(
     timeout: int = DEFAULT_TOOL_TIMEOUT_SECS,
     pointer_dir: str = POINTER_DIR,
     extra_env: Optional[dict] = None,
+    expected_binding: Optional[dict[str, Any]] = None,
 ) -> Any:
     """Invoke a project tool by name and return parsed JSON output.
 
@@ -1149,16 +1317,55 @@ def invoke_project_tool(
             f"available: {sorted(project.tools.keys())}"
         )
 
-    cmd = _resolve_command(project, tool.command)
+    binding = project_execution_binding(
+        project, tool, kind="tool",
+        args_digest=project_args_digest(
+            tool, args=args, stdin_json=stdin_json,
+        ),
+        pointer_dir=pointer_dir,
+    )
+    _assert_expected_binding(expected_binding, binding)
+    cmd = list(binding["_resolved_command"])
     proc_input: Optional[bytes] = None
     if tool.interface == TOOL_INTERFACE_ARGV_STDOUT:
         if args:
             cmd = cmd + [str(a) for a in args]
     elif tool.interface == TOOL_INTERFACE_STDIN_STDOUT:
-        proc_input = json.dumps(stdin_json or {}, ensure_ascii=False).encode("utf-8")
+        proc_input = json.dumps(
+            stdin_json if stdin_json is not None else {},
+            ensure_ascii=False,
+        ).encode("utf-8")
     else:
         raise ProjectError(f"Unknown interface {tool.interface!r}")
 
+    # Re-read the pointer and manifest immediately before crossing into the
+    # opaque subprocess boundary. The approval was for the declaration loaded
+    # above, not for a stale in-memory copy if the project changed while it was
+    # waiting in review.
+    latest_project = get_project(nexus, pointer_dir=pointer_dir)
+    latest_tool = latest_project.tools.get(tool_name) if latest_project else None
+    if latest_project is None or latest_tool is None:
+        raise ProjectExecutionBindingError(
+            f"project {nexus}:{tool_name} changed after approval"
+        )
+    latest_binding = project_execution_binding(
+        latest_project, latest_tool, kind="tool",
+        args_digest=project_args_digest(
+            latest_tool, args=args, stdin_json=stdin_json,
+        ),
+        pointer_dir=pointer_dir,
+    )
+    _assert_expected_binding(expected_binding, latest_binding)
+    project, tool, binding = latest_project, latest_tool, latest_binding
+    cmd = list(binding["_resolved_command"])
+    if tool.interface == TOOL_INTERFACE_ARGV_STDOUT:
+        if args:
+            cmd = cmd + [str(a) for a in args]
+    elif tool.interface == TOOL_INTERFACE_STDIN_STDOUT:
+        proc_input = json.dumps(
+            stdin_json if stdin_json is not None else {},
+            ensure_ascii=False,
+        ).encode("utf-8")
     env = _build_subprocess_env(project, extra_env=extra_env)
 
     # Execution Review Phase 1: boundary events. The tool body is an opaque
@@ -1178,8 +1385,12 @@ def invoke_project_tool(
                 "category": axes["category"], "mutability": axes["mutability"],
                 "sensitivity": axes["sensitivity"], "egress": axes["egress"],
                 "mutated": ok,
-                "args_redacted": {"argv": " ".join(cmd)[:200],
-                                  "interface": tool.interface},
+                "args_redacted": {
+                    "command_digest": binding["command_digest"],
+                    "executable_identity": binding["executable_identity"],
+                    "args_digest": binding["args_digest"],
+                    "interface": tool.interface,
+                },
                 "exit": {"ok": ok, "reason": reason[:120]},
                 "duration_ms": duration_ms,
                 "gate": {"decision": "allowed",
@@ -1242,6 +1453,7 @@ def invoke_project_slash_command(
     args: Optional[list] = None,
     timeout: int = DEFAULT_TOOL_TIMEOUT_SECS,
     pointer_dir: str = POINTER_DIR,
+    expected_binding: Optional[dict[str, Any]] = None,
 ) -> str:
     """Invoke a project slash command. Returns stdout as a markdown string.
 
@@ -1252,33 +1464,77 @@ def invoke_project_slash_command(
     """
     project = get_project(nexus, pointer_dir=pointer_dir)
     if project is None:
+        if expected_binding is not None:
+            raise ProjectExecutionBindingError(
+                f"project {nexus!r} is no longer registered"
+            )
         return f"[Slash command error: no project registered with nexus {nexus!r}]"
     sc = project.slash_commands.get(command_name)
     if sc is None:
+        if expected_binding is not None:
+            raise ProjectExecutionBindingError(
+                f"project slash command {command_name!r} is no longer registered"
+            )
         return (
             f"[Slash command error: project {nexus!r} has no slash command "
             f"{command_name!r}; available: {sorted(project.slash_commands.keys())}]"
         )
 
-    cmd = _resolve_command(project, sc.command)
+    binding = project_execution_binding(
+        project, sc, kind="slash",
+        args_digest=project_args_digest(sc, args=args),
+        pointer_dir=pointer_dir,
+    )
+    _assert_expected_binding(expected_binding, binding)
+    cmd = list(binding["_resolved_command"])
     if sc.interface == TOOL_INTERFACE_ARGV_STDOUT and args:
         cmd = cmd + [str(a) for a in args]
 
+    # Re-read the pointer and manifest immediately before crossing into the
+    # opaque subprocess boundary so a reviewed declaration cannot drift while
+    # it waits for approval.
+    latest_project = get_project(nexus, pointer_dir=pointer_dir)
+    latest_command = (
+        latest_project.slash_commands.get(command_name)
+        if latest_project else None
+    )
+    if latest_project is None or latest_command is None:
+        raise ProjectExecutionBindingError(
+            f"project {nexus}:{command_name} changed after approval"
+        )
+    latest_binding = project_execution_binding(
+        latest_project, latest_command, kind="slash",
+        args_digest=project_args_digest(latest_command, args=args),
+        pointer_dir=pointer_dir,
+    )
+    _assert_expected_binding(expected_binding, latest_binding)
+    project, sc, binding = latest_project, latest_command, latest_binding
+    cmd = list(binding["_resolved_command"])
+    if sc.interface == TOOL_INTERFACE_ARGV_STDOUT and args:
+        cmd = cmd + [str(a) for a in args]
+
+    env = _build_subprocess_env(project)
     try:
         result = subprocess.run(
             cmd, capture_output=True, timeout=timeout,
-            cwd=str(project.root), env=_build_subprocess_env(project),
+            cwd=str(project.root), env=env,
         )
-    except subprocess.TimeoutExpired:
-        return f"[Slash command {nexus}:{command_name} timed out after {timeout}s]"
+    except subprocess.TimeoutExpired as exc:
+        raise ToolInvocationError(
+            f"Slash command {nexus}:{command_name} timed out after {timeout}s",
+            stderr=(exc.stderr or b"").decode("utf-8", errors="replace"),
+        ) from exc
     except FileNotFoundError as e:
-        return f"[Slash command {nexus}:{command_name} executable not found: {e}]"
+        raise ToolInvocationError(
+            f"Slash command {nexus}:{command_name} executable not found: {e}"
+        ) from e
 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace")
-        return (
-            f"[Slash command {nexus}:{command_name} exited {result.returncode}]\n"
-            + (f"```\n{stderr}\n```" if stderr.strip() else "")
+        raise ToolInvocationError(
+            f"Slash command {nexus}:{command_name} exited {result.returncode}",
+            exit_code=result.returncode, stderr=stderr,
+            stdout=result.stdout.decode("utf-8", errors="replace"),
         )
     return result.stdout.decode("utf-8", errors="replace")
 
@@ -1315,6 +1571,7 @@ __all__ = [
     "ProjectNotFoundError",
     "ToolNotFoundError",
     "ToolInvocationError",
+    "ProjectExecutionBindingError",
     "ProjectTool",
     "ProjectSlashCommand",
     "ProjectCapabilitySlot",
@@ -1324,6 +1581,8 @@ __all__ = [
     "get_project",
     "register_project",
     "unregister_project",
+    "project_args_digest",
+    "project_execution_binding",
     "invoke_project_tool",
     "invoke_project_slash_command",
     "find_project_for_slash_command",

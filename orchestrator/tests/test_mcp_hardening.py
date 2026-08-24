@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest import mock
 
@@ -308,6 +309,78 @@ for raw in sys.stdin:
         send({'jsonrpc':'2.0','id':message['id'],'result':{'content':[{'type':'text','text':'ok'}]}})
 """
 
+    _ORDINARY_ERROR_SERVER = r"""
+import json, sys
+calls = 0
+def send(value):
+    sys.stdout.write(json.dumps(value, separators=(',', ':')) + '\n')
+    sys.stdout.flush()
+for raw in sys.stdin:
+    message = json.loads(raw)
+    method = message.get('method')
+    if method == 'initialize':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'protocolVersion':'2024-11-05','capabilities':{}}})
+    elif method == 'notifications/initialized':
+        continue
+    elif method == 'tools/list':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'tools':[{'name':'read_file','description':'read','inputSchema':{'type':'object'}}]}})
+    elif method == 'tools/call':
+        calls += 1
+        if calls == 1:
+            send({'jsonrpc':'2.0','id':message['id'],'error':{'code':-32001,'message':'fixture refusal'}})
+        else:
+            send({'jsonrpc':'2.0','id':message['id'],'result':{'content':[{'type':'text','text':'recovered'}]}})
+"""
+
+    _BUSY_SERVER = r"""
+import json, sys, time
+from pathlib import Path
+calls = 0
+started = Path(sys.argv[1])
+def send(value):
+    sys.stdout.write(json.dumps(value, separators=(',', ':')) + '\n')
+    sys.stdout.flush()
+for raw in sys.stdin:
+    message = json.loads(raw)
+    method = message.get('method')
+    if method == 'initialize':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'protocolVersion':'2024-11-05','capabilities':{}}})
+    elif method == 'notifications/initialized':
+        continue
+    elif method == 'tools/list':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'tools':[{'name':'read_file','description':'read','inputSchema':{'type':'object'}}]}})
+    elif method == 'tools/call':
+        calls += 1
+        if calls == 1:
+            started.write_text('started', encoding='utf-8')
+            time.sleep(0.6)
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'content':[{'type':'text','text':'ok'}]}})
+"""
+
+    _MISMATCH_THEN_RECOVER_SERVER = r"""
+import json, sys
+from pathlib import Path
+state = Path(sys.argv[1])
+def send(value):
+    sys.stdout.write(json.dumps(value, separators=(',', ':')) + '\n')
+    sys.stdout.flush()
+for raw in sys.stdin:
+    message = json.loads(raw)
+    method = message.get('method')
+    if method == 'initialize':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'protocolVersion':'2024-11-05','capabilities':{}}})
+    elif method == 'notifications/initialized':
+        continue
+    elif method == 'tools/list':
+        send({'jsonrpc':'2.0','id':message['id'],'result':{'tools':[{'name':'read_file','description':'read','inputSchema':{'type':'object'}}]}})
+    elif method == 'tools/call':
+        if not state.exists():
+            state.write_text('failed', encoding='utf-8')
+            send({'jsonrpc':'2.0','id':message['id'] + 1,'result':{}})
+        else:
+            send({'jsonrpc':'2.0','id':message['id'],'result':{'content':[{'type':'text','text':'recovered'}]}})
+"""
+
     def test_local_stdio_requests_are_serialized_and_cleanup_is_idempotent(self):
         conn = mcp_client.MCPConnection(
             "fake", sys.executable, ["-u", "-c", self._SERVER], env={},
@@ -326,6 +399,56 @@ for raw in sys.stdin:
             thread.is_alive() and thread.name.startswith("mcp-fake-")
             for thread in threading.enumerate()
         ))
+
+    def test_ordinary_json_rpc_tool_error_keeps_healthy_connection_alive(self):
+        conn = mcp_client.MCPConnection(
+            "fake", sys.executable,
+            ["-u", "-c", self._ORDINARY_ERROR_SERVER], env={},
+        )
+        self.assertTrue(conn.connect())
+        try:
+            refused = conn.call_tool("read_file", {"path": "x"})
+            self.assertEqual(refused["error"]["code"], -32001)
+            self.assertFalse(conn._closed)
+            recovered = conn.call_tool("read_file", {"path": "x"})
+            self.assertEqual(recovered["content"][0]["text"], "recovered")
+            self.assertFalse(conn._closed)
+        finally:
+            conn.shutdown()
+
+    def test_busy_connection_returns_prompt_result_without_waiting_for_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            started = Path(directory) / "started"
+            conn = mcp_client.MCPConnection(
+                "fake", sys.executable,
+                ["-u", "-c", self._BUSY_SERVER, str(started)], env={},
+            )
+            self.assertTrue(conn.connect())
+            first = []
+            worker = threading.Thread(
+                target=lambda: first.append(
+                    conn.call_tool("read_file", {"path": "x"}, timeout=2)
+                ),
+            )
+            try:
+                worker.start()
+                deadline = time.monotonic() + 2
+                while not started.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(started.exists())
+                with mock.patch.object(mcp_client, "MCP_BUSY_WAIT_SECONDS", 0.05):
+                    began = time.monotonic()
+                    busy = conn.call_tool("read_file", {"path": "x"}, timeout=2)
+                    elapsed = time.monotonic() - began
+                self.assertIn("busy", busy["error"].lower())
+                self.assertLess(elapsed, 0.4)
+                worker.join(timeout=2)
+                self.assertFalse(worker.is_alive())
+                self.assertEqual(first[0]["content"][0]["text"], "ok")
+            finally:
+                if worker.is_alive():
+                    worker.join(timeout=2)
+                conn.shutdown()
 
     def test_response_id_and_shape_are_exact(self):
         mismatch = mcp_client.MCPConnection("fake", "unused")
@@ -471,6 +594,57 @@ class MCPManagerTests(unittest.TestCase):
             self.assertTrue(instances["playwright"].closed)
         finally:
             manager.shutdown()
+
+    def test_failed_response_removes_tools_and_recovers_on_later_use(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = root / "state"
+            registry_path = root / "mcp-servers.json"
+            registry_path.write_text(
+                json.dumps({"servers": [{"name": "vault-fs"}]}),
+                encoding="utf-8",
+            )
+            cfg = {
+                "name": "vault-fs",
+                "command": sys.executable,
+                "args": ["-u", "-c", MCPProtocolTests._MISMATCH_THEN_RECOVER_SERVER,
+                          str(state)],
+                "cwd": str(_REPO),
+                "create_cwd": False,
+                "env_allowlist": [],
+                "env_from_parent": [],
+                "env": {},
+                "required_env": [],
+                "tools": {"read_file"},
+            }
+            manager = mcp_client.MCPClientManager()
+            with mock.patch.object(mcp_client, "MCP_REGISTRY", str(registry_path)), \
+                 mock.patch.object(mcp_client, "_validate_server_config", return_value=cfg), \
+                 mock.patch.object(tool_events._rp, "VAULT_STR", str(root)):
+                manager.initialize()
+                try:
+                    self.assertIn(
+                        "mcp_vault-fs_read_file",
+                        {item["name"] for item in manager.get_tool_definitions()},
+                    )
+                    failed = manager.call_mcp_tool(
+                        "mcp_vault-fs_read_file", {"path": "probe.txt"},
+                    )
+                    self.assertIn("unavailable", failed["error"])
+                    self.assertEqual(manager.get_tool_definitions(), [])
+
+                    recovered = manager.call_mcp_tool(
+                        "mcp_vault-fs_read_file", {"path": "probe.txt"},
+                    )
+                    self.assertEqual(
+                        recovered["content"][0]["text"], "recovered",
+                    )
+                    self.assertIn(
+                        "mcp_vault-fs_read_file",
+                        {item["name"] for item in manager.get_tool_definitions()},
+                    )
+                finally:
+                    manager.shutdown()
 
     def test_missing_locked_browser_fails_only_playwright_clearly(self):
         registry, tools = self._configured_tools()

@@ -2,7 +2,6 @@
   "_schema_version": 1,
   "_note": "Curated boundary for user-facing framework exposure. A markdown file existing in frameworks/book/ is not enough to make it callable through /framework or visible in the shared picker. Programming has its own explicit entry and is not a framework-picker row.",
   "invocable_frameworks": [
-    "api-key-setup.md",
     "conversation-processing.md",
     "corpus-formalization.md",
     "deep-research-protocol.md",
@@ -16,26 +15,22 @@
     "terrain-mapping.md"
   ],
   "pickable_frameworks": [
-    "api-key-setup.md",
     "conversation-processing.md",
     "corpus-formalization.md",
-    "deep-research-protocol.md",
-    "document-processing.md",
-    "engram-cleaning.md",
-    "knowledge-artifact-coach.md",
+    "deep-research",
+    "knowledge-artifact-coaching",
     "mindspec-interview.md",
     "mission-objectives-milestones.md",
-    "news-supersession.md",
     "output-formalization.md",
-    "periodic-maintenance.md",
     "problem-evolution.md",
     "process-formalization.md",
     "process-inference.md",
-    "terrain-mapping.md",
-    "video-editing-suggestions.md"
+    "terrain-mapping.md"
   ],
   "aliases": {
     "cff": "corpus-formalization.md",
+    "deep-research": "deep-research-protocol.md",
+    "knowledge-artifact-coaching": "knowledge-artifact-coach.md",
     "off": "output-formalization.md",
     "pff": "process-formalization.md"
   },

@@ -152,18 +152,19 @@ class TestCompareIntentWithMode(unittest.TestCase):
         self.assertEqual(r["detected_invocation"], "steelman-construction")
         self.assertFalse(r["matches"])  # manual != picked
 
-    def test_framework_suppresses_prefilter(self):
-        # Per V3 Q3: framework selected → prefilter suppressed entirely,
-        # regardless of how mode intent is expressed.
+    def test_framework_selection_does_not_suppress_mode_comparison(self):
+        # Framework selection has its own early execution branch. If this
+        # helper is called, it must still report the actual expressed mode
+        # rather than pretending the framework owns routing.
         r = compare_intent_with_mode(
             picked_mode="standard",
             manual_mode_selection="steelman-construction",  # would mismatch
             detected_invocation="root-cause-analysis",       # would mismatch
             framework_selected="document-processing",
         )
-        self.assertTrue(r["matches"])
-        self.assertEqual(r["expressed_source"], "framework")
-        self.assertIsNone(r["expressed_intent"])
+        self.assertFalse(r["matches"])
+        self.assertEqual(r["expressed_source"], "manual")
+        self.assertEqual(r["expressed_intent"], "steelman-construction")
 
     def test_explicit_none_in_detected_treated_as_empty(self):
         # Defensive: if upstream forwards "NONE" verbatim, treat it as no

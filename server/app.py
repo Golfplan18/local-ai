@@ -4074,13 +4074,22 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         # the branch assignments below never need a guard.
         turn_state = {"trace_dir": None, "kind": "unknown", "status": None,
                       "mode": None, "gear": None, "parent_ref": None}
+    execution_context = (extra_context or {}).get("execution_context", "interactive")
     manual_mode_selection = (manual_mode_selection or "").strip()
     manual_lens_selection = (manual_lens_selection or "").strip()
     framework_selected = (framework_selected or "").strip()
-    # Keep a mutable per-turn carrier for the terminal visual outcome. The
-    # assembled context package copies this data for model work and copies
-    # only the outcome back before the existing save boundary.
-    extra_context = dict(extra_context or {})
+    if framework_selected:
+        try:
+            framework_selected = _resolve_selected_framework(framework_selected)
+        except ValueError as exc:
+            turn_state["kind"] = "framework_validation_error"
+            turn_state["status"] = "error"
+            yield _sse("error", text=str(exc))
+            return
+    # Keep the caller's mutable context as the carrier for terminal outcomes.
+    # The existing plain-HTTP save boundary receives this same dictionary;
+    # cloning it here would strand picker results in a local copy.
+    extra_context = extra_context if isinstance(extra_context, dict) else {}
     if manual_lens_selection and not _lens_available_for_mode(
         manual_mode_selection, manual_lens_selection,
     ):
@@ -4092,7 +4101,6 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         )
         manual_lens_selection = ""
     if manual_lens_selection:
-        extra_context = dict(extra_context or {})
         extra_context["selected_lens_id"] = manual_lens_selection
 
     # --- Stealth context + forensic trace setup (TURN HEAD) ---
@@ -4414,6 +4422,10 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation",
                    label=f"Continuing {continuation_ctx.framework_id} / {continuation_ctx.mode}…")
+        _continuation_trace_ctx = {"conversation_tag": _conv_tag}
+        _continuation_context = dict(extra_context or {})
+        _continuation_context.setdefault("conversation_id", panel_id)
+        _continuation_context.setdefault("conversation_tag", _conv_tag)
         try:
             text = framework_elicitation.continue_elicitation(
                 continuation_ctx, history or [], config,
@@ -4421,6 +4433,11 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 conversation_id=panel_id,
                 current_project_nexus=_framework_project_nexus(extra_context),
                 style_context=extra_context,
+                input_context=_continuation_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_continuation_trace_ctx,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4506,6 +4523,152 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                           f"{_cs_exc}", flush=True)
         return
 
+    # --- Framework picker selection short-circuit ---
+    # A picker selection is an explicit framework invocation, even though the
+    # browser sends the user's prompt and framework id as separate fields.
+    # Rebuild the same slash command consumed by the typed /framework path so
+    # there is one executor and one elicitation implementation. This branch
+    # returns before Step 1, so the selected framework cannot be re-routed as
+    # an ordinary analysis mode or executed a second time.
+    if framework_selected:
+        turn_state["kind"] = "framework_picker"
+        _framework_context = dict(extra_context or {})
+        _framework_context.setdefault("conversation_id", panel_id)
+        _framework_context.setdefault("conversation_tag", _conv_tag)
+        _framework_context.setdefault(
+            "execution_context", _framework_context.get("execution_context", "interactive")
+        )
+        _picker_trace_ctx = {"conversation_tag": _conv_tag}
+        _picker_command = f"/framework {framework_selected}"
+        if user_input.strip():
+            _picker_command += f" {user_input.strip()}"
+        try:
+            import framework_elicitation
+            if user_input.strip():
+                # Match the typed framework route's irreversible-task hold
+                # before entering the shared executor.
+                _picker_tier_srv, _picker_ts_srv = None, None
+                try:
+                    import risk_gate as _rgate_picker
+                    _picker_ts_srv = _rgate_picker.now_ts()
+                    _picker_tier = _rgate_picker.assign_tier(
+                        _picker_command, panel_id, surface="framework",
+                    )["risk_tier"]
+                    _picker_tier_srv = _picker_tier
+                    _picker_hold, _ = _rgate_picker.evaluate_hold(
+                        _picker_tier_srv, conversation_id=panel_id,
+                        prompt=_picker_command, surface="framework",
+                        stealth=(_conv_tag == "stealth"),
+                        description=_picker_command,
+                    )
+                    if _picker_hold is not None:
+                        turn_state["kind"] = "risk_hold"
+                        yield _sse("response", text=_picker_hold)
+                        return
+                except Exception as _picker_risk_exc:
+                    print(f"[risk-gate] picker framework hold skipped: {_picker_risk_exc}")
+
+                # Keep the shared one-shot executor's tool events correlated
+                # with this picker turn and enforce the same tier as typed
+                # /framework execution.
+                try:
+                    import tool_events as _te_picker
+                    _te_picker.set_turn_context(
+                        conversation_id=panel_id, surface="chat",
+                        stealth=(_conv_tag == "stealth"),
+                        risk_tier=_picker_tier_srv,
+                    )
+                except Exception:
+                    pass
+
+                yield _sse("pipeline_stage", stage="framework_execution",
+                           label="Running selected framework…")
+                from milestone_executor import run_framework_command
+                try:
+                    result_text = run_framework_command(
+                        _picker_command, config, trace_dir=trace_dir,
+                        conversation_tag=_conv_tag,
+                        trace_context=_picker_trace_ctx,
+                        project_nexus=_framework_project_nexus(_framework_context),
+                        one_run_profile=config_name,
+                        style_context=_framework_context,
+                        input_context=_framework_context,
+                        images=images,
+                    )
+                except Exception:
+                    try:
+                        _rgate_picker.record_route_observed(
+                            (panel_id, _picker_ts_srv or ""),
+                            risk_tier=_picker_tier_srv,
+                        )
+                    except Exception:
+                        pass
+                    raise
+                turn_state["status"] = _picker_trace_ctx.get("status") or "completed"
+                turn_state["framework_id"] = _picker_trace_ctx.get("framework_id")
+                turn_state["mode"] = _picker_trace_ctx.get("mode") or turn_state["mode"]
+                turn_state["child_refs"] = list(
+                    _picker_trace_ctx.get("child_trace_refs") or []
+                )
+                # Picker output bypasses the ordinary gear tail just like the
+                # typed /framework path. Give it the same terminal visual
+                # authority and copy its durable outcome into the existing
+                # turn-save context before emitting the response.
+                try:
+                    from boot import _run_visual_hook as _picker_visual_hook
+                    _picker_visual_context = {
+                        "cleaned_prompt": _picker_command,
+                        "mode_name": _picker_trace_ctx.get("mode"),
+                        "execution_context": execution_context,
+                        "trace_dir": trace_dir,
+                        "conversation_id": panel_id,
+                        "framework_id": _picker_trace_ctx.get("framework_id"),
+                    }
+                    result_text = _picker_visual_hook(
+                        result_text, _picker_visual_context,
+                    )
+                    _copy_visual_outcome_context(
+                        _picker_visual_context, extra_context,
+                    )
+                except Exception as _picker_visual_exc:
+                    print(f"[picker visual-hook] skipped due to error: {_picker_visual_exc}")
+                yield _sse("response", text=result_text)
+                try:
+                    _rgate_picker.record_route_observed(
+                        (panel_id, _picker_ts_srv or ""),
+                        risk_tier=_picker_tier_srv,
+                        output_text=result_text,
+                    )
+                except Exception:
+                    pass
+                return
+
+            turn_state["kind"] = "framework_elicitation"
+            yield _sse(
+                "pipeline_stage", stage="framework_elicitation_start",
+                label=f"Starting interactive {framework_selected} session…",
+            )
+            text = framework_elicitation.start_elicitation(
+                framework_selected, history or [], config,
+                project_nexus=_framework_project_nexus(_framework_context),
+                one_run_profile=config_name,
+                style_context=_framework_context,
+                input_context=_framework_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_picker_trace_ctx,
+            )
+            turn_state["status"] = _picker_trace_ctx.get("status") or "completed"
+            turn_state["framework_id"] = _picker_trace_ctx.get("framework_id")
+            turn_state["mode"] = _picker_trace_ctx.get("mode") or turn_state["mode"]
+            yield _sse("response", text=text)
+            return
+        except Exception as exc:
+            turn_state["status"] = "error"
+            yield _sse("error", text=f"Framework picker execution error: {exc}")
+            return
+
     # --- Framework slash-command short-circuit ---
     # Detect /framework <name> [<query>] and route to either the one-shot
     # milestone executor (when a query is supplied) or the interactive
@@ -4561,7 +4724,9 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                     trace_context=_trace_ctx,
                     project_nexus=_framework_project_nexus(extra_context),
                     one_run_profile=config_name,
-                    style_context=extra_context)
+                    style_context=extra_context,
+                    input_context=extra_context,
+                    images=images)
                 turn_state["status"] = _trace_ctx.get("status") or "completed"
                 turn_state["framework_id"] = _trace_ctx.get("framework_id")
                 turn_state["mode"] = _trace_ctx.get("mode") or turn_state["mode"]
@@ -4614,12 +4779,18 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         turn_state["kind"] = "framework_elicitation"
         yield _sse("pipeline_stage", stage="framework_elicitation_start",
                    label=f"Starting interactive {framework_name} session…")
+        _trace_ctx = {"conversation_tag": _conv_tag}
         try:
             text = framework_elicitation.start_elicitation(
                 framework_name, history or [], config,
                 project_nexus=_framework_project_nexus(extra_context),
                 one_run_profile=config_name,
                 style_context=extra_context,
+                input_context=extra_context,
+                images=images,
+                trace_dir=trace_dir,
+                conversation_tag=_conv_tag,
+                trace_context=_trace_ctx,
             )
         except Exception as exc:
             turn_state["status"] = "error"
@@ -4760,7 +4931,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     # V3 Input Handling Phase 1 / analysis picker — compare the user's
     # explicit toolbar selection or detected invocation against the final
     # mode. Manual analysis picks may already have overridden Step 1 above;
-    # frameworks still suppress the comparison because they own routing.
+    # framework selection is handled by its explicit branch and does not
+    # pretend to own this comparison.
     # Storing on ``step1`` keeps the data available on clarification resume.
     intent_comparison = compare_intent_with_mode(
         picked_mode=step1["mode"],
@@ -5230,6 +5402,10 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             boot_context.reset_model_stage_context(tokens)
 
     response = ""
+    # A direct request may reuse a Flask worker context after a prior loop
+    # reached its iteration cap. Start this loop with a fresh limiter state;
+    # normal no-tool replies reset it at the terminal branch below.
+    reset_consecutive()
     for iteration in range(MAX_ITERATIONS):
         call_images = images if iteration == 0 else None
         # Pass images only on the first call (they accompany the user's original message)
@@ -5332,6 +5508,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     # overrun so the user doesn't receive a stripped-empty response with
     # no signal that the model never converged. Parity with
     # boot._run_model_with_tools's overrun fix.
+    reset_consecutive()
     clean = strip_tool_calls(response)
     clean = _boot_context_api()._append_codex_canvas_image_notice(
         clean, images,
@@ -5929,13 +6106,12 @@ def list_pickable_analysis_modes() -> list[dict]:
 def frameworks_picker():
     """V3 Phase 2 — list of pickable frameworks for the input-box framework picker.
 
-    Returns ``{ frameworks: [ {id, display_name, display_description,
-    category, kind, ...}, ... ] }`` with one row per framework that declares both ``## Display Name`` and
-    ``## Display Description`` sections. Pipeline-internal frameworks (F-* and
-    Phase A) are silently excluded — they do not declare these fields.
+    Returns ``{ frameworks: [ {id, display_name, display_description}, ... ] }``
+    with one row per framework in the shared public invocability registry.
+    Pipeline-internal and dedicated-only frameworks are excluded.
 
-    The picker UI consumes this directly; rows are pre-sorted by category then
-    alphabetical Display Name. This endpoint is read-only and side-effect-free
+    The picker UI consumes this directly; rows are pre-sorted by alphabetical
+    Display Name. This endpoint is read-only and side-effect-free
     so it can be called freely on every picker open.
     """
     try:
@@ -7273,6 +7449,10 @@ def framework_analyze_inputs():
     framework_id = (data.get("framework_id") or "").strip()
     if not framework_id:
         return json.dumps({"error": "framework_id is required"}), 400
+    try:
+        framework_id = _resolve_selected_framework(framework_id)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
 
     prompt          = data.get("prompt") or ""
     attachments     = data.get("attachments") or []
@@ -8637,6 +8817,24 @@ def _framework_project_nexus(extra_context):
     return nexus
 
 
+def _resolve_selected_framework(framework_id):
+    """Validate a picker framework before any model-facing work begins.
+
+    The picker posts a framework stem, while the typed command parser accepts
+    stems, filenames, and aliases. Resolve through that same invocability
+    boundary and return the canonical stem used by the execution bridge.
+    """
+    value = str(framework_id or "").strip()
+    if not value:
+        return ""
+    try:
+        from framework_invocability import resolve_user_invocable_framework
+        filename = resolve_user_invocable_framework(value)
+    except Exception as exc:
+        raise ValueError(f"invalid framework selection: {exc}") from exc
+    return Path(filename).stem
+
+
 def _validate_public_model_profile_override(config_name):
     """Reject internal tokens and unavailable names at HTTP entry surfaces."""
     if config_name is None:
@@ -8840,7 +9038,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     ``manual_lens_selection`` and ``framework_selected`` carry the user's
     input-box-toolbar choices.
     """
-    if not user_input and not (
+    if not user_input and not framework_selected and not (
         extra_context and extra_context.get("visual_checkpoint_id")
     ):
         return json.dumps({"error": "empty message"}), 400
@@ -8858,6 +9056,12 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
     # default OUTPUT style. An explicit /style one-off above still wins.
     extra_context = _apply_style_audience(extra_context, style_audience)
     extra_context = _apply_project_model_locks(extra_context)
+    # Framework markers carry this bounded identity only.  The continuation
+    # handler resolves the existing pending/processed record; image bytes
+    # never enter the marker or this reference itself.
+    if submission_id:
+        extra_context = dict(extra_context or {})
+        extra_context["_framework_submission_id"] = submission_id
 
     # Sidebar window integration: use rolling window for sidebar panels.
     # Every ordinary Dialogue request instead reconstructs immutable/current
@@ -9310,6 +9514,10 @@ def chat():
     manual_mode_selection = str(data.get("manual_mode_selection") or "").strip()
     manual_lens_selection = str(data.get("manual_lens_selection") or "").strip()
     framework_selected = str(data.get("framework_selected") or "").strip()
+    try:
+        framework_selected = _resolve_selected_framework(framework_selected)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     style_audience = str(data.get("style_audience") or "").strip()
     manual_visual_type = str(data.get("manual_visual_type") or "").strip()
     image_provider_override = str(data.get("image_provider_override") or "").strip()
@@ -9324,7 +9532,7 @@ def chat():
     trace_debug_payload = (
         data.get("trace_debug") if isinstance(data.get("trace_debug"), dict) else None
     )
-    if not user_input and not trace_debug_payload:
+    if not user_input and not trace_debug_payload and not framework_selected:
         return _json_response({"error": "empty message"}, 400)
     if not _valid_live_conversation_id(panel_id):
         return _json_response({"error": "invalid conversation_id"}, 400)
@@ -9490,6 +9698,10 @@ def chat_multipart():
     manual_mode_selection = (form.get("manual_mode_selection") or "").strip()
     manual_lens_selection = (form.get("manual_lens_selection") or "").strip()
     framework_selected    = (form.get("framework_selected") or "").strip()
+    try:
+        framework_selected = _resolve_selected_framework(framework_selected)
+    except ValueError as exc:
+        return _json_response({"error": str(exc)}, 400)
     style_audience        = (form.get("style_audience") or "").strip()  # G1.36 honne/tatemae
     manual_visual_type    = (form.get("manual_visual_type") or "").strip()
     image_provider_override = (
@@ -9536,7 +9748,7 @@ def chat_multipart():
         }, 400)
     if visual_native_file is not None and visual_editor not in {"excalidraw", "konva"}:
         return _json_response({"error": "invalid visual_editor"}, 400)
-    if not user_input and visual_native_file is None:
+    if not user_input and not framework_selected and visual_native_file is None:
         return json.dumps({"error": "empty message"}), 400
     if not conversation_id:
         return json.dumps({"error": "missing conversation_id"}), 400
@@ -9809,6 +10021,7 @@ def chat_multipart():
             "spatial_raw":           spatial_raw,
             "annotations_raw":       annotations_raw,
             "image_path":            image_path,
+            "image_mime":            image_mime,
             "exhibits_submission_intent": exhibits_submission_intent,
             "visual_checkpoint_id": visual_checkpoint_id,
             "visual_editor": visual_editor or None,
@@ -16887,6 +17100,141 @@ def clarification_pending():
 # a working path. resolve_provider walks preferred → fallback per
 # routing-config.json's slots block.
 
+def _load_image_capability_registry():
+    """Load one registry and bind the existing image-route providers.
+
+    ``load_registry`` auto-registers local-diffusers when it is installed.
+    The remaining providers are bound here so the registry can walk the
+    configured preferred/fallback chain instead of a route guessing which
+    historical provider should be available.
+    """
+    sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
+    sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
+    from capability_registry import load_registry
+
+    registry = load_registry()
+    registrars = (
+        ("stability", "register"),
+        ("replicate", "register_replicate_provider"),
+        ("openrouter_images", "register"),
+    )
+    for module_name, registrar_name in registrars:
+        try:
+            module = __import__(module_name)
+            registrar = getattr(module, registrar_name)
+            registrar(registry)
+        except Exception:
+            # A missing optional SDK/key/catalog must not prevent another
+            # configured provider from being tried by the same registry.
+            pass
+    return registry
+
+
+def _reject_production_mock(data, inputs=None):
+    """Reject deterministic fixture switches on production routes."""
+    if bool((data or {}).get("mock")) or bool((inputs or {}).get("mock")):
+        return Response(json.dumps({"error": {
+            "code": "mock_not_allowed",
+            "message": (
+                "Deterministic image capability responses are test-only; "
+                "configure a real provider and retry."
+            ),
+            "attempts": [],
+        }}), status=400, mimetype="application/json")
+    return None
+
+
+def _capability_error_response(code, message, *, status=502, attempts=None):
+    error = {"code": code, "message": message}
+    if attempts is not None:
+        error["attempts"] = attempts
+    return Response(json.dumps({"error": error}), status=status,
+                    mimetype="application/json")
+
+
+def _capability_exception_response(exc):
+    """Render a registry error without discarding its attempt history."""
+    code = getattr(exc, "code", "model_unavailable")
+    status = 400 if code in {
+        "prompt_rejected", "no_mask_drawn", "no_image_selected",
+        "mask_invalid", "no_specific_guidance",
+        "missing_required_input", "references_incompatible",
+        "direction_invalid", "image_too_small", "image_too_large",
+        "source_ambiguous", "image_unreadable",
+    } else 502
+    return _capability_error_response(
+        code,
+        str(exc),
+        status=status,
+        attempts=getattr(exc, "attempts", []) or [],
+    )
+
+
+def _vision_endpoint_identity(endpoint: dict) -> str:
+    return str(endpoint.get("id") or endpoint.get("name") or
+               endpoint.get("display_name") or "unknown")
+
+
+def _active_vision_endpoint(config: dict, entry: str) -> dict | None:
+    """Resolve one configured vision entry through the active boot/router path."""
+    if not isinstance(entry, str) or not entry.strip():
+        return None
+    entry = entry.strip()
+
+    # The public boot wrapper enforces active/eligible endpoint state and
+    # returns the v1 shape consumed by call_model(). Do not resolve directly
+    # from raw config here: that would bypass router aliases, cooldowns, and
+    # the canonical vision-capability lookup.
+    candidates = [entry]
+    if entry.startswith("openrouter:"):
+        candidates.append(entry.split(":", 1)[1])
+    else:
+        candidates.append("openrouter:" + entry)
+    for candidate in candidates:
+        try:
+            endpoint = get_endpoint_by_id(candidate)
+        except Exception:
+            endpoint = None
+        if endpoint and vision_capable_for_endpoint(endpoint):
+            return endpoint
+    return None
+
+
+def _active_vision_endpoint_chain(config: dict,
+                                  provider_override: str | None = None
+                                  ) -> list[dict]:
+    """Build the one configured image-critique/vision-input fallback chain."""
+    if provider_override:
+        override = _active_vision_endpoint(config, provider_override)
+        return [override] if override else []
+
+    slots = (config or {}).get("slots") or {}
+    entries = []
+    for slot_name in ("image_critique", "vision_input"):
+        slot = slots.get(slot_name) or {}
+        if not isinstance(slot, dict):
+            continue
+        preferred = slot.get("preferred")
+        if isinstance(preferred, str) and preferred.strip():
+            entries.append(preferred)
+        entries.extend(
+            item for item in (slot.get("fallback") or [])
+            if isinstance(item, str) and item.strip()
+        )
+
+    resolved = []
+    seen = set()
+    for entry in entries:
+        endpoint = _active_vision_endpoint(config, entry)
+        if endpoint is None:
+            continue
+        identity = _vision_endpoint_identity(endpoint)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        resolved.append(endpoint)
+    return resolved
+
 @app.route("/api/capability/image_generates", methods=["POST"])
 def capability_image_generates():
     """Dispatch the `image_generates` capability slot.
@@ -17034,6 +17382,32 @@ def _decode_data_url(data_url, field_name):
         raise ValueError(f"{field_name} base64 decode failed: {exc}")
 
 
+def _normalize_provider_image_output(output):
+    """Return provider image output as raw bytes when it is usable."""
+    if isinstance(output, (bytes, bytearray, memoryview)):
+        return bytes(output)
+
+    if isinstance(output, dict):
+        data_uri = output.get("image_data_uri")
+        if isinstance(data_uri, str):
+            output = data_uri
+        else:
+            image_url = output.get("image_url")
+            if not isinstance(image_url, str) or not image_url:
+                return None
+            try:
+                return _fetch_provider_asset(image_url, timeout=30)
+            except Exception:
+                return None
+
+    if isinstance(output, str) and output.startswith("data:"):
+        try:
+            return _decode_data_url(output, "provider image")
+        except ValueError:
+            return None
+    return None
+
+
 @app.route("/api/capability/image_edits", methods=["POST"])
 def capability_image_edits():
     """Dispatch the `image_edits` capability slot.
@@ -17079,42 +17453,20 @@ def capability_image_edits():
             "message": str(exc)
         }}), status=400, mimetype="application/json")
 
-    # Mock path: when no API key is configured, return a deterministic
-    # stub so the §13.3 acceptance criterion ("verify edited image lands")
-    # still exercises end-to-end without hitting OpenAI. Detected by the
-    # presence of an explicit `mock=true` flag OR by the absence of any
-    # OpenAI key on the server. Returning the mask itself as a 1024×1024
-    # PNG (re-encoded via PIL) gives the canvas something visibly
-    # different from the source.
-    mock_requested = bool(data.get("mock"))
-    has_openai_key = bool(
-        os.environ.get("OPENAI_API_KEY")
-        or _try_keychain_openai_key()
-    )
-    if mock_requested or not has_openai_key:
-        try:
-            mock_b64 = _build_mock_image_edits_result(image_bytes, mask_bytes)
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "image_b64": mock_b64,
-            "provider_id": "mock-image-edits",
-            "mode": "inpaint",
-            "mocked": True
-        }), status=200, mimetype="application/json")
+    mock_error = _reject_production_mock(data)
+    if mock_error is not None:
+        return mock_error
 
-    # Real path: route through the capability registry.
+    # Route once through the configured capability chain. Key presence is
+    # provider-owned; the registry must be allowed to reach keyless local
+    # providers and configured alternates.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from openai_images import register_with_default_registry as _reg_oai
-        registry = _reg_oai()
+        registry = _load_image_capability_registry()
     except Exception as exc:
         return Response(json.dumps({"error": {
             "code": "model_unavailable",
-            "message": f"OpenAI provider unavailable: {exc}"
+            "message": f"Capability providers unavailable: {exc}",
+            "attempts": [],
         }}), status=503, mimetype="application/json")
 
     inputs = {
@@ -17137,74 +17489,26 @@ def capability_image_edits():
             provider_id=provider_override,
         )
     except Exception as exc:
-        # CapabilityError carries .code; keep it explicit.
-        code = getattr(exc, "code", "model_unavailable")
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=502 if code == "model_unavailable" else 400,
-            mimetype="application/json")
+        return _capability_exception_response(exc)
 
     # invoke() returns either bytes (handler return) wrapped in
     # InvocationResult, or InvocationResult directly. Handle both.
-    output = getattr(result, "output", result)
+    output = _normalize_provider_image_output(getattr(result, "output", result))
     provider_id = getattr(result, "provider_id", "unknown")
     if not isinstance(output, (bytes, bytearray)):
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Handler did not return image bytes."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler did not return image bytes.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     import base64
     return Response(json.dumps({
         "image_b64": base64.b64encode(bytes(output)).decode("ascii"),
         "provider_id": provider_id,
-        "mode": "inpaint"
+        "mode": "inpaint",
+        "attempts": getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
-
-
-def _try_keychain_openai_key():
-    """Return the OpenAI key from the keychain, or '' on failure.
-
-    Mirrors openai_images._get_api_key() but without raising. Used to
-    decide whether to use the mock fulfillment path.
-    """
-    try:
-        import keyring
-        return keyring.get_password("ora", "openai-api-key") or ""
-    except Exception:
-        return ""
-
-
-def _build_mock_image_edits_result(image_bytes, mask_bytes):
-    """Build a deterministic 'edited' PNG for the mock path.
-
-    Strategy: composite the source image with the masked area tinted
-    blue. This makes the test prompt "make it blue" land on something
-    visibly different, which is the §13.3 verification.
-    """
-    from PIL import Image
-    import io
-    import base64
-
-    src = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-    mask = Image.open(io.BytesIO(mask_bytes)).convert("RGBA")
-    if mask.size != src.size:
-        mask = mask.resize(src.size, Image.NEAREST)
-
-    # OpenAI mask convention: transparent = edit area. For the mock we
-    # invert and use the transparent pixels as a paint stencil.
-    edit_overlay = Image.new("RGBA", src.size, (40, 90, 220, 255))  # blue
-    # Build an alpha mask from the (inverted) source mask alpha — pixels
-    # where mask alpha == 0 should be edited.
-    mask_alpha = mask.split()[3]
-    inverted = mask_alpha.point(lambda a: 255 if a == 0 else 0)
-    composite = src.copy()
-    composite.paste(edit_overlay, (0, 0), inverted)
-
-    out = io.BytesIO()
-    composite.save(out, format="PNG")
-    return base64.b64encode(out.getvalue()).decode("ascii")
 
 
 # ── capability slot dispatch (WP-7.3.3c) ─────────────────────────────────────
@@ -17213,10 +17517,8 @@ def _build_mock_image_edits_result(image_bytes, mask_bytes):
 # handler (Stability provider). The browser POSTs:
 #   { prompt, image_data_url, directions: [...], parent_image_id?,
 #     aspect_ratio?, provider_override? }
-# and we hand the raw bytes to the registered Stability provider via the
-# capability registry, OR (mock path) tile the source onto a larger canvas
-# so the §13.3 acceptance criterion ("verify image grows") still exercises
-# end-to-end without an API key.
+# and we hand the raw bytes to the configured provider chain via the
+# capability registry.
 
 _VALID_OUTPAINT_DIRECTIONS = {"top", "bottom", "left", "right"}
 
@@ -17228,7 +17530,7 @@ def capability_image_outpaints():
     Body JSON:
       prompt (str), image_data_url (str), directions (list[str]),
       parent_image_id (str | optional), aspect_ratio (str | optional),
-      provider_override (str | optional), mock (bool | optional).
+      provider_override (str | optional).
 
     Response:
       200 { image_b64: str, provider_id: str, mode: 'outpaint',
@@ -17272,48 +17574,20 @@ def capability_image_outpaints():
             "message": str(exc)
         }}), status=400, mimetype="application/json")
 
+    mock_error = _reject_production_mock(data)
+    if mock_error is not None:
+        return mock_error
+
     aspect_ratio = data.get("aspect_ratio") or None
 
-    # Mock path: when mock is explicitly requested OR no Stability key is
-    # configured. Tiles the source onto a larger canvas (no AI needed) —
-    # canvas image grows, satisfying the §13.3 test criterion.
-    mock_requested = bool(data.get("mock"))
-    has_stability_key = bool(
-        os.environ.get("STABILITY_API_KEY")
-        or _try_keychain_stability_key()
-    )
-    if mock_requested or not has_stability_key:
-        try:
-            mock_b64, new_w, new_h = _build_mock_image_outpaints_result(
-                image_bytes, directions
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "handler_failed",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "image_b64": mock_b64,
-            "provider_id": "mock-image-outpaints",
-            "mode": "outpaint",
-            "extended_dimensions": {"width": new_w, "height": new_h},
-            "directions": directions,
-            "mocked": True
-        }), status=200, mimetype="application/json")
-
-    # Real path: route through the capability registry. Stability is the
-    # primary provider for image_outpaints (WP-7.3.2b).
+    # Route once through the configured capability chain.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import stability as _stability
-        registry = _load_registry()
-        _stability.register(registry)
+        registry = _load_image_capability_registry()
     except Exception as exc:
         return Response(json.dumps({"error": {
             "code": "model_unavailable",
-            "message": f"Stability provider unavailable: {exc}"
+            "message": f"Capability providers unavailable: {exc}",
+            "attempts": [],
         }}), status=503, mimetype="application/json")
 
     inputs = {
@@ -17331,35 +17605,32 @@ def capability_image_outpaints():
             provider_id=provider_override,
         )
     except Exception as exc:
-        code = getattr(exc, "code", "handler_failed")
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=502 if code in ("model_unavailable", "handler_failed") else 400,
-            mimetype="application/json")
+        return _capability_exception_response(exc)
 
-    output = getattr(result, "output", result)
+    output = _normalize_provider_image_output(getattr(result, "output", result))
     provider_id = getattr(result, "provider_id", "stability")
     if not isinstance(output, (bytes, bytearray)):
-        return Response(json.dumps({"error": {
-            "code": "handler_failed",
-            "message": "Handler did not return image bytes."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler did not return image bytes.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     import base64
     return Response(json.dumps({
         "image_b64": base64.b64encode(bytes(output)).decode("ascii"),
         "provider_id": provider_id,
         "mode": "outpaint",
-        "directions": directions
+        "directions": directions,
+        "attempts": getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
 
 
 def _try_keychain_stability_key():
     """Return the Stability key from the keychain, or '' on failure.
 
-    Mirrors stability._get_api_key() but never raises. Used to decide
-    whether the mock fulfillment path applies.
+    Mirrors stability._get_api_key() but never raises. Used by the provider
+    status endpoint only.
     """
     try:
         import keyring
@@ -17368,70 +17639,12 @@ def _try_keychain_stability_key():
         return ""
 
 
-def _build_mock_image_outpaints_result(image_bytes, directions):
-    """Build a deterministic 'outpainted' PNG for the mock path.
-
-    Strategy: tile the source onto a larger canvas. For each requested
-    direction we add `pad` pixels (default 256) to that side. The
-    original image lands at the appropriate offset; the new region is
-    filled with a mirrored / tiled copy of the source so the test sees
-    something visibly different from a solid background.
-
-    Returns (base64_str, new_width, new_height).
-    """
-    from PIL import Image, ImageOps
-    import io
-    import base64
-
-    pad = 256  # pixels added per direction
-    src = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-    w, h = src.size
-
-    pad_top    = pad if "top" in directions else 0
-    pad_bottom = pad if "bottom" in directions else 0
-    pad_left   = pad if "left" in directions else 0
-    pad_right  = pad if "right" in directions else 0
-
-    new_w = w + pad_left + pad_right
-    new_h = h + pad_top + pad_bottom
-
-    # Start with an opaque grey backdrop so unfilled regions are visible.
-    canvas = Image.new("RGBA", (new_w, new_h), (200, 200, 200, 255))
-
-    # Fill extension regions with a flipped copy of the source as a
-    # rough "outpaint" — visually distinct from an empty pad. This
-    # keeps the mock visibly distinguishable from a no-op.
-    if pad_top:
-        flipped = ImageOps.flip(src).resize((w, pad_top))
-        canvas.paste(flipped, (pad_left, 0))
-    if pad_bottom:
-        flipped = ImageOps.flip(src).resize((w, pad_bottom))
-        canvas.paste(flipped, (pad_left, pad_top + h))
-    if pad_left:
-        mirrored = ImageOps.mirror(src).resize((pad_left, h))
-        canvas.paste(mirrored, (0, pad_top))
-    if pad_right:
-        mirrored = ImageOps.mirror(src).resize((pad_right, h))
-        canvas.paste(mirrored, (pad_left + w, pad_top))
-
-    # Paste source at its offset position.
-    canvas.paste(src, (pad_left, pad_top))
-
-    out = io.BytesIO()
-    canvas.save(out, format="PNG")
-    return base64.b64encode(out.getvalue()).decode("ascii"), new_w, new_h
-
-
 # ── capability slot dispatch (WP-7.3.3d) ─────────────────────────────────────
 # /api/capability/image_upscales — server-side bridge between the WP-7.3.3d UI's
 # `capability-dispatch` events and the WP-7.3.2b `dispatch_image_upscales`
 # handler (Stability conservative-tier upscaler). The browser POSTs:
-#   { image_data_url, scale_factor?, source_image_id?, provider_override?,
-#     mock? }
-# and we either route to the registered Stability provider via the capability
-# registry or (mock path) call PIL's bicubic resize so the §13.3 acceptance
-# criterion ("upscale a 256×256 image to 512×512; verify size doubled") still
-# exercises end-to-end without an API key.
+#   { image_data_url, scale_factor?, source_image_id?, provider_override? }
+# and route through the configured capability-provider chain.
 
 @app.route("/api/capability/image_upscales", methods=["POST"])
 def capability_image_upscales():
@@ -17439,8 +17652,7 @@ def capability_image_upscales():
 
     Body JSON:
       image_data_url (str), scale_factor (float | optional, default 2.0),
-      source_image_id (str | optional), provider_override (str | optional),
-      mock (bool | optional).
+      source_image_id (str | optional), provider_override (str | optional).
 
     Response:
       200 { image_b64: str, provider_id: str, mode: 'upscale',
@@ -17476,49 +17688,19 @@ def capability_image_upscales():
             "message": str(exc)
         }}), status=400, mimetype="application/json")
 
-    # Mock path: when no Stability key is configured OR `mock=true` is
-    # explicit, run the §13.3 mock fulfillment (PIL bicubic resize). The
-    # mock returns a deterministic, dimensionally-correct PNG so the
-    # client wiring + canvas-state plumbing can be exercised without an
-    # API key.
-    mock_requested = bool(data.get("mock"))
-    has_stability_key = bool(
-        os.environ.get("STABILITY_API_KEY")
-        or _try_keychain_stability_key()
-    )
-    if mock_requested or not has_stability_key:
-        try:
-            mock_b64, new_w, new_h = _build_mock_image_upscales_result(
-                image_bytes, scale_factor
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "image_b64":    mock_b64,
-            "provider_id":  "mock-image-upscales",
-            "mode":         "upscale",
-            "width":        new_w,
-            "height":       new_h,
-            "scale_factor": scale_factor,
-            "mocked":       True,
-        }), status=200, mimetype="application/json")
+    mock_error = _reject_production_mock(data)
+    if mock_error is not None:
+        return mock_error
 
-    # Real path: route through the capability registry. Stability is the
-    # default provider for image_upscales (WP-7.3.2b register()).
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from stability import register as _reg_stability
-        from capability_registry import default_registry
-        registry = default_registry()
-        _reg_stability(registry)
+        registry = _load_image_capability_registry()
     except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Stability provider unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            f"Capability providers unavailable: {exc}",
+            status=503,
+            attempts=[],
+        )
 
     inputs = {
         "image":        image_bytes,
@@ -17533,27 +17715,19 @@ def capability_image_upscales():
             provider_id=provider_override,
         )
     except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        # Map slot common_errors codes to HTTP status: 4xx for input
-        # problems (image_too_small / image_too_large), 5xx for backend
-        # availability failures.
-        status = 502 if code == "model_unavailable" else 400
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=status, mimetype="application/json")
+        return _capability_exception_response(exc)
 
-    output = getattr(result, "output", result)
+    output = _normalize_provider_image_output(getattr(result, "output", result))
     provider_id = getattr(result, "provider_id", "stability")
     if not isinstance(output, (bytes, bytearray)):
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Handler did not return image bytes."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler did not return image bytes.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     # Best-effort dimension probe so the response can carry width/height
-    # alongside the bytes. PIL is already a hard dependency of the mock
-    # path; in the real path we use it purely for metadata.
+    # alongside the provider-returned bytes.
     try:
         from PIL import Image
         import io as _io
@@ -17570,43 +17744,16 @@ def capability_image_upscales():
         "width":        new_w,
         "height":       new_h,
         "scale_factor": scale_factor,
+        "attempts":     getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
-
-
-def _build_mock_image_upscales_result(image_bytes, scale_factor):
-    """Build a deterministic upscaled PNG for the mock path.
-
-    Strategy: PIL bicubic resize to (orig_w * scale_factor,
-    orig_h * scale_factor). This satisfies the §13.3 acceptance
-    criterion verbatim ("upscale a 256×256 image to 512×512; verify
-    size doubled") while remaining provider-agnostic.
-
-    Returns (base64_str, new_width, new_height).
-    """
-    from PIL import Image
-    import io
-    import base64
-
-    src = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-    w, h = src.size
-    new_w = max(1, int(round(w * float(scale_factor))))
-    new_h = max(1, int(round(h * float(scale_factor))))
-    upscaled = src.resize((new_w, new_h), Image.BICUBIC)
-
-    out = io.BytesIO()
-    upscaled.save(out, format="PNG")
-    return base64.b64encode(out.getvalue()).decode("ascii"), new_w, new_h
 
 
 # ── /api/capability/image_styles (WP-7.3.3e) ─────────────────────────────────
 # Server-side bridge between the WP-7.3.1 UI's `capability-dispatch` events
 # and the WP-7.3.2c `dispatch_image_styles` handler in
 # orchestrator/integrations/replicate.py. Body:
-#   { source_image_data_url, style_reference_data_url,
-#     strength?, provider_override?, mock? }
-# Mock path: PIL Image.blend() of the two inputs at `strength` factor, so
-# the §13.3 acceptance criterion ("apply a known style to a known image;
-# verify output looks blended") runs end-to-end without a Replicate token.
+#   { source_image_data_url, style_reference_data_url, strength?,
+#     provider_override? }
 
 @app.route("/api/capability/image_styles", methods=["POST"])
 def capability_image_styles():
@@ -17615,7 +17762,7 @@ def capability_image_styles():
     Body JSON:
       source_image_data_url (str), style_reference_data_url (str),
       strength (float 0-1, optional, default 0.75),
-      provider_override (str, optional), mock (bool, optional).
+      provider_override (str, optional).
 
     Response:
       200 { image_b64: str, provider_id: str, mode: 'styles', mocked? }
@@ -17653,52 +17800,23 @@ def capability_image_styles():
     elif strength > 1.0:
         strength = 1.0
 
-    # Mock path: when no Replicate API token is configured, blend the two
-    # images with PIL Image.blend at the strength factor. This makes the
-    # §13.3 verification ("output looks blended") run without hitting
-    # Replicate.
-    mock_requested = bool(data.get("mock"))
-    has_replicate_token = bool(
-        os.environ.get("REPLICATE_API_TOKEN")
-        or _try_keychain_replicate_token()
-    )
-    if mock_requested or not has_replicate_token:
-        try:
-            mock_b64 = _build_mock_image_styles_result(
-                source_bytes, style_bytes, strength
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "image_b64": mock_b64,
-            "provider_id": "mock-image-styles",
-            "mode": "styles",
-            "mocked": True,
-            "strength": strength,
-        }), status=200, mimetype="application/json")
+    mock_error = _reject_production_mock(data)
+    if mock_error is not None:
+        return mock_error
 
-    # Real path: route through the capability registry. Replicate's
-    # dispatch_image_styles accepts data URIs directly via
-    # `_normalize_image_ref`, so we hand the data URLs straight through.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import replicate as _replicate
-        registry = _load_registry()
-        _replicate.register_replicate_provider(registry)
+        registry = _load_image_capability_registry()
     except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Replicate provider unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            f"Capability providers unavailable: {exc}",
+            status=503,
+            attempts=[],
+        )
 
     inputs = {
-        "source_image":    data.get("source_image_data_url"),
-        "style_reference": data.get("style_reference_data_url"),
+        "source_image":    source_bytes,
+        "style_reference": style_bytes,
         "strength":        strength,
     }
     provider_override = data.get("provider_override") or None
@@ -17710,12 +17828,7 @@ def capability_image_styles():
             provider_id=provider_override,
         )
     except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=502 if code == "model_unavailable" else 400,
-            mimetype="application/json")
+        return _capability_exception_response(exc)
 
     # Replicate's dispatch returns {'image_url': ..., 'image_data_uri': ...}.
     # Normalize to image_b64 for the JS client.
@@ -17742,23 +17855,26 @@ def capability_image_styles():
                         "Failed to fetch result image from "
                         f"{network_policy.safe_url_label(output['image_url'])}: "
                         f"{type(exc).__name__}"
-                    )
+                    ),
+                    "attempts": getattr(result, "attempts", []) or [],
                 }}), status=502, mimetype="application/json")
     elif isinstance(output, (bytes, bytearray)):
         import base64
         image_b64 = base64.b64encode(bytes(output)).decode("ascii")
 
     if not image_b64:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Handler did not return image data."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler did not return image data.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     return Response(json.dumps({
         "image_b64":   image_b64,
         "provider_id": provider_id,
         "mode":        "styles",
         "strength":    strength,
+        "attempts":    getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
 
 
@@ -17776,40 +17892,15 @@ def _try_keychain_replicate_token():
         return ""
 
 
-def _build_mock_image_styles_result(source_bytes, style_bytes, strength):
-    """Build a PIL.Image.blend mock for the §13.3 verification.
-
-    Blends the source image with the style reference at the given
-    strength factor (0 = pure source, 1 = pure style). Resizes the style
-    image to match the source so blend() succeeds. Returns base64 PNG.
-    """
-    from PIL import Image
-    import io
-    import base64
-
-    src = Image.open(io.BytesIO(source_bytes)).convert("RGBA")
-    style = Image.open(io.BytesIO(style_bytes)).convert("RGBA")
-    if style.size != src.size:
-        style = style.resize(src.size, Image.LANCZOS)
-
-    blended = Image.blend(src, style, float(strength))
-
-    out = io.BytesIO()
-    blended.save(out, format="PNG")
-    return base64.b64encode(out.getvalue()).decode("ascii")
-
-
 # ── /api/capability/image_critique (WP-7.3.3h) ───────────────────────────────
 # Server-side bridge for the §3.8 `image_critique` slot. The browser POSTs:
-#   { image_data_url, rubric?, genre?, depth?, provider_override?, mock? }
+#   { image_data_url, rubric?, genre?, depth?, provider_override? }
 # Unlike the image-producing slots, this one does not call an external image
 # integration (replicate / openai_images / stability). It routes through Ora's
 # analytical pipeline: pick a vision-capable analytical model from the bucket
 # system, run a structured-critique prompt, parse the response into
-# rubric_scores + prose. When no vision-capable model is available OR `mock`
-# is set, return a deterministic canned critique so the §13.3 acceptance
-# criterion ("verify critique returns rubric scores + prose") still exercises
-# end-to-end without hitting a vision API.
+# rubric_scores + prose. Critique remains on the boot vision contract rather
+# than the image-generation registry.
 
 _VALID_CRITIQUE_DEPTHS = ("quick", "standard", "deep")
 
@@ -17821,7 +17912,7 @@ def capability_image_critique():
     Body JSON:
       image_data_url (str, required), rubric (str, optional),
       genre (str, optional), depth (enum quick/standard/deep, optional),
-      provider_override (str, optional), mock (bool, optional).
+      provider_override (str, optional).
 
     Response:
       200 { rubric_scores: {<criterion>: {score, comment}, ...},
@@ -17859,34 +17950,33 @@ def capability_image_critique():
             "message": "image_critique needs at least a rubric or a genre."
         }}), status=400, mimetype="application/json")
 
-    # Mock path: when `mock=true` is set OR no vision-capable analytical
-    # model is reachable, return a deterministic canned critique. The
-    # rubric (if supplied) drives which criteria appear in the output so
-    # the §13.3 verification ("rubric scores match the rubric the user
-    # asked for") still runs end-to-end.
-    mock_requested = bool(data.get("mock"))
-    vision_endpoint = None
-    if not mock_requested:
-        try:
-            vision_endpoint = _pick_critique_vision_endpoint()
-        except Exception:
-            vision_endpoint = None
-    if mock_requested or vision_endpoint is None:
-        try:
-            mock_payload = _build_mock_image_critique_result(
-                image_bytes, rubric, genre, depth
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        mock_payload["mocked"] = True
-        return Response(json.dumps(mock_payload),
-                        status=200, mimetype="application/json")
+    mock_error = _reject_production_mock(data)
+    if mock_error is not None:
+        return mock_error
 
-    # Real path: build a structured-critique prompt, hand the image bytes
-    # to the vision-capable model via boot.call_model, parse the response.
+    try:
+        config = load_config()
+        provider_override = data.get("provider_override") or None
+        vision_chain = _active_vision_endpoint_chain(config, provider_override)
+    except Exception as exc:
+        return _capability_error_response(
+            "model_unavailable",
+            f"Vision endpoint resolution failed: {exc}",
+            status=503,
+            attempts=[],
+        )
+    if not vision_chain:
+        return _capability_error_response(
+            "model_unavailable",
+            "No vision-capable image critique endpoint is configured. "
+            "Configure image_critique or vision_input in Settings → Visual.",
+            status=503,
+            attempts=[],
+        )
+
+    # Real path: use the active boot vision contract, walking the configured
+    # image_critique → vision_input chain once. call_model reports transport
+    # failures as typed error strings, so preserve each attempt explicitly.
     try:
         system_prompt, user_prompt = _build_critique_prompts(rubric, genre, depth)
         # call_model expects images as [{name, mime, base64}].
@@ -17903,115 +17993,51 @@ def capability_image_critique():
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt},
         ]
-        provider_override = data.get("provider_override") or None
-        endpoint = vision_endpoint
-        if provider_override:
-            # If the caller named a specific endpoint, prefer it as long
-            # as it claims vision capability; else fall back to the picked
-            # one above so we never silently drop the request.
-            override_ep = _find_endpoint_by_id(provider_override)
-            if override_ep and vision_capable_for_endpoint(override_ep):
-                endpoint = override_ep
-        raw = call_model(messages, endpoint, images=images)
     except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Critique pipeline failed: {exc}"
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            f"Critique prompt construction failed: {exc}",
+            status=502,
+            attempts=[],
+        )
 
-    parsed = _parse_critique_response(raw, rubric)
-    if not parsed["rubric_scores"] and not parsed["prose"]:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Vision model returned no parseable critique."
-        }}), status=502, mimetype="application/json")
+    attempts = []
+    for endpoint in vision_chain:
+        provider_id = _vision_endpoint_identity(endpoint)
+        try:
+            raw = call_model(messages, endpoint, images=images)
+            raw_text = "" if raw is None else str(raw)
+            if not raw_text.strip() or raw_text.lstrip().startswith("[Error"):
+                raise ValueError("Vision model returned no usable critique.")
+            parsed = _parse_critique_response(raw_text, rubric)
+            if not parsed["rubric_scores"] and not parsed["prose"]:
+                raise ValueError("Vision model returned no parseable critique.")
+        except Exception as exc:
+            attempts.append({
+                "provider_id": provider_id,
+                "succeeded": False,
+                "error_code": "model_unavailable",
+                "error_message": str(exc),
+            })
+            continue
 
-    parsed["provider"] = endpoint.get("display_name") or endpoint.get("id") or "ora-pipeline"
-    parsed["depth"]    = depth
-    return Response(json.dumps(parsed), status=200, mimetype="application/json")
+        attempts.append({
+            "provider_id": provider_id,
+            "succeeded": True,
+            "error_code": None,
+            "error_message": None,
+        })
+        parsed["provider"] = endpoint.get("display_name") or provider_id
+        parsed["depth"] = depth
+        parsed["attempts"] = attempts
+        return Response(json.dumps(parsed), status=200, mimetype="application/json")
 
-
-def _pick_critique_vision_endpoint():
-    """Locate a vision-capable analytical endpoint.
-
-    Prefer the explicit ``slots.image_critique`` chain. If that slot has not
-    been configured yet, reuse ``slots.vision_input`` as the nearest
-    vision-language fallback, then walk the old bucket order as a final
-    compatibility path. Returns None if none reachable so the caller can fall
-    back to the mock path.
-    """
-    try:
-        config = load_config()
-    except Exception:
-        return None
-    endpoints = config.get("endpoints", []) or []
-    by_id = {ep.get("id"): ep for ep in endpoints if ep.get("id")}
-
-    for slot_name in ("image_critique", "vision_input"):
-        for ep_id in _chat_slot_chain(config, slot_name):
-            ep = _lookup_endpoint_variant(by_id, ep_id)
-            if _endpoint_ready_for_vision(ep):
-                return ep
-
-    # First pass: walk preferred buckets if defined.
-    buckets = config.get("buckets", {}) or {}
-    bucket_order = ["local-premium", "local-mid", "commercial", "local-fast"]
-    for bname in bucket_order:
-        for ep_id in buckets.get(bname, []) or []:
-            ep = _lookup_endpoint_variant(by_id, ep_id)
-            if _endpoint_ready_for_vision(ep):
-                return ep
-    # Second pass: scan flat endpoint list for any vision-capable active.
-    for ep in endpoints:
-        if _endpoint_ready_for_vision(ep):
-            return ep
-    return None
-
-
-def _chat_slot_chain(config, slot_name):
-    slot = (config.get("slots") or {}).get(slot_name) or {}
-    chain = []
-    if isinstance(slot, dict):
-        preferred = slot.get("preferred")
-        if isinstance(preferred, str) and preferred.strip():
-            chain.append(preferred.strip())
-        for item in slot.get("fallback") or []:
-            if isinstance(item, str) and item.strip():
-                chain.append(item.strip())
-    return chain
-
-
-def _lookup_endpoint_variant(by_id, endpoint_id):
-    if not endpoint_id:
-        return None
-    candidates = [endpoint_id]
-    if endpoint_id.startswith("openrouter:"):
-        candidates.append(endpoint_id.split(":", 1)[1])
-    else:
-        candidates.append("openrouter:" + endpoint_id)
-    for cid in candidates:
-        ep = by_id.get(cid)
-        if ep:
-            return ep
-    return None
-
-
-def _endpoint_ready_for_vision(ep):
-    return bool(
-        ep
-        and ep.get("enabled", False)
-        and ep.get("status") in ("active", None)
-        and vision_capable_for_endpoint(ep)
+    return _capability_error_response(
+        "model_unavailable",
+        "No configured vision provider returned a usable critique.",
+        status=502,
+        attempts=attempts,
     )
-
-
-def _find_endpoint_by_id(endpoint_id):
-    try:
-        config = load_config()
-    except Exception:
-        return None
-    by_id = {ep.get("id"): ep for ep in config.get("endpoints", []) or [] if ep.get("id")}
-    return _lookup_endpoint_variant(by_id, endpoint_id)
 
 
 def _build_critique_prompts(rubric, genre, depth):
@@ -18135,61 +18161,12 @@ def _coerce_rubric_scores(obj):
     return out
 
 
-def _build_mock_image_critique_result(image_bytes, rubric, genre, depth):
-    """Build a deterministic canned critique for the §13.3 verification.
-
-    Strategy: derive criteria from the rubric (split on commas / newlines).
-    If no rubric was supplied (genre-only path), use a default
-    composition/color/technique trio. Per-criterion scores are derived
-    deterministically from the image bytes' length so re-runs are stable
-    but different images get different score floors. Prose mentions the
-    rubric and genre verbatim so the §13.3 test can verify echo-through.
-    """
-    if rubric:
-        # Split on comma OR newline OR semicolon; trim and dedupe.
-        import re
-        parts = [p.strip() for p in re.split(r"[,;\n]+", rubric) if p.strip()]
-        if not parts:
-            parts = ["composition", "color", "technique"]
-    else:
-        parts = ["composition", "color", "technique"]
-
-    base = (len(image_bytes) % 6) + 5  # 5..10
-    rubric_scores = {}
-    for idx, criterion in enumerate(parts):
-        score = max(1, min(10, base - (idx % 4)))
-        rubric_scores[criterion] = {
-            "score":   score,
-            "comment": f"Mock observation about {criterion}.",
-        }
-
-    genre_phrase = f" within the {genre} tradition" if genre else ""
-    depth_phrase = {
-        "quick":    "A brief impression",
-        "standard": "A balanced reading",
-        "deep":     "A thorough exegesis",
-    }.get(depth, "A balanced reading")
-
-    prose = (
-        f"{depth_phrase} of the work{genre_phrase}. "
-        f"The piece is evaluated against {len(parts)} criterion(a): "
-        f"{', '.join(parts)}. "
-        f"This is a mock critique generated without a vision model; install "
-        f"a vision-capable endpoint to receive a real assessment."
-    )
-    return {
-        "rubric_scores": rubric_scores,
-        "prose":         prose,
-        "provider":      "mock-image-critique",
-    }
-
-
 # ── /api/capability/image_varies (WP-7.3.3f) ─────────────────────────────────
 # Server-side bridge between the WP-7.3.1 UI's `capability-dispatch` events
 # and the WP-7.3.2c `dispatch_image_varies` handler in
 # orchestrator/integrations/replicate.py. The browser POSTs:
 #   { slot, inputs: { source_image, count?, variation_strength?,
-#                     source_image_data_url? }, provider_override? }
+#                     source_image_data_url }, provider_override? }
 # Per Contracts §3.6: required `source_image`; optional `count` (default 4),
 # `variation_strength` (default 0.5). Returns an `images` list per JS
 # `_extractImages`. Sync.
@@ -18198,9 +18175,8 @@ def _build_mock_image_critique_result(image_bytes, rubric, genre, depth):
 # OpenAI-side primary if openai_images registered an `image_varies`
 # dispatcher; today only image_generates and image_edits are wired there,
 # so Replicate's `lucataco/sdxl-img2img` is the lone real provider.
-# When no Replicate token is configured (or `mock=true`), the mock path
-# tints the source four ways so the §13.3 verification ("verify variations
-# look like sibling images of source") runs end-to-end without a key.
+# The configured provider chain is invoked once; unavailable providers are
+# reported through the typed capability error contract.
 
 @app.route("/api/capability/image_varies", methods=["POST"])
 def capability_image_varies():
@@ -18211,8 +18187,8 @@ def capability_image_varies():
       inputs: { source_image (str id, required),
                 count (int 1-8, optional, default 4),
                 variation_strength (float 0-1, optional, default 0.5),
-                source_image_data_url (data URL, optional) },
-      provider_override (str, optional), mock (bool, optional).
+                source_image_data_url (data URL, required provider input) },
+      provider_override (str, optional).
 
     Response:
       200 { images: [{ data: <base64>, mime_type: <str> }, ...],
@@ -18239,6 +18215,10 @@ def capability_image_varies():
             "message": "image_varies requires a non-empty 'source_image'."
         }}), status=400, mimetype="application/json")
 
+    mock_error = _reject_production_mock(data, inputs)
+    if mock_error is not None:
+        return mock_error
+
     # Count: clamp [1, 8], default 4.
     raw_count = inputs.get("count", 4)
     try:
@@ -18258,55 +18238,31 @@ def capability_image_varies():
     elif variation_strength > 1.0:
         variation_strength = 1.0
 
-    # Optional inline source bytes (lets the mock path actually tint).
-    source_bytes = None
-    src_data_url = inputs.get("source_image_data_url")
-    if isinstance(src_data_url, str) and src_data_url.startswith("data:"):
-        try:
-            source_bytes = _decode_data_url(src_data_url, "source_image_data_url")
-        except ValueError:
-            source_bytes = None
-
-    # Mock path: explicit mock flag OR no Replicate token configured.
-    mock_requested = bool(data.get("mock") or inputs.get("mock"))
-    has_replicate_token = bool(
-        os.environ.get("REPLICATE_API_TOKEN")
-        or _try_keychain_replicate_token()
-    )
-    if mock_requested or not has_replicate_token:
-        try:
-            mock_images = _build_mock_image_varies_result(
-                source_bytes, count, variation_strength
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "images":   mock_images,
-            "provider": "mock-image-varies",
-            "mode":     "varies",
-            "mocked":   True,
-            "metadata": {"count": count, "variation_strength": variation_strength},
-        }), status=200, mimetype="application/json")
-
-    # Real path: Replicate (`lucataco/sdxl-img2img`) via the registry.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import replicate as _replicate
-        registry = _load_registry()
-        _replicate.register_replicate_provider(registry)
+        source_bytes = _decode_data_url(
+            inputs.get("source_image_data_url"), "source_image_data_url"
+        )
+    except ValueError as exc:
+        return _capability_error_response(
+            "source_ambiguous",
+            "image_varies requires usable source image bytes in "
+            f"'source_image_data_url': {exc}",
+            status=400,
+            attempts=[],
+        )
+
+    try:
+        registry = _load_image_capability_registry()
     except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Replicate provider unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            f"Capability providers unavailable: {exc}",
+            status=503,
+            attempts=[],
+        )
 
     handler_inputs = {
-        "source_image":       src_data_url or source_id,
+        "source_image":       source_bytes,
         "count":              count,
         "variation_strength": variation_strength,
     }
@@ -18319,12 +18275,7 @@ def capability_image_varies():
             provider_id=provider_override,
         )
     except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=502 if code == "model_unavailable" else 400,
-            mimetype="application/json")
+        return _capability_exception_response(exc)
 
     # Replicate dispatch returns a list of {'image_url'|'image_data_uri': ...}.
     output = getattr(result, "output", result)
@@ -18353,63 +18304,19 @@ def capability_image_varies():
                 images_out.append({"data": b64, "mime_type": "image/png"})
 
     if not images_out:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Handler returned no usable image data."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler returned no usable image data.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     return Response(json.dumps({
         "images":   images_out,
         "provider": provider_id,
         "mode":     "varies",
         "metadata": {"count": count, "variation_strength": variation_strength},
+        "attempts": getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
-
-
-def _build_mock_image_varies_result(source_bytes, count, variation_strength):
-    """Build a deterministic list of `count` tinted variants of source_bytes.
-
-    Strategy: applies a deterministic color tint per variant index (cycling
-    through red/green/blue/yellow) at intensity scaled by
-    variation_strength. When source_bytes is unavailable (id-only request),
-    we emit `count` solid-colored 256×256 placeholders so the §13.3
-    "verify image data lands" path still runs. Returns a list of
-    {data, mime_type} dicts the JS `_extractImages` accepts.
-    """
-    from PIL import Image
-    import io
-    import base64
-
-    # Tint colors cycle (R, G, B, Y, M, C, plus wraparound).
-    tints = [
-        (255,  60,  60),
-        ( 60, 220,  90),
-        ( 60, 100, 240),
-        (240, 200,  40),
-        (200,  80, 220),
-        ( 60, 220, 220),
-        (240, 140,  40),
-        (140, 200, 240),
-    ]
-
-    if source_bytes:
-        src = Image.open(io.BytesIO(source_bytes)).convert("RGBA")
-    else:
-        src = Image.new("RGBA", (256, 256), (200, 200, 200, 255))
-
-    out_list = []
-    for i in range(count):
-        tint = tints[i % len(tints)]
-        overlay = Image.new("RGBA", src.size, (tint[0], tint[1], tint[2], 255))
-        # blend factor scales with variation_strength; cap below 1 so the
-        # source remains recognisable.
-        blend = max(0.05, min(0.6, 0.15 + variation_strength * 0.4))
-        variant = Image.blend(src, overlay, blend)
-        buf = io.BytesIO()
-        variant.save(buf, format="PNG")
-        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-        out_list.append({"data": b64, "mime_type": "image/png"})
-    return out_list
 
 
 # ── /api/capability/image_to_prompt (WP-7.3.3g) ──────────────────────────────
@@ -18418,12 +18325,12 @@ def _build_mock_image_varies_result(source_bytes, count, variation_strength):
 # `salesforce/blip` for the base caption + per-target-style adaptation).
 # Body:
 #   { slot, inputs: { image (str id, required), target_style? },
-#     provider_override?, mock? }
+#     provider_override? }
 # Per Contracts §3.7: returns text. Sync.
 #
 # Mock path: BLIP-style template + per-target-style flavor (DALL-E plain,
-# SD comma-tag stack, MJ flags, Flux cinematic) so the §13.3 acceptance
-# criterion ("verify caption + style adapter applied") runs without a key.
+# SD comma-tag stack, MJ flags, Flux cinematic) through the configured
+# provider chain.
 
 _VALID_TARGET_STYLES = ("dalle", "sd", "mj", "flux")
 
@@ -18437,7 +18344,7 @@ def capability_image_to_prompt():
       inputs: { image (str id, required),
                 target_style (enum dalle/sd/mj/flux, optional),
                 image_data_url (data URL, optional) },
-      provider_override (str, optional), mock (bool, optional).
+      provider_override (str, optional).
 
     Response:
       200 { prompt: str, provider: str, target_style: str, mocked? }
@@ -18465,56 +18372,25 @@ def capability_image_to_prompt():
             "message": "image_to_prompt requires a non-empty 'image'."
         }}), status=400, mimetype="application/json")
 
+    mock_error = _reject_production_mock(data, inputs)
+    if mock_error is not None:
+        return mock_error
+
     target_style = inputs.get("target_style") or "dalle"
     if not isinstance(target_style, str) or target_style.lower() not in _VALID_TARGET_STYLES:
         target_style = "dalle"
     else:
         target_style = target_style.lower()
 
-    # Optional inline image bytes (used by mock path for size-derived flavor).
-    image_bytes = None
-    if isinstance(image_data_url, str) and image_data_url.startswith("data:"):
-        try:
-            image_bytes = _decode_data_url(image_data_url, "image_data_url")
-        except ValueError:
-            image_bytes = None
-
-    # Mock path: explicit mock flag OR no Replicate token.
-    mock_requested = bool(data.get("mock") or inputs.get("mock"))
-    has_replicate_token = bool(
-        os.environ.get("REPLICATE_API_TOKEN")
-        or _try_keychain_replicate_token()
-    )
-    if mock_requested or not has_replicate_token:
-        try:
-            prompt_text = _build_mock_image_to_prompt_result(
-                image_bytes, target_style
-            )
-        except Exception as exc:
-            return Response(json.dumps({"error": {
-                "code": "model_unavailable",
-                "message": f"Mock fulfillment failed: {exc}"
-            }}), status=500, mimetype="application/json")
-        return Response(json.dumps({
-            "prompt":       prompt_text,
-            "provider":     "mock-image-to-prompt",
-            "target_style": target_style,
-            "mocked":       True,
-        }), status=200, mimetype="application/json")
-
-    # Real path: Replicate (`salesforce/blip`) via the registry.
     try:
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/"))
-        sys.path.insert(0, os.path.join(WORKSPACE, "orchestrator/integrations/"))
-        from capability_registry import load_registry as _load_registry
-        import replicate as _replicate
-        registry = _load_registry()
-        _replicate.register_replicate_provider(registry)
+        registry = _load_image_capability_registry()
     except Exception as exc:
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": f"Replicate provider unavailable: {exc}"
-        }}), status=503, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            f"Capability providers unavailable: {exc}",
+            status=503,
+            attempts=[],
+        )
 
     handler_inputs = {
         "image":        image_data_url or image_id,
@@ -18529,64 +18405,24 @@ def capability_image_to_prompt():
             provider_id=provider_override,
         )
     except Exception as exc:
-        code = getattr(exc, "code", "model_unavailable")
-        return Response(json.dumps({"error": {
-            "code": code,
-            "message": str(exc)
-        }}), status=502 if code == "model_unavailable" else 400,
-            mimetype="application/json")
+        return _capability_exception_response(exc)
 
     output = getattr(result, "output", result)
     provider_id = getattr(result, "provider_id", "replicate")
 
     if not isinstance(output, str) or not output.strip():
-        return Response(json.dumps({"error": {
-            "code": "model_unavailable",
-            "message": "Handler returned no caption text."
-        }}), status=502, mimetype="application/json")
+        return _capability_error_response(
+            "model_unavailable",
+            "Handler returned no caption text.",
+            attempts=getattr(result, "attempts", []) or [],
+        )
 
     return Response(json.dumps({
         "prompt":       output,
         "provider":     provider_id,
         "target_style": target_style,
+        "attempts":     getattr(result, "attempts", []) or [],
     }), status=200, mimetype="application/json")
-
-
-def _build_mock_image_to_prompt_result(image_bytes, target_style):
-    """Build a deterministic BLIP-style mock caption with per-style flavor.
-
-    Returns a single-line prompt the JS `_extractPrompt` lifts via
-    `response.prompt`. Per-target-style suffix mirrors the canonical
-    behavior of `_adapt_caption_for_style` in
-    orchestrator/integrations/replicate.py so the §13.3 acceptance test
-    ("each style emits its idiomatic phrasing") runs end-to-end.
-    """
-    # Vary the base caption by the source bytes' length so re-runs with
-    # the same image are deterministic but different images get different
-    # captions. When image_bytes is missing, fall back to a placeholder.
-    if image_bytes:
-        marker = (len(image_bytes) % 5) + 1
-    else:
-        marker = 3
-
-    base_templates = [
-        "a photograph of a landscape with rolling hills under a clear sky",
-        "a stylised portrait of a figure facing the viewer in soft light",
-        "a still life arrangement of objects on a wooden surface",
-        "an architectural study of a tall structure against the horizon",
-        "an abstract composition of overlapping geometric shapes",
-        "a macro shot of organic textures with shallow depth of field",
-    ]
-    base = base_templates[marker % len(base_templates)]
-
-    flavor_suffix = {
-        "dalle": "",
-        "sd":    ", highly detailed, masterpiece, 8k, hyperrealistic",
-        "mj":    " --ar 16:9 --v 6 --style raw",
-        "flux":  ", cinematic lighting, ultra-realistic",
-    }.get(target_style, "")
-
-    return base + flavor_suffix
 
 
 # ── /api/capability/video_generates (WP-7.3.3i) ──────────────────────────────
