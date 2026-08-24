@@ -2582,7 +2582,9 @@ class TestServerLifecycleWiring(unittest.TestCase):
         underlying.assert_not_called()
 
     def test_runtime_cleanup_forgets_sidebar_turn_window(self):
-        self.server._render_conversation_lookup["render-aside"] = (
+        from plugins.video import routes as video_routes
+
+        video_routes._render_conversations["render-aside"] = (
             "aside-dialogue"
         )
         with (
@@ -2590,9 +2592,6 @@ class TestServerLifecycleWiring(unittest.TestCase):
             mock.patch.object(
                 self.server, "clear_sidebar_window", return_value=1,
             ) as clear_sidebar,
-            mock.patch.object(
-                self.server, "_purge_media_library_staging", return_value=0,
-            ),
         ):
             result = self.server._clear_conversation_runtime_state(
                 "Aside-Dialogue",
@@ -2600,7 +2599,7 @@ class TestServerLifecycleWiring(unittest.TestCase):
 
         clear_sidebar.assert_called_once_with("Aside-Dialogue")
         self.assertEqual(result["cleared"]["sidebar_windows"], 1)
-        self.assertNotIn("render-aside", self.server._render_conversation_lookup)
+        self.assertNotIn("render-aside", video_routes._render_conversations)
         self.assertFalse(result["errors"])
 
     def test_unreadable_existing_envelope_is_not_treated_as_new_standard(self):
@@ -3289,7 +3288,7 @@ class TestLiveDocumentCleanup(unittest.TestCase):
 
 class TestMediaLibraryDeletionRace(unittest.TestCase):
     def test_stale_library_instance_cannot_commit_after_forget(self):
-        from orchestrator import media_library
+        from plugins.video.backend import media_library
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "sessions"
             root.mkdir()

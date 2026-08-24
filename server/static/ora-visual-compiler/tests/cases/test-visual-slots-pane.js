@@ -6,7 +6,7 @@
  * Covers server/static/visual-slots-pane.js, the install-Chunk-11
  * replacement for the classic ConfigPanel embed on the Settings →
  * Visual tab:
- *   1. Primary cards render for image_generates + video_generates only.
+ *   1. The core primary card renders for image_generates only.
  *   2. Preferred select carries the stored value.
  *   3. Fallback-chain editor: one removable chip per chain entry, an
  *      "+ add fallback" select offering unused providers, removal POSTs
@@ -19,10 +19,10 @@
  *      tagged "not in registry".
  *   6. Changing preferred POSTs a per-slot patch with the new value and
  *      drops it from the fallback chain.
- *   7. Provider notices: an unusable preferred shows its setup reason
+ *   7. Provider notices: an unusable image provider shows its setup reason
  *      with an "Open External APIs" jump (dispatches the open-settings
- *      event); an available-but-noteworthy provider (async video) shows
- *      an info note without the warning glyph.
+ *      event); an available-but-noteworthy image provider shows an info
+ *      note without the warning glyph.
  */
 
 'use strict';
@@ -40,7 +40,6 @@ const SLOTS = {
     ],
     _note: 'annotation that must survive client edits',
   },
-  video_generates: { preferred: 'replicate', fallback: [] },
   image_edits: { preferred: 'local-diffusers', fallback: ['replicate'] },
   image_critique: { preferred: null, fallback: [] },
   image_to_prompt: { preferred: null, fallback: [] },
@@ -64,22 +63,16 @@ const DEFAULTS = {
 const PROVIDERS = {
   image_generates: [
     { provider_id: 'openrouter:openai/gpt-5.4-image-2',
-      display_name: 'GPT-5.4 Image 2  ($8.0/$15.0/M)', available: true },
+      display_name: 'GPT-5.4 Image 2  ($8.0/$15.0/M)', available: false,
+      reason: 'set OpenRouter key in Settings → External APIs' },
     { provider_id: 'openrouter:google/gemini-3.1-flash-image-preview',
       display_name: 'Gemini 3.1 Flash Image', available: true },
     { provider_id: 'openrouter:openai/gpt-5-image',
-      display_name: 'GPT-5 Image', available: true },
+      display_name: 'GPT-5 Image', available: true,
+      reason: 'Uses OpenRouter credits for each generated image.' },
     { provider_id: 'local-diffusers', available: false,
       reason: 'install diffusers + torch to enable offline image generation',
       kind: 'local' },
-  ],
-  video_generates: [
-    { provider_id: 'replicate', available: false,
-      reason: 'set Replicate token in Settings → External APIs', kind: 'api' },
-    { provider_id: 'openrouter:google/veo-3', display_name: 'Veo 3',
-      available: true,
-      reason: 'Async — submission returns immediately; generation takes '
-            + '30s–10min and requires OpenRouter credits.' },
   ],
   image_edits: [
     { provider_id: 'local-diffusers', available: true },
@@ -145,10 +138,9 @@ module.exports = {
 
       // 1. Primary cards
       const cards = host.querySelectorAll('[data-slot-card]');
-      record('primary: exactly two cards (image + video)',
-             cards.length === 2
-             && cards[0].dataset.slotCard === 'image_generates'
-             && cards[1].dataset.slotCard === 'video_generates',
+      record('primary: exactly one core-owned image card',
+             cards.length === 1
+             && cards[0].dataset.slotCard === 'image_generates',
              'count=' + cards.length);
 
       // 2. Preferred select — stored value selected
@@ -176,15 +168,6 @@ module.exports = {
         '[data-slot="image_generates"][data-field="chain-add"]');
       record('chain: add-select hidden when every provider is in use',
              !imgAdd);
-      const vidAdd = host.querySelector(
-        '[data-slot="video_generates"][data-field="chain-add"]');
-      const vidAddIds = vidAdd
-        ? Array.from(vidAdd.options).map((o) => o.value).filter(Boolean) : [];
-      record('chain: add-select offers unused providers only',
-             vidAddIds.length === 1
-             && vidAddIds[0] === 'openrouter:google/veo-3',
-             vidAddIds.join(','));
-
       // 4. Advanced routing — always-visible section, no disclosure
       const adv = host.querySelector('.ora-vslots-advanced');
       record('advanced: always-visible section (no details disclosure)',
@@ -244,13 +227,13 @@ module.exports = {
              ghostOpt && ghostOpt.textContent);
 
       // 7a. Provider notice — unusable preferred warns + offers the jump
-      const vidCard = host.querySelector('[data-slot-card="video_generates"]');
-      const vidNotice = vidCard.querySelector('.ora-vslots-notice--warn');
+      const imgCard = host.querySelector('[data-slot-card="image_generates"]');
+      const imgNotice = imgCard.querySelector('.ora-vslots-notice--warn');
       record('notice: unusable preferred shows setup reason',
-             !!vidNotice
-             && vidNotice.textContent.indexOf('set Replicate token') !== -1,
-             vidNotice && vidNotice.textContent);
-      const apiBtn = vidNotice && vidNotice.querySelector('[data-action="open-apis"]');
+             !!imgNotice
+             && imgNotice.textContent.indexOf('set OpenRouter key') !== -1,
+             imgNotice && imgNotice.textContent);
+      const apiBtn = imgNotice && imgNotice.querySelector('[data-action="open-apis"]');
       record('notice: API-key problems offer the External-APIs jump', !!apiBtn);
       let openSettingsDetail = null;
       const onOpenSettings = (e) => { openSettingsDetail = e.detail; };
@@ -259,7 +242,7 @@ module.exports = {
       win.document.removeEventListener('open-settings', onOpenSettings);
       record('notice: jump dispatches open-settings with the reason',
              !!openSettingsDetail
-             && String(openSettingsDetail.message).indexOf('Replicate') !== -1,
+             && String(openSettingsDetail.message).indexOf('OpenRouter') !== -1,
              JSON.stringify(openSettingsDetail));
 
       // 6. Preferred change → per-slot POST, value dropped from chain
@@ -282,16 +265,11 @@ module.exports = {
              Object.keys(patch1).join(','));
 
       // 7b. Available-but-noteworthy provider → info note (no warning)
-      const vidPref = host.querySelector(
-        '[data-slot="video_generates"][data-field="preferred"]');
-      vidPref.value = 'openrouter:google/veo-3';
-      vidPref.dispatchEvent(new win.Event('change'));
-      await tick(); await tick();
-      const vidCard2 = host.querySelector('[data-slot-card="video_generates"]');
-      const infoNotice = vidCard2.querySelector('.ora-vslots-notice');
+      const imgCard2 = host.querySelector('[data-slot-card="image_generates"]');
+      const infoNotice = imgCard2.querySelector('.ora-vslots-notice');
       record('notice: available provider with a note renders info, not warning',
              !!infoNotice
-             && infoNotice.textContent.indexOf('Async') !== -1
+             && infoNotice.textContent.indexOf('OpenRouter credits') !== -1
              && !infoNotice.classList.contains('ora-vslots-notice--warn'));
 
       // 3b. Chain remove — × on the first image_generates chip

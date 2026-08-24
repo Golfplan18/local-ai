@@ -21,7 +21,9 @@ var fs   = require('fs');
 var path = require('path');
 var vm   = require('vm');
 
-var SRC = path.resolve(__dirname, '..', 'timeline-editor.js');
+var SRC = path.resolve(
+  __dirname, '..', '..', '..', 'plugins', 'video', 'static', 'timeline-editor.js'
+);
 
 // ── boot timeline-editor.js in a sandboxed window ──────────────────────────
 

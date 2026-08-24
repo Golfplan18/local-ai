@@ -26,7 +26,10 @@ var fs   = require('fs');
 var path = require('path');
 var vm   = require('vm');
 
-var SRC = path.resolve(__dirname, '..', 'js', 'v3-canvas-to-library.js');
+var SRC = path.resolve(
+  __dirname, '..', '..', '..', 'plugins', 'video', 'static',
+  'v3-canvas-to-library.js'
+);
 
 // ── Mocked Konva node ──────────────────────────────────────────────────────
 

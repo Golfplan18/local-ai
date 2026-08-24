@@ -5,8 +5,7 @@
  * Visual tab. The old grid exposed all ten capability slots with full
  * preferred + reorderable-fallback editors — far more surface than
  * anyone actually configures. This pane is a two-column layout: the
- * two slots users really touch (image_generates, video_generates) as
- * first-class cards on the left, and the remaining specialized slots
+ * image generation as a first-class card on the left, and the remaining specialized slots
  * exposed in an Advanced routing column on the right (the modal is
  * wide — space is not the constraint; comprehension is).
  *
@@ -14,7 +13,7 @@
  *   GET /config/routing/slots            — current slots block (routing-config.json)
  *   GET /api/capability/providers        — invokable providers per slot
  *                                          (registry-backed: OpenRouter
- *                                          image/video models + local-diffusers
+ *                                          image models + local-diffusers
  *                                          + stability / replicate)
  *   GET /static/config/capabilities.json — slot contracts; the `summary`
  *                                          field captions each Advanced row
@@ -48,7 +47,8 @@
   var _providers = null;    // per-slot provider lists from /api/capability/providers
   var _summaries = null;    // slot → one-line summary from capabilities.json
 
-  // The two slots users actually configure. Everything else inherits
+  // The image slot users configure here. Optional feature slots live with
+  // their feature settings; everything else inherits
   // defaults and lives in the Advanced routing column.
   var PRIMARY_SLOTS = [
     {
@@ -57,15 +57,6 @@
       hint: 'Used whenever Ora generates a picture — news photos, '
           + 'illustrations, data-viz filler. The preferred model is tried '
           + 'first; the fallback chain catches refusals and outages.',
-    },
-    {
-      id: 'video_generates',
-      label: 'Video generation',
-      hint: 'Video jobs run async — submission returns immediately, '
-          + 'generation takes 30s–10min on the provider. OpenRouter bills '
-          + 'video per output second and does not publish those rates '
-          + 'through its API, so no price tag is shown here — check '
-          + 'openrouter.ai for current per-video costs.',
     },
   ];
 
@@ -154,7 +145,7 @@
       + '<div class="ora-vslots-header">'
       +   '<div class="ora-vslots-title">Visual Generation</div>'
       +   '<div class="ora-vslots-hint">'
-      +     'Which model handles image and video generation. '
+      +     'Which model handles image generation. '
       +     'Changes auto-save and apply to the next generation.'
       +   '</div>'
       +   '<span class="ora-vslots-status'
@@ -341,8 +332,7 @@
   // Inline notice under a slot's editors when the chosen preferred
   // provider needs attention: either setup guidance (API key missing,
   // package not installed) with a jump to the External APIs tab when
-  // a key is the problem, or an informational note (e.g. video runs
-  // async and needs OpenRouter credits).
+  // a key is the problem, or another informational provider note.
   function _providerNoticeHtml(slotId, preferred) {
     if (!preferred) return '';
     var entry = _providerEntry(slotId, preferred);

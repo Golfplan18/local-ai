@@ -37,28 +37,17 @@ import subprocess
 import threading
 from pathlib import Path
 
-try:
-    from . import runtime_paths as _rp
-    from .render import (
-        FFMPEG_BINARY,
-        _ms_to_sec,
-        _sort_clips_by_position,
-        get_default_manager,
-    )
-    from .timeline import get_timeline
-    from .media_library import get_library
-except ImportError:  # pragma: no cover - legacy top-level import context
-    import runtime_paths as _rp
-    from render import (
-        FFMPEG_BINARY,
-        _ms_to_sec,
-        _sort_clips_by_position,
-        get_default_manager,
-    )
-    from timeline import get_timeline
-    from media_library import get_library
+from .. import runtime as _runtime
+from .render import (
+    FFMPEG_BINARY,
+    _ms_to_sec,
+    _sort_clips_by_position,
+    get_default_manager,
+)
+from .timeline import get_timeline
+from .media_library import get_library
 
-WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
+WORKSPACE_ROOT = _runtime.ora_home().resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 
 PROXY_FILENAME = "preview-proxy.mp4"
@@ -92,7 +81,7 @@ def _assert_not_deleted(conversation_id: str) -> str:
 
 def _conv_dir(conversation_id: str, *, create: bool = False) -> Path:
     """Return the session path; reads never create it as a side effect."""
-    return _rp.safe_owned_subdir(
+    return _runtime.safe_owned_subdir(
         SESSIONS_ROOT,
         _conversation_segment(conversation_id),
         create=create,
@@ -134,7 +123,7 @@ def _read_proxy_meta(conversation_id: str) -> dict | None:
 
 
 def _write_proxy_meta(conversation_id: str, meta: dict) -> None:
-    _rp.atomic_write_text(
+    _runtime.atomic_write_text(
         proxy_meta_path(conversation_id), json.dumps(meta, indent=2),
     )
 

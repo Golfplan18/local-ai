@@ -59,7 +59,7 @@
     { id: 'models',    label: 'Models' },
     { id: 'visual',    label: 'Visual' },
     { id: 'styles',    label: 'Output Styles' },
-    { id: 'avmedia',   label: 'Audio & Video' },
+    { id: 'audio',     label: 'Audio' },
     { id: 'general',   label: 'General' },
     { id: 'shortcuts', label: 'Shortcuts' },
     { id: 'apis',      label: 'External APIs' },
@@ -67,16 +67,14 @@
   ];
 
   // 2026-07-01 consolidation: six low-traffic tabs became sections on
-  // two pages — Audio & Video (Transcription · Speech · Screen
-  // recording · Media export) and General (Retrieval · Aside · Interface).
+  // two pages — Audio (Transcription · Speech) and General
+  // (Retrieval · Aside · Interface).
   // Old tab ids stay routable so open({tab}) callers and open-settings
   // deep links keep working; the alias also targets the section anchor.
   var TAB_ALIASES = {
-    transcription: { tab: 'avmedia', section: 'transcription' },
-    speech:        { tab: 'avmedia', section: 'speech' },
-    capture:       { tab: 'avmedia', section: 'capture' },
-    export:        { tab: 'avmedia', section: 'export' },
-    whisper:       { tab: 'avmedia', section: 'transcription' },  // pre-rename id
+    transcription: { tab: 'audio', section: 'transcription' },
+    speech:        { tab: 'audio', section: 'speech' },
+    whisper:       { tab: 'audio', section: 'transcription' },  // pre-rename id
     retrieval:     { tab: 'general', section: 'retrieval' },
     aside:         { tab: 'general', section: 'aside' },
     interface:     { tab: 'general', section: 'interface' },
@@ -233,17 +231,6 @@
     { id: 'ko', label: 'Korean' },
   ];
 
-  var FRAME_RATES = [24, 25, 30, 50, 60];
-
-  var RENDER_PRESETS = [
-    { id: 'standard',   label: 'Standard (1080p · 30 fps · MP4)' },
-    { id: 'high',       label: 'High quality (source res · 60 fps · MP4)' },
-    { id: 'web',        label: 'Web optimized (1080p · 30 fps · faststart MP4)' },
-    { id: 'mov',        label: 'QuickTime (1080p · 30 fps · MOV / H.264)' },
-    { id: 'webm',       label: 'WebM (1080p · 30 fps · VP9 / Opus)' },
-    { id: 'audio_only', label: 'Audio only (M4A · AAC 192k)' },
-  ];
-
   // ── DOM build ────────────────────────────────────────────────────────────
 
   function _build() {
@@ -392,7 +379,7 @@
       _tabContentEl.textContent = 'Loading…';
       return;
     }
-    if (_activeTab === 'avmedia') _renderAVMediaTab();
+    if (_activeTab === 'audio') _renderAudioTab();
     else if (_activeTab === 'general') _renderGeneralTab();
     else if (_activeTab === 'shortcuts') _renderShortcutsTab();
     else if (_activeTab === 'apis') _renderAPIsTab();
@@ -483,7 +470,7 @@
     }
   }
 
-  function _renderAVMediaTab() {
+  function _renderAudioTab() {
     var grid = document.createElement('div');
     grid.className = 'ora-settings-sections-grid';
     _tabContentEl.appendChild(grid);
@@ -497,17 +484,6 @@
       _sectionInto(grid, 'speech', 'Speech',
         'Text out → audio: the Read-aloud speaker button on scratchpad '
         + 'answers uses this voice.'));
-    _renderCaptureSection(
-      _sectionInto(grid, 'capture', 'Screen recording',
-        'Records your screen as video, with optional microphone audio '
-        + 'and a webcam picture-in-picture. Start and stop it from the '
-        + 'camera button on the spine — these are the defaults it uses.'));
-    _withTarget(
-      _sectionInto(grid, 'export', 'Media export',
-        'Video and audio renders of the timeline (MP4 · MOV · WebM · '
-        + 'M4A).'),
-      _renderExportTab);
-
     _scrollToPendingSection();
   }
 
@@ -990,8 +966,8 @@
   // The Visual tab hosts OraVisualSlotsPane (server/static/
   // visual-slots-pane.js), a compact editor for the routing-config
   // slots block (install Chunk 11). It replaces the classic ConfigPanel
-  // ten-slot grid: image_generates + video_generates as first-class
-  // selectors, everything else under a collapsed Advanced disclosure.
+  // ten-slot grid: image generation is the first-class selector and
+  // specialized core operations sit under a collapsed Advanced disclosure.
   // Mounted fresh on each tab open so the user always sees the current
   // routing state.
 
@@ -1275,124 +1251,6 @@
   }
 
   // ── tabs ─────────────────────────────────────────────────────────────────
-
-  // Screen-recording section. Device pickers are real dropdowns fed by
-  // GET /api/capture/devices (FFmpeg avfoundation enumeration) — the
-  // runtime matches devices by EXACT display name, so free-text entry
-  // silently failed on any typo. Devices are fetched once per panel
-  // lifetime; when enumeration is unavailable (no FFmpeg / non-macOS)
-  // the fields degrade back to free text.
-  //
-  // The old "Capture system audio by default" checkbox is gone: it was
-  // wired to nothing (no system-audio path exists in the FFmpeg command
-  // builder — capturing system audio requires a loopback device like
-  // BlackHole, which then shows up as an ordinary audio device below).
-  var _captureDevices = null;  // null = not fetched; {video:[],audio:[]}
-
-  function _renderCaptureSection(container) {
-    if (_captureDevices === null) {
-      var loading = document.createElement('p');
-      loading.className = 'ora-settings-note';
-      loading.textContent = 'Detecting capture devices…';
-      container.appendChild(loading);
-      fetch('/api/capture/devices')
-        .then(function (r) { return r.json(); })
-        .then(function (resp) {
-          _captureDevices = {
-            video: (resp && resp.video) || [],
-            audio: (resp && resp.audio) || [],
-          };
-        })
-        .catch(function () { _captureDevices = { video: [], audio: [] }; })
-        .then(function () { _drawCaptureSection(container); });
-      return;
-    }
-    _drawCaptureSection(container);
-  }
-
-  // Device dropdown: empty option + enumerated device names; a stored
-  // value the enumeration doesn't list still renders (tagged "not
-  // detected") so the user sees the staleness instead of a silently
-  // reset selection.
-  function _deviceSelect(path, names, current, emptyLabel) {
-    var options = [{ id: '', label: emptyLabel }].concat(
-      names.map(function (n) { return { id: n, label: n }; }));
-    if (current && names.indexOf(current) === -1) {
-      options.push({ id: current, label: current + ' — not detected' });
-    }
-    return _selectInput(path, options, current || '');
-  }
-
-  function _drawCaptureSection(container) {
-    container.innerHTML = '';
-    _withTarget(container, function () {
-      var cap = (_dirty.capture || _settings.capture || {});
-      var src = _settings.capture || {};
-      var audioNames = _captureDevices.audio.map(function (d) { return d.name; });
-      var camNames = _captureDevices.video
-        .map(function (d) { return d.name; })
-        .filter(function (n) { return !/screen/i.test(n); });
-      var haveDevices = audioNames.length > 0 || camNames.length > 0;
-
-      _appendField('Save recordings to',
-        _textInput('capture.default_directory',
-                   cap.default_directory || src.default_directory || ''));
-      _appendNote(
-        'Where finished recordings land. Applies from the next recording; '
-        + 'Off Record Dialogues keep their recordings inside the '
-        + 'Dialogue\'s own folder regardless.'
-      );
-
-      _appendField('Frame rate',
-        _selectInput('capture.frame_rate',
-                     FRAME_RATES.map(function (n) {
-                       return { id: n, label: n + ' fps' };
-                     }),
-                     cap.frame_rate || src.frame_rate));
-      _appendNote(
-        'Higher = smoother motion but more encoding load; file size '
-        + 'barely changes (the bitrate is fixed). 25–30 fps suits screen '
-        + 'demos; pick 50–60 only for fast motion.'
-      );
-
-      var audioCur = cap.default_audio_device !== undefined
-        ? cap.default_audio_device
-        : (src.default_audio_device || '');
-      _appendField('Microphone / audio device',
-        haveDevices
-          ? _deviceSelect('capture.default_audio_device', audioNames,
-                          audioCur, '(system default)')
-          : _textInput('capture.default_audio_device', audioCur,
-                       'leave blank for system default'));
-      _appendNote(
-        'The audio source recorded with the screen. To record SYSTEM '
-        + 'audio (what the speakers play), install a loopback device '
-        + 'such as BlackHole and pick it here.'
-      );
-
-      var camCur = cap.default_webcam_device !== undefined
-        ? cap.default_webcam_device
-        : (src.default_webcam_device || '');
-      _appendField('Webcam picture-in-picture',
-        haveDevices
-          ? _deviceSelect('capture.default_webcam_device', camNames,
-                          camCur, '(off — screen only)')
-          : _textInput('capture.default_webcam_device', camCur,
-                       'leave blank to disable'));
-      _appendNote(
-        'When set, the webcam is overlaid in a corner of the recording. '
-        + 'The corner is adjustable from the capture toolbar.'
-      );
-
-      if (!haveDevices) {
-        _appendNote(
-          'Device detection is unavailable on this machine (FFmpeg '
-          + 'missing or unsupported platform) — device names entered '
-          + 'above must match exactly.'
-        );
-      }
-    });
-  }
 
   // Transcription tab — replaces the former "Whisper" tab. Adds a
   // provider selector at the top so the user can route uploaded audio
@@ -1958,7 +1816,7 @@
     topL.className = 'ora-settings-apis-top-left';
     // (The old "Text-to-speech provider" select was removed 2026-07-01:
     // external_apis.tts_provider had zero runtime consumers — the real
-    // speech routing lives on Audio & Video → Speech.)
+    // speech routing lives on Audio → Speech.)
     _fieldInto(topL, 'Transcription provider',
       _selectInput('external_apis.transcription_provider', [
         { id: 'whisper_local', label: 'Whisper (local)' },
@@ -1969,7 +1827,7 @@
     lnote.className = 'ora-settings-note ora-settings-apis-topnote';
     lnote.textContent = 'Transcription is an explicit choice — local '
       + 'Whisper is free; pick a cloud provider above only to override '
-      + '(set its key below). Speech routing lives under Audio & Video.';
+      + '(set its key below). Speech routing lives under Audio.';
     topL.appendChild(lnote);
     top.appendChild(topL);
 
@@ -2259,33 +2117,6 @@
       });
   }
 
-  function _renderExportTab() {
-    var ex = (_dirty.export || _settings.export || {});
-    var src = _settings.export || {};
-    _appendField('Default export directory',
-      _textInput('export.default_directory',
-                 ex.default_directory || src.default_directory || ''));
-    _appendField('Default render preset',
-      _selectInput('export.default_render_preset', RENDER_PRESETS,
-                   ex.default_render_preset || src.default_render_preset));
-    _appendField('Background-render threshold (seconds)',
-      _numberInput('export.background_render_threshold_seconds',
-                   ex.background_render_threshold_seconds !== undefined
-                     ? ex.background_render_threshold_seconds
-                     : src.background_render_threshold_seconds,
-                   0, 7200));
-    _appendNote(
-      'Renders longer than this estimate run as background jobs '
-      + 'with a progress pill instead of a blocking modal. '
-      + 'Set to 0 to always render in the background.'
-    );
-    _appendNote(
-      'Word and PDF document exports are not configured here — they run '
-      + 'from the Export toolbar above the Findings pane and save to '
-      + '~/Documents/Ora Exports.'
-    );
-  }
-
   // One provider per row, single line: name (links to its key page) ·
   // key input · Save (verify-before-store) · status · Remove. The provider's one-line
   // note + install-critical/Direct hints live in the name's tooltip so the row
@@ -2470,11 +2301,6 @@
     });
     sel.addEventListener('change', function () {
       var v = sel.value;
-      // Frame rate is numeric in our schema.
-      if (path === 'capture.frame_rate'
-          || path === 'export.background_render_threshold_seconds') {
-        v = parseInt(v, 10);
-      }
       _setDirty(path, v);
     });
     return sel;
@@ -2751,7 +2577,7 @@
     _backdropEl.classList.add('ora-settings-backdrop--visible');
     // Optional tab switch — caller passes a TABS entry id or a legacy
     // pre-consolidation id ('transcription', 'speech', 'retrieval',
-    // 'interface', 'capture', 'export', 'whisper' — see TAB_ALIASES),
+    // 'interface', 'whisper' — see TAB_ALIASES),
     // which resolves to the hosting tab plus a section to scroll to.
     // Unknown tab ids are silently ignored (defensive against future
     // tab additions / removals).

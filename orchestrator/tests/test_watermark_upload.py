@@ -19,6 +19,7 @@ import io
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -27,6 +28,7 @@ sys.path.insert(0, str(ORCHESTRATOR))
 
 
 from oversight_sandbox import redirect_sessions_root  # noqa: E402
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
 
 
 def setUpModule():
@@ -38,7 +40,7 @@ def setUpModule():
 class WatermarkNormalizerTests(unittest.TestCase):
 
     def setUp(self):
-        from timeline import _normalize_watermark, _default_watermark
+        from plugins.video.backend.timeline import _normalize_watermark, _default_watermark
         self.normalize = _normalize_watermark
         self.default = _default_watermark
 
@@ -80,7 +82,7 @@ class WatermarkNormalizerTests(unittest.TestCase):
 class WatermarkImageOverlayTests(unittest.TestCase):
 
     def setUp(self):
-        from render import _watermark_image_overlay_steps
+        from plugins.video.backend.render import _watermark_image_overlay_steps
         self.steps = _watermark_image_overlay_steps
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self._tmp.name)
@@ -197,6 +199,13 @@ class WatermarkUploadEndpointTests(unittest.TestCase):
         self._saved_ora_home = os.environ.get("ORA_HOME")
         os.environ["HOME"] = str(self._tmp_path)
         os.environ["ORA_HOME"] = str(self._tmp_path / "ora")
+        from plugins.video import routes as video_routes
+        self._video_routes = video_routes
+        self._saved_plugin_context = video_routes._context
+        video_routes._context = replace(
+            video_routes._context,
+            ora_home=self._tmp_path / "ora",
+        )
 
         self.client = self.S.app.test_client()
         self.conv_id = "test_conv_wm"
@@ -204,6 +213,7 @@ class WatermarkUploadEndpointTests(unittest.TestCase):
     def tearDown(self):
         if self.import_ok:
             import os
+            self._video_routes._context = self._saved_plugin_context
             if self._saved_home is None:
                 os.environ.pop("HOME", None)
             else:

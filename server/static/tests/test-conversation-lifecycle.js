@@ -2036,7 +2036,9 @@ async function run() {
     { filename: 'sidebar-exit-navigation.js' }
   );
   vm.runInContext(
-    fs.readFileSync(path.resolve(__dirname, '..', 'media-library.js'), 'utf8'),
+    fs.readFileSync(path.resolve(
+      __dirname, '..', '..', '..', 'plugins', 'video', 'static', 'media-library.js'
+    ), 'utf8'),
     context,
     { filename: 'media-library-exit-navigation.js' }
   );

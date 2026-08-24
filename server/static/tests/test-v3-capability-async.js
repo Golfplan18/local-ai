@@ -2,15 +2,15 @@
 /* test-v3-capability-async.js — V3 async-capability subsystem tests
  * (Row 50, 2026-05-11)
  *
- * Exercises the wiring module that mounts capability-video-generates /
- * capability-style-trains handlers, mounts OraJobQueue, polls
+ * Exercises the core wiring module that mounts capability-style-trains and
+ * the core image handlers, mounts OraJobQueue, polls
  * /api/jobs/<conversation_id>, and renders job rows into the sidebar
  * Operating tray.
  *
  *   1. init() creates the #v3JobsList tray section when the Operating
  *      list is present in the DOM.
- *   2. init() calls .init on each async-capability handler module
- *      (capability-video-generates, capability-style-trains).
+ *   2. init() calls .init on the core async-capability handler and leaves
+ *      optional feature handlers to their plugins.
  *   3. init() calls OraJobQueue.init with chatHostEl: null + the
  *      active conversation id from OraSidebar.getActiveConversation.
  *   4. _handleEvent renders a card with the right capability label,
@@ -181,8 +181,8 @@ function testInitWiring() {
     !!section,
     section ? 'section exists' : 'section missing');
 
-  record('init() calls OraCapabilityVideoGenerates.init',
-    videoInitCalls.length === 1,
+  record('init() leaves optional video handler initialization to its plugin',
+    videoInitCalls.length === 0,
     'calls=' + videoInitCalls.length);
 
   record('init() calls OraCapabilityStyleTrains.init',

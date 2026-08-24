@@ -62,88 +62,6 @@
       editable: false,
     },
     {
-      id: 'video_toggle_capture',
-      category: 'Video',
-      label: 'Toggle capture',
-      description: 'Starts, resumes, or stops capture while video mode is active.',
-      context: 'Video mode',
-      defaultShortcut: 'Mod+Alt+R',
-      editable: true,
-    },
-    {
-      id: 'video_export',
-      category: 'Video',
-      label: 'Render last-used export preset',
-      description: 'Starts a render using the most recently used export preset.',
-      context: 'Video mode',
-      defaultShortcut: 'Mod+Shift+E',
-      editable: true,
-    },
-    {
-      id: 'timeline_undo',
-      category: 'Timeline',
-      label: 'Undo timeline edit',
-      description: 'Steps the timeline edit history backward.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Mod+Z',
-      editable: true,
-    },
-    {
-      id: 'timeline_redo',
-      category: 'Timeline',
-      label: 'Redo timeline edit',
-      description: 'Steps the timeline edit history forward.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Mod+Shift+Z',
-      editable: true,
-    },
-    {
-      id: 'timeline_duplicate',
-      category: 'Timeline',
-      label: 'Duplicate selected clip',
-      description: 'Copies the selected clip and places the copy after it.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Mod+D',
-      editable: true,
-    },
-    {
-      id: 'timeline_copy',
-      category: 'Timeline',
-      label: 'Copy selected clip',
-      description: 'Copies the selected clip to the timeline clipboard.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Mod+C',
-      editable: true,
-    },
-    {
-      id: 'timeline_paste',
-      category: 'Timeline',
-      label: 'Paste clip at playhead',
-      description: 'Pastes the timeline clipboard on the source track at the playhead.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Mod+V',
-      editable: true,
-    },
-    {
-      id: 'timeline_split',
-      category: 'Timeline',
-      label: 'Split selected clip',
-      description: 'Splits the selected clip at the current playhead.',
-      context: 'Visible timeline',
-      defaultShortcut: 'S',
-      editable: true,
-    },
-    {
-      id: 'timeline_delete',
-      category: 'Timeline',
-      label: 'Delete selected clip',
-      description: 'Removes the selected clip from the timeline.',
-      context: 'Visible timeline',
-      defaultShortcut: 'Delete',
-      editable: true,
-      aliases: ['Backspace'],
-    },
-    {
       id: 'visual_zoom_in',
       category: 'Visual canvas',
       label: 'Zoom in',
@@ -528,6 +446,33 @@
     if (def.binding && !_byBinding[def.binding]) _byBinding[def.binding] = def.id;
   });
 
+  function register(definitions) {
+    if (!Array.isArray(definitions) || !definitions.length) {
+      console.warn('[keyboard-shortcuts] refused empty feature definitions');
+      return false;
+    }
+    var seen = Object.create(null);
+    for (var i = 0; i < definitions.length; i++) {
+      var def = definitions[i];
+      var id = String(def && def.id || '').trim();
+      if (!id || !def || !def.category || !def.label || !def.context
+          || !def.defaultShortcut || seen[id]
+          || Object.prototype.hasOwnProperty.call(_byId, id)) {
+        console.warn('[keyboard-shortcuts] refused malformed or duplicate feature definition');
+        return false;
+      }
+      seen[id] = true;
+    }
+    definitions.forEach(function (source) {
+      var def = Object.assign({}, source);
+      if (Array.isArray(source.aliases)) def.aliases = source.aliases.slice();
+      DEFINITIONS.push(def);
+      _byId[def.id] = def;
+      if (def.binding && !_byBinding[def.binding]) _byBinding[def.binding] = def.id;
+    });
+    return true;
+  }
+
   function _shortcutMap(settings) {
     var s = settings || _settings || {};
     return (s.keyboard && s.keyboard.shortcuts) || {};
@@ -812,6 +757,7 @@
     isTypingTarget: _isTypingTarget,
     matches: matches,
     normalizeShortcut: normalizeShortcut,
+    register: register,
     refresh: refresh,
     reserved: reservedRows,
     shortcutFor: shortcutFor,

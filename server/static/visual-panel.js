@@ -2648,14 +2648,6 @@
         var anchor = (e && (e.currentTarget || e.target)) || null;
         Selector.toggle(anchor, panel);
       },
-      // Send the most-relevant canvas image to the active conversation's
-      // media library. Implementation lives in v3-canvas-to-library.js so
-      // visual-panel stays focused on canvas concerns.
-      'tool:send_to_library':   function () {
-        var Lib = window.OraV3CanvasToLibrary;
-        if (!Lib || typeof Lib.sendBest !== 'function') return;
-        Lib.sendBest(panel);
-      },
     };
     // WP-7.1.5 — wire the Ask Ora binding into the action registry. The
     // bindings module installs its handler under the canonical
@@ -2699,21 +2691,6 @@
         if (!img) return { enabled: false, reason: 'Add an image first' };
         var mask = hasMask();
         return { enabled: mask, reason: mask ? null : 'Select an area to fill first' };
-      },
-      // Phase 6 follow-up — enable the "send to media library" toolbar
-      // button only when the canvas has a Konva.Image we can dispatch.
-      // The library module's findCandidateImage encodes the same
-      // selection-then-fallback rule the click handler uses, so the
-      // button's enabled state matches what the click would actually
-      // operate on.
-      'canvas_has_sendable_image': function () {
-        var Lib = (typeof window !== 'undefined') && window.OraV3CanvasToLibrary;
-        var has = !!(Lib && typeof Lib.findCandidateImage === 'function'
-                         && Lib.findCandidateImage(panel));
-        return {
-          enabled: has,
-          reason: has ? null : 'Add an image to the canvas first'
-        };
       },
     };
 
@@ -3240,22 +3217,6 @@
       e.cancelBubble = true;
     });
 
-    // Right-click on a Konva.Image opens the canvas-to-library context
-    // menu. Implementation lives in v3-canvas-to-library.js. We suppress
-    // the browser's native context menu only when the click landed on
-    // an image — anywhere else falls through to the default behavior.
-    this.stage.on('contextmenu.vp-cl', function (e) {
-      var target = e && e.target;
-      if (!target || typeof target.getClassName !== 'function') return;
-      if (target.getClassName() !== 'Image') return;
-      var Lib = (typeof window !== 'undefined') && window.OraV3CanvasToLibrary;
-      if (!Lib || typeof Lib.openContextMenu !== 'function') return;
-      var native = e.evt;
-      if (native && typeof native.preventDefault === 'function') native.preventDefault();
-      var x = (native && native.clientX) || 0;
-      var y = (native && native.clientY) || 0;
-      Lib.openContextMenu(self, x, y, target);
-    });
   };
 
   /**

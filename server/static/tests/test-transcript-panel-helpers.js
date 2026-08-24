@@ -36,7 +36,7 @@ var fs   = require('fs');
 var path = require('path');
 var vm   = require('vm');
 
-var ROOT = path.resolve(__dirname, '..');
+var ROOT = path.resolve(__dirname, '..', '..', '..', 'plugins', 'video', 'static');
 var SRC  = path.join(ROOT, 'transcript-panel.js');
 
 // ── boot transcript-panel.js in a sandboxed window ──────────────────────────
