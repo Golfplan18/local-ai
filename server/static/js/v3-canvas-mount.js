@@ -1679,6 +1679,16 @@
         throw new Error('Ora visual compiler is unavailable');
       }
       const result = await Promise.resolve(compiler.compileWithNav(envelope));
+      const legibilityFinding = window.OraV3VisualDispatch
+        && typeof window.OraV3VisualDispatch.reviewLegibility === 'function'
+        ? window.OraV3VisualDispatch.reviewLegibility(result, host)
+        : null;
+      if (legibilityFinding) {
+        return Object.assign({}, result, {
+          needs_narrower_subject: true,
+          legibility_finding: legibilityFinding,
+        });
+      }
       if (!result || (result.errors && result.errors.length) || !result.svg) {
         throw new Error('Ora visual compiler did not produce an SVG');
       }

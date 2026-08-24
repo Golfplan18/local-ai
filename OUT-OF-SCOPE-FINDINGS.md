@@ -13,3 +13,10 @@
 - Observable consequence: Types whose envelopes encode position must remain compiler-rendered; making them native would let a dragged drawing silently disagree with its source envelope.
 - Confidence: confirmed
 - Rough size: needs investigation
+
+### Visual emission log lacks source identity
+- Location: orchestrator/boot.py:2820
+- What is wrong: Emission records inherit an optional conversation id, so a null id identifies neither a live turn nor a bench run and the two sources cannot be distinguished.
+- Observable consequence: The log cannot support the claim that no live synthesis ever occurred; any conclusion that depends on that claim is unsupported.
+- Confidence: confirmed
+- Rough size: needs investigation

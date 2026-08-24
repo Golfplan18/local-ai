@@ -637,7 +637,7 @@
       this._doReplacePrep();
       var self0 = this;
       return this.renderSpec(envelope).then(function (r) {
-        self0._hasPriorVisual = true;
+        if (!r || r.needs_narrower_subject !== true) self0._hasPriorVisual = true;
         return r;
       });
     }
@@ -645,7 +645,7 @@
     this._doUpdatePrep();
     var self = this;
     return this.renderSpec(envelope).then(function (r) {
-      self._hasPriorVisual = true;
+      if (!r || r.needs_narrower_subject !== true) self._hasPriorVisual = true;
       return r;
     });
   };
@@ -1055,6 +1055,16 @@
         self._showFallback(envelope, [{ code: 'E_COMPILER_NULL', message: 'Compiler returned null.' }]);
         return;
       }
+      var legibilityFinding = window.OraV3VisualDispatch
+        && typeof window.OraV3VisualDispatch.reviewLegibility === 'function'
+        ? window.OraV3VisualDispatch.reviewLegibility(r, self._viewportEl)
+        : null;
+      if (legibilityFinding) {
+        return Object.assign({}, r, {
+          needs_narrower_subject: true,
+          legibility_finding: legibilityFinding,
+        });
+      }
       if (r.errors && r.errors.length > 0) {
         self._showFallback(envelope, r.errors);
         return;
@@ -1064,6 +1074,7 @@
         return;
       }
       self._installSvg(r.svg, envelope, r.ariaDescription);
+      return r;
     }, function (err) {
       self._showFallback(envelope, [{
         code: 'E_COMPILER_REJECTED',

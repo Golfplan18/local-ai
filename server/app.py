@@ -3369,7 +3369,9 @@ def _build_visual_diagnostics_frame(context_pkg: dict | None) -> dict | None:
 def visual_regenerate():
     """Phase 1 — on-demand envelope synthesis for the visual pane's
     'Regenerate visual' button. Body: ``{prose, mode,
-    manual_visual_type?}``; ``visual_kind`` is an alias. Runs the same
+    manual_visual_type?}``; ``visual_kind`` is an alias. A client legibility
+    retry also supplies ``narrow_subject``, ``conversation_id``, and
+    ``assistant_index`` so the replacement is durable before insertion. Runs the same
     synthesize→validate→repair loop the pipeline uses on a miss, and returns
     a ready-to-render ora-visual block. Returns ``{ok, block?, type?, reason}``.
     """
@@ -3382,8 +3384,20 @@ def visual_regenerate():
     preferred_kind = (
         data.get("manual_visual_type") or data.get("visual_kind") or ""
     ).strip() or None
+    narrow_subject = data.get("narrow_subject") is True
+    conversation_id = (data.get("conversation_id") or "").strip()
+    assistant_index = data.get("assistant_index")
     if not prose:
         return jsonify({"ok": False, "reason": "no prose supplied"}), 400
+    if narrow_subject and (
+        not _valid_existing_conversation_id(conversation_id)
+        or type(assistant_index) is not int
+        or assistant_index < 0
+    ):
+        return jsonify({
+            "ok": False,
+            "reason": "a valid assistant turn is required for a narrower visual",
+        }), 400
     try:
         from boot import (_mode_target_types, _resolve_synthesis_endpoint,
                           _strip_visual_blocks_and_markers, call_model)
@@ -3397,6 +3411,14 @@ def visual_regenerate():
     clean = _strip_visual_blocks_and_markers(prose)
 
     def _call_fn(prompt):
+        if narrow_subject:
+            prompt += (
+                "\n\nNARROWER-SUBJECT RETRY: The first complete diagram was not "
+                "legible in the user's viewport. Choose one load-bearing subject "
+                "supported by the analyst prose and build the complete diagram for "
+                "that narrower subject. Narrow scope before depth. Do not prune an "
+                "already-completed graph, invent relationships, or re-abstract labels."
+            )
         return call_model(
             [{"role": "system", "content": SYSTEM_PROMPT},
              {"role": "user", "content": prompt}],
@@ -3410,7 +3432,34 @@ def visual_regenerate():
     if env is None:
         return jsonify({"ok": False, "reason": f"synthesis failed after {len(attempts)} attempt(s)"})
     block = "```ora-visual\n" + json.dumps(env, indent=2) + "\n```"
-    return jsonify({"ok": True, "block": block, "type": env.get("type"), "envelope": env})
+    persisted = False
+    if narrow_subject:
+        try:
+            from conversation_memory import replace_assistant_visual_envelope
+            with _conversation_lifecycle_lock(conversation_id):
+                path = replace_assistant_visual_envelope(
+                    conversation_id,
+                    env,
+                    assistant_index=assistant_index,
+                )
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "reason": f"narrower visual could not be saved: {exc}",
+            }), 500
+        if path is None:
+            return jsonify({
+                "ok": False,
+                "reason": "the assistant turn for the narrower visual was not found",
+            }), 404
+        persisted = True
+    return jsonify({
+        "ok": True,
+        "block": block,
+        "type": env.get("type"),
+        "envelope": env,
+        "persisted": persisted,
+    })
 
 
 # In-memory vision-retry queue keyed by conversation_id. Each entry is a
