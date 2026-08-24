@@ -15,7 +15,7 @@ VAULT = Path(
 ).resolve()
 VAULT_ORA = VAULT / "Projects" / "Ora"
 ACCESSIBLE = VAULT_ORA / "Reference — Ora Accessible Overview.md"
-ACCESSIBLE_MIRROR = ROOT / "docs" / "accessible-overview.md"
+ACCESSIBLE_MIRROR = ROOT / "help" / "accessible-overview.md"
 TRACKER = VAULT_ORA / "Working — Ora Setup and Refinement.md"
 REGISTRY = VAULT_ORA / "Registry — Ora Overview and Document Registry.md"
 DCP_REPORT = (

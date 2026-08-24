@@ -24,12 +24,14 @@
     "knowledge": "knowledge",
     "conversations": "conversations",
     "atomics": "atomic_dedup",
-    "conversations_incognito": "conversations-incognito"
+    "conversations_incognito": "conversations-incognito",
+    "help": "help"
   },
   "collection_history": {
     "knowledge": ["knowledge"],
     "conversations": ["conversations"],
     "atomics": ["atomic_dedup"],
-    "conversations_incognito": ["conversations-incognito"]
+    "conversations_incognito": ["conversations-incognito"],
+    "help": ["help"]
   }
 }

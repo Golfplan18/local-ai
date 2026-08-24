@@ -14,10 +14,10 @@ Three documents describe the installed system. Each is a body-only mirror of a
 vault canonical: the vault copy is the source of truth and these mirrors are
 regenerated from it, so edit the vault original, never these files.
 
-- **[Using Ora](user-guide.md)** — a task-indexed how-to: install, add API keys,
+- **[Using Ora](../help/user-guide.md)** — a task-indexed how-to: install, add API keys,
   choose models, run work, and recover from problems, with every command
   platform-labeled. Start here to operate the system.
-- **[Accessible overview](accessible-overview.md)** — a plain-language explanation
+- **[Accessible overview](../help/accessible-overview.md)** — a plain-language explanation
   of what Ora is and why it is built this way.
 - **[Technical documentation](technical-documentation.md)** — the deepest source
   of truth: every subsystem's problem, design, implementation, and verification,
@@ -26,10 +26,10 @@ regenerated from it, so edit the vault original, never these files.
 
 ## Install and operations references
 
-The install and recovery specifics live in their own operator docs:
-`install-guide.md` (happy-path install with a per-platform command matrix),
-`install-manual.md` (manual fallback when the installer is broken),
-`install-recovery.md` (recovering from a partial install), `install-testing.md`
+The reader-facing install and recovery specifics live in the tracked help library:
+`../help/install-guide.md` (happy-path install with a per-platform command matrix),
+`../help/install-manual.md` (manual fallback when the installer is broken),
+`../help/install-recovery.md` (recovering from a partial install), `install-testing.md`
 (clean-room test protocol), and `cloud-ora-install.md` (Linux server operator
 guide).
 

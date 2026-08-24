@@ -1230,7 +1230,7 @@ class G14ConversationManagementTests(unittest.TestCase):
         vault_ora = Path.home() / "Documents" / "vault" / "Projects" / "Ora"
         guide_raw = (vault_ora / "Guide — Using Ora.md").read_text(encoding="utf-8")
         guide_body = guide_raw.split("---", 2)[2].lstrip("\n")
-        mirror = (REPO / "docs" / "user-guide.md").read_text(encoding="utf-8")
+        mirror = (REPO / "help" / "user-guide.md").read_text(encoding="utf-8")
         self.assertEqual(guide_body, mirror)
         for token in (
             "Start a Dialogue without duplicating prior work",
