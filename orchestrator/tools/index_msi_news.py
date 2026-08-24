@@ -2,10 +2,11 @@
 """Index the MSI News mirror into the Ora `knowledge` collection.
 
 `~/Documents/vault/MSI News/` is a one-way `rsync -az --delete` mirror of
-the cloud MSI pipeline's `cloud-outbox/msi-news/` (launchd job
-`com.cloud-ora.sync`, every 15 min). Its on-disk .md files do NOT carry
-Ora schema frontmatter, and any local stamp would be reverted on the next
-sync. So this indexer FORCES the schema at index time via
+the cloud MSI pipeline's `cloud-outbox/msi-news/`. The tracked Cloud Ora
+sync step runs after an exact committed vault-change event; there is no
+clock-driven fallback. Its on-disk .md files do NOT carry Ora schema
+frontmatter, and any local stamp would be reverted on the next sync. So this
+indexer FORCES the schema at index time via
 `knowledge_index.index_file`'s `meta_overrides`, without modifying files:
 
     type  : resource                  -> provenance weight 0.8 (Ora YAML Schema)
@@ -18,9 +19,10 @@ sync. So this indexer FORCES the schema at index time via
 
 A knowledge_v2 doc persists once written, regardless of later file
 reverts. This module is the runtime indexing path for MSI news: called by
-the post-rsync hook in ~/cloud-ora-sync/sync.py (index exactly what the
-sync changed — no separate cron, per the Runtime Principle), and runnable
-standalone for the initial catch-up over the existing mirror.
+the post-rsync hook in
+`~/ora/operations/g1-10-current/macos/vault-cloud-sync.py` (index exactly
+what the sync changed — no separate cron, per the Runtime Principle), and
+runnable standalone for the initial catch-up over the existing mirror.
 
 Usage:
     python3 -m orchestrator.tools.index_msi_news              # index new files in the folder

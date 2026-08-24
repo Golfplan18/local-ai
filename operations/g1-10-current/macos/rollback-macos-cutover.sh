@@ -12,7 +12,7 @@ manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
 active_root = pathlib.Path.home() / "Library" / "LaunchAgents"
 recovery = pathlib.Path(sys.argv[2])
 for name, expected in manifest["macos_launchagents"].items():
-    if name == "com.ora.server.plist":
+    if name in {"com.ora.server.plist", "com.cloud-ora.sync.plist"}:
         continue
     source = recovery / name
     if hashlib.sha256(source.read_bytes()).hexdigest() != expected:
@@ -24,7 +24,7 @@ PY
 
 for plist in "$RECOVERY"/*.plist; do
   label="$(basename "$plist" .plist)"
-  [[ "$label" == "com.ora.server" ]] && continue
+  [[ "$label" == "com.ora.server" || "$label" == "com.cloud-ora.sync" ]] && continue
   active="$HOME/Library/LaunchAgents/$label.plist"
   install -m 0644 "$plist" "$active"
   if ! launchctl print "gui/$UID/$label" >/dev/null 2>&1; then
@@ -37,4 +37,4 @@ path = pathlib.Path(sys.argv[1])
 value = {"schema_version": 1, "status": "rolled_back"}
 path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 PY
-echo "Restored five captured pre-G1.10 cadence agents"
+echo "Restored four recoverable pre-G1.10 cadence agents; cloud sync remains event-driven"
