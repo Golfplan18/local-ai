@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-20T03:27:14+00:00",
+  "generated_at": "2026-08-23T03:38:55+00:00",
   "source": {
     "campaign_dir": "/Users/oracle/ora/data/campaign",
     "manifest_path": "/Users/oracle/ora/data/campaign/campaign-manifest.jsonl",
-    "manifest_sha256": "e0c3aaf8fa3f65f59c8a8341595891c3493b45e2d75b20c0f6615b3db1160f43",
+    "manifest_sha256": "3d5b132e8f731c531a806417bbabe1ae33db056aaa2583a60f7738d1a66cd6d4",
     "corpus_path": "/Users/oracle/Documents/vault/Projects/Ora/Reference \u2014 Trigger Prompt Corpus.md",
-    "corpus_sha256": "a251ff4d6751e5f7c22da073ff5a040e8c22d09697f821a99217e54b1d9571fd"
+    "corpus_sha256": "bcfdac1eaa98e7fd627b300c2243b69b6addf7c075ed66fbf8a57f751f7482e3"
   },
   "corpus": {
     "entries": 198,
@@ -92,9 +92,34 @@
       "single-pass-9b": []
     }
   },
+  "capture_integrity": {
+    "checked_cells": 1188,
+    "valid_cells": 1188,
+    "affected_cells": [],
+    "affected_by_pipeline": {
+      "premium": [],
+      "qwen9b": [],
+      "optimum": [],
+      "optimum-plus": [],
+      "single-pass": [],
+      "single-pass-9b": []
+    },
+    "evidence_counts": {
+      "unverified_legacy": 1164,
+      "attested": 20,
+      "verified": 4
+    },
+    "evidence_states": {
+      "verified": "sidecar written from a live call; prompt hash matches the corpus entry for this cell",
+      "attested": "recovered from a preserved transcript; right cell and prompt, but no surviving trace to hash the request against",
+      "unverified_legacy": "capture predates the sidecar; the bytes are not tied to this cell by anything",
+      "missing": "no capture to certify",
+      "sidecar_mismatch": "the sidecar names a different cell or prompt than this capture root declares"
+    }
+  },
   "accepted_trace_health": {
     "accepted_trace_count": 792,
-    "accepted_trace_with_health": 3,
+    "accepted_trace_with_health": 0,
     "accepted_trace_missing_health": [
       {
         "technique_key": "mode:argument-audit",
@@ -1252,6 +1277,11 @@
         "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-passion-exploration-optimum/20260613T085358Z"
       },
       {
+        "technique_key": "mode:passion-exploration",
+        "pipeline": "optimum-plus",
+        "trace_dir": "/Users/oracle/ora-msi-central-routing/data/pipeline-traces/campaign-passion-exploration-optimum-plus/20260720T024858Z"
+      },
+      {
         "technique_key": "mode:project-mode",
         "pipeline": "premium",
         "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-project-mode-premium/20260613T180034Z"
@@ -1340,6 +1370,11 @@
         "technique_key": "visual:c4-architecture",
         "pipeline": "qwen9b",
         "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-c4-architecture-qwen9b/20260613T090408Z"
+      },
+      {
+        "technique_key": "visual:c4-architecture",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-c4-architecture-optimum/20260620T182647Z"
       },
       {
         "technique_key": "visual:c4-architecture",
@@ -1715,6 +1750,11 @@
         "technique_key": "visual:tornado-chart",
         "pipeline": "qwen9b",
         "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tornado-chart-qwen9b/20260613T115923Z"
+      },
+      {
+        "technique_key": "visual:tornado-chart",
+        "pipeline": "optimum",
+        "trace_dir": "/Users/oracle/ora/data/pipeline-traces/campaign-tornado-chart-optimum/20260620T143204Z"
       },
       {
         "technique_key": "visual:tornado-chart",
@@ -4043,31 +4083,17 @@
       }
     ],
     "bare_control_records_excluded": 396,
-    "historical_step_health_limitation": "789 of 792 accepted Ora pipeline traces predate step-health persistence or lack a retained step-health file. This historical coverage gap is distinct from campaign-row completeness and is not represented as trace-health success.",
+    "historical_step_health_limitation": "792 of 792 accepted Ora pipeline traces predate step-health persistence or lack a retained step-health file. This historical coverage gap is distinct from campaign-row completeness and is not represented as trace-health success.",
     "severity_counts": {
-      "clean": 2,
+      "clean": 0,
       "info": 0,
-      "review": 1,
+      "review": 0,
       "verification_gap": 0,
       "critical": 0
     },
-    "category_counts": {
-      "unclassified": 1
-    },
-    "contingency_label_counts": {
-      "step6_5-gear3-quality-gate-PASS": 1
-    },
-    "traces_with_contingencies": [
-      {
-        "technique_key": "mode:passion-exploration",
-        "pipeline": "optimum-plus",
-        "severity": "review",
-        "contingencies": [
-          "step6_5-gear3-quality-gate-PASS"
-        ],
-        "trace_dir": "/Users/oracle/ora-msi-central-routing/data/pipeline-traces/campaign-passion-exploration-optimum-plus/20260720T024858Z"
-      }
-    ]
+    "category_counts": {},
+    "contingency_label_counts": {},
+    "traces_with_contingencies": []
   },
   "stale_manifest_keys": []
 }
