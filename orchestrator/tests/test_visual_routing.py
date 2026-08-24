@@ -969,13 +969,14 @@ class ModeToVisualIntegrityTests(unittest.TestCase):
         import boot
         offenders = {
             mode: [t for t in cfg.get("visual_types", [])
-                   if t not in boot._KNOWN_VISUAL_TYPES]
+                   if t not in boot._KNOWN_VISUAL_TYPES and t != "annotated_image"]
             for mode, cfg in self._modes().items()
         }
         offenders = {m: t for m, t in offenders.items() if t}
         self.assertEqual(
             {}, offenders,
             f"unrecognized visual_types are dropped silently: {offenders}")
+        self.assertNotIn("annotated_image", boot._KNOWN_VISUAL_TYPES)
 
     def test_both_red_team_successors_are_configured(self):
         modes = self._modes()

@@ -593,6 +593,55 @@ class FiringTests(TriggerBase):
 
 
 class ActionTests(TriggerBase):
+    def test_framework_trigger_runs_the_terminal_visual_authority(self):
+        result = SimpleNamespace(success=True, final_output="A depends on B.",
+                                 execution_id="exec-1", milestones=[])
+        action = {"kind": "framework", "input": "Map the dependency",
+                  "project_nexus": "fixture"}
+        binding = {"framework": "f-analysis", "trigger_id": "nightly"}
+        def visual_hook(response, context):
+            context["_visual_outcome"] = {
+                "state": "failed",
+                "stage": "cli_render",
+                "reason": "headless render failed",
+            }
+            return "visual result"
+
+        with mock.patch.object(triggers, "_excerpt", return_value="visual excerpt") as excerpt, \
+             mock.patch("milestone_executor.execute_framework", return_value=result) as execute_framework, \
+             mock.patch("boot._run_visual_hook", side_effect=visual_hook) as hook, \
+             mock.patch("pipeline_trace.start_trace", return_value="/trace/evt-1") as start_trace, \
+             mock.patch("pipeline_trace.finalize_manifest") as finalize_manifest, \
+             mock.patch("boot.load_routing_config", return_value={}):
+            receipt = triggers._execute_action(action, binding)
+        start_trace.assert_called_once_with(
+            "nightly", raw_input="Map the dependency", conversation_tag="trigger")
+        execute_framework.assert_called_once_with(
+            "f-analysis", "Map the dependency", {}, project_nexus="fixture",
+            trace_dir="/trace/evt-1", conversation_tag="trigger")
+        finalize_manifest.assert_called_once_with(
+            "/trace/evt-1", kind="trigger-framework", status_hint="error",
+            framework_id="f-analysis")
+        hook.assert_called_once_with(
+            "A depends on B.",
+            {
+                "cleaned_prompt": "Map the dependency",
+                "execution_context": "autonomous",
+                "framework_id": "f-analysis",
+                "project_nexus": "fixture",
+                "trace_dir": "/trace/evt-1",
+                "_visual_outcome": {
+                    "state": "failed",
+                    "stage": "cli_render",
+                    "reason": "headless render failed",
+                },
+            },
+        )
+        excerpt.assert_called_once_with("visual result")
+        self.assertEqual(receipt["outcome"], "ran")
+        self.assertEqual(receipt["output_excerpt"], "visual excerpt")
+        self.assertEqual(receipt["visual_outcome"]["state"], "failed")
+
     def test_an_unregistered_project_is_refused_at_authoring_time(self):
         with self.assertRaises(triggers.TriggerConflict) as caught:
             self.service.create(self.tool_spec())

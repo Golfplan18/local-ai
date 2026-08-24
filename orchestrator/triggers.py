@@ -1124,7 +1124,7 @@ class TriggerService:
                     )
             # The Trigger identity scopes the email approval request but is
             # not part of the provider binding digest itself.
-            if spec["action"]["kind"] == "email_send":
+            if spec["action"]["kind"] in {"email_send", "framework"}:
                 binding = {**binding, "trigger_id": trigger_id}
             receipt = _execute_action(
                 spec["action"], binding,
@@ -1245,19 +1245,49 @@ def _execute_action(
     if action["kind"] == "framework":
         try:
             import milestone_executor as _me
-            from boot import load_routing_config
+            import pipeline_trace as _pt
+            from boot import _run_visual_hook, load_routing_config
         except ImportError:  # pragma: no cover - package import context
             from orchestrator import milestone_executor as _me
-            from orchestrator.boot import load_routing_config
-        result = _me.execute_framework(
-            binding["framework"], action["input"], load_routing_config(),
-            project_nexus=action.get("project_nexus"),
+            from orchestrator import pipeline_trace as _pt
+            from orchestrator.boot import _run_visual_hook, load_routing_config
+        trace_dir = _pt.start_trace(
+            binding.get("trigger_id"), raw_input=action["input"],
             conversation_tag="trigger",
         )
-        if not getattr(result, "success", False):
-            raise TriggerConflict(
-                f"framework {binding['framework']} failed: "
-                f"{getattr(result, 'failure_reason', 'no reason recorded')}"
+        trace_status = "error"
+        try:
+            result = _me.execute_framework(
+                binding["framework"], action["input"], load_routing_config(),
+                project_nexus=action.get("project_nexus"),
+                trace_dir=trace_dir,
+                conversation_tag="trigger",
+            )
+            if not getattr(result, "success", False):
+                raise TriggerConflict(
+                    f"framework {binding['framework']} failed: "
+                    f"{getattr(result, 'failure_reason', 'no reason recorded')}"
+                )
+            visual_context = {
+                "cleaned_prompt": action["input"],
+                "execution_context": "autonomous",
+                "framework_id": binding["framework"],
+                "project_nexus": action.get("project_nexus"),
+                "trace_dir": trace_dir,
+            }
+            final_output = _run_visual_hook(
+                getattr(result, "final_output", ""),
+                visual_context,
+            )
+            visual_outcome = visual_context.get("_visual_outcome")
+            trace_status = (
+                "error" if (visual_outcome or {}).get("state") == "failed"
+                else "completed"
+            )
+        finally:
+            _pt.finalize_manifest(
+                trace_dir, kind="trigger-framework", status_hint=trace_status,
+                framework_id=binding["framework"],
             )
         return {
             "outcome": "ran", "kind": "framework",
@@ -1265,7 +1295,8 @@ def _execute_action(
             "execution_id": getattr(result, "execution_id", ""),
             "milestones": len(getattr(result, "milestones", []) or []),
             "duration_seconds": round(time.time() - started, 3),
-            "output_excerpt": _excerpt(getattr(result, "final_output", "")),
+            "output_excerpt": _excerpt(final_output),
+            "visual_outcome": visual_outcome,
         }
     if action["kind"] == "email_send":
         try:

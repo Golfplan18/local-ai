@@ -2267,7 +2267,6 @@ _KNOWN_VISUAL_TYPES = frozenset({
     "causal_loop_diagram", "stock_and_flow", "causal_dag", "fishbone",
     "decision_tree", "influence_diagram", "ach_matrix", "quadrant_matrix", "bow_tie",
     "ibis", "pro_con", "concept_map", "sequence", "flowchart", "state", "c4",
-    "annotated_image",
 })
 
 

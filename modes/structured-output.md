@@ -231,7 +231,7 @@ Revise to remove substantive claims that do not trace to source. Revise to flag 
 
 ## VERIFICATION CRITERIA
 
-Verified means: every substantive claim in output traces to source; format follows requested conventions; gaps explicitly flagged; no recommendation added that was not in source; visual envelopes preserved byte-equivalent with `mode_context` from source. The five critical questions are addressed. Silent gap-filling, silent recommendation injection, and silent schema drift on passthrough envelopes are all verification failures. Envelope count must match source (if source has N visuals, output has N visuals).
+Verified means: every substantive claim in output traces to source; format follows requested conventions; gaps explicitly flagged; no recommendation added that was not in source; source visual envelopes preserved byte-equivalent with `mode_context` from source; and source-envelope count matches. The five critical questions are addressed. Silent gap-filling, silent recommendation injection, and silent schema drift on passthrough envelopes are all verification failures. A separately marked terminal-authority envelope is excluded from the source-envelope count.
 
 ## OUTPUT FORMAT GUIDANCE
 

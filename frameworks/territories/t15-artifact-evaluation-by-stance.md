@@ -91,7 +91,7 @@ Disambiguating question for the T1↔T15 Steelman case: "Want me to evaluate the
 - **Analyst.** Reconstruct the position at its logical best; pass the mirror test; identify ≥2 points of agreement with the user's stated view; produce the critique addressing only the steelman; conclude with survival assessment.
 - **Evaluator.** Apply mirror test; verify identity preservation; verify critique-targets-steelman-only; verify construction-before-critique; flag tinman-trap, identity-loss, retreat-to-original, steel-strawman, projection-trap, entangled-construction.
 - **Reviser.** Strengthen reconstruction wherever a thoughtful proponent would recognize weakness; re-anchor to original claim where steelman drifted; rewrite critique passages that retreat to weaker original; resist "balanced" presentation (the mode is asymmetric by design).
-- **Verifier.** Confirm six required sections (original_position, steelmanned_reconstruction, strength_identification, points_of_agreement, critique_of_the_steelman, survival_assessment); confirm prose-only (no envelope).
+- **Verifier.** Confirm six required sections (original_position, steelmanned_reconstruction, strength_identification, points_of_agreement, critique_of_the_steelman, survival_assessment); confirm any concept map is constrained, single-sided, and grounded in the reconstructed claim and supporting premises.
 - **Consolidator.** Merge as prose with original-position paragraph bounded (≤ ⅓ of total steelman section length).
 
 **Source tradition.** Rapoport rules of engagement (steelman before critique); Dennett charitable interpretation.

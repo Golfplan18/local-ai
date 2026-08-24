@@ -468,6 +468,24 @@ module.exports = {
       }
     }
 
+    // ── 14b. Reviewer exception fails closed ────────────────────────
+    {
+      const C = win.OraVisualCompiler;
+      const originalReview = C.artifactAdversarial.review;
+      C.artifactAdversarial.review = function () { throw new Error('review unavailable'); };
+      try {
+        const env = cldEnvelope('fig-review-exception');
+        let result = C.compile(env);
+        if (result && typeof result.then === 'function') result = await result;
+        record('review exception → empty SVG and blocking error',
+          result.svg === '' && (result.errors || []).some(e => e.code === 'E_ARTIFACT_REVIEW_EXCEPTION'),
+          'svg.len=' + (result.svg || '').length +
+          ' codes=' + (result.errors || []).map(e => e.code).join(','));
+      } finally {
+        C.artifactAdversarial.review = originalReview;
+      }
+    }
+
     // ── 15. Baseline regression — real envelopes must not trigger any
     //        Critical artifact findings. Warning-level findings are OK.
     {
