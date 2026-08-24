@@ -2,7 +2,9 @@
 import json
 import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,6 +31,249 @@ class _MockModel:
 
 
 class TestSynthesize(unittest.TestCase):
+    def test_narrow_regenerate_replaces_only_target_visual(self):
+        import boot
+        import conversation_memory
+        from server import app as server
+
+        malformed_fence = (
+            '```ora-visual\n'
+            '{not json\n'
+            '```'
+        )
+        first_fence = (
+            '```ora-visual\n'
+            '{"type":"concept_map","title":"First sibling"}\n'
+            '```'
+        )
+        second_fence = (
+            '```ora-visual\n'
+            '{"type":"pro_con","title":"Target sibling"}\n'
+            '```'
+        )
+        original_content = (
+            "Lead prose byte.\n" + malformed_fence
+            + "\nMalformed fence stays byte-identical.\n" + first_fence
+            + "\nMiddle prose byte.\n" + second_fence
+            + "\nTail prose byte."
+        )
+        replacement = {
+            "type": "pro_con",
+            "title": "Narrowed target",
+            "spec": {"pros": [{"text": "One subject"}], "cons": []},
+        }
+
+        def response_and_status(result):
+            if isinstance(result, tuple):
+                return result[0], result[1]
+            return result, result.status_code
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sessions_root = Path(tmp) / "sessions"
+            conversation_id = "narrow-target-test"
+            conversation_dir = sessions_root / conversation_id
+            conversation_dir.mkdir(parents=True)
+            conversation_path = conversation_dir / "conversation.json"
+            conversation_path.write_text(json.dumps({
+                "conversation_id": conversation_id,
+                "messages": [
+                    {"role": "user", "content": "Show both"},
+                    {"role": "assistant", "content": original_content},
+                ],
+            }), encoding="utf-8")
+
+            common_request = {
+                "prose": original_content,
+                "mode": "synthesis",
+                "manual_visual_type": "pro_con",
+                "narrow_subject": True,
+                "conversation_id": conversation_id,
+                "assistant_index": 0,
+            }
+            with (
+                mock.patch.object(
+                    conversation_memory, "_DEFAULT_SESSIONS_ROOT",
+                    sessions_root,
+                ),
+                mock.patch.object(boot, "_mode_target_types", return_value=["pro_con"]),
+                mock.patch.object(
+                    boot, "_resolve_synthesis_endpoint", return_value={"id": "test"},
+                ),
+                mock.patch.object(
+                    boot, "_strip_visual_blocks_and_markers", side_effect=lambda text: text,
+                ),
+                mock.patch.object(
+                    vs, "synthesize_envelope", return_value=(replacement, []),
+                ) as synthesize,
+            ):
+                with server.app.test_request_context(
+                    "/api/visual/regenerate",
+                    method="POST",
+                    json={**common_request, "visual_block_index": 2},
+                ):
+                    valid_response, valid_status = response_and_status(
+                        server.visual_regenerate()
+                    )
+
+                self.assertEqual(valid_status, 200)
+                self.assertTrue(valid_response.get_json()["persisted"])
+                self.assertTrue(
+                    valid_response.get_json()["visual_outcome_persisted"],
+                )
+                self.assertEqual(
+                    valid_response.get_json()["visual_outcome"]["state"],
+                    "failed",
+                )
+                self.assertEqual(
+                    valid_response.get_json()["visual_outcome"]["reason"],
+                    (
+                        "A narrower visual was saved, but insertion has not "
+                        "been confirmed."
+                    ),
+                )
+                self.assertEqual(
+                    valid_response.get_json()["visual_outcome"]
+                    ["legibility_attempts"],
+                    {"2": "exhausted"},
+                )
+                persisted = json.loads(conversation_path.read_text(encoding="utf-8"))
+                expected_content = (
+                    "Lead prose byte.\n" + malformed_fence
+                    + "\nMalformed fence stays byte-identical.\n" + first_fence
+                    + "\nMiddle prose byte.\n```ora-visual\n"
+                    + json.dumps(replacement, indent=2, ensure_ascii=False)
+                    + "\n```\nTail prose byte."
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["content"], expected_content,
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["content"].count(first_fence), 1,
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["content"].count(malformed_fence), 1,
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["visual_outcome"]
+                    ["legibility_attempts"],
+                    {"2": "exhausted"},
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["visual_outcome"]["state"],
+                    "failed",
+                )
+                self.assertEqual(
+                    persisted["messages"][1]["visual_outcome"]["reason"],
+                    (
+                        "A narrower visual was saved, but insertion has not "
+                        "been confirmed."
+                    ),
+                )
+                bytes_after_valid = conversation_path.read_bytes()
+
+                with server.app.test_request_context(
+                    "/api/visual/regenerate",
+                    method="POST",
+                    json={**common_request, "visual_block_index": 2},
+                ):
+                    duplicate_response, duplicate_status = response_and_status(
+                        server.visual_regenerate()
+                    )
+                self.assertEqual(duplicate_status, 409)
+                self.assertEqual(
+                    duplicate_response.get_json()["retry_status"], "exhausted",
+                )
+                self.assertTrue(
+                    duplicate_response.get_json()["visual_outcome_persisted"],
+                )
+                self.assertEqual(
+                    duplicate_response.get_json()["visual_outcome"],
+                    persisted["messages"][1]["visual_outcome"],
+                )
+                self.assertEqual(synthesize.call_count, 1)
+                self.assertEqual(conversation_path.read_bytes(), bytes_after_valid)
+
+                with server.app.test_request_context(
+                    "/api/visual/regenerate",
+                    method="POST",
+                    json={**common_request, "visual_block_index": "2"},
+                ):
+                    invalid_response, invalid_status = response_and_status(
+                        server.visual_regenerate()
+                    )
+                self.assertEqual(invalid_status, 400)
+                self.assertFalse(invalid_response.get_json()["ok"])
+                self.assertEqual(conversation_path.read_bytes(), bytes_after_valid)
+
+                with server.app.test_request_context(
+                    "/api/visual/regenerate",
+                    method="POST",
+                    json={**common_request, "visual_block_index": 9},
+                ):
+                    missing_response, missing_status = response_and_status(
+                        server.visual_regenerate()
+                    )
+                self.assertEqual(missing_status, 404)
+                self.assertIn("targeted visual block", missing_response.get_json()["reason"])
+                self.assertEqual(conversation_path.read_bytes(), bytes_after_valid)
+
+    def test_narrow_failure_reports_only_a_confirmed_terminal_outcome(self):
+        import boot
+        import conversation_memory
+        from server import app as server
+
+        content = '```ora-visual\n{"type":"concept_map"}\n```'
+        with tempfile.TemporaryDirectory() as tmp:
+            sessions_root = Path(tmp) / "sessions"
+            conversation_memory.save_turn_spatial_state(
+                "narrow-failure-confirmation",
+                "Show it",
+                content,
+                visual_outcome={"state": "building"},
+                sessions_root=sessions_root,
+            )
+            with (
+                mock.patch.object(
+                    conversation_memory, "_DEFAULT_SESSIONS_ROOT", sessions_root,
+                ),
+                mock.patch.object(
+                    boot, "_mode_target_types", return_value=["concept_map"],
+                ),
+                mock.patch.object(
+                    boot, "_resolve_synthesis_endpoint", return_value={"id": "test"},
+                ),
+                mock.patch.object(
+                    boot, "_strip_visual_blocks_and_markers",
+                    side_effect=lambda text: text,
+                ),
+                mock.patch.object(
+                    vs, "synthesize_envelope", return_value=(None, ["attempt"]),
+                ),
+                mock.patch.object(
+                    conversation_memory,
+                    "set_assistant_visual_outcome",
+                    return_value=(None, None),
+                ),
+            ):
+                with server.app.test_request_context(
+                    "/api/visual/regenerate",
+                    method="POST",
+                    json={
+                        "prose": content,
+                        "mode": "synthesis",
+                        "narrow_subject": True,
+                        "conversation_id": "narrow-failure-confirmation",
+                        "assistant_index": 0,
+                        "visual_block_index": 0,
+                    },
+                ):
+                    response = server.visual_regenerate()
+
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertFalse(payload["visual_outcome_persisted"])
+        self.assertNotIn("visual_outcome", payload)
+
     def test_visual_modules_use_runtime_configuration_root(self):
         import runtime_paths
         import visual_adversarial

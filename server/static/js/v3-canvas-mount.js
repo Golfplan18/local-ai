@@ -20,6 +20,20 @@
     return JSON.parse(JSON.stringify(value));
   };
 
+  const bridgeFailure = (code, message, errors) => {
+    const items = Array.isArray(errors) && errors.length
+      ? errors : [{ code, message }];
+    const warnings = items.map((item) => (
+      typeof item === 'string' ? item : item && (item.message || item.code)
+    )).filter(Boolean);
+    return {
+      rendered: false,
+      unsupported: true,
+      errors: items,
+      warnings: warnings.length ? warnings : [message],
+    };
+  };
+
   const blobFromDataURL = async (dataURL) => {
     const response = await fetch(dataURL);
     return response.blob();
@@ -430,6 +444,16 @@
       operations = run.catch(() => {});
       return run;
     };
+
+    const setConversationContext = (id, tag) => enqueue(() => {
+      const nextId = id || 'main';
+      if (nextId !== conversationId) {
+        sceneReady = false;
+        viewIsCurrent = true;
+      }
+      conversationId = nextId;
+      conversationTag = tag || '';
+    });
 
     const updateEditorPresentation = () => {
       const useExcalidraw = editor === 'excalidraw' && !!excalidrawApi;
@@ -1545,11 +1569,15 @@
         // authoritative. Calling renderSpec directly would bypass
         // replace/update/annotate/clear semantics.
         if (panel) {
-          return panel.onBridgeUpdate({
+          const result = await Promise.resolve(panel.onBridgeUpdate({
             ora_visual_blocks: [{ envelope }],
-          });
+          }));
+          return result === undefined ? bridgeFailure(
+            'E_BRIDGE_NO_RESULT',
+            'The Konva visual panel did not confirm that this block was applied.'
+          ) : result;
         }
-        return null;
+        return bridgeFailure('E_PANEL_UNMOUNTED', 'The Konva visual panel is not mounted.');
       }
       const currentElements = excalidrawApi.getSceneElements();
       if (assistantKey && currentElements.some((element) => (
@@ -1650,7 +1678,7 @@
           files: userFiles,
         });
         await persistExcalidrawMutation(persist);
-        return { action };
+        return { action, applied: true };
       }
       if (action === 'annotate') {
         const nativeBuilder = window.OraVisualCompiler
@@ -1676,9 +1704,22 @@
       }
       const compiler = window.OraVisualCompiler;
       if (!compiler || typeof compiler.compileWithNav !== 'function') {
-        throw new Error('Ora visual compiler is unavailable');
+        return bridgeFailure(
+          'E_COMPILER_UNAVAILABLE', 'Ora visual compiler is unavailable.'
+        );
       }
-      const result = await Promise.resolve(compiler.compileWithNav(envelope));
+      let result;
+      try {
+        result = await Promise.resolve(compiler.compileWithNav(envelope));
+      } catch (error) {
+        return bridgeFailure(
+          'E_COMPILER_REJECTED',
+          'Compile rejected: ' + (error && error.message || error)
+        );
+      }
+      if (!result) {
+        return bridgeFailure('E_COMPILER_NULL', 'Compiler returned null.');
+      }
       const legibilityFinding = window.OraV3VisualDispatch
         && typeof window.OraV3VisualDispatch.reviewLegibility === 'function'
         ? window.OraV3VisualDispatch.reviewLegibility(result, host)
@@ -1689,8 +1730,13 @@
           legibility_finding: legibilityFinding,
         });
       }
-      if (!result || (result.errors && result.errors.length) || !result.svg) {
-        throw new Error('Ora visual compiler did not produce an SVG');
+      if (result.errors && result.errors.length) {
+        return bridgeFailure(
+          'E_COMPILER_ERRORS', 'Compiler reported one or more errors.', result.errors
+        );
+      }
+      if (typeof result.svg !== 'string' || result.svg.trim().length === 0) {
+        return bridgeFailure('E_EMPTY_SVG', 'Compiler produced empty SVG.');
       }
       const assistantVisualId = (envelope && envelope.assistant_visual_id)
         || `assistant:${envelope && envelope.id || 'visual'}`;
@@ -1719,6 +1765,7 @@
         await persistExcalidrawMutation(persist);
         return Object.assign({}, result, {
           action,
+          rendered: true,
           native: true,
           layout: nativeScene.layout,
         });
@@ -1726,7 +1773,7 @@
       const png = await rasterizeSvg(result.svg);
       await placeExcalidrawPng(png, { action, locked: true, customData });
       await persistExcalidrawMutation(persist);
-      return Object.assign({}, result, { action });
+      return Object.assign({}, result, { action, rendered: true });
     });
 
     const insertCapabilityImage = (canvasObject) => enqueue(async () => {
@@ -1839,23 +1886,39 @@
         const dispatchKey = typeof state.ora_visual_dispatch_key === 'string'
           ? state.ora_visual_dispatch_key : null;
         const persist = viewIsCurrent;
-        const envelopes = blocks.map((block, index) => {
+        const blockOperations = blocks.map((block, index) => {
           let envelope = null;
-          if (block && block.envelope) envelope = block.envelope;
-          if (block && block.raw_json) {
+          const hasEnvelope = block && typeof block === 'object'
+            && Object.prototype.hasOwnProperty.call(block, 'envelope');
+          const hasRawJson = block && typeof block === 'object'
+            && Object.prototype.hasOwnProperty.call(block, 'raw_json');
+          if (hasEnvelope && block.envelope && typeof block.envelope === 'object'
+              && !Array.isArray(block.envelope)) envelope = block.envelope;
+          if (!hasEnvelope && hasRawJson && typeof block.raw_json === 'string') {
             try { envelope = JSON.parse(block.raw_json); } catch (_) { envelope = null; }
           }
-          if (!envelope && block && typeof block === 'object') envelope = block;
-          return envelope ? {
-            envelope,
-            assistantKey: dispatchKey ? `${dispatchKey}:${index}` : null,
-          } : null;
-        }).filter(Boolean);
+          if (!hasEnvelope && !hasRawJson && block && typeof block === 'object'
+              && !Array.isArray(block)) {
+            envelope = block;
+          }
+          if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
+            return Promise.resolve(bridgeFailure(
+              'E_BRIDGE_ENVELOPE',
+              'Visual bridge block did not contain a parseable envelope.'
+            ));
+          }
+          const assistantKey = dispatchKey ? `${dispatchKey}:${index}` : null;
+          return renderAssistantVisual(envelope, assistantKey, persist).catch((error) => (
+            bridgeFailure(
+              'E_VISUAL_APPLY_REJECTED',
+              'The visual block could not be applied: '
+                + (error && error.message || error)
+            )
+          ));
+        });
         // renderAssistantVisual uses the controller's one serialized chain,
-        // so every block in one assistant turn lands in source order.
-        const completion = Promise.all(envelopes.map((item) => (
-          renderAssistantVisual(item.envelope, item.assistantKey, persist)
-        )));
+        // so every input block lands in source order and keeps its result slot.
+        const completion = Promise.all(blockOperations);
         completion.catch((error) => {
           console.warn('[visual editor] assistant visual failed:', error);
         });
@@ -1900,15 +1963,7 @@
     window.OraCanvas = {
       panel,
       getActiveEditor: () => editor,
-      setConversationContext(id, tag) {
-        const nextId = id || 'main';
-        if (nextId !== conversationId) {
-          sceneReady = false;
-          viewIsCurrent = true;
-        }
-        conversationId = nextId;
-        conversationTag = tag || '';
-      },
+      setConversationContext,
       capture: () => editor === 'konva' ? snapshotKonva().spatial : null,
       hasContent: () => {
         if (editor === 'excalidraw') {
@@ -1923,7 +1978,7 @@
           return false;
         }
       },
-      reset: resetCanvas,
+      reset: () => enqueue(resetCanvas),
       clearForUser,
       snapshotForSubmit: snapshotActive,
       materializeSnapshot: materialize,
@@ -2173,8 +2228,12 @@
 
     document.addEventListener('ora:conversation-tag-changed', (event) => {
       const detail = event.detail || {};
-      if (detail.conversation_id) conversationId = detail.conversation_id;
-      conversationTag = detail.tag || '';
+      setConversationContext(
+        detail.conversation_id || conversationId,
+        detail.tag || '',
+      ).catch((error) => {
+        console.warn('[visual editor] Dialogue context update failed:', error);
+      });
     });
     updateEditorPresentation();
     updateCanvasState();

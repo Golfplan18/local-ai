@@ -236,6 +236,14 @@
     return turns;
   };
 
+  const assistantAtIndex = (turns, assistantIndex) => {
+    if (!Number.isInteger(assistantIndex) || assistantIndex < 0) return null;
+    const assistants = (Array.isArray(turns) ? turns : [])
+      .filter((turn) => turn && turn.assistant)
+      .map((turn) => turn.assistant);
+    return assistants[assistantIndex] || null;
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────
   const formatTimestamp = (iso) => {
     if (!iso || typeof iso !== 'string') return '—';
@@ -415,17 +423,33 @@
         const assistantIndex = state.turns
           .slice(0, state.currentTurnIndex + 1)
           .filter((turn) => turn && turn.assistant).length - 1;
+        const originatingConversationId = state.activeConversationId;
+        const originatingAssistant = t.assistant;
         const persistedOutcome = t.assistant.visual_outcome;
         const blockCount = window.OraV3VisualDispatch.dispatch(content, visualDispatchKey, {
-          conversationId: state.activeConversationId,
+          conversationId: originatingConversationId,
           assistantIndex,
           visualOutcome: persistedOutcome,
-          onNarrowedEnvelopePersisted(envelope, outcome) {
-            if (!t.assistant) return;
-            t.assistant.content = window.OraV3VisualDispatch.replaceBlocksWithEnvelope(
-              t.assistant.content || '', envelope,
-            );
-            t.assistant.visual_outcome = outcome;
+          onNarrowedEnvelopePersisted(envelope, outcome, visualBlockIndex) {
+            const applyUpdate = (assistant) => {
+              if (!assistant) return;
+              if (envelope && Number.isInteger(visualBlockIndex)) {
+                assistant.content = window.OraV3VisualDispatch.replaceBlocksWithEnvelope(
+                  assistant.content || '', envelope, visualBlockIndex,
+                );
+              }
+              assistant.visual_outcome = outcome;
+            };
+            // This callback owns both the saved narrower envelope and its
+            // terminal failure. It belongs to the object that initiated
+            // synthesis even if navigation replaced the state snapshot.
+            applyUpdate(originatingAssistant);
+            // Away-and-back reload creates new message objects. Mirror the
+            // durable result into that current snapshot only when it is still
+            // the same Dialogue and exact assistant position.
+            if (state.activeConversationId !== originatingConversationId) return;
+            const currentAssistant = assistantAtIndex(state.turns, assistantIndex);
+            if (currentAssistant !== originatingAssistant) applyUpdate(currentAssistant);
           },
         });
         if (blockCount === 0
@@ -442,7 +466,11 @@
               stage: 'open',
               reason: 'No visual envelope was available when this turn was reopened.',
             },
-          );
+          ).then((result) => {
+            if (result && result.ok && result.visual_outcome) {
+              originatingAssistant.visual_outcome = result.visual_outcome;
+            }
+          });
         }
         content = window.OraV3VisualDispatch.stripBlocks(content);
       }
@@ -499,7 +527,12 @@
         window.OraV3VisualDispatch.resetDedupe();
       }
       if (window.OraCanvas && typeof window.OraCanvas.reset === 'function') {
-        window.OraCanvas.reset();
+        const reset = window.OraCanvas.reset();
+        if (reset && typeof reset.catch === 'function') {
+          reset.catch((error) => {
+            console.warn('[v3-conversation] visual clear failed:', error);
+          });
+        }
         return;
       }
       if (window.OraPanels && window.OraPanels.visual) {

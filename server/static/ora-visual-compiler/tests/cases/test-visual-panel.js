@@ -7,19 +7,23 @@
  *   1. Panel init/destroy lifecycle is clean
  *   2. renderSpec(valid envelope) populates backgroundLayer (SVG host)
  *   3. renderSpec(invalid envelope) triggers fallback + error bar
- *   4. onBridgeUpdate(state with ora_visual_blocks) renders most recent
- *   5. canvas_action=clear on bridge clears artifact
- *   6. Keyboard: ArrowDown advances sibling in Olli tree
- *   7. Keyboard: ArrowUp returns to previous sibling
- *   8. Keyboard: Enter descends into first child
- *   9. Keyboard: Escape ascends to parent
- *  10. clearArtifact keeps userInputLayer intact
- *  11. Click on semantic <g> selects it + sets aria-activedescendant
- *  12. Resetting view resets transform to identity
- *  13. Konva-unavailable path still shows error (no crash)
- *  14. window.OraPanels.visual surface is populated
- *  15. renderSpec(null) shows fallback
- *  16. destroy() stops responding to onBridgeUpdate
+ *   4. onBridgeUpdate(state with ora_visual_blocks) returns the applied render
+ *   5. Multi-block bridge updates apply every block in source order and return
+ *      one aligned outcome per input
+ *   6. Compiler and unsupported-action failures settle truthfully without
+ *      preventing later siblings from rendering
+ *   7. canvas_action=clear on bridge clears artifact
+ *   8. Keyboard: ArrowDown advances sibling in Olli tree
+ *   9. Keyboard: ArrowUp returns to previous sibling
+ *  10. Keyboard: Enter descends into first child
+ *  11. Keyboard: Escape ascends to parent
+ *  12. clearArtifact keeps userInputLayer intact
+ *  13. Click on semantic <g> selects it + sets aria-activedescendant
+ *  14. Resetting view resets transform to identity
+ *  15. Konva-unavailable path still shows error (no crash)
+ *  16. window.OraPanels.visual surface is populated and returns bridge results
+ *  17. renderSpec(null) shows fallback
+ *  18. destroy() stops responding to onBridgeUpdate
  *
  * The suite mounts the panel into a fresh <div> inside ctx.win.document,
  * exercises the lifecycle against hand-built envelopes, and asserts on
@@ -154,7 +158,7 @@ module.exports = {
       const panel = new win.VisualPanel(div, { id: 'test-3' });
       panel.init();
       let r = panel.renderSpec(smallInvalidEnvelope());
-      if (r && typeof r.then === 'function') await r;
+      if (r && typeof r.then === 'function') r = await r;
       const svgHost = div.querySelector('.visual-panel__svg-host');
       const svgEl = svgHost && svgHost.querySelector('svg');
       record('visual-panel: renderSpec(invalid) leaves svg-host empty',
@@ -168,6 +172,10 @@ module.exports = {
       record('visual-panel: renderSpec(invalid) reveals fallback panel',
         fallback && !fallback.hidden,
         fallback ? ('hidden=' + fallback.hidden) : 'no fallback el');
+      record('visual-panel: renderSpec(invalid) returns an explicit failure',
+        r && r.rendered === false && r.unsupported === true
+          && Array.isArray(r.errors) && r.errors.length > 0,
+        JSON.stringify(r));
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {
@@ -180,11 +188,15 @@ module.exports = {
       const panel = new win.VisualPanel(div, { id: 'test-4' });
       panel.init();
       let r = panel.renderSpec(null);
-      if (r && typeof r.then === 'function') await r;
+      if (r && typeof r.then === 'function') r = await r;
       const errorBar = div.querySelector('.visual-panel__errorbar');
       record('visual-panel: renderSpec(null) shows error bar',
         errorBar && !errorBar.hidden,
         errorBar ? ('hidden=' + errorBar.hidden) : 'no errorbar el');
+      record('visual-panel: renderSpec(null) returns E_NO_ENVELOPE',
+        r && r.unsupported === true && r.errors && r.errors[0]
+          && r.errors[0].code === 'E_NO_ENVELOPE',
+        JSON.stringify(r));
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {
@@ -196,41 +208,121 @@ module.exports = {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'test-5' });
       panel.init();
-      panel.onBridgeUpdate(makeBridgeState(smallValidEnvelope(ctx)));
-      // onBridgeUpdate -> renderSpec returns a Promise internally; we mirror
-      // that by awaiting a microtask cycle before asserting.
-      await wait(15);
+      const bridgeResult = await panel.onBridgeUpdate(
+        makeBridgeState(smallValidEnvelope(ctx))
+      );
       const svgEl = div.querySelector('.visual-panel__svg-host svg');
-      record('visual-panel: onBridgeUpdate(state.ora_visual_blocks) renders most recent',
-        !!svgEl,
-        svgEl ? 'svg installed' : 'no svg after bridge update');
+      record('visual-panel: one-block onBridgeUpdate renders and returns direct result',
+        !!svgEl && bridgeResult && bridgeResult.rendered === true
+          && typeof bridgeResult.svg === 'string',
+        JSON.stringify({ svg: !!svgEl, result: bridgeResult }));
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {
       record('visual-panel: onBridgeUpdate renders', false, 'threw: ' + (err.stack || err.message || err));
     }
 
-    // 7) onBridgeUpdate with MULTIPLE blocks — renders LAST
+    // 7) onBridgeUpdate with MULTIPLE blocks — applies all in source order
     try {
       const div = mkDiv(win);
       const panel = new win.VisualPanel(div, { id: 'test-6' });
       panel.init();
       const env1 = smallValidEnvelope(ctx); env1.id = 'fig-vp-first';
-      const env2 = smallValidEnvelope(ctx); env2.id = 'fig-vp-second';
-      panel.onBridgeUpdate({
+      env1.canvas_action = 'replace';
+      const env2 = smallValidEnvelope(ctx); env2.id = 'fig-vp-clear';
+      env2.canvas_action = 'clear';
+      const applied = [];
+      const originalApply = panel._applyCanvasAction;
+      panel._applyCanvasAction = function (envelope, action) {
+        applied.push(envelope.id + ':' + action);
+        return originalApply.call(this, envelope, action);
+      };
+      const outcomes = await panel.onBridgeUpdate({
         ora_visual_blocks: [
           { envelope: env1, source_message_id: 'a' },
           { envelope: env2, source_message_id: 'b' },
         ],
       });
-      await wait(15);
-      record('visual-panel: onBridgeUpdate picks LAST block when multiple present',
-        panel._currentEnvelope && panel._currentEnvelope.id === 'fig-vp-second',
-        panel._currentEnvelope ? panel._currentEnvelope.id : 'none');
+      record('visual-panel: multi-block bridge applies source order',
+        applied.join(',') === 'fig-vp-first:replace,fig-vp-clear:clear'
+          && panel._conversationTurn === 2,
+        JSON.stringify({ applied: applied, turn: panel._conversationTurn }));
+      record('visual-panel: multi-block bridge returns aligned outcomes',
+        Array.isArray(outcomes) && outcomes.length === 2
+          && outcomes[0] && outcomes[0].rendered === true
+          && outcomes[1] && outcomes[1].action === 'clear'
+          && outcomes[1].applied === true,
+        JSON.stringify(outcomes));
+      record('visual-panel: later clear runs after earlier render',
+        !div.querySelector('.visual-panel__svg-host svg'),
+        'svg=' + !!div.querySelector('.visual-panel__svg-host svg'));
       panel.destroy();
       win.document.body.removeChild(div);
     } catch (err) {
-      record('visual-panel: onBridgeUpdate last-wins', false, 'threw: ' + (err.stack || err.message || err));
+      record('visual-panel: onBridgeUpdate ordered multi-block results', false,
+        'threw: ' + (err.stack || err.message || err));
+    }
+
+    // 8) Parse/compiler/unsupported failures keep their positions and do not
+    // prevent a later valid sibling from rendering.
+    var savedCompilerForBridge = win.OraVisualCompiler;
+    try {
+      const div = mkDiv(win);
+      const panel = new win.VisualPanel(div, { id: 'test-6b' });
+      panel.init();
+      const compileOrder = [];
+      win.OraVisualCompiler = {
+        compileWithNav: function (envelope) {
+          compileOrder.push(envelope.id);
+          if (envelope.id === 'compiler-null') return null;
+          if (envelope.id === 'compiler-errors') {
+            return { errors: [{ code: 'E_FIXTURE', message: 'fixture error' }], svg: '' };
+          }
+          if (envelope.id === 'compiler-empty') return { errors: [], svg: '' };
+          if (envelope.id === 'compiler-rejected') {
+            return Promise.reject(new Error('fixture rejection'));
+          }
+          return { errors: [], svg: '<svg width="10" height="10"></svg>' };
+        },
+      };
+      const outcomes = await panel.onBridgeUpdate({ ora_visual_blocks: [
+        { raw_json: '{' },
+        { envelope: { id: 'compiler-null', canvas_action: 'replace' } },
+        { envelope: { id: 'compiler-errors', canvas_action: 'replace' } },
+        { envelope: { id: 'compiler-empty', canvas_action: 'replace' } },
+        { envelope: { id: 'compiler-rejected', canvas_action: 'replace' } },
+        { envelope: { id: 'unsupported-annotate', canvas_action: 'annotate' } },
+        { envelope: { id: 'compiler-success', canvas_action: 'replace' } },
+      ] });
+      const firstCode = function (result) {
+        return result && result.errors && result.errors[0] && result.errors[0].code;
+      };
+      record('visual-panel: every failed bridge block keeps its aligned outcome',
+        Array.isArray(outcomes) && outcomes.length === 7
+          && firstCode(outcomes[0]) === 'E_BRIDGE_ENVELOPE'
+          && firstCode(outcomes[1]) === 'E_COMPILER_NULL'
+          && firstCode(outcomes[2]) === 'E_FIXTURE'
+          && firstCode(outcomes[3]) === 'E_EMPTY_SVG'
+          && firstCode(outcomes[4]) === 'E_COMPILER_REJECTED'
+          && outcomes[5] && outcomes[5].unsupported === true
+          && outcomes[5].action === 'annotate'
+          && outcomes[6] && outcomes[6].rendered === true,
+        JSON.stringify(outcomes));
+      record('visual-panel: compiler failures do not stop later siblings',
+        compileOrder.join(',') === [
+          'compiler-null', 'compiler-errors', 'compiler-empty',
+          'compiler-rejected', 'compiler-success',
+        ].join(',') && !!div.querySelector('.visual-panel__svg-host svg'),
+        JSON.stringify({ compileOrder: compileOrder, svg: !!div.querySelector(
+          '.visual-panel__svg-host svg'
+        ) }));
+      win.OraVisualCompiler = savedCompilerForBridge;
+      panel.destroy();
+      win.document.body.removeChild(div);
+    } catch (err) {
+      win.OraVisualCompiler = savedCompilerForBridge;
+      record('visual-panel: truthful aligned bridge failures', false,
+        'threw: ' + (err.stack || err.message || err));
     }
 
     // 8) canvas_action=clear clears artifact
@@ -446,13 +538,15 @@ module.exports = {
       record('visual-panel: OraPanels.visual.init returns an instance',
         inst instanceof win.VisualPanel,
         inst ? inst.constructor.name : 'none');
-      // Dispatch via surface
-      let r = win.OraPanels.visual.renderSpec(smallValidEnvelope(ctx));
-      if (r && typeof r.then === 'function') await r;
+      // Dispatch via the production facade and require its returned result.
+      let r = win.OraPanels.visual.onBridgeUpdate(
+        makeBridgeState(smallValidEnvelope(ctx))
+      );
+      if (r && typeof r.then === 'function') r = await r;
       const svgEl = div.querySelector('.visual-panel__svg-host svg');
-      record('visual-panel: OraPanels.visual.renderSpec routes to active instance',
-        !!svgEl,
-        svgEl ? 'svg installed' : 'no svg');
+      record('visual-panel: OraPanels.visual.onBridgeUpdate returns active result',
+        !!svgEl && r && r.rendered === true && typeof r.svg === 'string',
+        JSON.stringify({ svg: !!svgEl, result: r }));
       win.OraPanels.visual.clearArtifact();
       const after = div.querySelector('.visual-panel__svg-host svg');
       record('visual-panel: OraPanels.visual.clearArtifact routes to active instance',
@@ -472,11 +566,16 @@ module.exports = {
       const saved = win.OraVisualCompiler;
       win.OraVisualCompiler = undefined;
       let r = panel.renderSpec(smallValidEnvelope(ctx));
-      if (r && typeof r.then === 'function') await r;
+      if (r && typeof r.then === 'function') r = await r;
       const errorBar = div.querySelector('.visual-panel__errorbar');
       record('visual-panel: renderSpec when compiler missing → error bar',
         errorBar && !errorBar.hidden,
         errorBar ? ('hidden=' + errorBar.hidden + ' text="' + errorBar.textContent.slice(0, 40) + '"') : 'no errorbar el');
+      record('visual-panel: compiler-missing result is not a positive render',
+        r && r.rendered === false && r.unsupported === true
+          && r.errors && r.errors[0]
+          && r.errors[0].code === 'E_COMPILER_UNAVAILABLE',
+        JSON.stringify(r));
       win.OraVisualCompiler = saved;
       panel.destroy();
       win.document.body.removeChild(div);
