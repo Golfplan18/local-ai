@@ -33,6 +33,7 @@ sys.path.insert(0, str(ORCHESTRATOR))
 
 
 from oversight_sandbox import redirect_sessions_root  # noqa: E402
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
 
 
 def setUpModule():
@@ -74,7 +75,7 @@ class URLImportManagerTests(unittest.TestCase):
     """Direct tests of url_import.URLImportManager with subprocess mocked."""
 
     def setUp(self):
-        from url_import import URLImportManager  # noqa: WPS433
+        from plugins.video.backend.url_import import URLImportManager  # noqa: WPS433
         self.URLImportManager = URLImportManager
         self._tmp = tempfile.TemporaryDirectory()
         self._sessions_root = Path(self._tmp.name)
@@ -137,8 +138,13 @@ class URLImportManagerTests(unittest.TestCase):
             fake_popen.returncode = 0
             return fake_popen
 
-        with mock.patch("url_import.subprocess.run", return_value=meta_proc), \
-             mock.patch("url_import.subprocess.Popen", side_effect=make_download_popen):
+        with mock.patch(
+            "plugins.video.backend.url_import.subprocess.run",
+            return_value=meta_proc,
+        ), mock.patch(
+            "plugins.video.backend.url_import.subprocess.Popen",
+            side_effect=make_download_popen,
+        ):
             mgr = self._make_mgr()
             import_id = mgr.start("conv1", "https://www.youtube.com/watch?v=abc123")
             state = self._wait_for_terminal(mgr, import_id)
@@ -161,7 +167,10 @@ class URLImportManagerTests(unittest.TestCase):
         meta_proc.returncode = 1
         meta_proc.stdout = b""
         meta_proc.stderr = b"Video unavailable"
-        with mock.patch("url_import.subprocess.run", return_value=meta_proc):
+        with mock.patch(
+            "plugins.video.backend.url_import.subprocess.run",
+            return_value=meta_proc,
+        ):
             mgr = self._make_mgr()
             import_id = mgr.start("conv1", "https://example.com/dead")
             state = self._wait_for_terminal(mgr, import_id)
@@ -186,8 +195,13 @@ class URLImportManagerTests(unittest.TestCase):
             fake_popen.returncode = 1
             return fake_popen
 
-        with mock.patch("url_import.subprocess.run", return_value=meta_proc), \
-             mock.patch("url_import.subprocess.Popen", side_effect=fail_popen):
+        with mock.patch(
+            "plugins.video.backend.url_import.subprocess.run",
+            return_value=meta_proc,
+        ), mock.patch(
+            "plugins.video.backend.url_import.subprocess.Popen",
+            side_effect=fail_popen,
+        ):
             mgr = self._make_mgr()
             import_id = mgr.start("conv1", "https://example.com/x")
             state = self._wait_for_terminal(mgr, import_id)
@@ -202,7 +216,7 @@ class URLImportManagerTests(unittest.TestCase):
             mgr.start("conv1", "")
 
     def test_progress_line_parsing(self):
-        from url_import import _PROGRESS_RE, _to_bytes, _parse_eta
+        from plugins.video.backend.url_import import _PROGRESS_RE, _to_bytes, _parse_eta
         m = _PROGRESS_RE.search(
             "[download]  42.5% of ~ 100.00MiB at 5.00MiB/s ETA 01:23"
         )
@@ -215,7 +229,7 @@ class URLImportManagerTests(unittest.TestCase):
 
     def test_progress_line_parsing_plain_bytes(self):
         """Tiny files report sizes in plain B — must not silently skip them."""
-        from url_import import _PROGRESS_RE, _to_bytes
+        from plugins.video.backend.url_import import _PROGRESS_RE, _to_bytes
         m = _PROGRESS_RE.search(
             "[download]  50.0% of    520.00B at 100.00B/s ETA 00:05"
         )
@@ -225,7 +239,7 @@ class URLImportManagerTests(unittest.TestCase):
 
     def test_progress_line_parsing_no_eta(self):
         """Completion lines drop the ETA — must still match."""
-        from url_import import _PROGRESS_RE
+        from plugins.video.backend.url_import import _PROGRESS_RE
         m = _PROGRESS_RE.search(
             "[download] 100.0% of   10.50MiB"
         )
@@ -257,7 +271,7 @@ class URLImportEndpointTests(unittest.TestCase):
             )
         # Inject a manager that always returns a fixed import_id without
         # really starting downloads.
-        import url_import as UI  # noqa: WPS433
+        from plugins.video.backend import url_import as UI  # noqa: WPS433
         self._UI = UI
 
         self._fake_jobs = {}
@@ -287,17 +301,16 @@ class URLImportEndpointTests(unittest.TestCase):
                         if s["conversation_id"] == conv_id]
 
         self._fake_mgr = _FakeManager()
-        self._saved_getter = self.S._get_url_import_manager
-        self._saved_flag = self.S._HAS_URL_IMPORT
-        self.S._get_url_import_manager = lambda: self._fake_mgr
-        self.S._HAS_URL_IMPORT = True
+        self._manager_patcher = mock.patch.object(
+            UI, "get_default_manager", return_value=self._fake_mgr,
+        )
+        self._manager_patcher.start()
 
         self.client = self.S.app.test_client()
 
     def tearDown(self):
         if self.import_ok:
-            self.S._get_url_import_manager = self._saved_getter
-            self.S._HAS_URL_IMPORT = self._saved_flag
+            self._manager_patcher.stop()
 
     def test_post_starts_import_and_returns_id(self):
         resp = self.client.post(

@@ -18,10 +18,35 @@
     '/settings',
     '/visual',
     '/canvas',
-    '/video',
     '/image',
     '/generate-image',
   ]);
+  const FEATURE_COMMANDS = new Map();
+
+  const register = (entry) => {
+    const command = String(entry && entry.command || '').trim().toLowerCase();
+    const handler = entry && entry.handler;
+    if (!/^\/[a-z0-9][a-z0-9-]*$/.test(command)
+        || typeof handler !== 'function') {
+      console.warn('[slash-command-client] refused malformed feature command');
+      return false;
+    }
+    if (LOCAL_COMMANDS.has(command) || FEATURE_COMMANDS.has(command)) {
+      console.warn('[slash-command-client] refused duplicate feature command ' + command);
+      return false;
+    }
+    const aliases = Array.isArray(entry.settingsAliases)
+      ? entry.settingsAliases.map((value) => String(value || '').trim().toLowerCase())
+        .filter(Boolean)
+      : [];
+    FEATURE_COMMANDS.set(command, {
+      command,
+      handler,
+      settingsTab: String(entry.settingsTab || '').trim().toLowerCase(),
+      settingsAliases: aliases,
+    });
+    return true;
+  };
 
   const parse = (text) => {
     const raw = (text || '').trim();
@@ -54,20 +79,26 @@
       // Legacy pre-consolidation ids — the settings panel's TAB_ALIASES
       // resolves each to its hosting tab + section (2026-07-01).
       interface: 'interface',
-      capture: 'capture',
-      export: 'export',
       transcription: 'transcription',
       speech: 'speech',
       retrieval: 'retrieval',
-      // Consolidated-tab names
-      audio: 'avmedia',
-      video: 'avmedia',
-      av: 'avmedia',
-      media: 'avmedia',
-      avmedia: 'avmedia',
+      audio: 'audio',
       general: 'general',
     };
-    return aliases[v] || v || 'models';
+    return aliases[v] || (v ? null : 'models');
+  };
+
+  const _featureSettingsTab = (value) => {
+    const wanted = String(value || '').trim().toLowerCase();
+    if (!wanted) return null;
+    for (const entry of FEATURE_COMMANDS.values()) {
+      if (entry.settingsTab
+          && (wanted === entry.settingsTab
+            || entry.settingsAliases.includes(wanted))) {
+        return entry.settingsTab;
+      }
+    }
+    return null;
   };
 
   const _setSidebar = (mode) => {
@@ -180,7 +211,9 @@
     if (!window.OraSettingsPanel || typeof window.OraSettingsPanel.open !== 'function') {
       return false;
     }
-    window.OraSettingsPanel.open({ tab: _tabAlias(tab) });
+    const target = _tabAlias(tab) || _featureSettingsTab(tab);
+    if (!target) return false;
+    window.OraSettingsPanel.open({ tab: target });
     return true;
   };
 
@@ -201,18 +234,6 @@
       return true;
     }
     return false;
-  };
-
-  const _setVideo = (mode) => {
-    if (!window.OraPaneMode || typeof window.OraPaneMode.set !== 'function') return false;
-    const m = (mode || 'toggle').toLowerCase();
-    const cur = (typeof window.OraPaneMode.current === 'function')
-      ? window.OraPaneMode.current()
-      : null;
-    if (m === 'on' || m === 'open') window.OraPaneMode.set('video');
-    else if (m === 'off' || m === 'close') window.OraPaneMode.set(null);
-    else window.OraPaneMode.set(cur === 'video' ? null : 'video');
-    return true;
   };
 
   const _showVisualCanvas = () => {
@@ -296,10 +317,24 @@
     return true;
   };
 
+  const _tryFeatureCommand = (parsed) => {
+    const entry = FEATURE_COMMANDS.get(parsed.command);
+    if (!entry) return false;
+    try {
+      entry.handler(parsed);
+    } catch (error) {
+      console.warn('[slash-command-client] feature command ' + parsed.command
+        + ' failed: ' + ((error && error.message) || error));
+    }
+    return true;
+  };
+
   const handleClientCommand = (text) => {
     const parsed = parse(text);
     if (!parsed) return false;
-    if (!LOCAL_COMMANDS.has(parsed.command)) return _tryPromptTemplate(parsed);
+    if (!LOCAL_COMMANDS.has(parsed.command)) {
+      return _tryFeatureCommand(parsed) || _tryPromptTemplate(parsed);
+    }
 
     if (parsed.command === '/new') {
       document.dispatchEvent(new CustomEvent('ora:new-thread-requested', {
@@ -316,7 +351,6 @@
     if (parsed.command === '/review') return _openReviewQueue(parsed.args[0]);
     if (parsed.command === '/settings') return _openSettings(parsed.args[0]);
     if (parsed.command === '/visual' || parsed.command === '/canvas') return _showVisualCanvas();
-    if (parsed.command === '/video') return _setVideo(parsed.args[0]);
     if (parsed.command === '/image' || parsed.command === '/generate-image') {
       return _runImageCommand(parsed);
     }
@@ -325,6 +359,7 @@
 
   window.OraSlashCommands = {
     parse,
+    register,
     handleClientCommand,
   };
 })();

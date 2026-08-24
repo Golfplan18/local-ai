@@ -64,12 +64,9 @@ import threading
 import uuid
 from pathlib import Path
 
-try:
-    from . import runtime_paths as _rp
-except ImportError:  # pragma: no cover - legacy top-level import
-    import runtime_paths as _rp
+from .. import runtime as _runtime
 
-WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
+WORKSPACE_ROOT = _runtime.ora_home().resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 
 VALID_TRACK_KINDS = {"video", "audio", "pip", "music", "overlay"}
@@ -374,7 +371,7 @@ class Timeline:
             raise ValueError("conversation_id required")
         self.conversation_id = conversation_id
         self._lock = threading.Lock()
-        self.session_dir = _rp.safe_owned_subdir(
+        self.session_dir = _runtime.safe_owned_subdir(
             SESSIONS_ROOT, conversation_id, create=True,
         )
         self.state_path = self.session_dir / "timeline.json"
@@ -400,7 +397,7 @@ class Timeline:
     def save(self, state: dict) -> dict:
         normalized = _normalize_state(state or {}, self.conversation_id)
         with self._lock:
-            _rp.atomic_write_text(
+            _runtime.atomic_write_text(
                 self.state_path, json.dumps(normalized, indent=2),
             )
         return normalized

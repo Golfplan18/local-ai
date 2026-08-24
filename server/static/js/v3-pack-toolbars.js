@@ -31,7 +31,7 @@
   var CAPABILITY_SLOTS = [
     'image_generates', 'image_edits', 'image_outpaints', 'image_upscales',
     'image_styles', 'image_varies', 'image_to_prompt', 'image_critique',
-    'video_generates', 'style_trains'
+    'style_trains'
   ];
   var DRAWING_TOOLS = ['rect', 'ellipse', 'diamond', 'line', 'arrow', 'text'];
   var ANNOTATION_TOOLS = ['callout', 'highlight', 'strikethrough', 'sticky', 'pen'];

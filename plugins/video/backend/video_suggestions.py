@@ -15,8 +15,8 @@ Two paths:
    user's gating once API keys are settled per the project's broader
    live-fire policy.)
 
-Both paths emit JSON validated against
-``~/ora/config/framework-schemas/video-editing-suggestions.schema.json``.
+Both paths emit JSON validated against the schema shipped beside the video
+plugin's executable suggestion framework.
 Validation failures raise ``SuggestionValidationError``.
 """
 from __future__ import annotations
@@ -26,10 +26,15 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from .. import runtime as _runtime
+
 # ── schema validation ────────────────────────────────────────────────────────
 
-_SCHEMA_PATH = Path.home() / "ora" / "config" / "framework-schemas" / \
-               "video-editing-suggestions.schema.json"
+_SCHEMA_PATH = (
+    _runtime.plugin_root()
+    / "frameworks"
+    / "video-editing-suggestions.schema.json"
+)
 
 _SCHEMA_CACHE: dict | None = None
 
@@ -424,8 +429,11 @@ def _build_prompt(
     goals: str | None = None,
     existing_clips: list[dict] | None = None,
 ) -> str:
-    framework_path = Path.home() / "ora" / "frameworks" / "book" / \
-                     "video-editing-suggestions.md"
+    framework_path = (
+        _runtime.plugin_root()
+        / "frameworks"
+        / "video-editing-suggestions.md"
+    )
     framework_text = framework_path.read_text(encoding="utf-8")
     transcript_view = json.dumps({
         "language": transcript.get("language"),

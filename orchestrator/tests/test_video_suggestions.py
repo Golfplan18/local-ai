@@ -27,11 +27,12 @@ HERE = Path(__file__).resolve().parent
 ORCHESTRATOR = HERE.parent
 sys.path.insert(0, str(ORCHESTRATOR))
 
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
 
 class HeuristicGeneratorTests(unittest.TestCase):
 
     def setUp(self):
-        from video_suggestions import (
+        from plugins.video.backend.video_suggestions import (
             generate_suggestions_heuristic,
             validate_suggestions,
             SuggestionValidationError,
@@ -165,7 +166,7 @@ class JSONExtractionTests(unittest.TestCase):
     """The LLM path parses possibly-fenced JSON out of model output."""
 
     def setUp(self):
-        from video_suggestions import _extract_json
+        from plugins.video.backend.video_suggestions import _extract_json
         self.extract = _extract_json
 
     def test_plain_json(self):
@@ -210,7 +211,7 @@ class SuggestEditsEndpointTests(unittest.TestCase):
                 f"could not import server.py: "
                 f"{getattr(self, 'import_err', '<unknown>')}"
             )
-        import media_library as ML  # noqa: WPS433
+        from plugins.video.backend import media_library as ML  # noqa: WPS433
         self._ML = ML
         self._tmp = tempfile.TemporaryDirectory()
         self._tmp_path = Path(self._tmp.name)
@@ -222,19 +223,11 @@ class SuggestEditsEndpointTests(unittest.TestCase):
         self._saved_ora_home = self.S.rp.ORA_HOME
         self.S.rp.ORA_HOME = self._tmp_path
 
-        from media_library import get_library
-        self._saved_server_getter = self.S._get_media_library
-        self.S._get_media_library = get_library
-        self._saved_has_flag = self.S._HAS_MEDIA_LIBRARY
-        self.S._HAS_MEDIA_LIBRARY = True
-
         self.client = self.S.app.test_client()
         self.conv_id = "test_conv_suggest"
 
     def tearDown(self):
         if self.import_ok:
-            self.S._get_media_library = self._saved_server_getter
-            self.S._HAS_MEDIA_LIBRARY = self._saved_has_flag
             self.S.rp.ORA_HOME = self._saved_ora_home
             self._ML.SESSIONS_ROOT = self._saved_sessions_root
             self._ML._libraries.clear()

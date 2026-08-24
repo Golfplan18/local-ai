@@ -66,12 +66,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-try:
-    from . import runtime_paths as _rp
-except ImportError:  # pragma: no cover - legacy top-level import
-    import runtime_paths as _rp
+from .. import runtime as _runtime
 
-WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
+WORKSPACE_ROOT = _runtime.ora_home().resolve()
 DEFAULT_EXPORT_DIR = WORKSPACE_ROOT / "exports"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 FFPROBE_BINARY = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
@@ -174,7 +171,7 @@ PRESETS: dict[str, dict] = {
     "preview_proxy": {
         # 360p proxy used by the preview monitor for in-pane playback. Not
         # surfaced in the user-facing render preset menu; selected
-        # programmatically by orchestrator/preview.py.
+        # programmatically by the sibling preview module.
         "label": "Preview proxy (360p · 24 fps · MP4)",
         "container": "mp4",
         "video": True,

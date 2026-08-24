@@ -1224,7 +1224,7 @@ async function testEveryModuleNamesItsOwnSlotOnThePane() {
       { image: 'img_1' }],
     ['image_critique', 'capability-image-critique.js', 'OraCapabilityImageCritique',
       { image: 'data:image/png;base64,AA', rubric: 'composition' }],
-    ['video_generates', 'capability-video-generates.js', 'OraCapabilityVideoGenerates',
+    ['video_generates', '../../plugins/video/static/capability-video-generates.js', 'OraCapabilityVideoGenerates',
       { prompt: 'a cat' }],
     ['style_trains', 'capability-style-trains.js', 'OraCapabilityStyleTrains',
       { name: 'my-style', reference_images: ['a', 'b', 'c'] }],

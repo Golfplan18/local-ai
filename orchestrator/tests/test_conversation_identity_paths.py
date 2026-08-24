@@ -21,6 +21,7 @@ import tempfile
 import threading
 import types
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -32,6 +33,9 @@ SERVER_DIR = REPO / "server"
 for value in (str(REPO), str(ORCHESTRATOR), str(SERVER_DIR)):
     if value not in sys.path:
         sys.path.insert(0, value)
+
+from server import app as _server_app  # noqa: E402,F401 - configures plugin context
+from plugins.video import routes as _video_routes  # noqa: E402
 
 
 class _SavedUpload:
@@ -167,7 +171,7 @@ class TestJobQueueCanonicalPaths(unittest.TestCase):
 
 class TestCaptureDeletionRace(unittest.TestCase):
     def test_stale_resume_observes_tombstone_after_forget(self):
-        from orchestrator import media_capture
+        from plugins.video.backend import media_capture
 
         with tempfile.TemporaryDirectory() as td:
             capture_dir = Path(td) / "captures"
@@ -591,7 +595,8 @@ class TestOversightLifecycleOwnership(unittest.TestCase):
 
 class TestPreviewReadPaths(unittest.TestCase):
     def test_runtime_root_and_proxy_path_are_read_only(self):
-        from orchestrator import preview, runtime_paths
+        from plugins.video.backend import preview
+        from orchestrator import runtime_paths
 
         self.assertEqual(preview.WORKSPACE_ROOT, runtime_paths.ORA_HOME.resolve())
         with tempfile.TemporaryDirectory() as td:
@@ -604,7 +609,7 @@ class TestPreviewReadPaths(unittest.TestCase):
                 self.assertFalse((root / "read-only-id").exists())
 
     def test_forget_blocks_factories_and_late_proxy_reads(self):
-        from orchestrator import preview
+        from plugins.video.backend import preview
 
         conversation_id = "deleted-preview-contract"
         preview.forget_conversation(conversation_id)
@@ -614,7 +619,7 @@ class TestPreviewReadPaths(unittest.TestCase):
         get_timeline.assert_not_called()
 
     def test_path_traversal_is_rejected_without_creating_any_directory(self):
-        from orchestrator import preview
+        from plugins.video.backend import preview
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "sessions"
@@ -1302,36 +1307,34 @@ class TestServerCanonicalStorage(unittest.TestCase):
         self.assertEqual(response.get_json()["type"], "complete")
 
     def test_media_staging_purge_cannot_delete_prefix_sibling(self):
-        server = self.server
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            with mock.patch.object(server, "_MEDIA_LIBRARY_STAGING_DIR", str(root)):
-                a_dir = Path(server._media_library_staging_dir("a", create=True))
-                ab_dir = Path(server._media_library_staging_dir("a-b", create=True))
+            home = Path(td)
+            context = replace(_video_routes._context, ora_home=home)
+            with mock.patch.object(_video_routes, "_context", context):
+                a_dir = _video_routes._staging_dir("a", create=True)
+                ab_dir = _video_routes._staging_dir("a-b", create=True)
                 (a_dir / "one.mov").write_bytes(b"a")
                 (ab_dir / "two.mov").write_bytes(b"ab")
 
-                self.assertEqual(server._purge_media_library_staging("a"), 1)
+                self.assertEqual(_video_routes._purge_staging("a"), 1)
                 self.assertFalse(a_dir.exists())
                 self.assertTrue((ab_dir / "two.mov").is_file())
 
     def test_media_staging_writer_rejects_conversation_symlink(self):
         server = self.server
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td) / "media-staging"
+            home = Path(td)
+            root = home / "staging" / "media-library"
             outside = Path(td) / "outside"
-            root.mkdir()
+            root.mkdir(parents=True)
             outside.mkdir()
             (root / "media-owner").symlink_to(
                 outside, target_is_directory=True,
             )
-            with mock.patch.object(
-                server, "_MEDIA_LIBRARY_STAGING_DIR", str(root),
-            ):
+            context = replace(_video_routes._context, ora_home=home)
+            with mock.patch.object(_video_routes, "_context", context):
                 with self.assertRaises(ValueError):
-                    server._media_library_staging_dir(
-                        "media-owner", create=True,
-                    )
+                    _video_routes._staging_dir("media-owner", create=True)
             self.assertEqual(list(outside.iterdir()), [])
 
     def test_filestorage_atomic_replace_does_not_follow_target_symlink(self):
@@ -1362,11 +1365,18 @@ class TestServerCanonicalStorage(unittest.TestCase):
             (owner / "uploads").symlink_to(
                 outside, target_is_directory=True,
             )
-            with mock.patch.dict(os.environ, {"ORA_HOME": str(home)}):
-                with self.assertRaises(ValueError):
-                    server._store_watermark_upload(
-                        "watermark-owner", _SavedUpload(), ".png",
-                    )
+            context = replace(
+                _video_routes._context,
+                ora_home=home,
+                ensure_artifact_envelope=lambda _cid, _tag: ("", False),
+            )
+            with mock.patch.object(_video_routes, "_context", context):
+                response = server.app.test_client().post(
+                    "/api/watermark/watermark-owner/upload",
+                    data={"file": (io.BytesIO(b"image"), "mark.png")},
+                    content_type="multipart/form-data",
+                )
+            self.assertEqual(response.status_code, 500)
             self.assertEqual(list(outside.iterdir()), [])
 
     def test_canvas_latest_replace_does_not_follow_symlink(self):
@@ -1399,8 +1409,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
             factory = mock.Mock(side_effect=AssertionError("factory must not run"))
             with (
                 mock.patch.object(server.rp, "ORA_HOME", home),
-                mock.patch.object(server, "_HAS_PREVIEW", True),
-                mock.patch.object(server, "_preview_proxy_state", factory),
+                mock.patch.object(_video_routes.preview, "proxy_state", factory),
             ):
                 missing = client.get("/api/preview/missing-preview/state")
                 self.assertEqual(missing.status_code, 404)
@@ -1434,13 +1443,12 @@ class TestServerCanonicalStorage(unittest.TestCase):
             sessions = home / "sessions"
             with (
                 mock.patch.object(server.rp, "ORA_HOME", home),
-                mock.patch.object(server, "_HAS_MEDIA_LIBRARY", True),
-                mock.patch.object(server, "_get_media_library", media_factory),
-                mock.patch.object(server, "_HAS_TIMELINE", True),
-                mock.patch.object(server, "_get_timeline", timeline_factory),
-                mock.patch.object(server, "_HAS_VIDEO_SUGGESTIONS", True),
-                mock.patch.object(server, "_gen_suggestions_heuristic",
-                                  mock.Mock()),
+                mock.patch.object(
+                    _video_routes.media_library, "get_library", media_factory,
+                ),
+                mock.patch.object(
+                    _video_routes.timeline, "get_timeline", timeline_factory,
+                ),
             ):
                 for method, route in media_routes:
                     with self.subTest(state="missing", route=route):
@@ -1507,8 +1515,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
                 mock.patch.object(server.rp, "ORA_HOME", home),
                 mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
                                   home / "sessions"),
-                mock.patch.object(server, "_HAS_TIMELINE", True),
-                mock.patch.object(server, "_get_timeline",
+                mock.patch.object(_video_routes.timeline, "get_timeline",
                                   return_value=BlockingTimeline()),
                 mock.patch.object(server, "_quiesce_conversation_workers",
                                   return_value={"cleaned": {}, "errors": []}),
@@ -1580,8 +1587,7 @@ class TestServerCanonicalStorage(unittest.TestCase):
                 mock.patch.object(server.rp, "ORA_HOME", home),
                 mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
                                   home / "sessions"),
-                mock.patch.object(server, "_HAS_PREVIEW", True),
-                mock.patch.object(server, "_preview_proxy_state",
+                mock.patch.object(_video_routes.preview, "proxy_state",
                                   side_effect=blocking_state),
                 mock.patch.object(server, "_quiesce_conversation_workers",
                                   return_value={"cleaned": {}, "errors": []}),
@@ -1657,11 +1663,6 @@ class TestServerCanonicalStorage(unittest.TestCase):
                 Path(target).write_bytes(b"png")
                 return True
 
-            waveform_module = types.SimpleNamespace(
-                render_waveform=render_waveform,
-                waveform_cache_path=lambda _root, _entry_id: cache_path,
-            )
-
             def fake_purge(conversation_id, **_kwargs):
                 self.assertTrue(cache_path.exists())
                 shutil.rmtree(session_dir)
@@ -1675,14 +1676,16 @@ class TestServerCanonicalStorage(unittest.TestCase):
                 }
 
             with (
-                mock.patch.dict(sys.modules, {"waveform": waveform_module}),
                 mock.patch.object(server.rp, "ORA_HOME", home),
                 mock.patch.object(memory, "_DEFAULT_SESSIONS_ROOT",
                                   home / "sessions"),
-                mock.patch.object(server, "_HAS_MEDIA_LIBRARY", True),
-                mock.patch.object(server, "_get_media_library",
+                mock.patch.object(_video_routes.media_library, "get_library",
                                   return_value=library),
-                mock.patch.object(server, "send_from_directory",
+                mock.patch.object(_video_routes.waveform, "render_waveform",
+                                  side_effect=render_waveform),
+                mock.patch.object(_video_routes.waveform, "waveform_cache_path",
+                                  return_value=cache_path),
+                mock.patch.object(_video_routes, "send_from_directory",
                                   return_value=server._json_response({"ok": True})),
                 mock.patch.object(server, "_quiesce_conversation_workers",
                                   return_value={"cleaned": {}, "errors": []}),
@@ -1743,20 +1746,38 @@ class TestServerCanonicalStorage(unittest.TestCase):
         from orchestrator import document_input
 
         preview_forget = mock.Mock(return_value=True)
+        empty_manager = types.SimpleNamespace(
+            forget_conversation=mock.Mock(return_value=0),
+        )
         with (
-            mock.patch.object(server, "_HAS_CAPTURE", False),
-            mock.patch.object(server, "_HAS_URL_IMPORT", False),
-            mock.patch.object(server, "_HAS_PREVIEW", True),
-            mock.patch.object(server, "_preview_forget_conversation",
+            mock.patch.object(
+                _video_routes.media_capture, "get_default_manager",
+                return_value=empty_manager,
+            ),
+            mock.patch.object(
+                _video_routes.url_import, "get_default_manager",
+                return_value=empty_manager,
+            ),
+            mock.patch.object(_video_routes.preview, "forget_conversation",
                               preview_forget),
-            mock.patch.object(server, "_HAS_RENDER", False),
+            mock.patch.object(
+                _video_routes.render, "get_default_manager",
+                return_value=empty_manager,
+            ),
+            mock.patch.object(
+                _video_routes.media_library, "forget_library", return_value=True,
+            ),
             mock.patch.object(document_input, "purge_conversation",
                               return_value={"jobs": 0}),
         ):
             result = server._quiesce_conversation_workers("preview-cleanup")
 
         preview_forget.assert_called_once_with("preview-cleanup")
-        self.assertEqual(result["cleaned"]["preview"], True)
+        self.assertEqual(
+            result["cleaned"]["feature_plugins"]["video"]
+            ["quiesced"]["preview"],
+            True,
+        )
 
 
 class TestDocumentIdentityPath(unittest.TestCase):

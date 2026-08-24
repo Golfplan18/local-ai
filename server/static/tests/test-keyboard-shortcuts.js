@@ -18,6 +18,9 @@ var path = require('path');
 var vm = require('vm');
 
 var SRC = path.resolve(__dirname, '..', 'keyboard-shortcuts.js');
+var VIDEO_SRC = path.resolve(
+  __dirname, '..', '..', '..', 'plugins', 'video', 'static', 'video-shortcuts.js'
+);
 
 function assert(name, cond) {
   if (!cond) throw new Error('FAIL: ' + name);
@@ -67,6 +70,20 @@ vm.runInNewContext(fs.readFileSync(SRC, 'utf8'), ctx, { filename: SRC });
 
 var K = ctx.OraKeyboardShortcuts;
 assert('registry exported', !!K);
+assert('video shortcuts are absent from core',
+  !K.definitions().some(function (row) {
+    return row.category === 'Video' || row.category === 'Timeline';
+  }));
+assert('absent video shortcut is not consumed',
+  !K.matches('video_toggle_capture', evt('r', { metaKey: true, altKey: true })));
+
+vm.runInNewContext(fs.readFileSync(VIDEO_SRC, 'utf8'), ctx, { filename: VIDEO_SRC });
+assert('video package registers Video and Timeline shortcut rows',
+  K.definitions().filter(function (row) {
+    return row.category === 'Video' || row.category === 'Timeline';
+  }).length === 9);
+assert('installed video capture shortcut is active',
+  K.matches('video_toggle_capture', evt('r', { metaKey: true, altKey: true })));
 
 K.refresh({ keyboard: { shortcuts: { app_open_sidebar: 'Mod+Alt+K' } } });
 assert('platform display uses Cmd/Option',

@@ -546,4 +546,39 @@ UNDESCRIBABLE.forEach(function (kind, i) {
       + (warnings.join(' | ') || 'nothing at all'));
 });
 
+// The shipped video composition root must consume all four seams rather than
+// relying on a hard-coded shell button or settings branch.
+var currentPaneMode = null;
+w.OraPaneMode = {
+  current: function () { return currentPaneMode; },
+  set: function (mode) {
+    var previous = currentPaneMode;
+    currentPaneMode = mode || null;
+    w.document.dispatchEvent(new w.CustomEvent('ora:pane-mode-toggle', {
+      detail: { previous: previous, current: currentPaneMode },
+    }));
+  },
+};
+[
+  'OraCaptureControls', 'OraMediaLibrary', 'OraTimelineEditor',
+  'OraPreviewMonitor', 'OraTranscriptPanel', 'OraRenderControls',
+].forEach(function (name) { w[name] = { init: function () {} }; });
+w.OraCapabilityVideoGenerates = {
+  init: function () {}, setVisualPanel: function () {},
+};
+w.OraV3CanvasToLibrary = { init: function () {}, sendBest: function () {} };
+w.OraVideoSettings = { render: function () {} };
+w.OraConversation = { getActiveConversationId: function () { return null; } };
+require(path.resolve(__dirname, '..', 'js', 'v3-settings-sections.js'));
+require(path.resolve(__dirname, '..', 'js', 'v3-pane-ownership.js'));
+require(path.resolve(__dirname, '..', 'js', 'v3-browse-overlay.js'));
+require(path.resolve(__dirname, '..', '..', '..', 'plugins', 'video', 'static', 'video-plugin.js'));
+record('the video plugin registers through all four browser seams',
+  M.has('video-editor')
+    && M.has('video-media-browser-button')
+    && M.has('video-send-canvas-image')
+    && w.OraSettingsSections.has('video')
+    && w.OraPanes.has('video')
+    && w.OraBrowseOverlays.has('video-media-browser'));
+
 summarize();

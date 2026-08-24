@@ -22,13 +22,7 @@
 <script src="/static/canvas-serializer.js"></script>
 <script src="/static/annotation-parser.js"></script>
 <script src="/static/visual-panel.js"></script>
-<script src="/static/capture-controls.js"></script>
 <script src="/static/transcribe-input.js"></script>
-<script src="/static/media-library.js"></script>
-<script src="/static/timeline-editor.js"></script>
-<script src="/static/preview-monitor.js"></script>
-<script src="/static/transcript-panel.js"></script>
-<script src="/static/render-controls.js"></script>
 <script src="/static/models-pane.js?v=preset-bake-cause-20260821"></script>
 <script src="/static/visual-slots-pane.js"></script>
 <script src="/static/styles-pane.js?v=persona-20260805"></script>
@@ -165,9 +159,10 @@
 <script src="/static/shape-with-text.js"></script>
 <script src="/static/pack-validator.js"></script>
 
-<!-- WP-7.3.3 — Capability slot wirings (sync + async). Each module
-     attaches itself to OraCapabilityInvocationUI; video-generates and
-     style-trains additionally consume OraJobQueue (above). -->
+<!-- WP-7.3.3 — Core capability slot wirings (sync + async). Each module
+     attaches itself to OraCapabilityInvocationUI; style-trains additionally
+     consumes OraJobQueue (above). Optional feature slots load with their
+     feature plugin. -->
 <script src="/static/capability-image-generates.js"></script>
 <script src="/static/tools/image-edits.js"></script>
 <script src="/static/capability-image-outpaints.js"></script>
@@ -176,12 +171,11 @@
 <script src="/static/capability-image-varies.js"></script>
 <script src="/static/capability-image-to-prompt.js"></script>
 <script src="/static/capability-image-critique.js"></script>
-<script src="/static/capability-video-generates.js"></script>
 <script src="/static/capability-style-trains.js"></script>
 
-<!-- V3 async-capability subsystem (Row 50, 2026-05-11). Wires
-     capability-video-generates / capability-style-trains + OraJobQueue
-     init calls that index-v3.html's inline init script never made;
+<!-- V3 async-capability subsystem (Row 50, 2026-05-11). Wires core async
+     capability handlers plus OraJobQueue init calls that index-v3.html's
+     inline init script never made;
      runs the /api/jobs/<conversation_id> polling loop the legacy
      classic-UI chat panel used to own; renders job entries into the sidebar
      Operating tray alongside re-eval and elicitation items (B+C hybrid
@@ -302,13 +296,6 @@
      in localStorage via OraV3PackToolbars. Must load AFTER v3-pack-toolbars
      since it depends on mountPack/unmountPack/listAvailablePacks. -->
 <script src="/static/js/v3-toolbar-selector.js" defer></script>
-<!-- Canvas-image → media-library transfer. Two invocations: right-click
-     a canvas image (stage contextmenu listener wired by visual-panel.js)
-     or click the "Send image to media library" universal-toolbar button.
-     Both call OraV3CanvasToLibrary.send / sendBest, which extracts the
-     original image bytes (data URL or fetched URL — never a canvas-state
-     raster) and POSTs to /api/media-library/<conv>/add. -->
-<script src="/static/js/v3-canvas-to-library.js" defer></script>
 <script src="/static/js/v3-canvas-mount.js" defer></script>
 <script src="/static/js/prompt-overlay.js" defer></script>
 <!-- Envelope → visual-pane dispatch (2026-06-11). Must precede
@@ -336,6 +323,7 @@
      inline script routes each dropped/attached file to either
      OraTranscribeInput (audio/video) or OraDocumentInput (documents). -->
 <script src="/static/js/document-input.js" defer></script>
+<!-- ORA_FEATURE_PLUGIN_ASSETS -->
 </head>
 <body class="theme-dark">
 
@@ -1141,7 +1129,7 @@
 
       <button class="spine-button" type="button" aria-label="Configuration"
               id="spineSettingsBtn"
-              title="Open settings (capture, Whisper, API keys, export)">
+              title="Open settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round">
           <line x1="4" y1="6" x2="20" y2="6"/>
@@ -1216,15 +1204,6 @@
                aria-hidden="true">
             <rect x="4" y="4" width="13" height="13" rx="1.5"/>
             <path d="M8 8h12v12H8z"/>
-          </svg>
-        </button>
-        <button class="input-pane-toolbar__btn" type="button"
-                aria-label="Video editing" data-pane-mode-button="video"
-                id="spineVideoMode">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="7" width="13" height="10" rx="1.5" ry="1.5"/>
-            <polygon points="16 10 21 7 21 17 16 14 16 10"/>
           </svg>
         </button>
         <button class="input-pane-toolbar__btn" type="button"
@@ -1856,18 +1835,16 @@
     });
   });
 
-  // ─── Pane-mode buttons (Audio/Video Phase 1) ────────────────────────────
+  // ─── Pane-mode buttons ──────────────────────────────────────────────────
   //
   // [data-pane-mode-button] is a SEPARATE category from [data-mode-button]:
-  // pane-mode is about which UI surface the visual pane shows (canvas vs.
-  // video editing) and composes orthogonally with the content-confidentiality
+  // pane-mode is about which UI surface the Exhibits pane shows and composes
+  // orthogonally with the content-confidentiality
   // modes (Stealth, Private) carried on [data-mode-button]. A user can be in
-  // Private mode AND in video editing pane-mode at the same time.
+  // Private mode and in a feature-owned pane-mode at the same time.
   //
-  // Body class convention: `pane-mode-<name>` (e.g. `pane-mode-video`).
-  // Click toggles. Other panes / panels listen for ora:pane-mode-toggle
-  // and react. visual-panel.js consumes this for the canvas ↔ video
-  // editing layout switch.
+  // Body class convention: `pane-mode-<name>`. Click toggles. Feature panels
+  // listen for ora:pane-mode-toggle and react.
   const currentPaneMode = () => {
     for (const c of document.body.classList) {
       if (c.startsWith('pane-mode-')) return c.slice('pane-mode-'.length);
@@ -1896,39 +1873,11 @@
       setPaneMode(cur === mode ? null : mode);
     });
   });
-  // Expose for other modules (visual-panel.js, capture controls) that
-  // need to query or programmatically exit the mode (e.g. on canvas-needing
-  // actions per design-doc §A "implicit save+exit").
+  // Expose for the pane-ownership seam and feature modules that need to query
+  // or programmatically exit the current mode.
   window.OraPaneMode = { current: currentPaneMode, set: setPaneMode };
 
-  // ─── Audio/Video Phase 3 — implicit save+exit for video pane mode ─────
-  //
-  // The design (§A) says any user action that requires the canvas should
-  // save the video editing state and exit video mode. In Phase 3 the
-  // editing state is the per-conversation media library, which is
-  // already disk-persisted on every mutation. So "implicit save+exit"
-  // collapses to: drop pane-mode-video on canvas-needing transitions.
-  //
-  // Triggers:
-  //   - ora:new-thread-requested — user clicks "+" to start a new thread
-  //   - ora:conversation-selected — user picks a different conversation
-  //     in the sidebar (only counts when the new conversation differs;
-  //     re-selecting the same one is a no-op).
-  var _lastSelectedConvForPaneExit = null;
-  document.addEventListener('ora:new-thread-requested', function () {
-    closeModeDropdown();
-    if (currentPaneMode() === 'video') setPaneMode(null);
-  });
-  document.addEventListener('ora:conversation-selected', function (e) {
-    var d = e && e.detail || {};
-    var cid = d.conversation_id || d.id || null;
-    if (currentPaneMode() === 'video'
-        && cid && _lastSelectedConvForPaneExit
-        && cid !== _lastSelectedConvForPaneExit) {
-      setPaneMode(null);
-    }
-    _lastSelectedConvForPaneExit = cid;
-  });
+  document.addEventListener('ora:new-thread-requested', closeModeDropdown);
 
   // Close dropdown on outside click or Escape.
   document.addEventListener('click', (e) => {
@@ -3196,16 +3145,6 @@
   setMainHeight(availableH * 0.30);
   clampAndPlace();
 
-  // ─── Audio/Video Phase 1 — capture controls bring-up ─────────────────
-  // The toolbar listens for `ora:pane-mode-toggle` events fired above by
-  // the spine-button click handler, then mounts itself inside the visual
-  // pane. SSE connection to /api/capture/stream opens here as well so
-  // the controller is ready before the user enters video mode.
-  if (window.OraCaptureControls && typeof window.OraCaptureControls.init === 'function') {
-    try { window.OraCaptureControls.init(); }
-    catch (e) { console.error('OraCaptureControls init failed:', e); }
-  }
-
   // ─── Audio/Video Phase 2 — transcription dispatcher bring-up ────────
   // Connects the SSE stream and exposes window.OraTranscribeInput so
   // input handlers can dispatch audio/video drops through it.
@@ -3219,43 +3158,6 @@
   if (window.OraDocumentInput && typeof window.OraDocumentInput.init === 'function') {
     try { window.OraDocumentInput.init(); }
     catch (e) { console.error('OraDocumentInput init failed:', e); }
-  }
-
-  // ─── Audio/Video Phase 3 — media library bring-up ────────────────────
-  // Mounts the per-conversation media library panel inside the visual
-  // pane when pane-mode-video is active.
-  if (window.OraMediaLibrary && typeof window.OraMediaLibrary.init === 'function') {
-    try { window.OraMediaLibrary.init(); }
-    catch (e) { console.error('OraMediaLibrary init failed:', e); }
-  }
-
-  // ─── Audio/Video Phase 5 — timeline editor bring-up ──────────────────
-  // The middle-band timeline editor between capture controls and the
-  // media library. Init wires SSE-less event listeners; the panel
-  // mounts when pane-mode flips to video.
-  if (window.OraTimelineEditor && typeof window.OraTimelineEditor.init === 'function') {
-    try { window.OraTimelineEditor.init(); }
-    catch (e) { console.error('OraTimelineEditor init failed:', e); }
-  }
-
-  // ─── Audio/Video Phase 7-fix — preview monitor bring-up ──────────────
-  // Sits above the timeline editor when pane-mode flips to video.
-  // Listens for timeline mutation + playhead events fired by the
-  // timeline editor; emits its own playhead update during proxy
-  // playback so the timeline editor's playhead can follow.
-  if (window.OraPreviewMonitor && typeof window.OraPreviewMonitor.init === 'function') {
-    try { window.OraPreviewMonitor.init(); }
-    catch (e) { console.error('OraPreviewMonitor init failed:', e); }
-  }
-
-  // ─── Audio/Video Phase 8 — transcript panel bring-up ─────────────────
-  // Floating overlay docked to the right edge of the visual pane in
-  // pane-mode-video. Shows whisper segments for whichever clip is
-  // currently under the playhead; click a segment to seek; the active
-  // segment highlights as the playhead moves.
-  if (window.OraTranscriptPanel && typeof window.OraTranscriptPanel.init === 'function') {
-    try { window.OraTranscriptPanel.init(); }
-    catch (e) { console.error('OraTranscriptPanel init failed:', e); }
   }
 
   // ─── Audio/Video Phase 9 — settings panel bring-up ───────────────────
@@ -3273,23 +3175,11 @@
     }
   }
 
-  // ─── Audio/Video Phase 7 — render controls bring-up ──────────────────
-  // Mounts the Render button into the timeline editor's ruler row when
-  // pane-mode flips to video, and opens the SSE channel for render
-  // lifecycle events.
-  if (window.OraRenderControls && typeof window.OraRenderControls.init === 'function') {
-    try { window.OraRenderControls.init(); }
-    catch (e) { console.error('OraRenderControls init failed:', e); }
-  }
-
   // ─── V3 async-capability subsystem (Row 50, 2026-05-11) ──────────────
-  // Mounts the capability-video-generates / capability-style-trains
-  // handlers (loaded above but never .init()-ed in V3 before this),
+  // Mounts core async handlers and the job queue, then starts polling.
   // mounts OraJobQueue (strip hidden in V3 via .ora-job-queue { display:
   // none } in sidebar.css), and starts the /api/jobs/<conversation_id>
   // polling loop that fires ora:job_status events. Without this init,
-  // every capability:video_generates / capability:style_trains popover
-  // submit fires its capability-dispatch event into the void.
   if (window.OraV3CapabilityAsync && typeof window.OraV3CapabilityAsync.init === 'function') {
     try { window.OraV3CapabilityAsync.init(); }
     catch (e) { console.error('OraV3CapabilityAsync init failed:', e); }

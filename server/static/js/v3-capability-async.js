@@ -4,9 +4,8 @@
  *
  *   - capability-invocation-ui.js — emits `capability-dispatch` events
  *     on the host element when a user submits a capability popover
- *     (e.g., video_generates).
- *   - capability-video-generates.js / capability-style-trains.js — the
- *     handlers that catch `capability-dispatch`, POST to the slot's
+ *     (for example, style training).
+ *   - core async capability handlers catch `capability-dispatch`, POST to the slot's
  *     server route, and fire `ora:job_status` events on window so the
  *     queue UI can render the job. They expose .init({hostEl, ...})
  *     which V3 never called — so they sat unmounted and the popover
@@ -17,7 +16,7 @@
  *
  * The V3-specific work (this module):
  *
- *   1. Calls .init() on both async-capability handlers + on OraJobQueue
+ *   1. Calls .init() on core async-capability handlers + on OraJobQueue
  *      at DOMContentLoaded so the dispatch chain is live.
  *   2. Hides the OraJobQueue strip UI (V3 puts jobs in the sidebar
  *      Operating tray, not in a chat-stream strip — see B+C hybrid
@@ -55,7 +54,6 @@
   // Async capability slots that have init-based handler modules.
   // These also feed the queue/tray render path via ora:job_status.
   var ASYNC_SLOT_MODULES = [
-    { name: 'video_generates', global: 'OraCapabilityVideoGenerates' },
     { name: 'style_trains',    global: 'OraCapabilityStyleTrains' },
   ];
 
@@ -459,10 +457,8 @@
     _ensureTraySection();
 
     // Subscribe to window-level job_status events. Our own _poll()
-    // fires these too; this listener also catches synthetic events
-    // from capability-video-generates.js immediately after a POST
-    // (the "queued" status arrives microseconds after dispatch via
-    // _emitJobStatusToWindow, before the next poll tick).
+    // fires these too; this listener also catches synthetic queued events
+    // from async capability handlers before the next poll tick.
     state.activeListener = function (e) {
       if (e && e.detail) _handleEvent(e.detail);
     };

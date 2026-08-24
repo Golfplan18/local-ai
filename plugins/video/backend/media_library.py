@@ -54,12 +54,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-try:
-    from . import runtime_paths as _rp
-except ImportError:  # pragma: no cover - legacy top-level import
-    import runtime_paths as _rp
+from .. import runtime as _runtime
 
-WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
+WORKSPACE_ROOT = _runtime.ora_home().resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 FFPROBE_BINARY = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
@@ -178,7 +175,7 @@ class MediaLibrary:
         self.conversation_id = conversation_id
         self._lock = threading.Lock()
         self._deleted = False
-        self.session_dir = _rp.safe_owned_subdir(
+        self.session_dir = _runtime.safe_owned_subdir(
             SESSIONS_ROOT, conversation_id, create=True,
         )
         self.state_path = self.session_dir / "media-library.json"
@@ -212,7 +209,7 @@ class MediaLibrary:
             "schema_version": 1,
             "entries": self._entries,
         }
-        _rp.atomic_write_text(self.state_path, json.dumps(payload, indent=2))
+        _runtime.atomic_write_text(self.state_path, json.dumps(payload, indent=2))
 
     # ── public surface ─────────────────────────────────────────────────────
 
@@ -240,7 +237,7 @@ class MediaLibrary:
 
         meta = _probe_metadata(src) if kind in ("video", "audio", "image") else {}
         entry_id = uuid.uuid4().hex[:12]
-        thumbnail_dir = _rp.safe_owned_subdir(
+        thumbnail_dir = _runtime.safe_owned_subdir(
             SESSIONS_ROOT,
             self.conversation_id,
             "thumbnails",

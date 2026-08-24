@@ -60,25 +60,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-# ── Conversation-tag awareness for stealth routing ───────────────────────────
-try:
-    from .conversation_memory import get_conversation_tag
-except Exception:  # pragma: no cover — defensive on import-order quirks
-    try:
-        from conversation_memory import get_conversation_tag
-    except Exception:
-        def get_conversation_tag(_conv_id: str) -> str:
-            return ""
-
-try:
-    from . import runtime_paths as _rp
-except ImportError:  # pragma: no cover - legacy top-level import
-    import runtime_paths as _rp
+from .. import runtime as _runtime
 
 
 # ── Module configuration ─────────────────────────────────────────────────────
 
-WORKSPACE_ROOT = _rp.ORA_HOME.resolve()
+WORKSPACE_ROOT = _runtime.ora_home().resolve()
 SESSIONS_ROOT = WORKSPACE_ROOT / "sessions"
 DEFAULT_CAPTURE_DIR = WORKSPACE_ROOT / "captures"
 FFMPEG_BINARY = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
@@ -405,10 +392,10 @@ class CaptureManager:
         if "_effective_conversation_tag" in opts:
             tag = str(opts.pop("_effective_conversation_tag") or "").strip()
         else:
-            tag = (get_conversation_tag(conversation_id) or "").strip()
+            tag = (_runtime.get_conversation_tag(conversation_id) or "").strip()
 
         if tag == "stealth":
-            capture_dir = _rp.safe_owned_subdir(
+            capture_dir = _runtime.safe_owned_subdir(
                 SESSIONS_ROOT,
                 conversation_id,
                 "captures",
@@ -423,11 +410,9 @@ class CaptureManager:
             # to match its default value, masking the dead wire.
             # Best-effort: any failure keeps the constructor default.
             try:
-                try:
-                    from user_settings import get_setting as _get_setting
-                except ImportError:
-                    from orchestrator.user_settings import get_setting as _get_setting
-                _configured = (_get_setting("capture.default_directory") or "").strip()
+                _configured = (
+                    _runtime.get_setting("capture.default_directory") or ""
+                ).strip()
                 if _configured:
                     capture_dir = Path(_configured).expanduser()
             except Exception:
@@ -467,11 +452,7 @@ class CaptureManager:
         threads where no turn context exists, and stealth captures must
         never leave a durable content event."""
         try:
-            try:
-                import tool_events as _te
-            except ImportError:
-                from orchestrator import tool_events as _te
-            axes = _te.manifest_axes("media_capture")
+            axes = _runtime.tool_manifest_axes("media_capture")
             event = {
                 "event": "media_capture",
                 "action": f"media_capture:{phase}",
@@ -492,7 +473,7 @@ class CaptureManager:
                 event["sensitivity"] = "secret"
                 event.pop("correlation", None)
                 event["args_redacted"] = {}
-            _te.record(event)
+            _runtime.record_tool_event(event)
         except Exception:
             pass
 

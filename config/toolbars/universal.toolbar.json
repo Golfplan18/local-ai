@@ -128,13 +128,6 @@
       "label": "Specialty toolbars",
       "shortcut": "Shift+T",
       "binding": "tool:toolbar_selector"
-    },
-    {
-      "id": "send-to-library",
-      "icon": "film",
-      "label": "Send image to media library",
-      "binding": "tool:send_to_library",
-      "enabled_when": "canvas_has_sendable_image"
     }
   ]
 }
