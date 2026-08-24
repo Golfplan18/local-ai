@@ -26,6 +26,10 @@ data/converters/
 chromadb/
 reconciliation/
 
+# Cloud Ora operator state (exclude list, logs, and cloud-return inbox).
+# The executable source stays tracked under operations/g1-10-current/.
+data/cloud-sync/
+
 # knowledge/ was ignored in the initial commit (2026-04-01), when it held only
 # user-specific runtime state. The mental-model lenses did not exist yet — the
 # earliest is dated 2026-06-17 — and simply landed in an already-ignored folder.

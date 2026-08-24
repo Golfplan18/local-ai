@@ -18,8 +18,8 @@ Safety
 * **Dry-run by default.** ``rename_nexus(..., dry_run=True)`` computes and
   returns the full impact report (which files / conversations would change)
   WITHOUT writing anything, so the UI can preview + confirm before executing.
-* **Atomic per-file writes** on execute; the vault's 15-minute git auto-commit
-  is the recovery net for the bulk frontmatter rewrite.
+* **Atomic per-file writes** on execute; the vault's event-driven Git sync is
+  the recovery net for the bulk frontmatter rewrite.
 * **Validated + collision-guarded**: the new slug must be a valid, non-reserved
   nexus that isn't already taken; the old must exist.
 * Never raises on an unreadable file — it is skipped and reported.
