@@ -2,7 +2,7 @@
 
 *Task-indexed guide for installing, running, and operating an installed Ora system. It derives from [[Reference — Ora Technical Documentation]] and adds no new claims. Find your task, do the steps.*
 
-**Documentation baseline.** Install and general-operation guidance retains its established platform pins. The Programming section describes the current explicit standalone implementation. The vault guide remains canonical; synchronize body-only to `docs/user-guide.md`.
+**Documentation baseline.** Install and general-operation guidance retains its established platform pins. The Programming section describes the current explicit standalone implementation. Aside help and the optional video feature describe the current landed behavior. The vault guide remains canonical; synchronize body-only to `help/user-guide.md`.
 
 **Platform labels.** Every command is labeled. `[macOS]` is the tested path (Apple Silicon). `[Linux server]` is the supported headless path. `[Windows-native]` and `[WSL]` are labeled where they differ; **`[Windows-native]` is intended but untested** — treat it as best-effort until a clean-room Windows install has been verified. If a command carries no label, it applies everywhere Ora runs.
 
@@ -41,6 +41,100 @@ Use the lifecycle controls literally:
 - **Close** on Standard or Private sets a retained hidden state. Restore it from Manage; its transcript and descendants remain available.
 - **Exit Stealth** is navigation only. Ora returns to the latest readable direct parent, even if that parent is Stealth, or opens a fresh Standard Dialogue when no readable parent exists. It does not close or delete anything.
 - **Delete Forever** is the protected Stealth purge, even when descendants exist. Children detach and keep only their local turns. Ora strips a legacy copied-parent prefix only when an exact match proves what was copied; ambiguous content is preserved. Explicit exports and copies held by providers, Git, backups, or other external systems remain outside Ora's managed purge boundary.
+
+---
+
+## Ask Aside for help
+
+Use **Aside**, the narrow column in the upper right, for a quick answer that
+should not become part of the Dialogue. Its header says **Quick answers · system
+help · not saved**.
+
+1. Type a question in the Aside input. For example: “How do I open the video
+   editor?”, “Where are Ora plugins?”, or “How do I recover a failed install?”
+2. Press Enter or use the O submit control.
+3. Read the answer in the Aside output above the input. Minimize or restore the
+   column with its header control when you need more room.
+
+Aside can answer ordinary quick questions, and it searches a small public help
+library when the wording matches an Ora operating question. That library contains
+only five tracked files from the installed checkout:
+
+- this operator guide;
+- the accessible overview;
+- the install guide;
+- the manual install procedure; and
+- install recovery.
+
+It does **not** search your vault, private notes, Dialogue history, or other Ora
+documentation. Help search is therefore isolated from personal material. Ora may
+use an indexed copy of those same five files for speed, but a local lexical search
+over the files remains available when the index or embedding service is not.
+
+Aside remembers at most the five most recent exchanges in the Ora server
+process so a follow-up can make sense. Reloading the page clears the visible
+Aside pane but does not clear that server-held window. Restarting the server
+clears the stored window. The prompt, answer, and
+temporary help excerpts are not written to a Dialogue, the vault, or the help
+index. Aside is informational: it cannot start a Run, change the current
+Dialogue, or make an authoritative decision for Ora.
+
+If help lookup fails, Aside still tries to answer without the excerpts and Ora
+records the lookup problem in its server log. For work that must be saved,
+retrieved later, or used by the main reasoning pipeline, ask in Inquiry instead.
+
+---
+
+## Use Audio & Video
+
+Ora has two related capabilities with different availability.
+
+**Audio/video transcription is core.** Drop a supported audio or video file into
+the **Inquiry** pane. Ora uploads it through the ordinary conversation boundary,
+transcribes it, and makes the transcript available to the Dialogue. This works
+even when the optional video feature is not installed.
+
+**The editor is an optional first-party feature plugin.** When the bundled
+`plugins/video` package is present and valid at server startup, Ora adds the video
+editor, Dialogue media library, capture and rendering controls, a **Video**
+settings section, and the `/video` command. To use it:
+
+1. Open or create the Dialogue that should own the media.
+2. Choose **Video editor** in the Exhibits controls, or type `/video` to toggle
+   the editor. The editor takes over Exhibits until you close or toggle it.
+3. Choose **Browse Dialogue media** to see that Dialogue's clips. Captured media
+   appears there automatically. You can also import a supported URL, add local
+   media through the available upload/drop surface, or choose **Send canvas image
+   to media library** for the current Exhibit.
+4. Drag media onto the timeline. Move or trim clips, adjust audio and fades, use
+   the preview and transcript panels, and apply suggestions only after reviewing
+   the proposed timeline change.
+5. Use the render controls to export the timeline. The video plugin starts
+   FFmpeg in its own background render worker, and the editor reports its state.
+   Ora's shared background job queue remains part of core, but it does not run
+   the FFmpeg export.
+
+Open **Settings → Video** to choose the screen-recording directory and frame rate,
+microphone or loopback device, webcam picture-in-picture, export directory and
+preset, background-render threshold, and preferred or fallback video-generation
+model. A loopback audio device is required when you want a screen recording to
+include system audio. Capture, preview, waveform, and rendering also depend on
+the media tools available on the host; Ora shows an unavailable capability rather
+than pretending it can run.
+
+Closing a Standard or Private Dialogue is reversible. It releases finished video
+records and caches but does not delete its media or kill active work. **Delete
+Forever** is different: Ora first stops or tombstones video work which could still
+write to the Dialogue, performs the protected purge, and then clears remaining
+plugin state.
+
+If the video package is absent, Ora starts normally; the video controls, settings,
+browser overlay, assets, and routes do not appear. A broken package is logged and
+its browser surface is suppressed. Repairing or removing it and restarting gives
+the guaranteed clean state. Core transcription and Inquiry audio/video drop
+remain. There is no install or enable button in Settings. A checkout owner adds,
+removes, or restores the first-party package and restarts Ora. See
+[[Reference — Ora Feature Plugin Architecture]] for the technical boundary.
 
 ---
 
@@ -398,7 +492,7 @@ The installer keeps state, so you can retry without starting over. The commands 
    python3 scripts/install.py --reset
    ```
 
-For a script that is broken at the source level, `docs/install-manual.md` reproduces the install by hand. For per-step failure fixes, see `docs/install-recovery.md`.
+For a script that is broken at the source level, `help/install-manual.md` reproduces the install by hand. For per-step failure fixes, see `help/install-recovery.md`.
 
 ---
 
@@ -431,4 +525,4 @@ On macOS, supervised stdout and stderr are written to `logs/ora-server.stdout.lo
 
 - (For why Ora runs two models instead of one, and why it makes AI reliable, see [[Reference — Ora Accessible Overview]].)
 - (For how any of this works under the hood — the pipeline, the vault, the model routing, the platform matrix — see [[Reference — Ora Technical Documentation]].)
-- (For the full install matrix and recovery detail, see `~/ora/docs/install-guide.md`, `install-recovery.md`, and `install-manual.md`.)
+- (For the full install matrix and recovery detail, see `~/ora/help/install-guide.md`, `help/install-recovery.md`, and `help/install-manual.md`.)

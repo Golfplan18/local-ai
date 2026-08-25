@@ -2,7 +2,7 @@
 
 *A reader-facing explanation of what Ora is and why it exists. It derives entirely from [[Reference — Ora Technical Documentation]] and introduces no new claims — where you want the mechanism in full, that document has it. This one is for the door you walk through first: why any of this matters.*
 
-> This overview describes the installed system as of the technical documentation's pinned commit `7a5e8f40`. Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
+> Most of this overview retains the technical documentation's installed-system pin at `7a5e8f40`. Its descriptions of the optional video feature and Aside help are current to their landed Ora implementations (`a68568f2` and `d5d4ceba`). Where it says a thing works, it works on macOS on Apple Silicon — the platform Ora is actually tested on. See the closing section on honest limits.
 
 ---
 
@@ -104,6 +104,40 @@ That last word matters. Left alone, models draw charts that mislead — truncate
 
 ---
 
+## Quick help that does not become memory
+
+The narrow **Aside** in the upper right is the place for a quick question you do
+not want folded into the Dialogue. When you ask how to install Ora, recover an
+install, use a feature, or work with video, Aside can search a deliberately small
+help shelf: five public files shipped in Ora's `help` folder. It does not search
+your vault, private notes, or Dialogue history.
+
+That separation is the point. The useful paragraph is placed in the model's
+prompt for that answer and then discarded. Aside remembers only a five-exchange
+window in memory so you can ask a follow-up; it saves neither your question nor
+the answer, and it cannot take action for you. If the faster help index is not
+available, Ora reads and ranks the same five files locally. A help-search failure
+does not prevent an ordinary Aside answer.
+
+---
+
+## Video is removable; transcription is not
+
+Ora's video editor is the first **feature plugin**: trusted first-party code in
+one optional folder. When it is present, Exhibits gains a video editor and a
+Dialogue media browser, Settings gains a Video section, and Ora can capture,
+arrange, preview, suggest edits for, and render media. The feature participates
+in Dialogue cleanup, so Delete Forever stops anything which could still write to
+the Dialogue before the purge proceeds.
+
+Remove that folder and restart Ora, and the video editor, routes, settings, and
+browser files simply do not load. Ora itself still starts. Dropping an audio or
+video file into Inquiry for transcription continues to work because transcription
+and the shared background job queue remain part of the core. This is a modest
+plugin boundary, not an app store or a way to install arbitrary third-party code.
+
+---
+
 ## The honesty layer you never see
 
 Underneath all of it sits a quieter guarantee. Before Ora reaches for a tool — reads a file, runs a command, touches the web — a gate decides whether the request is well-formed and safe enough to proceed, and it fails closed: when in doubt, it refuses rather than runs. This is the brake that stays on for the one class of action where a brake matters most — the irreversible one, the one that touches a secret. It runs before the action, and it does not care what convenience setting you have flipped.
@@ -124,7 +158,7 @@ I will not oversell this, because the reader of a reliability system deserves to
 
 Ora is tested on macOS on Apple Silicon. That is the platform it actually runs on. Windows and Linux are somewhere between intended and untested — the groundwork is there, but a fresh install on a non-Mac machine is not something the system can yet promise, and this overview does not pretend otherwise. The technical documentation labels every command and path by platform for exactly this reason.
 
-Some pieces are built but not yet finished, and the system says so rather than blurring the line: an evidence-checking layer for the system's own actions is implemented but not yet merged into the running product; multi-machine setups and a packaged one-click installer are planned, not done. And the deepest honesty of all is the one the reliability machinery is built to enforce on itself — a clean run means nothing you knew to check broke. It does not mean the right problem was solved. That judgment is still yours. It was always going to be.
+Some pieces are built but not yet finished, and the system says so rather than blurring the line: the landed Programming workflow can independently inspect evidence for repository work, but it does not turn every ordinary answer into a proved fact; multi-machine setups and a packaged one-click installer are planned, not done. And the deepest honesty of all is the one the reliability machinery is built to enforce on itself — a clean run means nothing you knew to check broke. It does not mean the right problem was solved. That judgment is still yours. It was always going to be.
 
 In short: Ora is a working demonstration that reliability is a system problem, not a model problem — and a working system, on the platform it is built for, with the honesty to tell you where it isn't finished.
 
@@ -134,6 +168,7 @@ In short: Ora is a working demonstration that reliability is a system problem, n
 
 ## Changelog
 
+- **2026-08-24** — Added current reader-level explanations of isolated Aside help and the removable first-party video feature; corrected the stale pre-merge evidence-layer limit. The rest of the overview retains its existing installed-system pin.
 - **2026-08-11** — Rewrote the "Memory that survives you leaving" section for clarity. In the same pass the pin banner and this changelog were dropped from the document; both were restored on 2026-08-16 with no body change. Terminology and prose only — content remains pinned to ora commit `7a5e8f40`.
 - **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (it includes both empty-membership and explicitly project-assigned material); its canonical runtime sentinel is `commons`, while legacy `general` remains accepted. Commons saves now land at the vault root, and the live V3 interface is one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
 - **2026-07-11** — Commons rename pass: the default project (where work lands when no project is selected) is now **Commons** in user-facing language, formerly General; its internal id is still `general` (code rename pending). Audited this overview — it contains no references to the default project, so no body text changed. Terminology only; content remains pinned to ora commit `7a5e8f40`.
