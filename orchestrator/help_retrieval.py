@@ -45,7 +45,7 @@ _STOP_WORDS = {
     "before", "can", "could", "do", "does", "first", "for", "from",
     "have", "hello", "how", "if", "in", "into", "is", "it", "its",
     "just", "like", "me", "more", "my", "not", "of", "on", "or",
-    "our", "second", "to",
+    "our", "second", "start", "to",
     "should", "some", "than", "that", "the", "their", "then", "there",
     "these", "they", "this", "through", "using", "want", "what", "when",
     "where", "which", "with", "would", "you", "your",
@@ -444,7 +444,12 @@ def search_help(
         if chunk not in ordered:
             ordered.append(chunk)
     snippets: list[HelpSnippet] = []
-    for chunk in ordered[:limit]:
+    seen_sections: set[tuple[str, str]] = set()
+    for chunk in ordered:
+        section = (chunk.source, chunk.heading)
+        if section in seen_sections:
+            continue
+        seen_sections.add(section)
         text = chunk.text.strip()
         heading_prefix = chunk.heading + "\n\n"
         if text.startswith(heading_prefix):
@@ -456,6 +461,8 @@ def search_help(
             heading=chunk.heading,
             text=text,
         ))
+        if len(snippets) >= limit:
+            break
     return snippets
 
 

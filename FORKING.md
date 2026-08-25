@@ -10,7 +10,7 @@ There is no one-size-fits-all version of this system. There is a base version, a
 
 - A GitHub account
 - Two repositories: one **public** (your fork of this system), one **private** (your personal data)
-- The system installed from the repository's current instructions (`scripts/install.py` and `docs/install-guide.md`)
+- The system installed from the repository's current instructions (`scripts/install.py` and `help/install-guide.md`)
 
 ## Repository Architecture
 
@@ -60,7 +60,7 @@ cd ~/ora
 python3 scripts/install.py --profile solo
 ```
 
-Follow `docs/install-guide.md` for the source-install path. `scripts/install.py` is the only desktop installer; the legacy natural-language layer set that used to sit under `installer/` was retired and only `installer/macos/` remains.
+Follow `help/install-guide.md` for the source-install path. `scripts/install.py` is the only desktop installer; the legacy natural-language layer set that used to sit under `installer/` was retired and only `installer/macos/` remains.
 
 ### 2. Use It
 

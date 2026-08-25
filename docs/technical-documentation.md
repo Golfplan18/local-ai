@@ -2,7 +2,7 @@
 
 *The deepest layer of Ora's documentation: the installed-system source of truth for engineers, architects, and evaluators. Two accepted companion documents — an accessible overview and a how-to guide — derive from this one.*
 
-> **Composite implementation pin.** Chapters 1–9 and 11–17 retain their established audited pins except where a later currency note says otherwise. Chapter 10 describes the current visual-primary implementation: terminal visual authority, native/compiler output, ownership-safe editing, headless noninteractive rendering, and durable outcomes. Chapter 18 describes the current standalone Programming implementation and supersedes the removed governed-process runtime, automatic entry router, process automation, triggers, inspectors, and lifecycle surfaces. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
+> **Composite implementation pin.** Chapters 1–7, 9, and 12–17 retain their established audited pins except where a later currency note says otherwise. Chapter 8's isolated Aside help retrieval is current to `d5d4ceba`; Chapter 11's removable first-party video feature is current to `a68568f2`. Chapter 10 describes the current visual-primary implementation: terminal visual authority, native/compiler output, ownership-safe editing, headless noninteractive rendering, and durable outcomes. Chapter 18 describes the current standalone Programming implementation and supersedes the removed governed-process runtime, automatic entry router, process automation, triggers, inspectors, and lifecycle surfaces. This document is the vault canonical; its body-only repository mirror is `docs/technical-documentation.md`.
 
 ---
 
@@ -125,7 +125,7 @@ The subsystem's job is to carry a checkout across these six gaps to a server tha
 
 The rejected alternative is the obvious one: a single cross-platform installer that detects the environment and branches. It loses here, and the repo carried the fossil of the alternative until that fossil was retired: `installer/`'s 21-file natural-language layered installer spec, deleted because it gave executable-looking instructions for a system that no longer exists. Git history keeps it; the only thing left under `installer/` is `macos/`, the launchd plist template and app-launcher shim `scripts/ora-launchd.sh` actually reads. The reason a universal installer fails is that the three targets do not share a spine. The desktop path is interactive, keychain-backed, and installs local MLX weights; the server path is non-interactive, env-file-backed, and forbids local models entirely; the `.app` path is not an installer at all but a double-click runtime launch. A universal installer would be a tree of platform conditionals whose branches are each exercised by exactly one environment — the worst possible test-surface-to-code ratio. Three focused tools each do one job and can each be read end-to-end.
 
-**The tradeoff is drift.** Three independent paths with no shared module guarantee that a change in one does not propagate to the others, and the installed system demonstrates the cost. The desktop installer auto-populates the **`budget`** preset (`scripts/install.py:1560,1572`) and then bakes all four preset cards through the runtime's own baker; `docs/install-guide.md` said "Optimum preset" for months, a name `runtime_paths.py:865` has never carried — it defines `PRESET_NAMES = ("free", "budget", "speed", "premium")`, with no "optimum" at all. That one is now corrected on both sides. The server installer's own docstring (`install_server_config.py:11-16`) claims it points slots at `anthropic-api-haiku` and `anthropic-api-sonnet-4-5`, while the code directly below it (`SERVER_SLOT_ASSIGNMENTS`, lines 102-114) writes **free OpenRouter chains**. `install-server.sh` and `docs/cloud-ora-install.md` name `qwen3.6-plus`/`qwen3.6-35b-a3b`. Three descriptions of one behavior, all wrong, none load-bearing at runtime because the code is authoritative — but each a trap for a reader who trusts the prose. Trust the code.
+**The tradeoff is drift.** Three independent paths with no shared module guarantee that a change in one does not propagate to the others, and the installed system demonstrates the cost. The desktop installer auto-populates the **`budget`** preset (`scripts/install.py:1560,1572`) and then bakes all four preset cards through the runtime's own baker; `help/install-guide.md` said "Optimum preset" for months, a name `runtime_paths.py:865` has never carried — it defines `PRESET_NAMES = ("free", "budget", "speed", "premium")`, with no "optimum" at all. That one is now corrected on both sides. The server installer's own docstring (`install_server_config.py:11-16`) claims it points slots at `anthropic-api-haiku` and `anthropic-api-sonnet-4-5`, while the code directly below it (`SERVER_SLOT_ASSIGNMENTS`, lines 102-114) writes **free OpenRouter chains**. `install-server.sh` and `docs/cloud-ora-install.md` name `qwen3.6-plus`/`qwen3.6-35b-a3b`. Three descriptions of one behavior, all wrong, none load-bearing at runtime because the code is authoritative — but each a trap for a reader who trusts the prose. Trust the code.
 
 **Second decision: Solo is the only supported profile; Hybrid and Organization are reserved names that hard-refuse.** `DEPLOYMENT_PROFILES` (`install.py:222-243`) declares all three, but only Solo carries `supported_now: True`. Selecting either other profile does not degrade or approximate — it refuses with an explicit "reserved for future Ora installs, not supported today" message (`install.py:1017-1021`). This is the same explicit-not-implemented-over-silent-wrong-answer discipline the system applies elsewhere, here at the install boundary. The alternative — quietly treating Hybrid as Solo — was rejected because the profiles differ in `api_pool_size` and concurrency assumptions; a silent alias would produce a subtly mis-configured multi-machine deployment that fails later and further from the cause. The open problem here is load-bearing: Hybrid and Organization appear in user-facing framing ("permanently free local AI") but the concurrency architecture that would unblock them (gated on "G1.27 network discovery and concurrency validation") is unbuilt. The names are promises the installed system cannot yet keep, and it says so at the refusal point rather than pretending.
 
@@ -904,7 +904,7 @@ Lifecycle language must also match consequences. Standard and Private Close is r
 
 ### Design Decision & Tradeoffs
 
-Four decisions carry the subsystem.
+Five decisions carry the subsystem.
 
 **The server owns effective history.** Each envelope stores local messages only. A true fork starts with `messages=[]`, local numbering at 1, the direct parent, and an immutable `fork_point_message_count` in that parent's local coordinates. Read-time recursion applies every ancestry cutoff before appending the child's local turns. Later ancestor turns cannot leak, the parent remains unchanged, and `fork_point_chunk_id` is legacy metadata only. Raw exchanges are authoritative; there is no accepted-decision store or inference pass.
 
@@ -913,6 +913,8 @@ Four decisions carry the subsystem.
 **Explicit and global sources remain different lanes.** Contributors are ordered, identity-deduplicated, and uncapped. Dialogue contributors resolve recursively and cutoff-safely; atomic-note contributors use indexed hierarchical-content-provenance chunks. All references remain inventoried as available, missing, withheld, or deferred, and source-fair scheduling prevents one large contributor from crowding out the rest. Global RAG is lower priority and excludes the current Dialogue, all current ancestors, all contributors, and all contributor ancestors source-wide.
 
 **Storage and semantic orientation are separate.** A conversation row's stored document is Context + User + Assistant. Its separately supplied vector input is bounded Context + User. The assistant is therefore returned with the retrieved evidence but does not steer the embedding. Live writes and historical replay target the same contract. Existing rows still require validated replay before this split is fully materialized across the historical collection; this chapter does not claim that production cutover has occurred.
+
+**Aside help is an isolated public corpus, not another memory lane.** Aside may retrieve only five repository-tracked files from `help/`: `user-guide.md`, `accessible-overview.md`, `install-guide.md`, `install-manual.md`, and `install-recovery.md`. They use the logical owner `help`, and collision checks refuse a collection or alias owned by another corpus. Vault notes, Dialogue rows, and private RAG never enter this search. Retrieved excerpts exist only in the current Aside model call; they are not appended to conversation history or written back to any index. The tradeoff is intentionally limited coverage in exchange for a boundary a user can understand and audit.
 
 Privacy gates every lane before ranking: Standard may use Standard sources, Private may use Standard + Private, and Stealth may use all three. An explicitly named archived Dialogue remains eligible as a read-only contributor when its entire required ancestry is permitted. Archived atomic-note contributors and archived rows from global retrieval are excluded; every contributed or globally retrieved Dialogue must pass the ancestry privacy test.
 
@@ -925,6 +927,8 @@ Privacy gates every lane before ranking: Standard may use Standard sources, Priv
 **Context assembly.** The server computes an endpoint-safe budget and packs complete units through the shared context path used by Phase A, Direct, G1–G4, and special consumers. Selection favors recent local context and fork frontier, then promoted contributor units, older history, and lower-priority global results. Dense and lexical retrieval share privacy and archive predicates. Global exclusions are source-wide, and relevance/ranking cannot resurrect an ineligible candidate.
 
 **Conversation indexing.** `orchestrator/conversation_chunk.py` defines the exchange record used by live writes and historical replay. Chroma stores the full contextual header, user prompt, and assistant response as the document while accepting a separately bounded contextual-header-plus-user-prompt vector. Metadata remains denormalized and filterable; authoritative content remains in the envelope/raw exchange. `docs/conversation-file-format.py` is the field reference, not a claim that Pydantic validates runtime writes.
+
+**Aside help retrieval.** `orchestrator/help_retrieval.py` owns the exact five-file whitelist, deterministic heading-aware chunks, indexing, and lexical fallback. Chunks are bounded at 1,600 characters; returned excerpts are bounded at 760 characters each and the assembled help context at 3,200. Startup refreshes the help-owned Chroma rows only when the embedding pipeline is ready. It upserts changed deterministic chunks, deletes stale help-owned rows only after a successful pass, and aborts rather than crossing an ownership collision. If Chroma or embeddings are unavailable, lexical ranking reads the same five files directly. `server.app` adds the selected excerpts to the `/api/scratchpad` system context for that request only. Aside keeps no more than five turns in process memory, accepts no Run or transfer fields, and returns `persisted: false` and `authoritative: false`. Help failure is logged and the ordinary Aside answer continues without excerpts.
 
 **Supplemental handling.** A supplemental request never runs a fresh query or appends a result beyond the budget. It promotes unseen, already-validated deferred contributor/global whole units and repacks the same call boundary. It stops on a repeated gap, no new eligible unit, no whole-unit fit, or resolution; there is no numeric request cap. The first three conditions yield a local `COVERAGE GAP`.
 
@@ -943,6 +947,7 @@ Verify this subsystem through behavior, not construction totals:
 - A retrieved conversation row returns Context + User + Assistant while its supplied vector is derived from bounded Context + User.
 - Supplemental promotion changes selection only among already-validated deferred units and terminates without a numeric retry cap.
 - Close/restore, Exit Stealth, protected purge, descendant detachment, and exact-only legacy prefix stripping produce their stated durable state.
+- A plugin or video operating question retrieves the current user guide from the five-file help corpus; an unrelated query returns no help excerpt. The same source allowlist applies to indexed and lexical retrieval, and an Aside request persists neither prompt nor answer.
 
 Ordinary `context_coverage` output is deliberately numeric: `budget`, `lanes`, `source_counts`, and optional `physical_calls`, `deferred_unit_count`, and `deduplicated_unit_count`. It has no promotion or terminal-status field and reveals no unit/source identities. The sensitive supplemental forensic trace separately retains bounded gap, query-term, and why-it-matters text plus outcome fields; private mechanics retain candidate identities for resolution and diagnosis.
 
@@ -957,6 +962,7 @@ Read the boundaries in this order:
 3. **Endpoint budget before allocation.** The 200,000-token maximum is narrowed by the actual endpoint contract. Planning shares are soft and units stay whole.
 4. **Stored document before vector shorthand.** Assistant content is present in the stored document even though the vector orientation excludes it.
 5. **Raw commitment before interpretation.** Never manufacture an accepted-decision memory. Attribute a decision only when the user actually committed in the authoritative exchange.
+6. **Help corpus before general RAG.** Aside help is a separate five-file public shelf. Do not broaden its allowlist to the vault, Dialogue collection, or private documentation merely to improve recall.
 
 The highest drift risks are copied-parent forks, a nominal cap that ignores provider reserves, contributor-count limits, row-only instead of source-wide exclusion, privacy checks after retrieval, assistant-omitted stored documents, supplemental fresh queries, trace identity disclosure, and language that confuses Close or Exit Stealth with Delete Forever.
 
@@ -969,6 +975,7 @@ The installed path is exercised on macOS/Apple Silicon. The context contract its
 - ChromaDB state and the default session/conversation/vault paths are relocatable through runtime paths but remain unverified as a complete Windows-native, WSL, or Linux deployment.
 - Atomic replacement is portable on the same filesystem, but the per-Dialogue lock is process-local; parallel Ora processes can still race and lose an update.
 - Ora-managed Stealth purge cannot erase explicit exports or copies held by a model provider, Git remote, backup system, or other external service.
+- Help indexing uses the configured embedding and Chroma services when available, but deterministic lexical fallback is local and platform-neutral. The files themselves are the canonical corpus; an unavailable index must not disable Aside.
 
 ## 9. Tool Dispatch, the Capability Gate & Execution Telemetry
 
@@ -1140,10 +1147,10 @@ The tradeoff is real and worth naming. This design pays for model-independence, 
 **Vision extraction.** `orchestrator/visual_extraction.py` (WP-4.3) invokes a vision-capable model on a user image, parses the result into `spatial_representation` JSON, validates with a single repair pass, and scores confidence — the inbound direction (image → structure) complementing the outbound envelope→SVG.
 
 **Media adjuncts** (a related, Mac-bound cluster, not the diagram path):
-- `orchestrator/render.py` is the **FFmpeg video** render engine — timeline→ffmpeg command builder, `drawtext`/`drawbox` lower-thirds and title cards, an optional two-pass encode on the `high` preset, and a `RenderManager` with progress SSE. This is *video*, not envelope→SVG; the name invites confusion. `_resolve_font_file` (`orchestrator/render.py:247`) picks from a candidate list of macOS system fonts with a hardcoded Mac fallback.
-- `orchestrator/media_capture.py` wraps FFmpeg for screen + microphone capture. The installed system implements **macOS only** via `avfoundation`; the Windows (`gdigrab`/`ddagrab` + `dshow`) branch is present in the docstring but explicitly stubbed — the code raises `NotImplementedError("Windows capture lands in Phase 10")` (`orchestrator/media_capture.py:159, 259`).
+- `plugins/video/backend/render.py` is the optional feature's **FFmpeg video** render engine. It remains separate from envelope→SVG visual rendering.
+- `plugins/video/backend/media_capture.py` wraps FFmpeg for screen, microphone, and camera capture; AVFoundation on macOS is the working host path.
 - `orchestrator/transcription.py` wraps `whisper-cli` (whisper.cpp) — ffmpeg 16 kHz mono extract → whisper-cli JSON → hallucination filter.
-- `orchestrator/waveform.py` shells `ffmpeg showwavespic` to a small PNG.
+- `plugins/video/backend/waveform.py` shells `ffmpeg showwavespic` to a small PNG. Chapter 11 owns the plugin boundary and current portability detail.
 
 **Library inventory with licenses** (versions and license text read from each `vendor/*/VERSION` and `LICENSE`): Vega 6.2.0 (BSD-3-Clause), Vega-Lite 6.4.2 (BSD-3-Clause), Mermaid 11.14.0 (MIT), D3 7.9.0 (ISC), dagre 0.8.5 (MIT — header "Permission is hereby granted, free of charge…", Copyright 2012-2014 Chris Pettitt), Ajv 8.18.0 2020-12 bundle (MIT), viz-js 3.26.0 (ships a Third-Party Notices file covering its Graphviz/Emscripten sublicenses — confirm before redistribution), structurizr-mini (hand-written parser + renderer, Context/Container only), and Konva (MIT, Anton Lavrenov) for the canvas. All vendored locally; no CDN; CSP-safe.
 
@@ -1161,7 +1168,7 @@ The tradeoff is real and worth naming. This design pays for model-independence, 
 
 **How to confirm it works.** In an interactive turn with more than one valid envelope, confirm that every surviving block is installed in source order and that the assistant message moves from `building` to `ready` only after insertion. In an agent or autonomous turn, confirm that only the first valid envelope becomes `visual-artifact.svg` plus `visual-artifact.json`, with `renderer: node-jsdom-cli` and no browser launch. Force bounded recovery to exhaust and confirm that the prose remains present while the assistant message and Exhibits pane show the persisted `failed` stage and reason.
 
-**Explicitly untested surfaces.** `orchestrator/video_suggestions.py` and `orchestrator/preview.py` are not in the listed suites — behavior unverified. Live provider/model interpretation remains environment-dependent. The retained Playwright raster/critique helpers have no production caller and therefore provide no runtime coverage. **All non-macOS server platforms are untested** (see below). Reliability remains qualitative: there is no instrumented reliability budget, success-rate metric, or per-step percentage.
+**Explicitly untested surfaces.** Live provider/model interpretation remains environment-dependent. The retained Playwright raster/critique helpers have no production caller and therefore provide no runtime coverage. **All non-macOS server platforms are untested** (see below). Video suggestion and preview evidence belongs to the optional feature in Chapter 11, not to the visual compiler. Reliability remains qualitative: there is no instrumented reliability budget, success-rate metric, or per-step percentage.
 
 ### Expert Reading Notes
 
@@ -1199,97 +1206,180 @@ No non-macOS server surface is claimed to work without evidence. The one surface
 
 ### Problem
 
-A user drops a screen recording into a conversation, wants to trim the dead air off the front, stack a title card over the first three seconds, watermark the corner, and export an MP4 — without opening a non-linear editor and without ever mutating the original file. Separately, they want the clip transcribed, the transcript filed as a searchable vault note, and the system to propose where the cuts should go.
+A user may need ordinary audio/video transcription, or a complete editing surface
+for capture, media organization, timeline work, preview, suggestions, and render.
+Those are related experiences but different ownership boundaries. Transcription
+is general Dialogue input. The editor is substantial and removable; making the
+core import it everywhere would prevent Ora from starting cleanly without video.
 
-Without a dedicated subsystem, two failure modes dominate. The first is destructive editing: any pipeline that trims or re-encodes the source in place makes every edit irreversible and every "undo" a re-import. The second is the wrong tool. Ora already ships the Visual Intelligence diagram pipeline (see the Visual Intelligence chapter), which compiles typed JSON envelopes into SVG. Media editing is a categorically different problem — the artifacts are real audio/video files that only FFmpeg can produce, not vector graphics — and forcing it through the diagram compiler would produce nothing playable. This subsystem exists to give the conversation a non-destructive A/V editing layer that terminates in a real rendered file.
+The editing layer must also avoid destructive edits and unsafe deletion. A
+timeline should refer to original media rather than rewrite it, and Delete Forever
+must stop every video worker which could still write into the Dialogue before the
+managed purge begins.
 
 ### Design Decision & Tradeoffs
 
-Two load-bearing decisions define the layer.
+Three decisions define the current layer.
 
-**Decision one: the media library holds references, not files.** `orchestrator/media_library.py` stores a per-conversation JSON list of entries, each recording a `source_path` (absolute, resolved), classification, ffprobe metadata, and an optional generated thumbnail path (`media_library.py:240-256`). `remove()` deletes the library entry and its thumbnail file but never touches the source (`media_library.py:270-294`, docstring "Does NOT delete the source file"). This is the Unix symlink discipline applied to media: the library is a directory of pointers, cheap to mutate and structurally incapable of destroying user data. The failure mode it prevents is data loss on edit — a source cannot be lost by editing the timeline, because the timeline never holds the source. The tradeoff is referential fragility: if the user moves or renames the underlying file, the entry dangles, and nothing in the library repairs the pointer. `add_entry` validates existence at add time (`media_library.py:231-232`), but nothing re-validates later.
+**Video is one explicit first-party feature plugin.**
+`server/feature_plugins.py` loads only the built-in Python implementation
+`plugins.video`, and only when the configured `video` directory exists. By
+default that checked descriptor-and-assets root is `<ora>/plugins/video`.
+`ORA_FEATURE_PLUGINS_DIR` changes the parent of that checked root, but it does
+not change the Python import: implementation code still comes from
+`plugins.video`. The override is the removal-test seam, not alternate-package
+discovery. The feature runs in the Ora process because its workers must share
+the conversation lifecycle lock and deleted-state boundary. A separate service
+would need a new cross-process safety protocol before it could preserve the same
+purge guarantee. The accepted cost is that trusted first-party plugin code
+shares the server's process.
 
-**Decision two: the timeline is a normalize-on-I/O JSON document compiled to a single FFmpeg pass at render time.** `orchestrator/timeline.py` defines a schema-version-1 state — tracks (video / audio / pip / music / overlay), clips carrying `track_position_ms` / `in_point_ms` / `out_point_ms` / transition / volume / fade, Phase-6 overlay clips (lower-third / title-card / watermark), and a global watermark. Every `load()` and `save()` runs the state through `_normalize_state`, which clamps numeric fields, fills defaults, enforces track-id uniqueness, and recomputes `duration_ms` as the maximum clip end across all tracks (`timeline.py:337-361`). Editing operations mutate this JSON only. Nothing decodes a frame until render. At render, `orchestrator/render.py` reads the timeline plus a library snapshot and emits one FFmpeg filtergraph — trims become `trim`/`atrim`, gaps become black/silence pad, overlays become `drawbox`+`drawtext`, the watermark becomes a `drawtext` ◎ glyph or an image overlay (`render.py:19-24`, `render.py:302-500`).
+**Registration is complete before installation.** The package returns a validated
+descriptor containing its id, static root, ordered scripts and styles, 31 routes,
+and Close/Delete lifecycle callbacks. It receives a fixed
+`FeaturePluginContext`, not the Flask application. Validation accepts only the
+known `video` id and expected static root, confines assets below that root,
+requires declared files to exist, and rejects duplicate endpoint names. Only
+then are routes, the static asset route, and page tags installed. An absent or
+broken package is logged and returns no active descriptor; the core keeps
+running. Validation precedes route installation, although Flask routes already
+added before an unexpected mid-loop failure are not transactionally rolled back.
 
-The main alternative rejected was a persistent frame-accurate edit engine — a resident decode/composite pipeline that maintains rendered state per edit, the architecture a desktop NLE uses. It does not fit a conversation-embedded tool: it demands a long-lived media process per conversation, frame caches, and re-encode-on-edit, none of which suit a Flask request/response server where conversations are cheap and numerous. Deferring all compositing to a single terminal FFmpeg pass keeps edit operations to JSON writes and makes render a stateless subprocess.
+**Editing is non-destructive.** The plugin's media library stores protected
+references and metadata rather than modifying a user's source file. Timeline
+edits are normalized JSON state. Render resolves a snapshot of timeline and media
+references into an FFmpeg command, leaving sources unchanged. This keeps undo and
+re-edit cheap, at the cost of a dangling reference when an external source is
+moved or removed. FFmpeg filter and codec availability remains the principal host
+compatibility risk.
 
-The tradeoff is that render is an all-or-nothing black box whose correctness rides entirely on FFmpeg's filter behavior, and `drawtext` is the fragile part of that surface — a filter known for quoting and font-resolution failures (`render.py:224-240` is a dedicated escaping helper written because of it). The Phase-7 MVP is deliberately narrow: it renders the **first** video-kind track and the **first** audio-kind track, cut transitions only (`render.py:8-18`).
-
-**Open problems**, stated plainly and traced to the code that defers them:
-- Only the `dissolve` transition is deferred — it needs clip-overlap timing (xfade) the MVP does not compute (`render.py:555,787-788`). Fade-from-black and fade-to-black ARE rendered, via `fade=t=in`/`fade=t=out` on individual clips (`render.py:561-570`). The schema accepts `dissolve` (`timeline.py:71-72`), so a state describing a dissolve is silently treated as a cut — a live schema-vs-renderer gap for that one transition.
-- Multi-video composition (including picture-in-picture) and multi-audio mixing via `amix` are IMPLEMENTED in `_assemble_command` (`render.py:772-946`): pip-kind tracks scale to 320px and layer, and more than one audio (audio+music) track mixes via `amix`. Both `pip` and `music` track kinds reach the render output.
-- The LLM suggestion path is built but unreached (see Implementation).
+This is not generalized discovery, a public SDK, a marketplace, an installer,
+version negotiation, dependency resolution, sandboxing, hot loading, or an
+injection point into the analytical pipeline. Project Plugins remain the separate
+external-project subprocess convention described in Chapter 17.
 
 ### Implementation
 
-The subsystem is nine orchestrator modules behind a uniform Flask surface in `server/app.py`, each import guarded by a `_HAS_*` flag so a missing module or a missing FFmpeg degrades to an HTTP 503 rather than crashing the server.
+**Loader and contract.** `server/feature_plugins.py` defines `FeaturePlugin`,
+`PluginRoute`, `FeaturePluginContext`, descriptor validation, route installation,
+the plugin asset route, and asset-tag injection into `server/index-v3.html`.
+The explicit context supplies two paths plus fifteen lifecycle, safe-file,
+mutation-policy, settings, metadata, telemetry, and async-capability helpers. It
+is the current contract; the earlier seven-helper proposal is obsolete.
 
-**Module map.** `media_library.py` (reference library), `timeline.py` (edit state), `render.py` (FFmpeg compilation), `video_suggestions.py` (edit-suggestion generator), `transcription.py` (whisper.cpp + cloud), `vault_transcript.py` (transcript note writer), `waveform.py` (audio waveform PNGs), `media_capture.py` (screen/mic capture), `preview.py` (frame extraction + low-res proxy).
+`plugins/video/__init__.py` registers the descriptor and three lifecycle
+callbacks. `plugins/video/routes.py` declares all 31 plugin routes. They cover
+capture; media library, URL import, protected-reference removal, transcript,
+waveform and suggestions; timeline; preview; render and watermark upload; and
+video capability/state calls. `plugins/video/runtime.py` holds the provided
+context so package modules do not import `server.app`.
 
-**Endpoint surface.** `server.py` wires `/api/media-library/*` (list / add / remove / rename / thumbnail / waveform / transcript / import-url / suggest-edits), `/api/timeline/<id>` (GET/PUT), `/api/transcribe/*`, `/api/render/*` (presets / start / state / cancel), and `/api/preview/*`. Every handler opens with its `_HAS_*` guard — for example `render_start` returns 503 unless render, timeline, and media library are all available.
+**Plugin-owned server modules.** The package owns its capture, media-library,
+preview, render, timeline, URL-import, video-suggestion, and waveform backends
+below `plugins/video/backend/`. The suggestion framework and schema are also
+plugin-local. Removing the package therefore removes both the suggestion
+implementation and the instructions which define its output.
 
-**Two event hooks braid the modules together.** A capture-complete hook auto-adds a finished capture into the conversation's media library; a transcription-complete hook (`server.py:343-379`) writes the canonical vault note on the `complete` event and stashes the returned path so the polling `/state` endpoint can surface it. The hook is fail-soft: a vault-write exception is caught and logged, the transcription itself stays `complete`, and the user can re-export manually (`server.py:373-379`). Note one drift to trust the code over the docstring: the hook passes `transcription_model="whisper-large-v3-local"` as a fixed string (`server.py:372`) regardless of which engine actually ran, so the vault note's model attribution is not authoritative.
+**Core-retained services.** `orchestrator/transcription.py` and
+`orchestrator/vault_transcript.py` remain general Dialogue services.
+`orchestrator/job_queue.py` and its core routes/lifecycle remain shared by
+non-video work. `server/static/transcribe-input.js` retains Inquiry-pane A/V
+drop. `server/static/js/v3-capability-async.js` remains the shared browser
+bootstrap; video consumes it through the context's async-capability registry.
 
-**Render data flow.** `render_start` (`server.py:2153-2156`) calls `timeline.load()` and `media_library.list_entries()`, then passes both snapshots as arguments into `RenderManager.start(conversation_id, preset_key, timeline, library, export_dir=...)`. This argument-passing is deliberate: `render.py` imports neither `timeline` nor `media_library`, so the renderer is a pure function of the two snapshots it is handed — testable in isolation, and incapable of racing a concurrent edit because it operates on a captured snapshot. Inside, `_collect_clip_sources` builds a `media_entry_id → source_path` map (`render.py:274-280`), a position sort orders clips, and the command builder assembles trim/concat/pad plus overlay and watermark filters. The export directory resolves from the user setting `export.default_directory`, defaulting to `~/ora/exports/` (`render.py:70`, `server.py:2144-2149`).
+**Browser installation.** After complete validation, the loader replaces the
+single `<!-- ORA_FEATURE_PLUGIN_ASSETS -->` placeholder with the plugin's ordered
+styles and scripts. `plugins/video/static/video-plugin.js` registers four host
+seams: the Exhibits `video` pane through `OraPanes`; Video editor, Browse Dialogue
+media, and Send canvas image controls through `OraMounts`; the media browser
+through `OraBrowseOverlays`; and **Settings → Video** through
+`OraSettingsSections`. It also registers `/video` and releases pane ownership on
+new-Dialogue or Dialogue-selection events. With no descriptor, the placeholder
+is empty and none of those registrations execute.
 
-**Presets and two-pass.** `PRESETS` (`render.py:83-186`) defines `standard` / `high` / `web` / `mov` / `webm` / `audio_only` and an internal `preview_proxy` (360p, `ultrafast`, not in the user-facing menu — selected programmatically by `preview.py`). Codecs are `libx264` / `aac` / `libvpx-vp9` / `libopus` — portable software codecs, no VideoToolbox dependency, so encoding itself is cross-platform once FFmpeg is present. The `high` preset sets `v_two_pass: True` (`render.py:108`); `_split_for_two_pass` (`render.py:710-754`) builds a pass-1 analysis argv writing stats to a per-render `.x264-pass-<render_id>` passlog and a pass-2 encode argv reading them, with the passlog path returned for cleanup. Render runs as a `subprocess.Popen` (`_Render.process`, `render.py:203`) with progress parsing and cancel via terminate; the passlog sidecars are cleaned after both passes.
+**Media and render flow.** The plugin library records conversation-owned
+references and metadata. Timeline state is normalized on read and write, and
+render receives a snapshot of the timeline and library rather than reading a
+moving edit. FFmpeg performs trimming, padding, overlays, watermarking, mixing,
+encoding, preview frames/proxies, waveform work, and capture where the host
+supports it. `plugins.video.backend.render.RenderManager` starts FFmpeg in its
+own daemon thread and exposes render state to the plugin routes. The core shared
+job queue remains available for non-video work; it does not execute this render.
 
-**Transcription.** `transcription.py` shells `whisper-cli` (whisper.cpp) after extracting 16 kHz mono WAV with FFmpeg, parses `--print-progress`, and persists `<source>.whisper.json` next to the source — the file both `/transcript` and `/suggest-edits` read later. OpenRouter cloud transcription and audio-model paths exist as network alternatives.
+**Lifecycle.** Close invokes `on_release`: finished capture, import, and render
+records plus timeline/library caches are released, while active work and owned
+media remain. Delete Forever invokes `on_quiesce` before core purge to stop or
+tombstone capture, import, preview, render, and library work; after the purge,
+`on_clear` removes timeline state, owned upload staging, and render lookup state.
+Lifecycle errors are logged and collected without falsely claiming that an
+optional callback succeeded.
 
-**Suggestions.** `video_suggestions.py` ships two paths. `generate_suggestions_heuristic` is deterministic pure Python — filler-word cuts, silence-gap cuts, false-start detection, chapter markers from discourse cues, a title-card topic guess — validated against `config/framework-schemas/video-editing-suggestions.schema.json` (present on disk). `generate_suggestions_llm` assembles the framework prompt from `frameworks/book/video-editing-suggestions.md` (also present on disk), calls an injected `model_callable`, and extracts/validates JSON with heuristic fallback. **The LLM path is partial: it is built and unit-tested but no endpoint invokes it.** The `/suggest-edits` handler calls only the heuristic generator (`server.py:1116`), and both the module docstring and the endpoint docstring state the live wiring is "left for the user's gating." At 7a5e8f40 the installed suggestion behavior is heuristic-only.
-
-**Failure behavior.** Corrupt library or timeline JSON is quarantined: `load()`/`_load()` catch the parse exception, `replace()` the file to a `.json.broken` sidecar for forensics, and return defaults (`timeline.py:384-391`, `media_library.py:191-198`). Thumbnail generation failure is non-fatal — `_generate_thumbnail` returns `False`, the entry carries `thumbnail_path: None`, and the UI falls back to a glyph (`media_library.py:139-155,251`). Waveform generation is lazy and 404s on failure rather than erroring the entry.
+**Failure and removal.** A missing package or an import, registration,
+descriptor, or route-install failure logs a specific error and yields no active
+descriptor, static route, or browser surface. An unexpected mid-route-loop
+failure can leave routes Flask already accepted until restart; the loader does
+not claim transactional rollback. Removing or renaming `plugins/video` and
+restarting removes its 31 routes, assets, settings, controls, pane, overlay, and
+slash command while leaving transcription, Inquiry A/V drop, and the shared job
+queue operational. Removing code does not itself delete previously written media.
 
 ### Evidence & Verification
 
-**Tested surfaces.** The subsystem carries seven test files, and the mechanisms they cover are the ones most likely to break silently: `test_video_suggestions.py` (16 tests, heuristic generator), `test_waveform.py` (12), `test_render_two_pass.py` (13, two-pass **command construction**), `test_media_library_transcript.py` (5, transcript-normalization slice), `test_watermark_upload.py` (15), `test_url_import.py` (13), and `test_multi_stop_gradient.py` (14, gradient stop parsing, 2–8 stops).
+The landed implementation proves the boundary through focused behavior: startup
+with the package present, startup with its root absent, rejection of invalid
+descriptors and routes, plugin-only route and asset ownership, all four browser
+registries, removal of the core `/video` registration, and the distinction
+between Close release and Delete Forever quiesce/clear.
 
-**How to confirm it works end to end.** Start the server, POST a real media file to `/api/media-library/<conversation_id>`, PUT a timeline with one trimmed clip to `/api/timeline/<id>`, POST to `/api/render/<id>`, then poll `/api/render/<render_id>/state` until `complete` and confirm the output file exists in the export directory. This is the only way to exercise the actual FFmpeg execution, because —
-
-**Explicitly untested surfaces**, stated so a maintainer does not over-trust the green suite:
-- There is **no `test_timeline.py`**. The entire `_normalize_state` clamp/default/duration-compute path — the schema contract that both the UI and `render.py` depend on — is exercised only indirectly. This is the highest-value coverage gap in the subsystem.
-- There is **no full `test_media_library.py`**. Only the transcript-normalization slice is covered; `add_entry` / `remove` / `rename` / thumbnail generation are untested in isolation.
-- `test_render_two_pass.py` asserts the **command that would be run**, not the output of running it. No test executes FFmpeg against real media and inspects the result, so `drawtext` correctness, filtergraph validity, and overlay timing are unverified by the suite.
-- The LLM suggestion path has unit tests but no live wiring, so its end-to-end behavior against a real model is unverified.
-- **No runtime render was performed for this documentation pass.** Every "works on macOS" claim below rests on code inspection plus the existing unit tests, not on a live export.
+The accepted extraction also keeps shared services live when the plugin is
+absent. The non-destructive removal test points `ORA_FEATURE_PLUGINS_DIR` at a
+parent with no `video` child and restarts Ora; this changes only the checked
+descriptor/assets root, so the built-in `plugins.video` import is never attempted.
+Removing or renaming the bundled directory exercises the same absent state.
+Confirm Ora boots and video routes/assets/UI are absent, then confirm Inquiry A/V
+drop, transcription, and the shared job queue remain. A real FFmpeg render is
+still the appropriate end-to-end check for host codecs, filters, fonts, device
+capture, and output media; documentation or route tests cannot prove those host
+capabilities.
 
 ### Expert Reading Notes
 
-Read in this order: `timeline.py` first (the schema is the contract for both the UI and the renderer — understand `_normalize_state` before anything else), then `render.py` (how that schema becomes an FFmpeg command), then `media_library.py` (what the renderer resolves clip sources against).
+Read the boundary before the backend: `server/feature_plugins.py`, then
+`plugins/video/__init__.py`, `routes.py`, and `runtime.py`; then the four browser
+registries and `video-plugin.js`; finally the backend module relevant to the
+behavior under review.
 
-Where future changes most likely cause drift:
-
-- **The schema accepts more than the renderer honors.** `VALID_TRANSITIONS_IN` includes `dissolve`/`fade-from-black` and `VALID_TRANSITIONS_OUT` includes `dissolve`/`fade-to-black` (`timeline.py:71-72`); `render.py` honors fade-from-black/fade-to-black and treats only `dissolve` as a cut (a silent no-op). Anyone adding dissolve support must close this at both ends, and anyone adding a transition to the schema without the renderer produces a silent no-op.
-
-- **The deferrals comment in `render.py` is partly stale.** `render.py:30` lists "Live preview (low-res proxy generated on demand)" as deferred, but `orchestrator/preview.py` exists, is wired at `/api/preview/*`, and is functional: it extracts a frame via FFmpeg, renders a 360p proxy through `RenderManager` using the `preview_proxy` preset, and invalidates the proxy on timeline mutation via a content signature (`preview.py:75,104-201`). Trust the module, not the comment — preview is implemented, not deferred. Treat the `render.py` header comment as documenting Phase-7 intent, not current wiring.
-
-- **The docstrings describe intent by phase label; wiring is what ships.** `video_suggestions.py` advertises an LLM path that no endpoint reaches. `media_capture.py:3-4` claims macOS + Windows; the Windows branch raises `NotImplementedError`. When a docstring and the call graph disagree, the call graph is the installed system.
-
-- **`_resolve_font_file` fails silently at import time on non-Mac.** It enumerates only `/System/Library/Fonts` and `/Library/Fonts` and, on a total miss, unconditionally returns `/System/Library/Fonts/Supplemental/Courier New Bold.ttf` (`render.py:247-266`); the result is cached in the module-level `_FONT_FILE` at import (`render.py:269`). On Linux or Windows every candidate misses and the function still returns a Mac path that does not exist, so `drawtext` receives a nonexistent `fontfile=` and the failure surfaces only as an FFmpeg render error, never at startup. This is the first thing to fix in any off-Mac port.
-
-- **The portability retrofit skipped this subsystem entirely.** HEAD is `7a5e8f40` ("Execution Review Phase 1-4: macOS+Windows portability retrofit"); `git diff 82553162..7a5e8f40` for the five core A/V files (`media_library.py`, `timeline.py`, `render.py`, `video_suggestions.py`, `media_capture.py`) is empty. The retrofit hardened other subsystems and did not touch the A/V layer, so its Mac-only assumptions persist unmodified. Do not assume any "portability" claim elsewhere in the tree covers these files.
+The highest drift risks are a plugin importing `server.app`, a new route or asset
+bypassing descriptor validation, browser UI added directly to the core page,
+Close killing active work, Delete Forever purging before quiesce, video-only
+schemas moving back into core, or shared transcription/job infrastructure moving
+into the plugin. Treat the 31-route descriptor, explicit context fields, browser
+seams, and three lifecycle callbacks as one contract when changing any part.
 
 ### Platform compatibility
 
-Every platform-sensitive surface in this subsystem, labeled by evidence. No off-Mac surface is labeled "works" — the pass was read-only on macOS, so non-Mac rows are "untested" or "needs-porting" per what the code structurally requires.
+The feature boundary is platform-neutral Python and browser code, but the work it
+exposes retains host dependencies:
 
-- **FFmpeg / ffprobe binary discovery** — macOS: **works** (on PATH, or `/opt/homebrew/bin` fallback). Windows-native / WSL / Linux: **untested**. Resolution is `shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"` (`media_library.py:59-60`, `render.py:71-72`, plus `waveform.py`, `transcription.py`, `media_capture.py`). If FFmpeg is on PATH it resolves anywhere; only the fallback is Mac-specific. Software codecs (`libx264`/`aac`/`libvpx-vp9`/`libopus`) are portable, so encoding is cross-platform *once FFmpeg is present* — but this was not run off-Mac.
-
-- **`drawtext` overlays (title-cards / lower-thirds / watermark glyph)** — macOS: **works, conditionally** — stock Homebrew FFmpeg lacks `drawtext`; the `homebrew-ffmpeg/ffmpeg/ffmpeg` tap is required (a known install prerequisite). Windows-native / WSL / Linux: **needs-porting**. Two independent blockers off-Mac: (1) whether apt/choco FFmpeg ships `drawtext` compiled in is **untested**; (2) `_resolve_font_file` returns a nonexistent Mac font path on every non-Mac host (`render.py:247-266`), so overlays and watermark fail at render regardless of the FFmpeg build. The failure mode is a nonexistent `fontfile=` surfacing as an FFmpeg error; there is no instrumented success rate.
-
-- **Screen + microphone capture** — macOS: **mac-only, works** (avfoundation). Windows-native: **needs-porting** — the branch raises `NotImplementedError("Windows capture lands in Phase 10")` (`media_capture.py:158-159`). WSL: **n/a** (no display/audio capture surface). Linux: **needs-porting** — would require x11grab/pulse; `_build_ffmpeg_command` raises `RuntimeError` on any non-Darwin, non-Windows platform (`media_capture.py:157-160`), and device discovery early-returns empty off Darwin.
-
-- **Whisper transcription (local engine)** — macOS: **works** (`whisper-cli`, models under `~/ora/models/whisper`). Windows-native / WSL / Linux: **untested** — whisper.cpp builds on those platforms but was not run here, and the `/opt/homebrew` fallback in the binary resolver is Mac-only (`transcription.py:46-48`). The OpenRouter cloud transcription path is a network call and therefore platform-agnostic (untested off-Mac but carries no platform-specific code).
-
-- **Atomic JSON writes (tmp + `replace`) for library/timeline state** — macOS / WSL / Linux: **works** (POSIX `Path.replace` is atomic; `media_library.py:209`, `timeline.py:399`). Windows-native: **untested** — `os.replace` is atomic same-volume on Windows but can raise if the target is held open by another handle; concurrent-access behavior was not exercised.
-
-- **`subprocess.Popen` for ffmpeg/ffprobe/whisper-cli/render-cancel** — macOS / WSL / Linux: **works** (argv lists, no `shell=True`). Windows-native: **untested** — process termination and cancel use generic APIs, but signal/terminate semantics on Windows were not verified.
-
-- **Hardcoded home/workspace paths (`~/ora`, `~/Documents/vault`, `/opt/homebrew`)** — macOS: **works**. WSL / Linux: **works** for `~/ora` and `~/Documents/vault` (`expanduser` resolves); `/opt/homebrew` fallbacks are inert but only reached if FFmpeg is off PATH. Windows-native: **untested** — `~` maps to `%USERPROFILE%` and forward-slash paths mostly work in Python, but the `/opt/homebrew` fallbacks are meaningless. The vault transcript root `~/Documents/vault` is hardcoded (`vault_transcript.py:37`).
-
-- **Localhost Flask endpoint layer** — macOS: **works**. Windows-native / WSL / Linux: **untested but platform-neutral** — the endpoint code is pure Python/Flask; all platform risk lives in the media modules it dispatches to, not the routing.
-
-- **Portability-retrofit coverage of this subsystem** — macOS: **works**. Windows-native / WSL / Linux: **needs-porting**. Commit `7a5e8f40` did not modify any A/V file (`git diff 82553162..7a5e8f40` for the five core files is empty), so the Mac-only assumptions above were never addressed by the retrofit that hardened other subsystems.
+- **Plugin loading and browser registration** — standard Python import, Flask,
+  and browser JavaScript. Exercised on macOS; untested on Windows-native, WSL,
+  and Linux. An unavailable package is skipped on every platform.
+- **FFmpeg / ffprobe** — the plugin backends prefer binaries on `PATH` and retain
+  Homebrew fallbacks. Software codecs are portable once present, but filters,
+  fonts, and installed codec sets vary. macOS is exercised; other platforms are
+  untested or need porting where a Mac font path is assumed.
+- **Screen, microphone, and webcam capture** — macOS uses AVFoundation and is the
+  working path. Windows-native and Linux capture remain unimplemented or
+  unverified; WSL has no claimed desktop capture surface.
+- **Local Whisper transcription** — core transcription works on macOS with
+  `whisper-cli` and locally installed models. Other hosts are untested; the cloud
+  transcription alternatives are network-dependent rather than OS-specific.
+- **Atomic timeline/library state and subprocess cancellation** — use portable
+  Python primitives, but only the macOS concurrency and process behavior is
+  exercised. Windows handle and termination semantics remain unverified.
+- **Removal behavior** — does not depend on FFmpeg: no valid descriptor means no
+  video routes or assets. Core startup, transcription, Inquiry A/V drop, and the
+  shared job queue remain the required cross-platform fallback.
 
 
 ---
@@ -1652,7 +1742,7 @@ The alternative I rejected is a transactional installer that rolls back every fi
 
 **Installer state machine.** `install.py` defines `STATE_PATH = REPO_ROOT / "install-state.json"`, `LOG_PATH = REPO_ROOT / "install.log"`, and `COMPLETION_MARKER = "INSTALL_COMPLETE: 0 warnings, 0 errors"` (`install.py:123-125`). `main()` parses `--profile/--dry-run/--reset/--resume` (`install.py:1855-1858`). On `--reset` it calls `reset_install`, which under dry-run logs `[dry-run] would clear install-state.json and install.log` and otherwise unlinks both files (`install.py:512-519`) — note again that no installed artifact is removed. Otherwise it seeds `started_at`, loads `steps_completed`, and walks the nine-step pipeline; a step already in `completed` under `--resume` logs `✓ Step '<name>' already completed; skipping`, and any step returning falsy triggers the `INSTALL_HALTED` message and `sys.exit(1)` (`install.py:1888-1894`). Success writes `COMPLETION_MARKER`. The recovery doc orchestrates around exactly these two artifacts: grep `install.log` for `INSTALL_COMPLETE`, inspect `install-state.json` for the last completed step.
 
-**Manual fallback and server path.** When the installer itself is broken, `docs/install-manual.md` reproduces the Solo desktop install by hand (clone → `pip install -r requirements.txt` + the pinned MCP runtime → vault skeleton → `converters.py` → `refresh-catalog.py` → `sync_model_registry.py` → `auto-populate-configuration.py budget` + preset bake → free smoke config → optional live smoke → launchd or `start.sh`) with Windows PowerShell variants (`py -3`, `$env:USERPROFILE`). The Linux server path is `scripts/install-server.sh` (apt-get, ollama, `.venv`, sourcing `~/.config/ora-server.env`); `uninstall/uninstall.py` (present on disk, `--dry-run`/`--include-models`/`--include-conversations`) provides the clean-room reset the test protocol calls for.
+**Manual fallback and server path.** When the installer itself is broken, `help/install-manual.md` reproduces the Solo desktop install by hand (clone → `pip install -r requirements.txt` + the pinned MCP runtime → vault skeleton → `converters.py` → `refresh-catalog.py` → `sync_model_registry.py` → `auto-populate-configuration.py budget` + preset bake → free smoke config → optional live smoke → launchd or `start.sh`) with Windows PowerShell variants (`py -3`, `$env:USERPROFILE`). The Linux server path is `scripts/install-server.sh` (apt-get, ollama, `.venv`, sourcing `~/.config/ora-server.env`); `uninstall/uninstall.py` (present on disk, `--dry-run`/`--include-models`/`--include-conversations`) provides the clean-room reset the test protocol calls for.
 
 **Endpoint circuit breaker.** `orchestrator/endpoint_health.py` holds per-endpoint state in a module-global `_state` dict (`endpoint_health.py:43`) guarded by `_registry_lock` (`endpoint_health.py:33`). Tunables default to a 60-second failure window, a 3-failure threshold, and a 300-second cooldown (`endpoint_health.py:47-49`), mutable via `configure()`. `record_failure` appends a timestamp; once the rolling-window count hits the threshold it sets `cooldown_until = now + _cooldown_seconds`, and a failure while a probe is pending re-extends the cooldown — the half-open behavior (`endpoint_health.py:82-94`). `record_success` clears state. The router consults the breaker inside its chain walk at two sites: `router.py:387` (`if endpoint_health.is_in_cooldown(ep_id)`) and `router.py:1088` (`is_in_cooldown(resolved_ep_id)`), each with a try/except covering both bare and package-qualified imports (`router.py:383-388, 1084-1088`). The module docstring pins the defaults to "concurrency spec section 5" — a vault reference (`Reference — Ora Concurrency Architecture`) that can drift from the code constants if the spec is retuned. These constants are provisional and configurable; treat the numbers as the current default, not a measured optimum.
 
@@ -1720,6 +1810,14 @@ Ora is a generic prototype. It is meant to be forked. But the moment it did real
 That is the failure mode this convention prevents: core-fork contamination. If MSI's FRED fetch lands in `orchestrator/`, then every fork of Ora inherits one publication's specifics, the question "what is core Ora versus what is a downstream project?" stops having an answer, and you can no longer cleanly separate the generic engine from the thing built on top of it. A second, related failure mode is blast radius: if a project's code runs in Ora's own Python process, a project bug — an unhandled exception, a runaway loop, a bad import — takes down the orchestrator with it. A generic prototype that crashes because one downstream publication shipped a bad tool is not a prototype anyone can fork with confidence.
 
 The convention answers both by drawing a hard line: project-specific code lives in the project's own directory, and Ora reaches it only across a process boundary. The mechanism is a directory boundary, a declarative manifest, and subprocess isolation.
+
+This convention is not the first-party **feature-plugin** boundary in Chapter 11.
+A Project Plugin belongs to an external named project, is registered through an
+`ora-project.json` manifest and pointer file, and executes tools across a JSON
+subprocess boundary for failure and dependency isolation. The current video
+feature is trusted code shipped under Ora's own `plugins/video` directory and
+runs in process so it can share conversation lifecycle safety. Neither mechanism
+discovers or installs the other.
 
 ### Design Decision & Tradeoffs
 
@@ -2069,6 +2167,7 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 | Ollama/local embedding and reranking | works | untested | untested | untested | Requires local daemons/models; platform packages differ. |
 | Cloud embedding/reranking | works | untested | untested | untested | Network/provider-neutral; credentials and keyring backend are platform-specific. |
 | ChromaDB persistent collections | works | untested | untested | untested | Embedder, dimension, and physical collection map must match on every machine. |
+| Isolated five-file Aside help corpus with lexical fallback | works | untested | untested | untested | Indexed acceleration depends on configured embeddings/Chroma; local lexical ranking over the same tracked `help/` files remains available. |
 | Relocatable session/conversation/vault paths | works | untested | untested | untested | Runtime paths are configurable; full non-Mac lifecycle is not verified. |
 | Atomic envelope writes | works | untested | works | works | Same-filesystem replace is atomic; the per-Dialogue lock is process-local. |
 | Stealth Ora-managed purge | works | untested | untested | untested | Cannot erase exports or provider/Git/backup/external copies. |
@@ -2105,15 +2204,13 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 ### A.11 — Audio/Video Media & Timeline Editing
 | Item | macOS | Windows-native | WSL | Linux | Note |
 |---|---|---|---|---|---|
-| FFmpeg binary (ffmpeg/ffprobe) as external dependency | works | untested | untested | untested | shutil.which('ffmpeg') with fallback /opt/homebrew/bin/ffmpeg (media_library.py:59-60, render.py:71-72, waveform.py:30, transcription.py:48, media_capture.py:76). On PATH ffmpeg it resolves anywhere; only the fallback is Mac-specific. libx264/aac/libvpx-vp9 are portable software codecs so encoding itself is cross-platform once ffmpeg present. |
-| drawtext overlay text (title-cards / lower-thirds / watermark glyph) | works | needs-porting | needs-porting | needs-porting | STOCK brew ffmpeg lacks drawtext; needs homebrew-ffmpeg/ffmpeg/ffmpeg tap on mac. Additionally _resolve_font_file (render.py:255-266) enumerates ONLY /System/Library/Fonts + /Library/Fonts and falls back to a Mac font path — on Linux/Windows every candidate misses and drawtext gets a nonexistent fontfile, so overlays/watermark would fail. Whether drawtext is compiled in on apt/choco ffmpeg is also untested. |
-| Screen + microphone capture | mac-only | needs-porting | n/a | needs-porting | media_capture.py hardwires avfoundation; :157-160 raises RuntimeError on non-Darwin; Windows gdigrab/dshow branch is an unimplemented stub (Phase 10). WSL has no display/audio capture. Linux would need x11grab/pulse — not written. |
-| Whisper transcription engine (local) | works | untested | untested | untested | transcription.py uses whisper-cli (whisper.cpp) via shutil.which with /opt/homebrew fallback (:47); models under ~/ora/models/whisper. whisper-cli builds on Linux/Windows but is untested here; the /opt/homebrew fallback is Mac-only. OpenRouter cloud transcription path (:458-569) is platform-agnostic (network). |
-| Home/workspace paths (~/ora, ~/Documents/vault, /opt/homebrew) | works | untested | works | works | os.path.expanduser('~/ora') and Path.home() resolve on all POSIX + WSL; on native Windows ~ maps to %USERPROFILE% and forward-slash paths mostly work in Python but /opt/homebrew binary fallbacks are meaningless. Vault root ~/Documents/vault hardcoded (vault_transcript.py:37). |
-| Atomic JSON writes (tmp + replace) for library/timeline state | works | untested | works | works | Path.replace() (media_library.py:209, timeline.py:399) is atomic on POSIX; on Windows os.replace is atomic same-volume but can raise if the target is held open by another handle — untested under concurrent access. |
-| subprocess Popen/run for ffmpeg/ffprobe/whisper-cli | works | untested | works | works | No shell=True, argv lists — portable in principle; process-termination/cancel logic (render.py:1145+, media_capture.py:614-618 TimeoutExpired kill) uses generic APIs but signal semantics on Windows untested. |
-| Localhost Flask server (endpoints) | works | untested | works | works | server.py serves localhost:5000; endpoint layer is pure Python/Flask and platform-neutral; only the underlying media modules carry platform risk. |
-| Base→HEAD portability retrofit coverage | works | needs-porting | needs-porting | needs-porting | Commit 7a5e8f40 ('macOS+Windows portability retrofit') did NOT modify any A/V file — git diff 82553162..7a5e8f40 for these 5 core files is empty. The retrofit hardened other subsystems but skipped the A/V layer, so its Mac-only assumptions persist. |
+| Explicit feature loader and browser seams | works | untested | untested | untested | Standard Python/Flask/browser code; an absent or invalid package is skipped and core startup continues. |
+| FFmpeg / ffprobe and software codecs | works | untested | untested | untested | Plugin backends prefer PATH and retain Homebrew fallbacks; installed codecs, filters, and fonts vary by host. |
+| drawtext overlays and watermark | works conditionally | needs-porting | needs-porting | needs-porting | The working Mac path needs an FFmpeg build with drawtext; plugin font resolution still contains Mac-specific candidates. |
+| Screen, microphone, and webcam capture | mac-only | needs-porting | n/a | needs-porting | AVFoundation is the working path; no other desktop-capture path is claimed. |
+| Core local Whisper transcription | works | untested | untested | untested | `orchestrator/transcription.py` remains outside the plugin; cloud alternatives are network-dependent rather than OS-specific. |
+| Plugin timeline/library atomic state and process cancellation | works | untested | untested | untested | Uses Python atomic replacement and subprocess APIs; non-Mac concurrency and termination behavior is unverified. |
+| Plugin removal fallback | works | untested | untested | untested | No valid descriptor means no video routes/assets/UI; core transcription, Inquiry A/V drop, and the shared job queue remain. |
 
 ### A.12 — Meta-Layer Oversight
 | Item | macOS | Windows-native | WSL | Linux | Note |
@@ -2203,7 +2300,7 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 - **[deferred]** systemd/cron config for server cadence — _install-server.sh 'What it does NOT do': 'systemd / cron configuration — the MSI cadence is configured separately'; cloud-ora-install.md same._
 - **[not in commit 7a5e8f40 — untracked local artifact]** `/Users/oracle/ora/run-ora-server.sh` — launchd wrapper present on the author's Mac but absent from a fresh clone (the tracked launcher at this commit is start.sh, which sets ORA_HOME + 7 ORA_* flags): cd + export ORA_HOME + flags + exec homebrew python3 server
 - **[retired]** `installer/install-manifest.md` and its 20 layer files — Legacy natural-language layered installer spec (phase1 6 layers + phase2 12 layers + gate + appendix), since deleted. Explicitl
-- **[partial]** `/Users/oracle/ora/docs/install-guide.md` — Happy-path install guide with per-platform command matrix (macOS/Windows-native/WSL/Linux-desktop/Linux-server).
+- **[partial]** `/Users/oracle/ora/help/install-guide.md` — Happy-path install guide with per-platform command matrix (macOS/Windows-native/WSL/Linux-desktop/Linux-server).
 - **[partial]** `/Users/oracle/ora/docs/install-testing.md` — Clean-room test protocol: 3-env matrix (Mac Mini A/B + Parallels Win11 ARM), Solo-only ship criterion, uninstall reset, 
 - **[stale]** `/Users/oracle/ora/docs/cloud-ora-install.md` — Linux server operator guide for the MSI publication cadence.
 - **[stale]** `/Users/oracle/ora/docs/hardware-report.md` — Sample hardware-evaluation report (M4 Max 128GB, gpt-oss-120b MXFP4).
@@ -2274,6 +2371,7 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 - **[implemented]** Standard/Private Close+restore, navigation-only Exit Stealth, and protected Stealth Delete Forever with descendant detachment.
 - **[boundary]** Deliberate exports and provider, Git, backup, or other external copies are not erased by Ora-managed purge.
 - **[documentation schema]** `docs/conversation-file-format.py` describes current envelopes/chunks/index rows but is not a runtime Pydantic validation claim.
+- **[implemented boundary]** Aside help retrieves only the five tracked `help/` files through `orchestrator/help_retrieval.py`; indexed and lexical paths share the allowlist, and prompt/answer/help context remain ephemeral.
 
 ### B.9 — Tool Dispatch, the Capability Gate & Execution Telemetry
 - **[partial]** Model-driven tool escape hatch (analyst requests read-category tools mid-analysis) — _ORA_MODEL_TOOL_SELECTION default '0'/off (boot.py:8376); build_requestable_tools_catalog returns '' unless enabled. Flag-gated-off => partial._
@@ -2288,17 +2386,18 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 - **[planned]** mode-to-visual.json auto-generation from vault Reference doc — __comment: 'Keep in sync manually until generation is automated'_
 
 ### B.11 — Audio/Video Media & Timeline Editing
-- **[partial]** Video edit suggestions — LLM generator path — _generate_suggestions_llm present+tested but NOT invoked by any endpoint; docstring says gating 'left for the user' :11-16_
-- **[planned]** Screen/mic capture — Windows (gdigrab/dshow) — _media_capture.py:158-159 Windows branch stubbed 'pragma: no cover — Phase 10'_
-- **[deferred]** Dissolve-via-xfade transition at render — _only `dissolve` is deferred (render.py:788); fade-from-black/fade-to-black ARE rendered (render.py:561-570)_
-- **[implemented]** Multi-track video composition (PiP) + multi-audio amix mixing — _implemented in _assemble_command (render.py:772-946); only dissolve remains deferred_
-- **[partial]** Live low-res preview proxy — _render.py:30 lists as deferred, but preview.py + /api/preview/* endpoints exist server.py:2189-2282 (module not inspected)_
-- **[planned]** Transcript-to-timeline jump (Phase 8) using preserved Whisper timestamps — _vault_transcript.py:24-27 comment 'future features (transcript-to-timeline jump in Phase 8)'_
-- **[partial]** `orchestrator/video_suggestions.py` — Video Editing Suggestions framework runtime. Heuristic generator (filler-only cuts, silence-gap cuts, false-start detect
-- **[partial]** `orchestrator/media_capture.py` — Screen + mic capture via FFmpeg. avfoundation input on macOS; Windows gdigrab/dshow path is documented but stubbed/unimp
-- **[unknown]** `orchestrator/preview.py` — Low-res proxy / preview-frame generation for the timeline (render.py lists live preview as deferred; a preview module ex
-- **[unknown]** `frameworks/book/video-editing-suggestions.md` — Framework spec loaded by video_suggestions._build_prompt for the LLM path; also the human-facing suggestion framework.
-- **[unknown]** `config/framework-schemas/video-editing-suggestions.schema.json` — JSON Schema that both suggestion paths validate against (cut/chapter/title_card/transition types).
+- **[implemented]** One explicit first-party video loader, validated descriptor,
+  31 plugin routes, ordered browser assets, four host registries, and three
+  Dialogue lifecycle callbacks.
+- **[implemented]** Video-owned capture, media library, URL import, timeline,
+  preview, render, waveform, suggestions, suggestion framework/schema, settings,
+  and browser UI below `plugins/video/`.
+- **[implemented boundary]** Core retains transcription, vault transcript writing,
+  Inquiry A/V drop, shared job queue, and shared async-capability bootstrap.
+- **[removal behavior]** An absent or broken video package is logged and skipped;
+  Ora boots without video routes/assets/UI and retains the core services above.
+- **[needs-porting]** Non-macOS capture and Mac-specific FFmpeg/font assumptions
+  remain unverified or unimplemented.
 
 ### B.12 — Meta-Layer Oversight
 - **[implemented]** Observational oversight event logging and parent fan-out; Process Coherence remains explicit project/framework judgment rather than a router-invoked runtime path.
@@ -2339,13 +2438,13 @@ Browser tests prove Programming starts inactive, activates only from its toolbar
 - **[stale]** `/Users/oracle/ora/scripts/verify-implementation.py` — Territories/Modes implementation verifier; ARCHITECTURE_PAIRS drift-parity check strips vault YAML and byte-compares aga
 - **[implemented]** `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Technical Documentation.md` — the vault-canonical technical documentation; CREATED at Gate 3 (this document)
 - **[created post-pin at Gate 3]** `/Users/oracle/ora/docs/technical-documentation.md` — repo-side mirror of the technical documentation; not present at 7a5e8f40 (created after this commit; byte-identical body; parity rule Appendix C)
-- **[created post-pin at Gate 7]** `/Users/oracle/ora/docs/accessible-overview.md` — repo-side mirror of `Reference — Ora Accessible Overview.md`; not present at 7a5e8f40 (body-only mirror; same parity rule)
-- **[created post-pin at Gate 7]** `/Users/oracle/ora/docs/user-guide.md` — repo-side mirror of `Guide — Using Ora.md`; not present at 7a5e8f40 (body-only mirror; same parity rule)
+- **[created post-pin at Gate 7]** `/Users/oracle/ora/help/accessible-overview.md` — repo-side mirror of `Reference — Ora Accessible Overview.md`; body-only mirror in the isolated help corpus
+- **[created post-pin at Gate 7]** `/Users/oracle/ora/help/user-guide.md` — repo-side mirror of `Guide — Using Ora.md`; body-only mirror in the isolated help corpus
 
 ### B.16 — Update, Recovery, Troubleshooting & Diagnostics
 - **[partial]** MLX-worker liveness heartbeat surfaced through oversight_health — _oversight_health HEARTBEAT_INTERVALS['mlx_worker']=30 + server.py:14805 heartbeat emit; Apple-Silicon-only (MLX/Metal), no non-Mac equivalent_
 - **[planned]** Packaged app auto-updater / installer for updates — _No update command anywhere; update path is git pull + re-run installer (docs/install-testing.md 'Rolling-main install'). No .pkg/.msi/Sparkle/self-update code found._
-- **[deferred]** Hybrid and Organization deployment profiles in the test/recovery matrix — _docs/install-recovery.md:104-108 + install-testing.md:25 'reserved until G1.27 network discovery and later concurrency validation land'_
+- **[deferred]** Hybrid and Organization deployment profiles in the test/recovery matrix — _help/install-recovery.md:104-108 + install-testing.md:25; the current reservation is not a feature-plugin dependency_
 - **[deferred]** Browser permission approval modal UI (from 2026-04-06 upgrade) — _docs/upgrade-report-2026-04-06.md 'Unresolved Issues' #1: auto-approve only, full modal deferred_
 - **[stale]** `~/ora/docs/upgrade-report-2026-04-06.md` — Historical point-in-time upgrade report (7→15 dispatcher tools) with test/eval scores and rollback via 'cd ~/local-ai &&
 - **[stale]** `~/ora/docs/pre-upgrade-packages.txt` — pip-freeze snapshot captured before the 2026-04-06 upgrade (keyring + build deps), companion to the upgrade report.
@@ -2363,7 +2462,7 @@ This document exists in two places, and two copies of the same document are a dr
 
 **The pairing.** The canonical file is the vault document `[[Reference — Ora Technical Documentation]]`. Its repository mirror is `~/ora/docs/technical-documentation.md`. The vault file carries YAML frontmatter (nexus / type / tags / dates); the repo mirror carries the body only. This is the same vault-canonical, ora-operational convention every paired Ora document follows.
 
-**The sibling mirrors (added at Gate 7).** The identical rule governs the two derived installed-system documents created alongside this one: `[[Reference — Ora Accessible Overview]]` ↔ `~/ora/docs/accessible-overview.md`, and `[[Guide — Using Ora]]` ↔ `~/ora/docs/user-guide.md`. Both were landed at Gate 7 (post-pin) as body-only mirrors under the same vault-canonical direction of truth, and registered in the same three pairing locations as this document's pair.
+**The sibling mirrors (added at Gate 7).** The identical rule governs the two derived installed-system documents created alongside this one: `[[Reference — Ora Accessible Overview]]` ↔ `~/ora/help/accessible-overview.md`, and `[[Guide — Using Ora]]` ↔ `~/ora/help/user-guide.md`. Both are body-only mirrors under the same vault-canonical direction of truth and are part of Aside's tracked five-file help corpus.
 
 **Direction of truth.** The vault is canonical. Edits happen in the vault file; the repo mirror is regenerated from the vault body. If the two disagree, the vault wins and the mirror is rewritten — never the reverse. This mirrors the standing rule in `~/ora/CLAUDE.md`: files under `~/ora` are operational copies; the vault is where the source of truth lives.
 
@@ -2424,9 +2523,9 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/ora/Ora.app/Contents/MacOS/ai` — [not in commit 7a5e8f40 — untracked local .app bundle, absent from a fresh clone] macOS .app launcher: pkill stale, Popen server detached (start_new_session), poll 5000-5010, open browser. Har
 - `/Users/oracle/ora/Ora Models.app/Contents/MacOS/models` — [implemented] macOS .app launcher for the local-model selection flow (companion to Ora.app).
 - `installer/install-manifest.md` and its 20 layer files — [retired] Legacy natural-language layered installer spec (phase1 6 layers + phase2 12 layers + gate + appendix), since deleted; `installer/macos/` remains and is live.
-- `/Users/oracle/ora/docs/install-guide.md` — [partial] Happy-path install guide with per-platform command matrix (macOS/Windows-native/WSL/Linux-desktop/Linux-server
-- `/Users/oracle/ora/docs/install-manual.md` — [implemented] Manual command fallback when the installer script itself is broken.
-- `/Users/oracle/ora/docs/install-recovery.md` — [implemented] Recovery guide for partial install failures: read install.log, check install-state.json, --dry-run, --resume.
+- `/Users/oracle/ora/help/install-guide.md` — [partial] Happy-path install guide with per-platform command matrix (macOS/Windows-native/WSL/Linux-desktop/Linux-server
+- `/Users/oracle/ora/help/install-manual.md` — [implemented] Manual command fallback when the installer script itself is broken.
+- `/Users/oracle/ora/help/install-recovery.md` — [implemented] Recovery guide for partial install failures: read install.log, check install-state.json, --dry-run, --resume.
 - `/Users/oracle/ora/docs/install-testing.md` — [partial] Clean-room test protocol: 3-env matrix (Mac Mini A/B + Parallels Win11 ARM), Solo-only ship criterion, uninsta
 - `/Users/oracle/ora/docs/cloud-ora-install.md` — [stale] Linux server operator guide for the MSI publication cadence.
 - `/Users/oracle/ora/docs/hardware-report.md` — [stale] Sample hardware-evaluation report (M4 Max 128GB, gpt-oss-120b MXFP4).
@@ -2557,6 +2656,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `docs/conversation-file-format.py` — documentation schema for envelope, turn, contributor, chunk, and index metadata.
 - `frameworks/book/supplemental-rag-protocol.md` — promotion-only supplemental request and coverage-gap contract.
 - `orchestrator/pipeline_trace.py` — numeric `context_coverage`, sensitive supplemental forensics, and private trace-mechanics boundary.
+- `orchestrator/help_retrieval.py` and the five tracked `help/*.md` files — isolated Aside help loading, deterministic chunks, owned-index refresh, and lexical fallback.
 - `Reference — Conversational RAG for Persistent AI Memory` — detailed current storage, eligibility, source, packing, and migration contract.
 
 ### E.9 — Tool Dispatch, the Capability Gate & Execution Telemetry
@@ -2585,13 +2685,7 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `orchestrator/visual_synthesis.py` — [implemented] Phase-1b: synthesize a schema-valid envelope from analyst prose via narrow model call + validate→repair loop (
 - `orchestrator/visual_extraction.py` — [implemented] WP-4.3 vision-model extraction: invoke vision-capable model on an image, parse into spatial_representation JSO
 - `orchestrator/canvas_file_format.py` — [implemented] Server-side reader/writer for .ora-canvas / .ora-canvas.json (gzip-wrapped canonical JSON); mirror of client c
-- `orchestrator/render.py` — [implemented] FFmpeg video-render engine (48KB): timeline→ffmpeg command builder, drawtext overlays, watermarks, two-pass en
-- `orchestrator/preview.py` — [implemented] Preview generation helper for media/canvas (11KB).
-- `orchestrator/media_capture.py` — [implemented] FFmpeg screen+microphone capture wrapper (macOS avfoundation); _build_ffmpeg_command l.124, segment capture. R
-- `orchestrator/media_library.py` — [implemented] Media asset library / metadata store; transcript association.
-- `orchestrator/waveform.py` — [implemented] ffmpeg showwavespic → small PNG waveform (3.3KB, synchronous).
 - `orchestrator/transcription.py` — [implemented] whisper.cpp (whisper-cli) subprocess wrapper: ffmpeg 16kHz mono wav extract → whisper-cli JSON, progress parsi
-- `orchestrator/video_suggestions.py` — [implemented] Video-suggestion generator (18KB) for the media/video pipeline.
 - `orchestrator/icon_set_builder.py` — [implemented] Deterministic staleness-gated rebuild of icon set from source-file scan (no model call); rebuild_if_stale l.13
 - `server/static/ora-visual-compiler/index.js` — [implemented] Compiler entry: OraVisualCompiler.compileWithNav / bootstrapAjv; boots renderers→accessibility→adversarial. 10
 - `server/static/ora-visual-compiler/renderers/` — [implemented] 16 renderer files (one is stub.js) → ~22 kinds: mermaid.js (flowchart/sequence/state), vega-lite.js (comparison/time_series/dis
@@ -2602,18 +2696,25 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `server/static/vendor/konva/konva.min.js` — [implemented] Konva (MIT, Anton Lavrenov) — dual-pane canvas engine for visual-panel.js.
 
 ### E.11 — Audio/Video Media & Timeline Editing
-- `orchestrator/media_library.py` — [implemented] Per-conversation media REFERENCE library (not a file store). Classifies by extension, probes duration/width/he
-- `orchestrator/timeline.py` — [implemented] Non-destructive timeline state: schema_version 1, tracks (video/audio/pip/music/overlay), clips (track_positio
-- `orchestrator/render.py` — [implemented] Phase-7 RenderManager: consumes a loaded timeline + library snapshot (passed as args, not imported) → FFmpeg f
-- `orchestrator/video_suggestions.py` — [partial] Video Editing Suggestions framework runtime. Heuristic generator (filler-only cuts, silence-gap cuts, false-st
-- `orchestrator/vault_transcript.py` — [implemented] Writes a single transcript markdown note to the vault ROOT (properties-organized, no folders) with `type: tran
-- `orchestrator/waveform.py` — [implemented] showwavespic PNG waveform generator for audio entries, cached at <thumbnails_dir>/<entry_id>.waveform.png; laz
-- `orchestrator/transcription.py` — [implemented] Transcription engine: whisper.cpp whisper-cli subprocess + ffmpeg 16kHz mono wav extraction; progress parsed f
-- `orchestrator/media_capture.py` — [partial] Screen + mic capture via FFmpeg. avfoundation input on macOS; Windows gdigrab/dshow path is documented but stu
-- `orchestrator/preview.py` — [unknown] Low-res proxy / preview-frame generation for the timeline (render.py lists live preview as deferred; a preview
-- `server/app.py` — [implemented] Flask wiring for the whole subsystem: /api/media-library/* (list/add/remove/rename/thumbnail/waveform/transcri
-- `frameworks/book/video-editing-suggestions.md` — [unknown] Framework spec loaded by video_suggestions._build_prompt for the LLM path; also the human-facing suggestion fr
-- `config/framework-schemas/video-editing-suggestions.schema.json` — [unknown] JSON Schema that both suggestion paths validate against (cut/chapter/title_card/transition types).
+- `server/feature_plugins.py` — explicit one-video loader, descriptor/context
+  contract, validation, route/static registration, and browser asset injection.
+- `plugins/video/__init__.py`, `routes.py`, and `runtime.py` — descriptor,
+  31-route list, lifecycle callbacks, and context access.
+- `plugins/video/backend/` — plugin-owned capture, media library, preview, render,
+  timeline, URL import, video suggestions, and waveform implementations.
+- `plugins/video/frameworks/video-editing-suggestions.md` and
+  `plugins/video/frameworks/video-editing-suggestions.schema.json` — plugin-local
+  suggestion instructions and output contract.
+- `plugins/video/static/` — editor, capture, library, timeline, preview,
+  suggestions, settings, styles, and four host-seam registrations.
+- `orchestrator/transcription.py`, `orchestrator/vault_transcript.py`, and
+  `orchestrator/job_queue.py` — core-retained transcription, note, and shared job
+  infrastructure.
+- `server/static/transcribe-input.js` and
+  `server/static/js/v3-capability-async.js` — core-retained Inquiry A/V drop and
+  shared async-capability bootstrap.
+- `server/app.py` — host loader call, core transcription/job routes, and lifecycle
+  dispatch to installed feature callbacks.
 
 ### E.12 — Meta-Layer Oversight
 - `~/ora/orchestrator/oversight_events.py` — [implemented] In-process event emitter + durable JSONL log at data/oversight/events.jsonl
@@ -2676,15 +2777,15 @@ Precise, one-sentence definitions of the load-bearing terms, defined here once s
 - `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Technical Documentation.md` — [implemented] the vault-canonical technical documentation; created at Gate 3 (this document)
 - `/Users/oracle/ora/docs/technical-documentation.md` — [not present at 7a5e8f40 — created after this commit at Gate 3] repo-side mirror of the technical documentation (byte-identical body; parity rule Appendix C)
 - `/Users/oracle/Documents/vault/Projects/Ora/Reference — Ora Accessible Overview.md` — [implemented] the vault-canonical accessible overview; created at Gate 5 (derived from this document)
-- `/Users/oracle/ora/docs/accessible-overview.md` — [not present at 7a5e8f40 — created at Gate 7] repo-side mirror of the accessible overview (body-only; same parity rule)
+- `/Users/oracle/ora/help/accessible-overview.md` — [implemented] repo-side mirror of the accessible overview and member of the isolated five-file help corpus
 - `/Users/oracle/Documents/vault/Projects/Ora/Guide — Using Ora.md` — [implemented] the vault-canonical how-to guide; created at Gate 6 (derived from this document)
-- `/Users/oracle/ora/docs/user-guide.md` — [not present at 7a5e8f40 — created at Gate 7] repo-side mirror of the how-to guide (body-only; same parity rule)
+- `/Users/oracle/ora/help/user-guide.md` — [implemented] repo-side mirror of the how-to guide and member of the isolated five-file help corpus
 - `/Users/oracle/Documents/vault/Administration/DCP/` — [implemented] DCP output directory: dated Drift Reports, Decision Log, Escalation Queue, Run History, Deprecation Candidates
 
 ### E.16 — Update, Recovery, Troubleshooting & Diagnostics
-- `~/ora/docs/install-recovery.md` — [implemented] Operator guide for recovering from a partial install: --dry-run/--reset/--resume, install-state.json inspectio
+- `~/ora/help/install-recovery.md` — [implemented] Operator guide for recovering from a partial install: --dry-run/--reset/--resume, install-state.json inspection
 - `~/ora/docs/install-testing.md` — [implemented] Clean-room test protocol: 3-environment matrix (Mac Mini A/B + Parallels Windows 11 ARM), reset via Parallels 
-- `~/ora/docs/install-manual.md` — [implemented] Manual command fallback reproducing the Solo desktop install by hand (clone → dependencies → vault skeleton → converters → refresh-catalog → sync_mod
+- `~/ora/help/install-manual.md` — [implemented] Manual command fallback reproducing the Solo desktop install by hand (clone → dependencies → vault skeleton → converters → refresh-catalog → sync-model registry).
 - `~/ora/docs/upgrade-report-2026-04-06.md` — [stale] Historical point-in-time upgrade report (7→15 dispatcher tools) with test/eval scores and rollback via 'cd ~/l
 - `~/ora/docs/pre-upgrade-packages.txt` — [stale] pip-freeze snapshot captured before the 2026-04-06 upgrade (keyring + build deps), companion to the upgrade re
 - `~/ora/orchestrator/pipeline_health.py` — [implemented] Per-thread in-pipeline warning surface: pipeline steps call record(category,message); the chat handler calls c

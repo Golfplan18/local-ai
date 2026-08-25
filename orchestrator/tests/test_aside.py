@@ -468,6 +468,16 @@ class HelpRetrievalTests(unittest.TestCase):
         )
         self.assertEqual(unrelated, [])
 
+        video = help_retrieval.search_help(
+            "How do I start using Ora video?",
+            help_dir=Path(_REPO) / "help",
+            client=_FakeHelpClient(fail_query=True),
+        )
+        self.assertTrue(video)
+        self.assertIn("Use Audio & Video", video[0].heading)
+        sections = [(snippet.source, snippet.heading) for snippet in video]
+        self.assertEqual(len(sections), len(set(sections)))
+
     def test_refresh_preserves_foreign_and_unknown_rows(self):
         chunks = help_retrieval.load_help_chunks(self.help_dir)
         collection = _FakeHelpCollection(
