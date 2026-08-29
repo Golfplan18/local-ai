@@ -2,11 +2,15 @@
 pointer + per-configuration toggle persistence used by the V3 Models
 pane header strip (install Chunk 10 step 3)."""
 import contextlib
+import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
+import textwrap
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -72,8 +76,27 @@ class TestActivePointer(_Fixture):
 
     def test_set_and_get_roundtrip(self):
         self._write_config("budget-bake", {"name": "budget-bake", "cells": {}})
-        self.module.set_active_name("budget-bake")
+        lock_targets = []
+        original_atomic_write = self.module.rp.atomic_write_text
+
+        @contextlib.contextmanager
+        def record_lock(path, *_args, **_kwargs):
+            lock_targets.append(Path(path))
+            yield
+
+        with mock.patch.object(
+                self.module.rp, "locked_file", record_lock), \
+             mock.patch.object(
+                 self.module.rp, "atomic_write_text",
+                 wraps=original_atomic_write) as atomic_write:
+            self.module.set_active_name("budget-bake")
+
         self.assertEqual(self.module.get_active_name(), "budget-bake")
+        self.assertEqual(lock_targets, [self.module.ACTIVE_POINTER_PATH])
+        self.assertEqual(
+            Path(atomic_write.call_args.args[0]),
+            self.module.ACTIVE_POINTER_PATH,
+        )
 
     def test_set_rejects_nonexistent_config(self):
         with self.assertRaises(ValueError):
@@ -89,6 +112,59 @@ class TestActivePointer(_Fixture):
         (self.data_dir / "active-configuration.json").write_text("{not json")
         self.assertEqual(self.module.get_active_name(),
                          self.module.DEFAULT_ACTIVE_NAME)
+
+
+class TestCampaignProfileWriter(unittest.TestCase):
+
+    def test_all_current_campaign_profiles_use_target_lock_and_atomic_replace(self):
+        module_name = "_r12_campaign_run_test"
+        spec = importlib.util.spec_from_file_location(
+            module_name, Path(WORKTREE_ROOT) / "scripts" / "campaign_run.py",
+        )
+        campaign_run = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = campaign_run
+        self.addCleanup(sys.modules.pop, module_name, None)
+        spec.loader.exec_module(campaign_run)
+
+        names = (
+            "campaign-premium",
+            "campaign-optimum",
+            "campaign-optimum-plus",
+            "campaign-qwen9b",
+        )
+        lock_targets = []
+        original_atomic_write = campaign_run.runtime_paths.atomic_write_text
+
+        @contextlib.contextmanager
+        def record_lock(path, *_args, **_kwargs):
+            lock_targets.append(Path(path))
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(
+                 campaign_run, "CONFIGURATIONS_DIR", Path(tmp)), \
+             mock.patch.object(
+                 campaign_run.runtime_paths, "locked_file", record_lock), \
+             mock.patch.object(
+                 campaign_run.runtime_paths, "atomic_write_text",
+                 wraps=original_atomic_write) as atomic_write:
+            for index, name in enumerate(names):
+                campaign_run._write_campaign_profile(
+                    name, {"name": name, "generation": index},
+                )
+
+            expected_paths = [Path(tmp) / f"{name}.json" for name in names]
+            self.assertEqual(lock_targets, expected_paths)
+            self.assertEqual(
+                [Path(call.args[0]) for call in atomic_write.call_args_list],
+                expected_paths,
+            )
+            for index, path in enumerate(expected_paths):
+                self.assertEqual(
+                    json.loads(path.read_text()),
+                    {"name": names[index], "generation": index},
+                )
+            self.assertEqual(list(Path(tmp).glob(".*.tmp")), [])
 
 
 class TestProfileRamAllocation(_Fixture):
@@ -1012,6 +1088,144 @@ class TestFastSlot(_Fixture):
         self.assertEqual(cells["utility"]["gear2_rag_lookup"]["primary"],
                          "qwen/q-primary")
 
+    def test_overlapping_profile_saves_preserve_disjoint_slot_updates(self):
+        """One writer paused after its read must hold the target lock, so a
+        second process rereads the complete first update before it merges its
+        own disjoint slot change."""
+        self._write_config("c", {
+            "cells": {
+                "analysis": {
+                    "gear4": {
+                        "depth": {
+                            "primary": "old-large",
+                            "fallback": ["old-fallback"],
+                        },
+                    },
+                    "gear3": {
+                        "breadth": {
+                            "primary": "old-fast",
+                            "fallback": [],
+                        },
+                    },
+                },
+            },
+        })
+        root = Path(self.tmpdir)
+        ready = root / "first-read-complete"
+        release = root / "release-first-writer"
+        second_started = root / "second-writer-started"
+        worker = textwrap.dedent("""
+            import os
+            import sys
+            import time
+            from pathlib import Path
+
+            root = Path(os.environ["R12_PROFILE_TEST_ROOT"])
+            repo = Path(os.environ["R12_PROFILE_TEST_REPO"])
+            sys.path.insert(0, str(repo / "orchestrator"))
+            import active_configuration as ac
+
+            ac.DATA_DIR = root / "data"
+            ac.ACTIVE_POINTER_PATH = ac.DATA_DIR / "active-configuration.json"
+            ac.CONFIGURATIONS_DIR = root / "config" / "configurations"
+            ac.RUNTIME_CONFIGURATIONS_DIR = (
+                root / "data" / "runtime" / "config" / "configurations"
+            )
+            ac.MODELS_JSON_PATH = root / "config" / "models.json"
+
+            if os.environ["R12_PROFILE_TEST_WRITER"] == "first":
+                original_load = ac._load_config
+
+                def pause_after_read(name):
+                    data = original_load(name)
+                    (root / "first-read-complete").write_text("ready")
+                    deadline = time.monotonic() + 5
+                    while not (root / "release-first-writer").exists():
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError("first writer was not released")
+                        time.sleep(0.01)
+                    return data
+
+                ac._load_config = pause_after_read
+                ac.set_slot_primary("c", "fast 2", "new-fast")
+            else:
+                (root / "second-writer-started").write_text("started")
+                ac.set_slot_fallback("c", "large", 0, "new-fallback")
+        """)
+        env = {
+            **os.environ,
+            "R12_PROFILE_TEST_ROOT": str(root),
+            "R12_PROFILE_TEST_REPO": WORKTREE_ROOT,
+        }
+        first = second = None
+        try:
+            first = subprocess.Popen(
+                [sys.executable, "-c", worker],
+                env={**env, "R12_PROFILE_TEST_WRITER": "first"},
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            deadline = time.monotonic() + 5
+            while not ready.exists():
+                if first.poll() is not None:
+                    stdout, stderr = first.communicate()
+                    self.fail(
+                        f"first writer exited before pausing: {stdout}{stderr}"
+                    )
+                if time.monotonic() >= deadline:
+                    self.fail("first writer did not reach its paused read")
+                time.sleep(0.01)
+
+            second = subprocess.Popen(
+                [sys.executable, "-c", worker],
+                env={**env, "R12_PROFILE_TEST_WRITER": "second"},
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            deadline = time.monotonic() + 5
+            while not second_started.exists():
+                if second.poll() is not None:
+                    stdout, stderr = second.communicate()
+                    self.fail(
+                        f"second writer exited before starting: {stdout}{stderr}"
+                    )
+                if time.monotonic() >= deadline:
+                    self.fail("second writer did not start")
+                time.sleep(0.01)
+
+            # The second process has entered the write path, but cannot pass
+            # the first process's target lock while that first writer remains
+            # paused after its read.
+            time.sleep(0.15)
+            self.assertIsNone(second.poll())
+            release.write_text("release")
+            first_stdout, first_stderr = first.communicate(timeout=5)
+            second_stdout, second_stderr = second.communicate(timeout=5)
+            self.assertEqual(
+                first.returncode, 0, first_stdout + first_stderr,
+            )
+            self.assertEqual(
+                second.returncode, 0, second_stdout + second_stderr,
+            )
+        finally:
+            for process in (first, second):
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    process.communicate(timeout=5)
+
+        saved = json.loads((self.config_dir / "c.json").read_text())
+        self.assertEqual(
+            saved["cells"]["analysis"]["gear3"]["breadth"]["primary"],
+            "new-fast",
+        )
+        self.assertEqual(
+            saved["cells"]["analysis"]["gear4"]["depth"]["fallback"],
+            ["new-fallback"],
+        )
+        self.assertEqual(list(self.config_dir.glob(".c.json.*.tmp")), [])
+
     # ─── _is_baseline_complete ───────────────────────────────────────────
     def _full_baseline(self, *, fast1="f1", fast2=None, adversarial=False):
         """Build a config with big1 + small filled + optional fast1/fast2
@@ -1137,6 +1351,102 @@ class TestMinContext1mToggle(_Fixture):
         toggles = self.module.get_preset_toggles()
         self.assertTrue(toggles["vision_only"])
         self.assertTrue(toggles["min_context_1m"])
+
+    def test_global_partial_update_rereads_after_target_lock(self):
+        lock_targets = []
+
+        @contextlib.contextmanager
+        def concurrent_toggle_before_entry(path, *_args, **_kwargs):
+            lock_targets.append(Path(path))
+            Path(path).write_text(json.dumps({"vision_only": True}))
+            yield
+
+        with mock.patch.object(
+                self.module.rp, "locked_file",
+                concurrent_toggle_before_entry):
+            self.module.set_preset_toggles({"min_context_1m": True})
+
+        self.assertEqual(lock_targets, [self.module.PRESET_TOGGLES_PATH])
+        toggles = json.loads(self.module.PRESET_TOGGLES_PATH.read_text())
+        self.assertTrue(toggles["vision_only"])
+        self.assertTrue(toggles["min_context_1m"])
+
+    def test_global_update_holds_toggle_lock_through_rebake_and_custom_merge(self):
+        self._write_config("custom", {"cells": {}, "toggles": {}})
+        state = {"global_locked": False, "profile_locked": False}
+        snapshots = []
+        lock_targets = []
+
+        @contextlib.contextmanager
+        def record_lock(path, *_args, **_kwargs):
+            path = Path(path)
+            lock_targets.append(path)
+            if path == self.module.PRESET_TOGGLES_PATH:
+                self.assertFalse(state["global_locked"])
+                state["global_locked"] = True
+                key = "global_locked"
+            else:
+                self.assertEqual(path, self.config_dir / "custom.json")
+                self.assertTrue(state["global_locked"])
+                self.assertFalse(state["profile_locked"])
+                state["profile_locked"] = True
+                key = "profile_locked"
+            try:
+                yield
+            finally:
+                state[key] = False
+
+        def record_bake(*, force=False, preset_names=None, log=None):
+            self.assertTrue(state["global_locked"])
+            self.assertFalse(state["profile_locked"])
+            snapshots.append(self.module.get_preset_toggles())
+            self.assertTrue(force)
+            self.assertIsNone(preset_names)
+            self.assertIsNone(log)
+            return list(self.module.PRESET_ORDER)
+
+        with mock.patch.object(self.module.rp, "locked_file", record_lock), \
+             mock.patch.object(
+                 self.module, "_bake_missing_presets_locked", record_bake):
+            toggles = self.module.set_preset_toggles(
+                {"vision_only": True},
+                rebake=True,
+                custom_profile_name="custom",
+            )
+
+        self.assertFalse(state["global_locked"])
+        self.assertFalse(state["profile_locked"])
+        self.assertTrue(toggles["vision_only"])
+        self.assertEqual(snapshots, [toggles])
+        self.assertEqual(lock_targets, [
+            self.module.PRESET_TOGGLES_PATH,
+            self.config_dir / "custom.json",
+        ])
+        self.assertTrue(self.module.get_toggles("custom")["vision_only"])
+
+    def test_standalone_bake_holds_toggle_lock_for_entire_snapshot_use(self):
+        state = {"locked": False}
+
+        @contextlib.contextmanager
+        def record_lock(path, *_args, **_kwargs):
+            self.assertEqual(Path(path), self.module.PRESET_TOGGLES_PATH)
+            state["locked"] = True
+            try:
+                yield
+            finally:
+                state["locked"] = False
+
+        def record_bake(*, force=False, preset_names=None, log=None):
+            self.assertTrue(state["locked"])
+            return ["premium"]
+
+        with mock.patch.object(self.module.rp, "locked_file", record_lock), \
+             mock.patch.object(
+                 self.module, "_bake_missing_presets_locked", record_bake):
+            baked = self.module.bake_missing_presets(force=True)
+
+        self.assertEqual(baked, ["premium"])
+        self.assertFalse(state["locked"])
 
     # ── bake threading: min_context_1m → populate_configuration(min_context=) ──
 

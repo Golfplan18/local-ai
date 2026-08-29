@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import contextlib
+import io
 import json
 import os
 import sys
@@ -492,6 +493,97 @@ class TestRoutingCatalogWriterTransaction(unittest.TestCase):
                 {entry["id"] for entry in saved["endpoints"]},
             )
             self.assertEqual(list(root.glob(".routing-config.json.*.tmp")), [])
+
+    def test_dedupe_rereads_named_profile_under_its_target_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            routing_path = root / "routing-config.json"
+            configurations = root / "configurations"
+            configurations.mkdir()
+            profile_path = configurations / "custom.json"
+            routing_path.write_text(json.dumps({
+                "slots": {"large": {
+                    "preferred": "openrouter:anthropic/claude-test",
+                }},
+                "endpoints": [
+                    {
+                        "id": "anthropic/claude-test",
+                        "model_id": "claude-test",
+                        "dispatch": "direct",
+                        "service": "anthropic",
+                    },
+                    {
+                        "id": "openrouter:anthropic/claude-test",
+                        "model_id": "anthropic/claude-test",
+                        "dispatch": "openrouter",
+                        "service": "openrouter",
+                    },
+                ],
+            }))
+            profile_path.write_text(json.dumps({
+                "cells": {"analysis": {"gear4": {"depth": {
+                    "primary": "openrouter:anthropic/claude-test",
+                    "fallback": [],
+                }}}},
+                "unrelated": {"before": True},
+            }))
+
+            env = {
+                "ORA_HOME": str(root),
+                "ORA_ROUTING_CONFIG_PATH": str(routing_path),
+                "ORA_CONFIGURATIONS_DIR": str(configurations),
+                "ORA_VENDOR_AUTH_REGISTRY_PATH": str(root / "missing.json"),
+            }
+            with mock.patch.dict(os.environ, env, clear=False):
+                spec = importlib.util.spec_from_file_location(
+                    "dedupe_routing_endpoints_r12_test",
+                    REPO_ROOT / "scripts" / "dedupe_routing_endpoints.py",
+                )
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+            lock_targets = []
+            injected = False
+
+            @contextlib.contextmanager
+            def concurrent_profile_save_before_entry(path, *_args, **_kwargs):
+                nonlocal injected
+                target = Path(path)
+                lock_targets.append(target)
+                if target == profile_path and not injected:
+                    current = json.loads(profile_path.read_text())
+                    current["unrelated"]["concurrent"] = True
+                    profile_path.write_text(json.dumps(current))
+                    injected = True
+                yield
+
+            with mock.patch.object(
+                    module._rp, "locked_file",
+                    concurrent_profile_save_before_entry), \
+                 mock.patch.object(
+                     sys, "argv", ["dedupe_routing_endpoints.py"]), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(), 0)
+
+            saved_routing = json.loads(routing_path.read_text())
+            saved_profile = json.loads(profile_path.read_text())
+            self.assertEqual(lock_targets, [routing_path, profile_path])
+            self.assertEqual(
+                {entry["id"] for entry in saved_routing["endpoints"]},
+                {"anthropic/claude-test"},
+            )
+            self.assertEqual(
+                saved_profile["cells"]["analysis"]["gear4"]["depth"][
+                    "primary"
+                ],
+                "anthropic/claude-test",
+            )
+            self.assertTrue(saved_profile["unrelated"]["before"])
+            self.assertTrue(saved_profile["unrelated"]["concurrent"])
+            self.assertEqual(list(root.glob(".routing-config.json.*.tmp")), [])
+            self.assertEqual(
+                list(configurations.glob(".custom.json.*.tmp")), [],
+            )
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ exact proposal is confirmed.
 from __future__ import annotations
 
 import copy
+import contextlib
 import hashlib
 import json
 import os
@@ -874,7 +875,11 @@ def confirm_migration(
     if not isinstance(proposal_id, str) or not re.fullmatch(r"[0-9a-f]{64}", proposal_id):
         raise ModelProfileError("migration proposal identity is invalid")
 
-    with _lock, rp.locked_file(MIGRATION_RECEIPTS_PATH):
+    profile_lock = (
+        rp.locked_file(ac._config_path(profile_name, for_write=True))
+        if project_nexus is None else contextlib.nullcontext()
+    )
+    with _lock, rp.locked_file(MIGRATION_RECEIPTS_PATH), profile_lock:
         receipts = _read_receipts()
         for persisted in receipts:
             _validate_receipt(
@@ -933,8 +938,10 @@ def confirm_migration(
                 )
             proposed = _replace_model_ids(current, proposal["replacements"])
             _validate_ram_allocation(proposed)
-            ac._save_config(profile_name, proposed)
-            rollback = lambda: ac._save_config(profile_name, current)
+            ac._save_config(profile_name, proposed, _locked=True)
+            rollback = lambda: ac._save_config(
+                profile_name, current, _locked=True,
+            )
 
         receipt = {
             "schema_version": MIGRATION_SCHEMA_VERSION,

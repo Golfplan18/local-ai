@@ -993,6 +993,15 @@ def build_optimum_plus(optimum_config: dict, consolidator_id: str) -> dict:
     return cfg
 
 
+def _write_campaign_profile(name: str, config: dict) -> None:
+    """Replace one generated campaign Model Profile as one complete document."""
+    path = CONFIGURATIONS_DIR / f"{name}.json"
+    with runtime_paths.locked_file(path):
+        runtime_paths.atomic_write_text(
+            path, json.dumps(config, indent=2) + "\n", mode=0o644,
+        )
+
+
 def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict:
     """Build the three campaign configurations + the pricing snapshot.
 
@@ -1035,8 +1044,7 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
         config = build_subscription_premium()
         _stamp_campaign_fields(config, "campaign-premium",
                                source="subscription:opus-4.8+haiku-4.5")
-        (CONFIGURATIONS_DIR / "campaign-premium.json").write_text(
-            json.dumps(config, indent=2) + "\n")
+        _write_campaign_profile("campaign-premium", config)
         models = _config_models(config)
         snapshot["configs"]["campaign-premium"] = {
             "models": models,
@@ -1053,8 +1061,7 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
             f"(picker algorithm, {config.get('_auto_populate_metadata', {}).get('preset', preset)}). "
             f"Frozen for the Comparative Evaluation Campaign; not re-baked by the pane.")
         _stamp_campaign_fields(config, campaign_name, source=f"preset:{preset}")
-        (CONFIGURATIONS_DIR / f"{campaign_name}.json").write_text(
-            json.dumps(config, indent=2) + "\n")
+        _write_campaign_profile(campaign_name, config)
         models = _config_models(config)
         snapshot["configs"][campaign_name] = {
             "models": models,
@@ -1078,8 +1085,7 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
         consolidator_id)
     _stamp_campaign_fields(opt_plus, "campaign-optimum-plus",
                            source=f"optimum+consolidator:{consolidator_id}")
-    (CONFIGURATIONS_DIR / "campaign-optimum-plus.json").write_text(
-        json.dumps(opt_plus, indent=2) + "\n")
+    _write_campaign_profile("campaign-optimum-plus", opt_plus)
     models_plus = _config_models(opt_plus)
     plus_ids = set(filter(None, models_plus.values())) | {consolidator_id}
     snapshot["configs"]["campaign-optimum-plus"] = {
@@ -1108,8 +1114,7 @@ def bake_configs(rebake_presets: bool = True, premium_mode: str = "api") -> dict
         "toggles": {"adversarial_diversity": True, "vision_only": False},
     }
     _stamp_campaign_fields(qwen, "campaign-qwen9b", source="generated:qwen3.5-9b")
-    (CONFIGURATIONS_DIR / "campaign-qwen9b.json").write_text(
-        json.dumps(qwen, indent=2) + "\n")
+    _write_campaign_profile("campaign-qwen9b", qwen)
     snapshot["configs"]["campaign-qwen9b"] = {
         "models": _config_models(qwen),
         "pricing": {QWEN9B_MODEL: pricing.get(QWEN9B_MODEL)},

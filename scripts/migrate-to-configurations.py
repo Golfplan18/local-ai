@@ -38,6 +38,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ROUTING_CONFIG = REPO_ROOT / "config" / "routing-config.json"
 CONFIG_DIR = REPO_ROOT / "config" / "configurations"
 
+sys.path.insert(0, str(REPO_ROOT / "orchestrator"))
+import runtime_paths as _rp
+
 PIPELINE_TO_CONFIG_NAME = {
     "interactive": "user-pipeline",
     "agent": "background-default",
@@ -260,9 +263,10 @@ def main():
         config_name = PIPELINE_TO_CONFIG_NAME[pipeline_name]
         out_path = CONFIG_DIR / f"{config_name}.json"
 
-        with open(out_path, "w") as f:
-            json.dump(config, f, indent=2)
-            f.write("\n")
+        with _rp.locked_file(out_path):
+            _rp.atomic_write_text(
+                out_path, json.dumps(config, indent=2) + "\n", mode=0o644,
+            )
 
         written[config_name] = config
         print(f"Wrote {out_path.relative_to(REPO_ROOT)}")
