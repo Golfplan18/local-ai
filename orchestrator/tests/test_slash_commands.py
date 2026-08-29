@@ -16,6 +16,8 @@ import shutil
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from textwrap import dedent
 from unittest import mock
@@ -468,6 +470,107 @@ class TestApproveDenyCommand(unittest.TestCase):
 # ---------- Generic dispatcher behavior ----------
 
 class TestDispatcherBehavior(unittest.TestCase):
+
+    def _project_registration_fixture(self):
+        from orchestrator import project_registry as real_registry
+
+        temporary = tempfile.TemporaryDirectory(prefix="ora-project-register-")
+        root = Path(temporary.name)
+        project_root = root / "project"
+        project_root.mkdir()
+        manifest = project_root / real_registry.MANIFEST_FILENAME
+        manifest.write_text(json.dumps({
+            "nexus": "registered-project",
+            "name": "Registered Project",
+            "tools": [],
+            "slash_commands": [],
+        }), encoding="utf-8")
+        pointer_dir = root / "pointers"
+
+        register = mock.Mock(side_effect=lambda project_path, *,
+            expected_manifest_sha256=None: real_registry.register_project(
+                project_path,
+                pointer_dir=str(pointer_dir),
+                expected_manifest_sha256=expected_manifest_sha256,
+            ))
+        registry = SimpleNamespace(
+            MANIFEST_FILENAME=real_registry.MANIFEST_FILENAME,
+            ManifestError=real_registry.ManifestError,
+            load_project_snapshot=real_registry.load_project_snapshot,
+            _pointer_path=lambda nexus: real_registry._pointer_path(
+                nexus, pointer_dir=str(pointer_dir)),
+            register_project=register,
+        )
+        return temporary, project_root, manifest, pointer_dir, registry, register
+
+    def test_project_register_uses_one_authorized_manifest_snapshot(self):
+        (temporary, project_root, manifest, pointer_dir,
+         registry, register) = self._project_registration_fixture()
+        self.addCleanup(temporary.cleanup)
+        protection = SimpleNamespace(action="project_register")
+        effect = mock.MagicMock()
+        effect.__enter__.return_value = None
+        effect.__exit__.return_value = False
+
+        with mock.patch.object(slash_commands, "_project_registry",
+                               return_value=registry), \
+                mock.patch.object(slash_commands._sp, "authorize_server_action",
+                                  return_value=protection) as authorize, \
+                mock.patch.object(slash_commands._sp, "protected_effect",
+                                  return_value=effect), \
+                mock.patch.object(slash_commands._sp, "complete_execution") as complete:
+            result = run_runtime_command(f"/project-register {project_root}")
+
+        self.assertIn("Registered project **registered-project**", result)
+        pointer = pointer_dir / "registered-project.json"
+        pointer_data = json.loads(pointer.read_text(encoding="utf-8"))
+        snapshot = registry.load_project_snapshot(project_root)
+        self.assertEqual(pointer_data["manifest_sha256"], snapshot.manifest_sha256)
+        register.assert_called_once_with(
+            str(project_root), expected_manifest_sha256=snapshot.manifest_sha256,
+        )
+        authorization = authorize.call_args.kwargs
+        self.assertEqual(authorization["params"]["manifest_sha256"],
+                         snapshot.manifest_sha256)
+        self.assertEqual(
+            set(authorization["selectors"]),
+            {
+                slash_commands._sp.path_selector(pointer),
+                slash_commands._sp.path_selector(manifest),
+            },
+        )
+        self.assertEqual(len(authorization["pre_state"]), 2)
+        complete.assert_called_once()
+        self.assertTrue(complete.call_args.kwargs["ok"])
+
+    def test_project_register_refuses_manifest_drift_after_authorization(self):
+        (temporary, project_root, manifest, pointer_dir,
+         registry, register) = self._project_registration_fixture()
+        self.addCleanup(temporary.cleanup)
+        protection = SimpleNamespace(action="project_register")
+
+        @contextmanager
+        def drift_after_authorization(_protection):
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            data["description"] = "changed after authorization"
+            manifest.write_text(json.dumps(data), encoding="utf-8")
+            yield
+
+        with mock.patch.object(slash_commands, "_project_registry",
+                               return_value=registry), \
+                mock.patch.object(slash_commands._sp, "authorize_server_action",
+                                  return_value=protection), \
+                mock.patch.object(slash_commands._sp, "protected_effect",
+                                  side_effect=drift_after_authorization), \
+                mock.patch.object(slash_commands._sp, "complete_execution") as complete:
+            result = run_runtime_command(f"/project-register {project_root}")
+
+        self.assertIn("invalid project", result)
+        self.assertIn("changed after authorization", result)
+        self.assertFalse((pointer_dir / "registered-project.json").exists())
+        register.assert_called_once()
+        complete.assert_called_once()
+        self.assertFalse(complete.call_args.kwargs["ok"])
 
     def test_help_lists_registered_commands(self):
         out = run_runtime_command("/help")
