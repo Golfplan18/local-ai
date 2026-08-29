@@ -14,7 +14,6 @@ historical sweeps remain explicit campaigns outside this module.
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import hashlib
 import json
 import os
@@ -182,13 +181,12 @@ def _atomic_json(path: Path, value: object) -> None:
 
 @contextlib.contextmanager
 def _exclusive(lock_path: Path):
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock_path, "a+", encoding="utf-8") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    """Hold the existing named sidecar through Ora's portable lock."""
+    lock_path = Path(lock_path)
+    # locked_file adds ``.lock`` itself. Removing the suffix here preserves the
+    # established sidecar names used by every ledger, queue, and path lock.
+    with _rp.locked_file(lock_path.with_suffix("")):
+        yield
 
 
 @contextlib.contextmanager
