@@ -44,6 +44,14 @@ class TestVisionInputChain(unittest.TestCase):
         self.assertEqual(
             Router(config_dict=_cfg({"vision_input": {}}))._vision_input_chain(), [])
 
+    def test_declared_capability_resolves_but_typo_does_not(self):
+        router = Router(config_dict=_cfg({"vision_input": {
+            "preferred": "vis-a", "fallback": ["vis-b"],
+        }}))
+        self.assertEqual(
+            router.resolve_capability_slot("vision_input")["id"], "vis-a")
+        self.assertIsNone(router.resolve_capability_slot("vision_inpt"))
+
 
 class TestResolveVisionFallback(unittest.TestCase):
     def _router(self):

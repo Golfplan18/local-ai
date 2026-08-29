@@ -34,7 +34,7 @@ import boot  # noqa: E402
 
 
 class TestApiCapacityMetadata(unittest.TestCase):
-    def test_missing_capacity_uses_shared_default_for_boot_packing(self):
+    def test_missing_capacity_uses_shared_conservative_floor_for_boot_packing(self):
         endpoint = {"id": "missing-capacity", "type": "local"}
         history = [
             {"role": "user", "content": "history user " + ("u" * 4000)},
@@ -47,13 +47,13 @@ class TestApiCapacityMetadata(unittest.TestCase):
             include_prompt_metadata=False,
         )
 
-        self.assertEqual(boot._endpoint_context_window(endpoint), 256_000)
-        self.assertEqual(coverage["context_window"], 256_000)
-        self.assertEqual(coverage["output_reserve"], 32_000)
-        self.assertEqual(coverage["safe_input_capacity"], 223_872)
+        self.assertEqual(boot._endpoint_context_window(endpoint), 32_000)
+        self.assertEqual(coverage["context_window"], 32_000)
+        self.assertEqual(coverage["output_reserve"], 8_000)
+        self.assertEqual(coverage["safe_input_capacity"], 23_872)
         self.assertGreater(len(messages), 1)
 
-    def test_missing_api_capacity_defaults_to_256k(self):
+    def test_missing_api_capacity_uses_conservative_floor(self):
         router = Router(config_dict={"endpoints": []})
         for key in ("context_window", "context_length", "max_context_length"):
             with self.subTest(key=key):
@@ -62,7 +62,7 @@ class TestApiCapacityMetadata(unittest.TestCase):
                     "service": "openrouter", "model_id": "missing-capacity",
                     key: None,
                 })
-                self.assertEqual(endpoint["context_window"], 256_000)
+                self.assertEqual(endpoint["context_window"], 32_000)
 
     def test_context_aliases_survive_v1_conversion(self):
         router = Router(config_dict={"endpoints": []})
@@ -180,7 +180,7 @@ class TestMsiCapacityBoundary(unittest.TestCase):
             ],
         })
 
-    def test_msi_skips_explicit_small_and_uses_missing_default(self):
+    def test_msi_skips_unknown_capacity_and_uses_authoritative_large(self):
         router = self._router()
         config = {"cells": {"analysis": {"gear4": {
             "depth": {"primary": "small", "fallback": ["missing", "large"]},
@@ -189,7 +189,7 @@ class TestMsiCapacityBoundary(unittest.TestCase):
             endpoint = router.resolve_endpoint(
                 "depth", 4, "interactive", config_name="msi-publication",
                 mutex_check=False)
-        self.assertEqual(endpoint["id"], "missing")
+        self.assertEqual(endpoint["id"], "large")
 
     def test_msi_keeps_explicit_small_capacity_out_of_analysis(self):
         router = self._router()
@@ -236,7 +236,7 @@ class TestMsiCapacityBoundary(unittest.TestCase):
             router._resolve_endpoint_id("provider-a/shared-model"),
             "provider-a/shared-model")
 
-    def test_installer_models_json_missing_capacity_defaults_to_256k(self):
+    def test_installer_models_json_missing_capacity_uses_conservative_floor(self):
         import router as router_module
 
         with tempfile.TemporaryDirectory() as td:
@@ -256,7 +256,7 @@ class TestMsiCapacityBoundary(unittest.TestCase):
             ):
                 router = Router(config_dict=config)
             self.assertEqual(
-                router._endpoints["local-missing"]["context_window"], 256_000)
+                router._endpoints["local-missing"]["context_window"], 32_000)
 
     def test_local_capacity_alias_survives_discovery_and_v1_conversion(self):
         import router as router_module
@@ -457,6 +457,15 @@ class TestConfigNameMissing(unittest.TestCase):
             config_name="user-pipeline",
         )
         self.assertIsNone(ep)
+
+    def test_boot_unknown_slot_does_not_fall_back_to_cleanup(self):
+        with mock.patch.object(boot, "_get_router", return_value=self.router):
+            endpoint = boot.get_slot_endpoint(
+                self.router.config,
+                "totally-unknown-slot",
+                config_name="user-pipeline",
+            )
+        self.assertIsNone(endpoint)
 
 
 class TestSameMachineLocalResolution(unittest.TestCase):

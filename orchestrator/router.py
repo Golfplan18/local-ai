@@ -39,7 +39,12 @@ CONFIGURATIONS_DIR = CONFIG_DIR / "configurations"
 _DEFAULT_CONFIGURATIONS_DIR = CONFIGURATIONS_DIR
 
 DEFAULT_MACHINE_ID = "studio-128"
-DEFAULT_CONTEXT_WINDOW = 256_000
+try:
+    from .model_registry import CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
+except ImportError:  # direct script-style import from sys.path
+    from model_registry import CONSERVATIVE_ADMISSION_CONTEXT_WINDOW  # type: ignore
+
+DEFAULT_CONTEXT_WINDOW = CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
 
 # Default configuration name when one is not explicitly provided.
 # Maps from the legacy ``context`` parameter for backward compatibility.
@@ -154,7 +159,23 @@ class Router:
                 # disk stays clone-portable (see runtime_paths).
                 self.config = rp.expand_placeholders(json.load(f))
 
+        self._apply_registry_overlay(reload_registry=True)
         self._build_lookup_tables()
+
+    def _apply_registry_overlay(self, *, reload_registry: bool) -> None:
+        """Project registry truth onto the endpoint shape Router consumes."""
+        try:
+            try:
+                from . import model_registry
+            except ImportError:
+                import model_registry  # type: ignore
+            if reload_registry:
+                model_registry.reload()
+            self.config = model_registry.overlay_routing_config(self.config)
+        except Exception as exc:
+            # Registry enrichment is optional. Keep the last routing config
+            # usable, but make the loss of authority visible to operators.
+            print(f"[Router] model-registry overlay failed: {exc}")
 
     def _build_lookup_tables(self) -> bool:
         """Rebuild the derived lookup tables from ``self.config``.
@@ -259,10 +280,9 @@ class Router:
                 "enabled": bool(installed and endpoint.get("enabled", True)),
                 "ram_resident_gb": endpoint.get("ram_resident_gb") or ram_gb,
                 "ram_overhead_gb": endpoint.get("ram_overhead_gb") or 0,
-                # Installer discovery may omit capacity. Treat absence as the
-                # user-facing 256K baseline; an explicit smaller value remains
-                # visible for unrelated routing and is filtered only by MSI's
-                # analysis boundary.
+                # Installer discovery may omit capacity. Unknown remains the
+                # shared conservative admission floor; an explicit value stays
+                # authoritative and MSI applies its own stricter boundary.
                 "context_window": (
                     endpoint.get("context_window")
                     or endpoint.get("context_length")
@@ -498,6 +518,7 @@ class Router:
             print(f"[Router] reload failed (keeping prior config): {exc}")
             return False
         self.config = new_config
+        self._apply_registry_overlay(reload_registry=True)
         return self._build_lookup_tables()
 
     def resolve_endpoint(self, slot: str, gear: int, context: str,
@@ -1230,6 +1251,70 @@ class Router:
                 chain.append(fb)
         return chain
 
+    def get_capability_chain(self, capability: str) -> list[str]:
+        """Return a declared global capability chain, or an empty list.
+
+        Only names actually present in ``routing-config.json::slots`` are
+        capabilities.  This keeps a typo distinct from an unavailable but
+        supported capability.
+        """
+        slots = self.config.get("slots") or {}
+        if not isinstance(slots, dict) or capability not in slots:
+            return []
+        slot = slots.get(capability) or {}
+        if not isinstance(slot, dict):
+            return []
+        out: list[str] = []
+        preferred = slot.get("preferred")
+        if isinstance(preferred, str) and preferred:
+            out.append(preferred)
+        for fallback in slot.get("fallback") or []:
+            if isinstance(fallback, str) and fallback and fallback not in out:
+                out.append(fallback)
+        return out
+
+    def resolve_capability_slot(
+        self,
+        capability: str,
+        *,
+        excluded_ids: set | None = None,
+        require_vision: bool = False,
+        mutex_check: bool = True,
+    ) -> dict | None:
+        """Resolve one enumerated global capability through its exact chain."""
+        slots = self.config.get("slots") or {}
+        if not isinstance(slots, dict) or capability not in slots:
+            return None
+        excluded = set(excluded_ids or set())
+        first_busy_local: dict | None = None
+        for configured_id in self.get_capability_chain(capability):
+            resolved_id = self._resolve_endpoint_id(configured_id)
+            if configured_id in excluded or resolved_id in excluded:
+                continue
+            endpoint = self._endpoints.get(resolved_id)
+            if not self._supports_explicit_interactive(endpoint):
+                continue
+            if require_vision and not self.vision_capable_for_endpoint(resolved_id):
+                continue
+            if mutex_check and endpoint.get("type") == "local":
+                machine_id = endpoint.get("machine") or DEFAULT_MACHINE_ID
+                try:
+                    import mlx_mutex
+                except ImportError:
+                    from orchestrator import mlx_mutex
+                if mlx_mutex.is_machine_busy(machine_id):
+                    if first_busy_local is None:
+                        first_busy_local = endpoint
+                    continue
+            try:
+                import endpoint_health
+            except ImportError:
+                from orchestrator import endpoint_health
+            if endpoint_health.is_in_cooldown(resolved_id):
+                continue
+            return endpoint
+        return first_busy_local
+
     def _vision_input_chain(self) -> list[str]:
         """The GLOBAL vision-input backstop chain — endpoint ids (preferred
         first) from ``routing-config.json::slots.vision_input``.
@@ -1242,17 +1327,7 @@ class Router:
         (2026-06-14). Empty list → no global slot configured; the caller falls
         back to a best-effort walk of the slot's own chain.
         """
-        slot = (self.config.get("slots") or {}).get("vision_input") or {}
-        if not isinstance(slot, dict):
-            return []
-        out: list[str] = []
-        pref = slot.get("preferred")
-        if isinstance(pref, str) and pref:
-            out.append(pref)
-        for fb in (slot.get("fallback") or []):
-            if isinstance(fb, str) and fb and fb not in out:
-                out.append(fb)
-        return out
+        return self.get_capability_chain("vision_input")
 
     def resolve_vision_fallback(
         self,
@@ -1306,14 +1381,12 @@ class Router:
             # entry is skipped; when none are eligible, return None so the caller
             # cleanly retries the sighted primary instead of dropping to a blind
             # chain entry.
-            for sub_id in chain:
-                if sub_id in excluded or not self.vision_capable_for_endpoint(sub_id):
-                    continue
-                sub_ep = self._endpoints.get(sub_id)
-                if (sub_ep and sub_ep.get("enabled", False)
-                        and sub_ep.get("status") == "active"):
-                    return sub_ep
-            return None
+            return self.resolve_capability_slot(
+                "vision_input",
+                excluded_ids=excluded,
+                require_vision=True,
+                mutex_check=mutex_check,
+            )
         # No global vision-input slot configured — best-effort walk of the
         # configured chain for the first vision-capable eligible entry. Each
         # non-vision hit is added to ``excluded`` so the next resolve_endpoint
@@ -1504,23 +1577,24 @@ class Router:
         if not ep:
             return None
 
-        v1 = {
+        # Projection is additive: dispatch consumes transport-specific fields
+        # that are not part of the old hand-written v1 subset (for example
+        # base_url, request_timeout_seconds and the same-model OpenRouter
+        # fallback id). Start with the canonical endpoint and only normalize
+        # the legacy aliases below.
+        v1 = dict(ep)
+        v1.update({
             "name": ep["id"],
             "type": ep.get("type", ""),
             "status": ep.get("status", "active"),
             "training_family": self._training_family(ep),
-        }
+        })
 
         if ep["type"] == "local":
             v1["engine"] = ep.get("engine", "mlx")
-            v1["model"] = ep.get("model_path", "")
+            v1["model"] = ep.get("model_path") or ep.get("model", "")
             v1["url"] = ep.get("url", "http://localhost:11434")
-            v1["context_window"] = (
-                ep.get("context_window")
-                or ep.get("context_length")
-                or ep.get("max_context_length")
-                or DEFAULT_CONTEXT_WINDOW
-            )
+            v1["context_window"] = self._endpoint_context_window(ep)
             v1["ram_required_gb"] = ep.get("ram_resident_gb", 0) + ep.get("ram_overhead_gb", 0)
             v1["model_name"] = ep.get("display_name", "")
             v1["tool_access"] = ep.get("capabilities", {}).get("tool_access", False)
@@ -1530,7 +1604,7 @@ class Router:
 
         elif ep["type"] == "api":
             v1["service"] = ep.get("service", "")
-            v1["model"] = ep.get("model_id", "")
+            v1["model"] = ep.get("model_id") or ep.get("model", "")
             v1["dispatch"] = ep.get("dispatch", "")
             if ep.get("service") == "codex-subscription":
                 # Runtime SDK discovery is the capability authority for the
@@ -1552,12 +1626,7 @@ class Router:
             # reserve then consumed that fallback window and continuity fell
             # to zero. ``max_tokens`` is the existing v1 transport field;
             # catalogue-shaped aliases are retained and normalized into it.
-            v1["context_window"] = (
-                ep.get("context_window")
-                or ep.get("context_length")
-                or ep.get("max_context_length")
-                or DEFAULT_CONTEXT_WINDOW
-            )
+            v1["context_window"] = self._endpoint_context_window(ep)
             output_cap = (
                 ep.get("max_tokens")
                 or ep.get("max_output_tokens")
@@ -1572,6 +1641,8 @@ class Router:
                         and value > 0:
                     v1[key] = value
             v1["tool_access"] = ep.get("capabilities", {}).get("tool_access", False)
+            v1["file_system_access"] = ep.get("capabilities", {}).get(
+                "file_system_access", False)
             v1["web_access"] = ep.get("capabilities", {}).get("web_access", False)
             v1["retrieval_approach"] = ep.get("capabilities", {}).get("retrieval_approach", "pre-assembled")
 
@@ -1583,6 +1654,25 @@ class Router:
             v1["retrieval_approach"] = ep.get("capabilities", {}).get("retrieval_approach", "pre-assembled")
 
         return v1
+
+    @staticmethod
+    def _endpoint_context_window(endpoint: dict) -> int:
+        for key in ("context_window", "context_length", "max_context_length"):
+            value = endpoint.get(key)
+            if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+                return value
+        model_id = endpoint.get("model_id") or endpoint.get("model") or endpoint.get("id")
+        try:
+            try:
+                from . import model_registry
+            except ImportError:
+                import model_registry  # type: ignore
+            return model_registry.context_window_for_model(
+                model_id,
+                default=CONSERVATIVE_ADMISSION_CONTEXT_WINDOW,
+            )
+        except Exception:
+            return CONSERVATIVE_ADMISSION_CONTEXT_WINDOW
 
     @staticmethod
     def _training_family(ep: dict | None) -> str:

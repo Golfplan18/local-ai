@@ -1959,7 +1959,7 @@ def _process_attachments(attachments: list) -> tuple:
     return text_parts, images
 
 
-def _generate_clarification_questions(step1, config):
+def _generate_clarification_questions(step1, config, config_name=None):
     """Use the breadth model to generate clarification questions for Tier 2/3.
 
     Uses the cleaned prompt, selected mode, and inferred assumptions directly;
@@ -2011,7 +2011,8 @@ def _generate_clarification_questions(step1, config):
             f"narrow it. Format: one question per line, numbered."
         )
 
-    endpoint = get_slot_endpoint(config, "step1_cleanup")
+    endpoint = get_slot_endpoint(
+        config, "step1_cleanup", config_name=config_name)
     if not endpoint:
         return ["What specifically are you trying to accomplish?",
                 "What would a successful outcome look like?"]
@@ -3402,7 +3403,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 yield _sse("error", text="Trace debug error: " + str((_debug_meta or {}).get("error") or "unknown"))
                 return
             config = load_config()
-            endpoint = get_endpoint(config)
+            endpoint = get_endpoint(config, config_name=config_name)
             if endpoint is None:
                 turn_state["status"] = "error"
                 yield _sse("error", text="No AI endpoints configured. Add a connection or install a local model.")
@@ -3490,7 +3491,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
         return
 
     config = load_config()
-    endpoint = get_endpoint(config)
+    endpoint = get_endpoint(config, config_name=config_name)
 
     if endpoint is None:
         turn_state["kind"] = "no_endpoint_error"
@@ -3662,7 +3663,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                 images=pending.get("images"),
                 extra_context=pending.get("extra_context"),
                 trace_dir=trace_dir,
-                config_name=config_name,
+                config_name=pending.get("config_name") or config_name,
                 conversation_tag=pending.get("conversation_tag") or conversation_tag,
                 turn_state=turn_state,
             )
@@ -4146,6 +4147,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "config_name": config_name,
+            "model_id": endpoint.get("name") or endpoint.get("id") or "unknown",
             "pre_routing_stage": pre_routing.get("pending_clarification_stage"),
             # This paused turn's own trace ref — the eventual resume turn
             # records it as parent_trace_ref (design-gate condition 4).
@@ -4184,6 +4187,7 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
                                   panel_id=panel_id, conversation_tag=conversation_tag,
                                   risk_override=(extra_context or {}).get("risk_override"),
                                   extra_context=extra_context,
+                                  config_name=config_name,
                                   turn_state=turn_state)
         return
 
@@ -4216,6 +4220,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "config_name": config_name,
+            "model_id": endpoint.get("name") or endpoint.get("id") or "unknown",
             "pre_routing_stage": pending_stage,
             "trace_ref": trace_ref_val,
         }
@@ -4243,7 +4249,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
     if tier >= 2 and not already_dispatched:
         yield _sse("pipeline_stage", stage="clarification_generating",
                     label="Generating clarification questions…")
-        questions = _generate_clarification_questions(step1, config)
+        questions = _generate_clarification_questions(
+            step1, config, config_name=config_name)
 
         # Store pending state for resumption
         turn_state["kind"] = "clarification_pending"
@@ -4256,6 +4263,8 @@ def _pipeline_stream_impl(user_input, history, panel_id="main", images=None, ext
             "images": images,
             "extra_context": extra_context,
             "conversation_tag": conversation_tag,
+            "config_name": config_name,
+            "model_id": endpoint.get("name") or endpoint.get("id") or "unknown",
             "trace_ref": trace_ref_val,
         }
 
@@ -4331,7 +4340,7 @@ def _set_visual_error_outcome(context, reason):
 
 def _direct_stream(user_input, history, images=None, panel_id="main",
                    conversation_tag="", risk_override=None, extra_context=None,
-                   turn_state=None):
+                   config_name=None, turn_state=None):
     """Lifecycle-scoped wrapper for every legacy direct-model invocation.
 
     ``_direct_stream`` is called both from the pipeline fallback and directly
@@ -4379,6 +4388,7 @@ def _direct_stream(user_input, history, images=None, panel_id="main",
                 user_input, history, images=images, panel_id=panel_id,
                 conversation_tag=turn_tag, risk_override=risk_override,
                 extra_context=direct_context,
+                config_name=config_name,
                 turn_state=turn_state,
             )
             _copy_visual_outcome_context(direct_context, extra_context)
@@ -4417,7 +4427,7 @@ def _direct_system_prompt(config, style_context=None):
 
 def _direct_stream_impl(user_input, history, images=None, panel_id="main",
                         conversation_tag="", risk_override=None,
-                        extra_context=None, turn_state=None):
+                        extra_context=None, config_name=None, turn_state=None):
     """Generator: legacy single-model agentic loop with SSE tool events.
     Routes all tool calls through the unified dispatcher.
 
@@ -4442,8 +4452,9 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
         if isinstance(turn_state, dict)
         else None
     )
+    direct_context = extra_context if isinstance(extra_context, dict) else {}
     config   = load_config()
-    endpoint = get_endpoint(config)
+    endpoint = get_endpoint(config, config_name=config_name)
 
     if endpoint is None:
         terminal_value = (
@@ -4476,7 +4487,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     messages = [
         {
             "role": "system",
-            "content": _direct_system_prompt(config, extra_context),
+            "content": _direct_system_prompt(config, direct_context),
         },
         {"role": "user", "content": user_input},
     ]
@@ -4547,7 +4558,10 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
     except Exception as _rge_ds:
         print(f"[risk-gate] direct-stream hold skipped: {_rge_ds}")
 
-    image_input_error = _boot_context_api()._codex_subscription_image_input_error(
+    boot_context = _boot_context_api()
+    image_input_error = boot_context._prepare_image_routing(
+        direct_context, [endpoint], images, user_input,
+    ) or boot_context._codex_subscription_image_input_error(
         [endpoint], images, user_input,
     )
     if image_input_error:
@@ -4556,6 +4570,28 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             turn_state["status"] = "error"
         yield _sse("error", text=image_input_error)
         return
+
+    if not vision_capable_for_endpoint(endpoint):
+        extracted_visual = direct_context.get("vision_extraction_result")
+        if extracted_visual:
+            try:
+                from visual_validator import serialize_spatial_representation_to_text
+                extracted_text = serialize_spatial_representation_to_text(
+                    extracted_visual,
+                )
+                if extracted_text:
+                    extracted_text = extracted_text.replace(
+                        "=== USER SPATIAL INPUT ===",
+                        "=== VISION EXTRACTION ===\n"
+                        "(Automated observation from the attached image; "
+                        "not user-authored text.)",
+                    ).replace(
+                        "=== END SPATIAL INPUT ===",
+                        "=== END VISION EXTRACTION ===",
+                    )
+                    messages[-1]["content"] += "\n\n" + extracted_text
+            except Exception as exc:
+                print(f"[direct visual-routing] extraction serialization failed: {exc}")
 
     def _call_direct_stage(model_messages, model_endpoint, images=None):
         boot_context = _boot_context_api()
@@ -4568,12 +4604,13 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
             boot_context.reset_model_stage_context(tokens)
 
     response = ""
+    prepared_images = boot_context._images_for_endpoint(images, endpoint)
     # A direct request may reuse a Flask worker context after a prior loop
     # reached its iteration cap. Start this loop with a fresh limiter state;
     # normal no-tool replies reset it at the terminal branch below.
     reset_consecutive()
     for iteration in range(MAX_ITERATIONS):
-        call_images = images if iteration == 0 else None
+        call_images = prepared_images if iteration == 0 else None
         # Pass images only on the first call (they accompany the user's original message)
         try:
             response = _call_direct_stage(
@@ -4731,7 +4768,7 @@ def _direct_stream_impl(user_input, history, images=None, panel_id="main",
 
 def _traced_direct_entry_stream(user_input, history, images=None,
                                 panel_id="main", conversation_tag="",
-                                extra_context=None):
+                                extra_context=None, config_name=None):
     """Trace the real explicit server direct-entry path, fail-open."""
     turn_state = {
         "trace_dir": None, "kind": "direct-entry", "status": None,
@@ -4766,6 +4803,7 @@ def _traced_direct_entry_stream(user_input, history, images=None,
             user_input, history, images=images,
             panel_id=panel_id, conversation_tag=conversation_tag,
             extra_context=extra_context,
+            config_name=config_name,
             turn_state=turn_state,
         )
     except BaseException:
@@ -4843,6 +4881,7 @@ def agentic_loop_stream(user_input, history, use_pipeline=True, panel_id="main",
                     user_input, history, images=images,
                     panel_id=panel_id, conversation_tag=turn_tag,
                     extra_context=extra_context,
+                    config_name=config_name,
                 )
     finally:
         boot_context.reset_turn_trace_context(trace_token)
@@ -7505,7 +7544,8 @@ def _resolve_chunk_destination(output_destination: str) -> str:
 
 def _save_conversation_unlocked(user_input, ai_response, panel_id,
                                 is_new_session, tag="",
-                                output_destination="", trace_ref=None):
+                                output_destination="", trace_ref=None,
+                                model_id=None):
     """
     Three steps, all inline, immediately after every response:
 
@@ -7558,9 +7598,10 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H-%M")
 
-    cfg      = load_config()
-    endpoint = get_endpoint(cfg) or {}
-    model_id = endpoint.get("name", "unknown")
+    cfg = load_config()
+    if not model_id:
+        endpoint = get_endpoint(cfg) or {}
+        model_id = endpoint.get("name") or endpoint.get("id") or "unknown"
 
     # ── Init session on first pair ────────────────────────────────────────────
     if is_new_session or panel_id not in _session_data:
@@ -7920,7 +7961,8 @@ def _save_conversation_unlocked(user_input, ai_response, panel_id,
 
 
 def _save_conversation(user_input, ai_response, panel_id, is_new_session,
-                       tag="", output_destination="", trace_ref=None):
+                       tag="", output_destination="", trace_ref=None,
+                       model_id=None):
     """Lifecycle-serialized wrapper around the conversation artifact save."""
     with _conversation_lifecycle_lock(panel_id):
         if _is_conversation_deleted(panel_id):
@@ -7944,7 +7986,7 @@ def _save_conversation(user_input, ai_response, panel_id, is_new_session,
         return _save_conversation_unlocked(
             user_input, ai_response, panel_id, is_new_session,
             effective_tag, output_destination=output_destination,
-            trace_ref=trace_ref,
+            trace_ref=trace_ref, model_id=model_id,
         )
 
 
@@ -8393,7 +8435,10 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
         # while the first is mid-run no longer waits at the gate for
         # the entire pipeline.
         cfg = load_config()
-        ep  = get_endpoint(cfg)
+        ep = get_endpoint(cfg, config_name=config_name)
+        selected_model_id = (
+            ep.get("name") or ep.get("id") or "unknown"
+        ) if ep else "unknown"
 
         # Iterate the (still-streaming) pipeline generator synchronously;
         # we don't yield to the browser, we just collect the final
@@ -8509,7 +8554,7 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                         "raw_path": "",  # populated by _save_conversation
                         "session_id": uuid.uuid4().hex,
                         "pair_count": history_state["local_turn_count"],
-                        "model": (ep.get("name", "unknown") if ep else "unknown"),
+                        "model": selected_model_id,
                         "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "first_user_input": (
                             history_state["first_user_input"] or clean_input
@@ -8528,7 +8573,8 @@ def _invoke_pipeline_unlocked(user_input, history, panel_id, is_main, images=Non
                         clean_input, final_response, panel_id,
                         is_new_session, tag,
                         output_destination=output_destination,
-                        trace_ref=trace_ref)
+                        trace_ref=trace_ref,
+                        model_id=selected_model_id)
                 except Exception as e:
                     failure_summary = f"_save_conversation failed: {e}"
                     print(f"[ERROR] _save_conversation: {e}")
@@ -16157,6 +16203,7 @@ def clarification_respond():
                                                   images=pending.get("images"),
                                                   extra_context=refreshed_extra_context,
                                                   trace_dir=_resume_trace_dir,
+                                                  config_name=pending.get("config_name"),
                                                   conversation_tag=_resume_tag,
                                                   turn_state=turn_state):
                 yield chunk
@@ -16200,6 +16247,7 @@ def clarification_respond():
             chunk_id = _save_conversation(
                 user_input, final_response[0], panel_id, is_new_session,
                 _resume_tag, trace_ref=_resume_trace_ref,
+                model_id=pending.get("model_id"),
             )
             if chunk_id:
                 threading.Thread(
@@ -16296,6 +16344,7 @@ def clarification_skip():
                                                   images=pending.get("images"),
                                                   extra_context=refreshed_extra_context,
                                                   trace_dir=_skip_trace_dir,
+                                                  config_name=pending.get("config_name"),
                                                   conversation_tag=_skip_tag,
                                                   turn_state=turn_state):
                 yield chunk
@@ -16335,6 +16384,7 @@ def clarification_skip():
             chunk_id = _save_conversation(
                 user_input, final_response[0], panel_id, len(history) == 0,
                 _skip_tag, trace_ref=_skip_trace_ref,
+                model_id=pending.get("model_id"),
             )
             if chunk_id:
                 threading.Thread(
