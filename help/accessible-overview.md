@@ -142,6 +142,10 @@ plugin boundary, not an app store or a way to install arbitrary third-party code
 
 Underneath all of it sits a quieter guarantee. Before Ora reaches for a tool — reads a file, runs a command, touches the web — a gate decides whether the request is well-formed and safe enough to proceed, and it fails closed: when in doubt, it refuses rather than runs. This is the brake that stays on for the one class of action where a brake matters most — the irreversible one, the one that touches a secret. It runs before the action, and it does not care what convenience setting you have flipped.
 
+Documentation has its own, narrower honesty check. When a task changes code in the vault, Ora, either Ora site, or MSI, the task must identify the vault document responsible for that behavior. It updates that document before the task finishes, or records that the change truly has no documentation effect and asks the independent reviewer to confirm the judgment. Registered help copies and public pages are then regenerated from the vault source.
+
+One focused check reads all five task worktrees together and confirms that the declared owners, references, lifecycle labels, and generated copies agree. This check cannot decide whether an explanation is actually true; the independent reviewer still compares the prose with the behavior. The blocking-hook installer is implemented, but live five-repository installation and verification remain a later activation step. Until then, the coordinator's explicit check and merge hold are the operative protection. After verified activation, local push hooks help catch incomplete task context, but they can be bypassed and are not a remote or atomic guarantee. If the coordinated landing must be undone, recovery is ordinary Git reversion in reverse order.
+
 ---
 
 ## Who it's for, and what it runs on
@@ -168,6 +172,7 @@ In short: Ora is a working demonstration that reliability is a system problem, n
 
 ## Changelog
 
+- **2026-08-29** — Added the implemented five-repository documentation-integrity contract, its pending blocking-hook activation boundary, and its honest semantic, atomicity, and recovery limits.
 - **2026-08-24** — Added current reader-level explanations of isolated Aside help and the removable first-party video feature; corrected the stale pre-merge evidence-layer limit. The rest of the overview retains its existing installed-system pin.
 - **2026-08-11** — Rewrote the "Memory that survives you leaving" section for clarity. In the same pass the pin banner and this changelog were dropped from the document; both were restored on 2026-08-16 with no body change. Terminology and prose only — content remains pinned to ora commit `7a5e8f40`.
 - **2026-07-12** — Closure currency note: Commons is the universal all-Dialogue view (it includes both empty-membership and explicitly project-assigned material); its canonical runtime sentinel is `commons`, while legacy `general` remains accepted. Commons saves now land at the vault root, and the live V3 interface is one fixed resizable Inquiry/Findings/Aside/Exhibits workspace rather than selectable layout presets. The body remains pinned to `7a5e8f40`.
