@@ -915,12 +915,10 @@ def evaluate_framework_pair_manifest(
                 )
             )
             continue
-        canonical_digest = _sha256_text(
-            _normalized_framework_body(canonical, strip_vault_yaml=True)
-        )
         canonical_body = _normalized_framework_body(
             canonical, strip_vault_yaml=True
         )
+        canonical_digest = _sha256_text(canonical_body)
         if entry.disposition == "no_runtime_twin":
             no_runtime_twin += 1
             continue
